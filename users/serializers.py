@@ -5,28 +5,6 @@ from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from .models import UserProfile
 
 
-#----------------------------TOKEN SERIALIZER-------------------------------
-
-class UserTokenObtainPairSerializer(TokenObtainPairSerializer):
-    @classmethod
-    def get_token(cls, user):
-        token = super().get_token(user)
-        
-        # Add custom claims
-        token['username'] = user.username
-        token['email'] = user.email
-        # You can add more user data to the token if needed
-        
-        return token
-    
-    def validate(self, attrs):
-        data = super().validate(attrs)
-        
-        # Add user data to response
-        data['user'] = UserSerializer(self.user).data
-        
-        return data
-
 
 #----------------------------USERPROFILE-------------------------------
 
@@ -62,44 +40,9 @@ class UserSerializer(serializers.ModelSerializer):
             'email',
             'date_joined',
             'profile',
-            'is_active',
-            'is_staff'
         )
-        read_only_fields = ('date_joined', 'is_active', 'is_staff')
+        read_only_fields = ('date_joined')
 
-
-class UserUpdateSerializer(serializers.ModelSerializer):
-    profile = UserProfileSerializer(required=False)
-    
-    class Meta:
-        model = User
-        fields = (
-            'id',
-            'username',
-            'email',
-            'first_name',
-            'last_name',
-            'profile'
-        )
-        read_only_fields = ('id', 'email')  # Email can't be changed directly
-        
-    def update(self, instance, validated_data):
-        profile_data = validated_data.pop('profile', None)
-        
-        # Update user fields
-        instance = super().update(instance, validated_data)
-        
-        # Update profile fields
-        if profile_data and hasattr(instance, 'profile'):
-            profile_serializer = UserProfileSerializer(
-                instance.profile, 
-                data=profile_data, 
-                partial=True
-            )
-            if profile_serializer.is_valid():
-                profile_serializer.save()
-        
-        return instance
 
 
 #----------------------------USERSTATS-------------------------------

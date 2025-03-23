@@ -1,7 +1,6 @@
 from django.contrib import admin
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from rest_framework_simplejwt.views import TokenRefreshView
 
 from things.views import (
     ExerciseViewSet, ClassLevelViewSet, SubjectViewSet, ChapterViewSet,SolutionViewSet,
@@ -11,7 +10,6 @@ from users.views import (
     LoginView, RegisterView, LogoutView, get_current_user,
     get_user_stats, get_user_history,
     mark_content_viewed, mark_content_completed,
-    UserTokenObtainPairView
 )
 from users import views
 
@@ -30,9 +28,6 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/', include(router.urls)),
     
-    # JWT Authentication
-    path('api/auth/token/', UserTokenObtainPairView.as_view(), name='token_obtain_pair'),
-    path('api/auth/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     
     # Legacy Authentication (kept for backward compatibility)
     path('api/auth/login/', LoginView.as_view(), name='login'),

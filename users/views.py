@@ -2,28 +2,18 @@ from rest_framework import status, views, generics
 from rest_framework.response import Response
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated, AllowAny
-from rest_framework_simplejwt.tokens import RefreshToken
-from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
-from rest_framework_simplejwt.exceptions import TokenError, InvalidToken
 
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.models import User
 from django.db.models import Count
 from django.contrib.contenttypes.models import ContentType
-from django.contrib.auth.tokens import default_token_generator
-from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
-from django.utils.encoding import force_bytes, force_str
-from django.contrib.sites.shortcuts import get_current_site
-from django.urls import reverse
-from django.conf import settings
-from django.template.loader import render_to_string
+
 
 
 from .models import ViewHistory
 from .serializers import (
     UserSerializer, 
     UserStatsSerializer, 
-    UserTokenObtainPairSerializer,
 )
 
 from things.serializers import UserHistorySerializer,ExerciseSerializer
@@ -32,12 +22,6 @@ from things.models import Exercise,Vote
 import logging
 
 logger = logging.getLogger('django')
-
-
-#----------------------------JWT TOKEN AUTH-------------------------------
-
-class UserTokenObtainPairView(TokenObtainPairView):
-    serializer_class = UserTokenObtainPairSerializer
 
 
 #----------------------------LOGIN-------------------------------
@@ -51,7 +35,7 @@ class LoginView(views.APIView):
 
         if not all([identifier, password]):
             return Response(
-                {'error': 'Veuillez fournir votre email/nom d\'utilisateur et mot de passe'},
+                {'error': 'Please provide email/username and password'},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
@@ -63,7 +47,7 @@ class LoginView(views.APIView):
                 user = User.objects.get(username=identifier)
         except User.DoesNotExist:
             return Response(
-                {'error': 'Identifiants invalides'},
+                {'error': 'Invalid credentials'},
                 status=status.HTTP_401_UNAUTHORIZED
             )
 
@@ -71,22 +55,12 @@ class LoginView(views.APIView):
         user = authenticate(username=user.username, password=password)
         if user is None:
             return Response(
-                {'error': 'Identifiants invalides'},
+                {'error': 'Invalid credentials'},
                 status=status.HTTP_401_UNAUTHORIZED
             )
 
-        # Generate JWT tokens
-        refresh = RefreshToken.for_user(user)
-        
-        # For backwards compatibility, login to session as well
         login(request, user)
-        
-        return Response({
-            'refresh': str(refresh),
-            'access': str(refresh.access_token),
-            'user': UserSerializer(user).data
-        })
-    
+        return Response(UserSerializer(user).data)
 
 
 #----------------------------REGISTER-------------------------------
@@ -101,36 +75,30 @@ class RegisterView(views.APIView):
 
         if not all([username, email, password]):
             return Response(
-                {'error': 'Veuillez remplir tous les champs requis'},
+                {'error': 'Please provide all required fields'},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
         if User.objects.filter(username=username).exists():
             return Response(
-                {'error': 'Ce nom d\'utilisateur existe déjà'},
+                {'error': 'Username already exists'},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
         if User.objects.filter(email=email).exists():
             return Response(
-                {'error': 'Cet email existe déjà'},
+                {'error': 'Email already exists'},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        # Create inactive user until email is verified
         user = User.objects.create_user(
             username=username,
             email=email,
-            password=password,
-            is_active=False  # Inactive until email verified
+            password=password
         )
 
-        # Send verification email
-        self.send_verification_email(user, request)
-        
-        return Response({
-            'message': 'Un email de vérification a été envoyé à votre adresse email. Veuillez vérifier votre email pour activer votre compte.'
-        }, status=status.HTTP_201_CREATED)
+        login(request, user)
+        return Response(UserSerializer(user).data)
     
    
 
@@ -138,30 +106,16 @@ class RegisterView(views.APIView):
 #----------------------------LOGOUT-------------------------------
 
 class LogoutView(views.APIView):
-    permission_classes = [IsAuthenticated]
-    
     def post(self, request):
-        try:
-            # Blacklist the refresh token to prevent its future use
-            refresh_token = request.data.get('refresh')
-            if refresh_token:
-                token = RefreshToken(refresh_token)
-                token.blacklist()
-            
-            # Logout from session auth as well
-            logout(request)
-            
-            return Response({'message': 'Déconnexion réussie'}, status=status.HTTP_200_OK)
-        except TokenError:
-            return Response({'error': 'Token invalide'}, status=status.HTTP_400_BAD_REQUEST)
-        except Exception as e:
-            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        logout(request)
+        return Response(status=status.HTTP_200_OK)
 
 #----------------------------API FUNCTIONS-------------------------------
 
 
 @api_view(['GET'])
 def get_current_user(request):
+    print(request)
     if request.user.is_authenticated:
         return Response(UserSerializer(request.user).data)
     return Response(status=status.HTTP_401_UNAUTHORIZED)
