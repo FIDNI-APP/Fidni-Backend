@@ -47,10 +47,23 @@ class StandardResultsSetPagination(PageNumberPagination):
 class ClassLevelViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = ClassLevel.objects.all()
     serializer_class = ClassLevelSerializer
+    pagination_class = StandardResultsSetPagination  # Ajouter cette ligne
+
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.get_queryset()
+        logger.info(f"ClassLevel count: {queryset.count()}")
+        logger.info(f"ClassLevel data: {list(queryset.values())}")
+        serializer = self.get_serializer(queryset, many=True)
+        logger.info(f"Serialized data: {serializer.data}")
+        return Response(serializer.data)
 
 class SubjectViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Subject.objects.all()
     serializer_class = SubjectSerializer
+    pagination_class = StandardResultsSetPagination  # Ajouter cette ligne
+
+
 
     def get_queryset(self):
         queryset = Subject.objects.all()
@@ -207,6 +220,8 @@ class VoteMixin:
 class ExerciseViewSet(VoteMixin, viewsets.ModelViewSet):
     queryset = Exercise.objects.all()
     permission_classes = [IsAuthenticatedOrReadOnly]
+    pagination_class = StandardResultsSetPagination  # Ajouter cette ligne
+
 
     def get_serializer_class(self):
         if self.action in ['create', 'update', 'partial_update']:

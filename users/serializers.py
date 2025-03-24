@@ -1,7 +1,5 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
-from django.contrib.auth.password_validation import validate_password
-from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from .models import UserProfile
 
 
@@ -38,10 +36,11 @@ class UserSerializer(serializers.ModelSerializer):
             'id',
             'username',
             'email',
+            'password',
             'date_joined',
             'profile',
         )
-        read_only_fields = ('date_joined')
+        read_only_fields = ('date_joined',)
 
 
 

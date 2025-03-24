@@ -67,6 +67,8 @@ class LoginView(views.APIView):
 
 class RegisterView(views.APIView):
     permission_classes = [AllowAny]
+    queryset = User.objects.all()
+    serializer_class = UserSerializer
 
     def post(self, request):
         username = request.data.get('username')
@@ -115,7 +117,7 @@ class LogoutView(views.APIView):
 
 @api_view(['GET'])
 def get_current_user(request):
-    print(request)
+    print('hello',request.user)
     if request.user.is_authenticated:
         return Response(UserSerializer(request.user).data)
     return Response(status=status.HTTP_401_UNAUTHORIZED)

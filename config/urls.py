@@ -12,6 +12,8 @@ from users.views import (
     mark_content_viewed, mark_content_completed,
 )
 from users import views
+from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
+
 
 router = DefaultRouter()
 router.register(r'exercises', ExerciseViewSet, basename='exercise')
@@ -27,6 +29,8 @@ router.register(r'theorems', TheoremViewSet, basename='theorem')
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/', include(router.urls)),
+    path("api-auth/", include("rest_framework.urls")),
+
     
     
     # Legacy Authentication (kept for backward compatibility)
@@ -36,6 +40,8 @@ urlpatterns = [
         
     # User endpoints
     path('api/auth/user/', get_current_user, name='current-user'),
+    path("api/token/", TokenObtainPairView.as_view(), name="get_token"),
+    path("api/token/refresh/", TokenRefreshView.as_view(), name="refresh"),
     path('api/users/stats/', get_user_stats, name='user-stats'),
     path('api/users/history/', get_user_history, name='user-history'),
     path('api/content/<str:content_id>/view/', mark_content_viewed, name='mark-content-viewed'),
