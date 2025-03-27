@@ -22,9 +22,6 @@ logger = logging.getLogger('django')
 
 
 
-
-    
-
 #----------------------------PAGINATION-------------------------------
 
 
@@ -118,9 +115,6 @@ class TheoremViewSet(viewsets.ReadOnlyModelViewSet):
         chapter_id = self.request.query_params.getlist('chapters[]')
 
 
-        logger.info(self.request)
-
-
         # Filter out empty strings and convert to integers
         subject_ids = [int(id) for id in subject_id if id.isdigit()]
         class_level_ids = [int(id) for id in class_level_id if id.isdigit()]
@@ -147,7 +141,6 @@ class TheoremViewSet(viewsets.ReadOnlyModelViewSet):
         filters = (filters_subject) & (filters_class_level) & (filters_subfield) & (filters_chapter)
         queryset = queryset.filter(filters)
 
-        logger.info(queryset)
         return queryset
     
 class ChapterViewSet(viewsets.ReadOnlyModelViewSet):
@@ -164,7 +157,6 @@ class ChapterViewSet(viewsets.ReadOnlyModelViewSet):
         subfield_id = self.request.query_params.getlist('subfields[]')
 
 
-        logger.info(f"voila {self.request.query_params}")
 
 
         # Filter out empty strings and convert to integers
@@ -201,9 +193,8 @@ class VoteMixin:
     def vote(self, request, pk=None):
         obj = self.get_object()
         vote_value = request.data.get('value')
-        logger.info(obj)
         
-        logger.info(f"Vote request for {obj.__class__.__name__} ID {obj.id} with vote value: {vote_value}")
+        logger.debug(f"Vote request for {obj.__class__.__name__} ID {obj.id} with vote value: {vote_value}")
         
         try:
             vote_value = int(vote_value)
@@ -270,7 +261,6 @@ class ExerciseViewSet(VoteMixin, viewsets.ModelViewSet):
                                   Count('votes', filter=Q(votes__value=Vote.DOWN))
         )
 
-        logger.info(self.request.query_params)
         
         # Filtering
         class_levels = self.request.query_params.getlist('class_levels[]')
@@ -313,8 +303,6 @@ class ExerciseViewSet(VoteMixin, viewsets.ModelViewSet):
             data=request.data,
             context={'request': request}
         )
-        logger.info(f"Comment request for Exercise ID {exercise.id}")
-        logger.info(f"Request data: {request.data}")
         if serializer.is_valid():
             serializer.save(
                 exercise=exercise,
@@ -351,7 +339,7 @@ class ExerciseViewSet(VoteMixin, viewsets.ModelViewSet):
             defaults={'status': status_value}
         )
         
-        logger.info(f"Exercise {exercise.id} marked as {status_value} by user {request.user.id}")
+        logger.debug(f"Exercise {exercise.id} marked as {status_value} by user {request.user.id}")
         
         return Response({
             'id': progress.id,
@@ -375,7 +363,7 @@ class ExerciseViewSet(VoteMixin, viewsets.ModelViewSet):
                 object_id=exercise.id
             )
             progress.delete()
-            logger.info(f"Progress removed for exercise {exercise.id} by user {request.user.id}")
+            logger.debug(f"Progress removed for exercise {exercise.id} by user {request.user.id}")
             return Response(status=status.HTTP_204_NO_CONTENT)
         except Complete.DoesNotExist:
             return Response(
@@ -411,7 +399,7 @@ class ExerciseViewSet(VoteMixin, viewsets.ModelViewSet):
             object_id=exercise.id
         )
         
-        logger.info(f"Exercise {exercise.id} saved by user {request.user.id}")
+        logger.debug(f"Exercise {exercise.id} saved by user {request.user.id}")
         
         return Response({
             'id': save.id,
@@ -433,7 +421,7 @@ class ExerciseViewSet(VoteMixin, viewsets.ModelViewSet):
                 object_id=exercise.id
             )
             save.delete()
-            logger.info(f"Exercise {exercise.id} unsaved by user {request.user.id}")
+            logger.debug(f"Exercise {exercise.id} unsaved by user {request.user.id}")
             return Response(status=status.HTTP_204_NO_CONTENT)
         except Save.DoesNotExist:
             return Response(
@@ -573,8 +561,7 @@ class LessonViewSet(VoteMixin, viewsets.ModelViewSet):
             data=request.data,
             context={'request': request}
         )
-        logger.info(f"Comment request for Exercise ID {exercise.id}")
-        logger.info(f"Request data: {request.data}")
+
         if serializer.is_valid():
             serializer.save(
                 exercise=exercise,
