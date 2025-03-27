@@ -9,9 +9,10 @@ from django.contrib.contenttypes.models import ContentType
 from django.db.models import Count, Q
 
 
-from .models import ClassLevel, Subject, Chapter, Exercise, Solution, Comment, Vote, Lesson,Theorem, Subfield
+from .models import ClassLevel, Subject, Chapter, Exercise, Solution, Comment, Vote, Lesson,Theorem, Subfield,Save,Complete
 from .serializers import ClassLevelSerializer, SubjectSerializer, ChapterSerializer, ExerciseSerializer, SolutionSerializer, CommentSerializer, ExerciseCreateSerializer,LessonSerializer,TheoremSerializer, SubfieldSerializer
-
+from rest_framework.permissions import IsAuthenticatedOrReadOnly
+from rest_framework.permissions import IsAuthenticated
 
 import logging
 
@@ -21,11 +22,7 @@ logger = logging.getLogger('django')
 
 
 
-class IsAuthenticatedOrReadOnly(permissions.BasePermission):
-    def has_permission(self, request, view):
-        if request.method in permissions.SAFE_METHODS:
-            return True
-        return request.user and request.user.is_authenticated
+
     
 
 #----------------------------PAGINATION-------------------------------
@@ -48,20 +45,20 @@ class ClassLevelViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = ClassLevel.objects.all()
     serializer_class = ClassLevelSerializer
     pagination_class = StandardResultsSetPagination  # Ajouter cette ligne
+    permission_classes = [permissions.AllowAny]
 
 
     def list(self, request, *args, **kwargs):
         queryset = self.get_queryset()
-        logger.info(f"ClassLevel count: {queryset.count()}")
-        logger.info(f"ClassLevel data: {list(queryset.values())}")
         serializer = self.get_serializer(queryset, many=True)
-        logger.info(f"Serialized data: {serializer.data}")
         return Response(serializer.data)
 
 class SubjectViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Subject.objects.all()
     serializer_class = SubjectSerializer
     pagination_class = StandardResultsSetPagination  # Ajouter cette ligne
+    permission_classes = [permissions.AllowAny]
+
 
 
 
@@ -80,6 +77,8 @@ class SubfieldViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Subject.objects.all()
     serializer_class = SubfieldSerializer
     pagination_class = StandardResultsSetPagination
+    permission_classes = [permissions.AllowAny]
+
 
 
     def get_queryset(self):
@@ -108,6 +107,8 @@ class TheoremViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Theorem.objects.all()
     serializer_class = TheoremSerializer
     pagination_class = StandardResultsSetPagination
+    permission_classes = [permissions.AllowAny]
+
 
     def get_queryset(self):
         queryset = Theorem.objects.all()
@@ -153,6 +154,8 @@ class ChapterViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Chapter.objects.all()
     serializer_class = ChapterSerializer
     pagination_class = StandardResultsSetPagination
+    permission_classes = [permissions.AllowAny]
+
 
     def get_queryset(self):
         queryset = Chapter.objects.all()
@@ -212,24 +215,28 @@ class VoteMixin:
             logger.error(f"Invalid vote value: {vote_value} for {obj.__class__.__name__} ID {obj.id}")
             return Response({'error': 'Invalid vote value'}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Use the model methods which now have toggle behavior built in
-        if vote_value == Vote.UP:
-            vote = obj.upvote(request.user)  # Will toggle if already upvoted
-        else:  # Vote.DOWN
-            vote = obj.downvote(request.user)  # Will toggle if already downvoted
+        existing_vote = obj.votes.filter(user=request.user).first()
+        
+        if existing_vote:
+            # If clicking the same vote type, delete the vote
+            if existing_vote.value == vote_value:
+                existing_vote.delete()
+                current_vote = None
+            else:
+                # If changing vote type (up to down or down to up)
+                existing_vote.value = vote_value
+                existing_vote.save()
+                current_vote = existing_vote
+        else:
+            # Create new vote
+            current_vote = obj.votes.create(user=request.user, value=vote_value)
             
         # Refresh the object to get updated vote count
         obj.refresh_from_db()
         
-        # Get the current vote value after the operation
-        current_vote = obj.votes.filter(user=request.user).first()
-
-        logger.info(f"Vote count for {obj.__class__.__name__} ID {obj.id}: {obj.vote_count}")
-        logger.info(f"Current vote for {obj.__class__.__name__} ID {obj.id}: {current_vote}")   
-        
         return Response({
             'vote_count': obj.vote_count,
-            'user_vote': current_vote,
+            'user_vote': current_vote.value if current_vote else 0,  # Return 0 if vote was deleted
             'item': self.get_serializer(obj).data
         })
     
@@ -298,35 +305,7 @@ class ExerciseViewSet(VoteMixin, viewsets.ModelViewSet):
         queryset = queryset.filter(filters)
         return queryset.distinct()
 
-    def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        self.perform_create(serializer)
-        headers = self.get_success_headers(serializer.data)
-        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
-
-    def update(self, request, *args, **kwargs):
-        instance = self.get_object()
-        serializer = self.get_serializer(instance, data=request.data)
-        print(serializer.is_valid(raise_exception=True))
-        self.perform_update(serializer)
-        return Response(serializer.data)
-
-    def perform_create(self, serializer):
-        if not self.request.user.is_authenticated:
-            logger.warning("Unauthorized attempt to create an exercise.")
-
-            raise PermissionDenied("You must be logged in to create an exercise.")
-        serializer.save()
-
-    def perform_update(self, serializer):
-        if not self.request.user.is_authenticated:
-            logger.warning("Unauthorized attempt to update an exercise.")
-
-            raise PermissionDenied("You must be logged in to create an exercise.")
-        serializer.save()
-
- 
+     
     @action(detail=True, methods=['post'])
     def comment(self, request, pk=None):
         exercise = self.get_object()
@@ -350,6 +329,148 @@ class ExerciseViewSet(VoteMixin, viewsets.ModelViewSet):
             serializer.errors,
             status=status.HTTP_400_BAD_REQUEST
         )
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
+    def mark_progress(self, request, pk=None):
+        """
+        Mark an exercise as completed with status 'success' or 'review'
+        """
+        exercise = self.get_object()
+        status_value = request.data.get('status')
+        
+        if status_value not in ['success', 'review']:
+            return Response(
+                {'error': 'Invalid status value. Must be "success" or "review".'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        content_type = ContentType.objects.get_for_model(Exercise)
+        progress, created = Complete.objects.update_or_create(
+            user=request.user,
+            content_type=content_type,
+            object_id=exercise.id,
+            defaults={'status': status_value}
+        )
+        
+        logger.info(f"Exercise {exercise.id} marked as {status_value} by user {request.user.id}")
+        
+        return Response({
+            'id': progress.id,
+            'status': progress.status,
+            'created_at': progress.created_at,
+            'updated_at': progress.updated_at
+        })
+    
+    @action(detail=True, methods=['delete'], permission_classes=[IsAuthenticated])
+    def remove_progress(self, request, pk=None):
+        """
+        Remove progress marking from an exercise
+        """
+        exercise = self.get_object()
+        content_type = ContentType.objects.get_for_model(Exercise)
+        
+        try:
+            progress = Complete.objects.get(
+                user=request.user,
+                content_type=content_type,
+                object_id=exercise.id
+            )
+            progress.delete()
+            logger.info(f"Progress removed for exercise {exercise.id} by user {request.user.id}")
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        except Complete.DoesNotExist:
+            return Response(
+                {'error': 'No progress record found for this exercise'}, 
+                status=status.HTTP_404_NOT_FOUND
+            )
+    
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
+    def save_exercise(self, request, pk=None):
+        """
+        Save an exercise for later
+        """
+        exercise = self.get_object()
+        content_type = ContentType.objects.get_for_model(Exercise)
+        
+        # Check if already saved
+        existing = Save.objects.filter(
+            user=request.user,
+            content_type=content_type,
+            object_id=exercise.id
+        ).first()
+        
+        if existing:
+            return Response(
+                {'error': 'Exercise already saved'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Create new save record
+        save = Save.objects.create(
+            user=request.user,
+            content_type=content_type,
+            object_id=exercise.id
+        )
+        
+        logger.info(f"Exercise {exercise.id} saved by user {request.user.id}")
+        
+        return Response({
+            'id': save.id,
+            'saved_at': save.saved_at
+        }, status=status.HTTP_201_CREATED)
+    
+    @action(detail=True, methods=['delete'], permission_classes=[IsAuthenticated])
+    def unsave_exercise(self, request, pk=None):
+        """
+        Remove exercise from saved list
+        """
+        exercise = self.get_object()
+        content_type = ContentType.objects.get_for_model(Exercise)
+        
+        try:
+            save = Save.objects.get(
+                user=request.user,
+                content_type=content_type,
+                object_id=exercise.id
+            )
+            save.delete()
+            logger.info(f"Exercise {exercise.id} unsaved by user {request.user.id}")
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        except Save.DoesNotExist:
+            return Response(
+                {'error': 'Exercise not found in saved list'}, 
+                status=status.HTTP_404_NOT_FOUND
+            )
+    
+    @action(detail=True, methods=['get'], permission_classes=[IsAuthenticated])
+    def user_status(self, request, pk=None):
+        """
+        Get user's status for an exercise (progress and saved status)
+        """
+        exercise = self.get_object()
+        content_type = ContentType.objects.get_for_model(Exercise)
+        
+        # Check progress status
+        progress = Complete.objects.filter(
+            user=request.user,
+            content_type=content_type,
+            object_id=exercise.id
+        ).first()
+        
+        # Check if saved
+        saved = Save.objects.filter(
+            user=request.user,
+            content_type=content_type,
+            object_id=exercise.id
+        ).exists()
+        
+        return Response({
+            'progress': {
+                'status': progress.status if progress else None,
+                'created_at': progress.created_at if progress else None,
+                'updated_at': progress.updated_at if progress else None
+            },
+            'saved': saved
+        })
     
 #----------------------------SOLUTION-------------------------------
 class SolutionViewSet(VoteMixin, viewsets.ModelViewSet):

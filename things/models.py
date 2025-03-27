@@ -104,41 +104,8 @@ class VotableMixin(models.Model):
     @property
     def vote_count(self):
         return self.votes.filter(value=Vote.UP).count() - self.votes.filter(value=Vote.DOWN).count()
-    def upvote(self, user):
-        """Toggle upvote from this user"""
-        existing_vote = self.votes.filter(user=user).first()
-        print('existing_vote', existing_vote)
-        if not existing_vote:
-            # No vote exists yet, create an upvote
-            return self.votes.create(user=user, value=Vote.UP)
-        elif existing_vote.value == Vote.UP:
-            # Already upvoted, so remove the vote (toggle off)
-            existing_vote.delete()
-            return None
-        else:
-            # Currently downvoted, change to upvote
-            existing_vote.value = Vote.UP
-            existing_vote.save()
-            return existing_vote
 
-    def downvote(self, user):
-        """Toggle downvote from this user"""
-        existing_vote = self.votes.filter(user=user).first()
-        
-        if not existing_vote:
-            # No vote exists yet, create a downvote
-            return self.votes.create(user=user, value=Vote.DOWN)
-        elif existing_vote.value == Vote.DOWN:
-            # Already downvoted, so remove the vote (toggle off)
-            existing_vote.delete()
-            return None
-        else:
-            # Currently upvoted, change to downvote
-            existing_vote.value = Vote.DOWN
-            existing_vote.save()
-            return existing_vote
-
-    
+ 
 #----------------------------EXERCISE-------------------------------
 
 class Exercise(VotableMixin, models.Model):
@@ -254,55 +221,8 @@ class Report(models.Model):
     def __str__(self):
         return f"Report by {self.user.username} on {self.content_object}"
     
+#----------------------------COMPLETE-------------------------------
 
-
-class Vote(models.Model):
-    UP = 1
-    DOWN = -1
-    UNVOTE = 0
-
-    VOTE_CHOICES = [
-        (UP, 'Upvote'),
-        (DOWN, 'Downvote'),
-        (UNVOTE, 'Unvote'),
-    ]
-
-    user = models.ForeignKey(User, on_delete=models.PROTECT)
-    value = models.SmallIntegerField(choices=VOTE_CHOICES)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    content_type = models.ForeignKey(ContentType, on_delete=models.PROTECT)
-    object_id = models.PositiveIntegerField()
-    content_object = GenericForeignKey('content_type', 'object_id')
-
-    class Meta:
-        unique_together = ('user', 'content_type', 'object_id')
-        indexes = [
-            models.Index(fields=['content_type', 'object_id']),
-        ]
-#----------------------------SAVE-------------------------------
-
-class Save(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='saved_exercises')
-    saved_at = models.DateTimeField(auto_now_add=True)
-
-    content_type = models.ForeignKey(ContentType, on_delete=models.PROTECT)
-    object_id = models.PositiveIntegerField()
-    content_object = GenericForeignKey('content_type', 'object_id')
-
-    class Meta:
-        unique_together = ('user', 'content_type', 'object_id')
-        indexes = [
-            models.Index(fields=['user']),
-            models.Index(fields=['content_type', 'object_id']),
-        ]
-
-    def __str__(self):
-        return f"{self.user.username} saved {self.content_object.title}"
-
-
-#----------------------------PROGRESS-------------------------------
 class Complete(models.Model):
     PROGRESS_CHOICES = [
         ('success', 'Réussi'),
@@ -326,6 +246,26 @@ class Complete(models.Model):
 
     def __str__(self):
         return f"{self.user.username} - {self.content_object.title}: {self.get_status_display()}"
+
+#----------------------------SAVE-------------------------------
+
+class Save(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='saved_exercises')
+    saved_at = models.DateTimeField(auto_now_add=True)
+
+    content_type = models.ForeignKey(ContentType, on_delete=models.PROTECT)
+    object_id = models.PositiveIntegerField()
+    content_object = GenericForeignKey('content_type', 'object_id')
+
+    class Meta:
+        unique_together = ('user', 'content_type', 'object_id')
+        indexes = [
+            models.Index(fields=['user']),
+            models.Index(fields=['content_type', 'object_id']),
+        ]
+
+    def __str__(self):
+        return f"{self.user.username} saved {self.content_object.title}"
 
 
 #----------------------------PERCEIVED DIFFICULTY-------------------------------
