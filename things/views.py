@@ -190,29 +190,48 @@ class ChapterViewSet(viewsets.ReadOnlyModelViewSet):
 #----------------------------VOTEMIXIN-------------------------------
 
 class VoteMixin:
+    """
+    Mixin that provides vote functionality with toggle behavior
+    """
+    
     @action(detail=True, methods=['post'])
     def vote(self, request, pk=None):
         obj = self.get_object()
         vote_value = request.data.get('value')
-
-        if vote_value not in [Vote.UP, Vote.DOWN, Vote.UNVOTE]:
+        logger.info(obj)
+        
+        logger.info(f"Vote request for {obj.__class__.__name__} ID {obj.id} with vote value: {vote_value}")
+        
+        try:
+            vote_value = int(vote_value)
+        except (TypeError, ValueError):
+            logger.error(f"Invalid vote value type: {vote_value} for {obj.__class__.__name__} ID {obj.id}")
             return Response({'error': 'Invalid vote value'}, status=status.HTTP_400_BAD_REQUEST)
 
-        vote, created = Vote.objects.get_or_create(
-            user=request.user,
-            content_type=ContentType.objects.get_for_model(obj),
-            object_id=obj.id,
-            defaults={'value': vote_value}
-        )
+        if vote_value not in [Vote.UP, Vote.DOWN]:
+            logger.error(f"Invalid vote value: {vote_value} for {obj.__class__.__name__} ID {obj.id}")
+            return Response({'error': 'Invalid vote value'}, status=status.HTTP_400_BAD_REQUEST)
 
-        if not created:
-            if vote_value == Vote.UNVOTE:
-                vote.delete()
-            elif vote.value != vote_value:
-                vote.value = vote_value
-                vote.save()
+        # Use the model methods which now have toggle behavior built in
+        if vote_value == Vote.UP:
+            vote = obj.upvote(request.user)  # Will toggle if already upvoted
+        else:  # Vote.DOWN
+            vote = obj.downvote(request.user)  # Will toggle if already downvoted
+            
+        # Refresh the object to get updated vote count
+        obj.refresh_from_db()
+        
+        # Get the current vote value after the operation
+        current_vote = obj.votes.filter(user=request.user).first()
 
-        return Response(self.get_serializer(obj).data)
+        logger.info(f"Vote count for {obj.__class__.__name__} ID {obj.id}: {obj.vote_count}")
+        logger.info(f"Current vote for {obj.__class__.__name__} ID {obj.id}: {current_vote}")   
+        
+        return Response({
+            'vote_count': obj.vote_count,
+            'user_vote': current_vote,
+            'item': self.get_serializer(obj).data
+        })
     
 #----------------------------EXERCISE-------------------------------
 
@@ -307,38 +326,7 @@ class ExerciseViewSet(VoteMixin, viewsets.ModelViewSet):
             raise PermissionDenied("You must be logged in to create an exercise.")
         serializer.save()
 
-    @action(detail=True, methods=['post'])
-    def vote(self, request, pk=None):
-        exercise = self.get_object()
-        vote_value = request.data.get('value')
-
-        logger.info(f"Vote request for Exercise ID {exercise.id} with vote value: {vote_value}")
-        logger.info(f"Request data: {request.data}")
-
-        if vote_value not in [Vote.UP, Vote.DOWN, Vote.UNVOTE]:
-            logger.error(f"Invalid vote value: {vote_value} for Exercise ID {exercise.id}")
-            return Response(
-                {'error': 'Invalid vote value'}, 
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        vote, created = Vote.objects.get_or_create(
-            user=request.user,
-            content_type=ContentType.objects.get_for_model(exercise),
-            object_id=exercise.id,
-            defaults={'value': vote_value}
-        )
-
-        if not created:
-            if vote_value == Vote.UNVOTE:
-                vote.delete()
-            elif vote.value != vote_value:
-                vote.value = vote_value
-                vote.save()
-        # Refresh the exercise object to get updated vote count
-        exercise.refresh_from_db()
-        return Response(self.get_serializer(exercise).data)
-
+ 
     @action(detail=True, methods=['post'])
     def comment(self, request, pk=None):
         exercise = self.get_object()
@@ -456,37 +444,6 @@ class LessonViewSet(VoteMixin, viewsets.ModelViewSet):
             raise PermissionDenied("You must be logged in to create an exercise.")
         serializer.save()
 
-    @action(detail=True, methods=['post'])
-    def vote(self, request, pk=None):
-        exercise = self.get_object()
-        vote_value = request.data.get('value')
-
-        logger.info(f"Vote request for Exercise ID {exercise.id} with vote value: {vote_value}")
-        logger.info(f"Request data: {request.data}")
-
-        if vote_value not in [Vote.UP, Vote.DOWN, Vote.UNVOTE]:
-            logger.error(f"Invalid vote value: {vote_value} for Exercise ID {exercise.id}")
-            return Response(
-                {'error': 'Invalid vote value'}, 
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        vote, created = Vote.objects.get_or_create(
-            user=request.user,
-            content_type=ContentType.objects.get_for_model(exercise),
-            object_id=exercise.id,
-            defaults={'value': vote_value}
-        )
-
-        if not created:
-            if vote_value == Vote.UNVOTE:
-                vote.delete()
-            elif vote.value != vote_value:
-                vote.value = vote_value
-                vote.save()
-        # Refresh the exercise object to get updated vote count
-        exercise.refresh_from_db()
-        return Response(self.get_serializer(exercise).data)
 
     @action(detail=True, methods=['post'])
     def comment(self, request, pk=None):

@@ -9,7 +9,7 @@ from things.views import (
 from users.views import (
     LoginView, RegisterView, LogoutView, get_current_user,
     get_user_stats, get_user_history,
-    mark_content_viewed, mark_content_completed,
+    mark_content_viewed
 )
 from users import views
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
@@ -45,10 +45,8 @@ urlpatterns = [
     path('api/users/stats/', get_user_stats, name='user-stats'),
     path('api/users/history/', get_user_history, name='user-history'),
     path('api/content/<str:content_id>/view/', mark_content_viewed, name='mark-content-viewed'),
-    path('api/content/<str:content_id>/complete/', mark_content_completed, name='mark-content-completed'),
 
     # User profile endpoints
     path('api/users/<str:username>/', views.get_user_profile, name='user_profile'),
     path('api/users/<str:username>/exercises/', views.get_user_exercises, name='user_exercises'),
-    path('api/users/saved/', views.get_saved_content, name='saved_content'),
 ]

@@ -2,9 +2,9 @@ from django.db import models
 from django.contrib.auth.models import User
 from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
 from django.contrib.contenttypes.models import ContentType
+import logging
 
-
-
+logger = logging.getLogger('django')
 #----------------------------CLASSLEVEL-------------------------------
 
 class ClassLevel(models.Model):
@@ -104,6 +104,40 @@ class VotableMixin(models.Model):
     @property
     def vote_count(self):
         return self.votes.filter(value=Vote.UP).count() - self.votes.filter(value=Vote.DOWN).count()
+    def upvote(self, user):
+        """Toggle upvote from this user"""
+        existing_vote = self.votes.filter(user=user).first()
+        print('existing_vote', existing_vote)
+        if not existing_vote:
+            # No vote exists yet, create an upvote
+            return self.votes.create(user=user, value=Vote.UP)
+        elif existing_vote.value == Vote.UP:
+            # Already upvoted, so remove the vote (toggle off)
+            existing_vote.delete()
+            return None
+        else:
+            # Currently downvoted, change to upvote
+            existing_vote.value = Vote.UP
+            existing_vote.save()
+            return existing_vote
+
+    def downvote(self, user):
+        """Toggle downvote from this user"""
+        existing_vote = self.votes.filter(user=user).first()
+        
+        if not existing_vote:
+            # No vote exists yet, create a downvote
+            return self.votes.create(user=user, value=Vote.DOWN)
+        elif existing_vote.value == Vote.DOWN:
+            # Already downvoted, so remove the vote (toggle off)
+            existing_vote.delete()
+            return None
+        else:
+            # Currently upvoted, change to downvote
+            existing_vote.value = Vote.DOWN
+            existing_vote.save()
+            return existing_vote
+
     
 #----------------------------EXERCISE-------------------------------
 
