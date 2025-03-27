@@ -184,7 +184,7 @@ def mark_content_viewed(request, content_id):
 def mark_content_completed(request, content_id):
     try:
         content = Exercise.objects.get(id=content_id)
-        history, _ = ViewHistory.objects.get_or_create(
+        history, created = ViewHistory.objects.get_or_create(
             user=request.user,
             content=content
         )
@@ -257,7 +257,7 @@ def get_user_exercises(request, username):
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
-def get_saved_content(request):
+def get_upvoted_content(request):
     """
     Get content saved by the current user
     This uses the upvoted content until you implement a separate save feature
@@ -268,12 +268,9 @@ def get_saved_content(request):
     upvoted_exercises = Exercise.objects.filter(
         votes__user=user,
         votes__value=Vote.UP,
-        votes__content_type=exercise_content_type
     ).order_by('-votes__created_at')
     
-    data = ExerciseSerializer(upvoted_exercises, many=True).data
-    return Response({
-        'results': data,
-        'count': upvoted_exercises.count()
-    })
+    serializer = ExerciseSerializer(upvoted_exercises, many=True)
+    
+    return Response(serializer.data)
 

@@ -220,7 +220,7 @@ class VoteMixin:
 class ExerciseViewSet(VoteMixin, viewsets.ModelViewSet):
     queryset = Exercise.objects.all()
     permission_classes = [IsAuthenticatedOrReadOnly]
-    pagination_class = StandardResultsSetPagination  # Ajouter cette ligne
+    pagination_class = StandardResultsSetPagination  
 
 
     def get_serializer_class(self):
@@ -234,6 +234,7 @@ class ExerciseViewSet(VoteMixin, viewsets.ModelViewSet):
         ).prefetch_related(
             'chapters',
             'class_levels',
+            'subject',
             'comments',
             'votes',
             'theorems',
@@ -244,32 +245,38 @@ class ExerciseViewSet(VoteMixin, viewsets.ModelViewSet):
         )
 
         logger.info(self.request.query_params)
-
         
-
-
         # Filtering
         class_levels = self.request.query_params.getlist('class_levels[]')
         subjects = self.request.query_params.getlist('subjects[]')
         chapters = self.request.query_params.getlist('chapters[]')
         difficulties = self.request.query_params.getlist('difficulties[]')
+        subfields = self.request.query_params.getlist('subfields[]')
+        theorems = self.request.query_params.getlist('theorems[]')
+
+        
+        filters_subject = Q()
+        filters_class_level = Q()
+        filters_subfield = Q()
+        filters_chapter = Q()
+        filters_theorem = Q()
+        filters_difficulty = Q()
+
 
         if class_levels:
-            queryset = queryset.filter(class_levels__id__in=class_levels)
+            filters_class_level |= Q(class_levels__id__in=class_levels)
         if subjects:
-            queryset = queryset.filter(subject__id__in=subjects)
+            filters_subject |= Q(subject__id__in=subjects)
+        if subfields:
+            filters_subfield |= Q(subfields__id__in=subfields)
+        if theorems:
+            filters_theorem |= Q(theorems__id__in=theorems)
         if chapters:
-            queryset = queryset.filter(chapters__id__in=chapters)
+            filters_chapter |= Q(chapters__id__in=chapters)
         if difficulties:
-            queryset = queryset.filter(difficulty__in=difficulties)
-
-        # Sorting
-        sort_by = self.request.query_params.get('sort', '-created_at')
-        if sort_by == 'votes':
-            queryset = queryset.order_by('-vote_count_annotation')
-        else:
-            queryset = queryset.order_by(sort_by)
-
+            filters_difficulty |= Q(difficulty__in=difficulties)
+        filters = (filters_subject) & (filters_class_level) & (filters_subfield) & (filters_chapter) & (filters_theorem) & (filters_difficulty)
+        queryset = queryset.filter(filters)
         return queryset.distinct()
 
     def create(self, request, *args, **kwargs):

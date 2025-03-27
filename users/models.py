@@ -3,7 +3,8 @@ from django.contrib.auth.models import User
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from things.models import Exercise
-
+from django.contrib.contenttypes.models import ContentType
+from things.models import Complete
 
 #----------------------------USERPROFILE-------------------------------
 
@@ -43,6 +44,16 @@ class UserProfile(models.Model):
         xp_in_current_level = self.experience_points - xp_for_current_level
         total_xp_needed = xp_for_next_level - xp_for_current_level
         return int((xp_in_current_level / total_xp_needed) * 100)
+    def has_saved_exercise(self, exercise):
+        return self.user.saved_exercises.filter(exercise=exercise).exists()
+    
+    def get_exercise_progress(self, exercise):
+        content_type = ContentType.objects.get_for_model(Exercise)
+        try:
+            progress = self.user.content_progress.get(content_type=content_type, object_id=exercise.id)
+            return progress.status
+        except Complete.DoesNotExist:
+            return None
 
 
 
