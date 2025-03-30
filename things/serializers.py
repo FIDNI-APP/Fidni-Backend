@@ -1,8 +1,9 @@
 from rest_framework import serializers
-from .models import ClassLevel, Subject, Chapter, Exercise, Solution, Comment, Vote, Subfield, Theorem
+from .models import ClassLevel, Subject, Chapter, Exercise, Solution, Comment, Vote, Subfield, Theorem, Save,Complete
 from users.serializers import UserSerializer
 from users.models import ViewHistory
 import logging 
+
 
 
 logger = logging.getLogger('django')
@@ -112,10 +113,15 @@ class ExerciseSerializer(serializers.ModelSerializer):
     subject = SubjectSerializer(read_only=True)
     theorems = TheoremSerializer(many= True, read_only = True)
     subfields= SubfieldSerializer(many= True,read_only = True)
+    user_save = serializers.SerializerMethodField()
+    user_complete = serializers.SerializerMethodField()
+
 
     class Meta:
         model = Exercise
-        fields = ['id', 'title', 'content', 'difficulty', 'chapters', 'author', 'created_at', 'updated_at', 'view_count', 'comments', 'solution', 'vote_count', 'user_vote', 'class_levels', 'subject','subfields','theorems']
+        fields = ['id', 'title', 'content', 'difficulty', 'chapters', 'author', 'created_at', 
+                'updated_at', 'view_count', 'comments', 'solution', 'vote_count', 'user_vote', 
+                'class_levels', 'subject','subfields','theorems','user_save','user_complete']
 
     def get_user_vote(self, obj):
         user = self.context['request'].user
@@ -123,6 +129,20 @@ class ExerciseSerializer(serializers.ModelSerializer):
             vote = obj.votes.filter(user=user).first()
             return vote.value if vote else None
         return None
+    def get_user_save(self, obj):
+        user = self.context['request'].user
+        if user.is_authenticated:
+            saved_exercise = obj.saved.filter(user=user).first()
+            return saved_exercise is not None
+        return False
+    
+    def get_user_complete(self, obj):
+        user = self.context['request'].user
+        if user.is_authenticated:
+            completed_exercise = obj.completed.filter(user=user).first()
+
+            return completed_exercise.status if completed_exercise else None
+        return False
 
     def update(self, instance, validated_data):
         solution_content = validated_data.pop('solution_content', None)
@@ -257,13 +277,31 @@ class UserHistorySerializer(serializers.Serializer):
 
 
 class VoteSerializer(serializers.ModelSerializer):
+    user = UserSerializer(read_only=True)
+    exercise = ExerciseSerializer(read_only=True)
+    comment = CommentSerializer(read_only=True)
+    solution = SolutionSerializer(read_only=True)
+
     class Meta:
         model = Vote
-        fields = ['id', 'value', 'created_at', 'updated_at']
+        fields = ['id', 'value', 'created_at', 'updated_at','user','exercise','comment','solution']
 
 
+class SaveSerializer(serializers.ModelSerializer):
+    user = UserSerializer(read_only=True)
+    exercise = ExerciseSerializer(read_only=True)
 
+    class Meta:
+        model = Save
+        fields = ['id','created_at','updated_at','user', 'exercise']
+        
+class CompleteSerializer(serializers.ModelSerializer):
+    user = UserSerializer(read_only=True)
+    exercise = ExerciseSerializer(read_only=True)
 
+    class Meta:
+        model = Complete
+        fields = ['id','created_at','updated_at','user', 'exercise']
 
 class LessonSerializer(serializers.ModelSerializer):
     author = UserSerializer(read_only=True)
@@ -299,3 +337,4 @@ class LessonSerializer(serializers.ModelSerializer):
             instance.class_levels.set(class_levels)
         instance.save()
         return instance
+    

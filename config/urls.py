@@ -4,7 +4,7 @@ from rest_framework.routers import DefaultRouter
 
 from things.views import (
     ExerciseViewSet, ClassLevelViewSet, SubjectViewSet, ChapterViewSet,SolutionViewSet,
-    CommentViewSet,SubfieldViewSet, TheoremViewSet
+    CommentViewSet,SubfieldViewSet, TheoremViewSet, get_bulk_user_status
 )
 from users.views import (
     LoginView, RegisterView, LogoutView, get_current_user,
@@ -49,4 +49,6 @@ urlpatterns = [
     # User profile endpoints
     path('api/users/<str:username>/', views.get_user_profile, name='user_profile'),
     path('api/users/<str:username>/exercises/', views.get_user_exercises, name='user_exercises'),
+    path('api/users/bulk-status/', get_bulk_user_status, name='bulk-user-status'),
+    
 ]

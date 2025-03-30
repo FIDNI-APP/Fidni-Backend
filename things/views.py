@@ -317,6 +317,7 @@ class ExerciseViewSet(VoteMixin, viewsets.ModelViewSet):
             serializer.errors,
             status=status.HTTP_400_BAD_REQUEST
         )
+    
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
     def mark_progress(self, request, pk=None):
         """
@@ -429,36 +430,6 @@ class ExerciseViewSet(VoteMixin, viewsets.ModelViewSet):
                 status=status.HTTP_404_NOT_FOUND
             )
     
-    @action(detail=True, methods=['get'], permission_classes=[IsAuthenticated])
-    def user_status(self, request, pk=None):
-        """
-        Get user's status for an exercise (progress and saved status)
-        """
-        exercise = self.get_object()
-        content_type = ContentType.objects.get_for_model(Exercise)
-        
-        # Check progress status
-        progress = Complete.objects.filter(
-            user=request.user,
-            content_type=content_type,
-            object_id=exercise.id
-        ).first()
-        
-        # Check if saved
-        saved = Save.objects.filter(
-            user=request.user,
-            content_type=content_type,
-            object_id=exercise.id
-        ).exists()
-        
-        return Response({
-            'progress': {
-                'status': progress.status if progress else None,
-                'created_at': progress.created_at if progress else None,
-                'updated_at': progress.updated_at if progress else None
-            },
-            'saved': saved
-        })
     
 #----------------------------SOLUTION-------------------------------
 class SolutionViewSet(VoteMixin, viewsets.ModelViewSet):
@@ -525,34 +496,6 @@ class LessonViewSet(VoteMixin, viewsets.ModelViewSet):
 
         return queryset.distinct()
 
-    def create(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        self.perform_create(serializer)
-        headers = self.get_success_headers(serializer.data)
-        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
-
-    def update(self, request, *args, **kwargs):
-        instance = self.get_object()
-        serializer = self.get_serializer(instance, data=request.data)
-        print(serializer.is_valid(raise_exception=True))
-        self.perform_update(serializer)
-        return Response(serializer.data)
-
-    def perform_create(self, serializer):
-        if not self.request.user.is_authenticated:
-            logger.warning("Unauthorized attempt to create an exercise.")
-
-            raise PermissionDenied("You must be logged in to create an exercise.")
-        serializer.save()
-
-    def perform_update(self, serializer):
-        if not self.request.user.is_authenticated:
-            logger.warning("Unauthorized attempt to update an exercise.")
-
-            raise PermissionDenied("You must be logged in to create an exercise.")
-        serializer.save()
-
 
     @action(detail=True, methods=['post'])
     def comment(self, request, pk=None):
@@ -576,3 +519,38 @@ class LessonViewSet(VoteMixin, viewsets.ModelViewSet):
             serializer.errors,
             status=status.HTTP_400_BAD_REQUEST
         )
+    
+from rest_framework.decorators import api_view, permission_classes
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_bulk_user_status(request):
+    """
+    Get user's progress and saved status for multiple exercises at once
+    """
+    exercise_ids = request.data.get('exercise_ids', [])
+    if not exercise_ids:
+        return Response({})
+    
+    # Get content type for Exercise model
+    content_type = ContentType.objects.get_for_model(Exercise)
+    
+    # Fetch all saved objects for this user and these exercises
+    saved_objects = Save.objects.filter(
+        user=request.user,
+        content_type=content_type,
+        object_id__in=exercise_ids
+    )
+    
+    # Create a dictionary with exercise_id as key
+    result = {}
+    for exercise_id in exercise_ids:        
+        # Check if exercise is saved
+        saved = any(str(s.object_id) == exercise_id for s in saved_objects)
+        
+        # Construct response
+        result[exercise_id] = {
+            'saved': saved
+        }
+    
+    return Response(result)

@@ -104,11 +104,34 @@ class VotableMixin(models.Model):
     @property
     def vote_count(self):
         return self.votes.filter(value=Vote.UP).count() - self.votes.filter(value=Vote.DOWN).count()
+    
+
+
+class SaveableMixin(models.Model):
+    saved = GenericRelation('Save')
+
+    class Meta:
+        abstract = True
+
+    @property
+    def is_saved(self):
+        return self.saved.exists()
+    
+class CompleteableMixin(SaveableMixin,VotableMixin,models.Model):
+    completed = GenericRelation('Complete')
+
+    class Meta:
+        abstract = True
+
+    @property
+    def is_completed(self):
+        return self.completed.exists()
+    
 
  
 #----------------------------EXERCISE-------------------------------
 
-class Exercise(VotableMixin, models.Model):
+class Exercise(CompleteableMixin, models.Model):
     DIFFICULTY_CHOICES = [
         ('easy', 'easy'),
         ('medium', 'medium'),
@@ -225,8 +248,12 @@ class Report(models.Model):
 
 class Complete(models.Model):
     PROGRESS_CHOICES = [
-        ('success', 'Réussi'),
-        ('review', 'À revoir'),
+        ('success', 'success'),
+        ('review', 'review'),
+        # ('in_progress', 'in_progress'),
+        # ('not_started', 'not_started'),
+        # ('failed', 'failed'),
+        # ('abandoned', 'abandoned'),
     ]
     
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='exercise_progress')
@@ -286,3 +313,6 @@ class Evaluate(models.Model):
 
     def __str__(self):
         return f"{self.user.username} rated {self.content_object.title} as {self.rating}/5"
+    
+
+
