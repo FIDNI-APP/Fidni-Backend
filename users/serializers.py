@@ -48,22 +48,26 @@ class UserSerializer(serializers.ModelSerializer):
 
 class UserStatsSerializer(serializers.Serializer):
     exercisesCompleted = serializers.SerializerMethodField()
-    lessonsCompleted = serializers.SerializerMethodField()
-    totalUpvotes = serializers.SerializerMethodField()
+    exercisesFailed = serializers.SerializerMethodField()
+    exercisesUpvoted = serializers.SerializerMethodField()
     streak = serializers.IntegerField(source='profile.streak_days')
     level = serializers.IntegerField(source='profile.level')
     progress = serializers.IntegerField(source='profile.level_progress')
 
     def get_exercisesCompleted(self, obj):
-        return self.context.get('stats', {}).get('exercisesCompleted', 0)
-
-    def get_lessonsCompleted(self, obj):
-        return self.context.get('stats', {}).get('lessonsCompleted', 0)
-
-    def get_totalUpvotes(self, obj):
-        return self.context.get('stats', {}).get('totalUpvotes', 0)
-
-
+        user = self.context['request'].user
+        exercises_completed = obj.completed.filter(user=user,status='sucess').first()
+        return exercises_completed
+    def get_exercisesFailed(self,obj):
+        user=self.context['request'].user
+        exercises_failed = obj.completed.filter(user=user,status='review').first()
+        return exercises_failed
+        
+    def get_exercisesUpvoted(self, obj):
+        user = self.context['request'].user
+        exercises_upvoted = obj.votes.filter(user=user,vote_value = 1).first()
+        return exercises_upvoted
+        
 #----------------------------UPDATE USERPROFILE (TOCHANGE)-------------------------------
 
 class UpdateUserProfileSerializer(serializers.ModelSerializer):
