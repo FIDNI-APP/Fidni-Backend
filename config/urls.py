@@ -51,7 +51,4 @@ urlpatterns = [
     # Content interaction
     path('api/content/<str:content_id>/view/', mark_content_viewed, name='mark-content-viewed'),
 
-    # User profile endpoints
-    path('api/users/bulk-status/', get_bulk_user_status, name='bulk-user-status'),
-    
 ]

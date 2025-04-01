@@ -2,7 +2,10 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
 from .models import UserProfile, ViewHistory
-from django.db.models import Count, Sum
+
+
+
+
 
 class UserProfileSerializer(serializers.ModelSerializer):
     reputation = serializers.ReadOnlyField()
@@ -65,13 +68,11 @@ class UserSerializer(serializers.ModelSerializer):
         
         return instance
 
-class ViewHistorySerializer(serializers.ModelSerializer):
-    content_title = serializers.ReadOnlyField(source='content.title')
-    content_difficulty = serializers.ReadOnlyField(source='content.difficulty')
+
     
-    class Meta:
-        model = ViewHistory
-        fields = ('content', 'content_title', 'content_difficulty', 'viewed_at', 'completed', 'time_spent')
+
+    
+
 
 class UserSettingsSerializer(serializers.ModelSerializer):
     """Serializer for user settings only"""

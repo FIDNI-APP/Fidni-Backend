@@ -1,6 +1,6 @@
-from rest_framework import status, views, generics
+from rest_framework import status, views, generics,viewsets
 from rest_framework.response import Response
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import api_view, permission_classes, action
 from rest_framework.permissions import IsAuthenticated, AllowAny
 
 from django.contrib.auth import authenticate, login, logout
@@ -8,14 +8,21 @@ from django.contrib.auth.models import User
 from django.db.models import Count
 from django.contrib.contenttypes.models import ContentType
 
+# users/views.py
+from rest_framework.views import APIView
 
+
+from .serializers import (
+    UserSerializer, 
+    UserSettingsSerializer
+)
 
 from .models import ViewHistory
 from .serializers import (
     UserSerializer, 
 )
-from things.serializers import UserHistorySerializer,ExerciseSerializer
-from things.models import Exercise,Vote,Complete
+from things.serializers import ViewHistorySerializer,ExerciseSerializer
+from things.models import Exercise,Vote,Complete,Save
 
 import logging
 
@@ -113,35 +120,6 @@ class LogoutView(views.APIView):
 #----------------------------API FUNCTIONS-------------------------------
 
 
-# users/views.py
-from rest_framework import status, views, generics, viewsets
-from rest_framework.response import Response
-from rest_framework.decorators import api_view, permission_classes, action
-from rest_framework.permissions import IsAuthenticated, AllowAny
-from rest_framework.views import APIView
-
-from django.contrib.auth import authenticate, login, logout
-from django.contrib.auth.models import User
-from django.db.models import Count, Sum
-from django.shortcuts import get_object_or_404
-from django.contrib.contenttypes.models import ContentType
-
-from .models import ViewHistory, UserProfile
-from .serializers import (
-    UserSerializer, 
-    UserProfileSerializer,
-    ViewHistorySerializer,
-    UserSettingsSerializer
-)
-
-from things.serializers import ExerciseSerializer
-from things.models import Exercise, Vote, Complete, Save
-
-import logging
-
-logger = logging.getLogger('django')
-
-# Keep your existing LoginView, RegisterView, and LogoutView...
 
 @api_view(['GET'])
 def get_current_user(request):
@@ -187,7 +165,7 @@ class UserProfileViewSet(viewsets.ModelViewSet):
         is_owner = request.user.is_authenticated and request.user.id == user.id
         
         # If not owner and stats are private, restrict access
-        if not is_owner and not user.profile.display_stats:
+        if not is_owner and not user.profile.display_stats and not request.user.is_superuser:
             return Response(
                 {'error': 'This user\'s statistics are private'},
                 status=status.HTTP_403_FORBIDDEN
@@ -199,9 +177,10 @@ class UserProfileViewSet(viewsets.ModelViewSet):
         # Only include learning stats for the owner
         response_data = {
             'contribution_stats': contribution_stats,
+            'learning_stats' : {}
         }
-        
-        if is_owner:
+        print(request.user.is_superuser)
+        if is_owner or request.user.is_superuser:
             response_data['learning_stats'] = user.profile.get_learning_stats()
         
         return Response(response_data)
@@ -224,7 +203,7 @@ class UserProfileViewSet(viewsets.ModelViewSet):
         user = self.get_object()
         
         # Only allow users to view their own saved exercises
-        if user.id != request.user.id:
+        if user.id != request.user.id and not request.user.is_superuser:
             return Response(
                 {'error': 'You cannot view other users\' saved exercises'},
                 status=status.HTTP_403_FORBIDDEN
@@ -234,9 +213,10 @@ class UserProfileViewSet(viewsets.ModelViewSet):
         saved_ids = Save.objects.filter(
             user=user,
             content_type=content_type
-        ).values_list('object_id', flat=True)
+        ).order_by('-saved_at').values_list('object_id', flat=True)
+        print(saved_ids)
         
-        exercises = Exercise.objects.filter(id__in=saved_ids).order_by('-created_at')
+        exercises = Exercise.objects.filter(id__in=saved_ids)
         
         page = self.paginate_queryset(exercises)
         if page is not None:
@@ -246,26 +226,55 @@ class UserProfileViewSet(viewsets.ModelViewSet):
         serializer = ExerciseSerializer(exercises, many=True, context={'request': request})
         return Response(serializer.data)
     
+
     @action(detail=True, methods=['get'])
     def history(self, request, username=None):
+        """Get view history for the user"""
         user = self.get_object()
         
         # Only allow users to view their own history
-        if user.id != request.user.id:
+        if user.id != request.user.id and not request.user.is_superuser:
             return Response(
                 {'error': 'You cannot view other users\' history'},
                 status=status.HTTP_403_FORBIDDEN
             )
         
-        history = ViewHistory.objects.filter(user=user).order_by('-viewed_at')
-        
-        page = self.paginate_queryset(history)
-        if page is not None:
-            serializer = ViewHistorySerializer(page, many=True)
-            return self.get_paginated_response(serializer.data)
-        
-        serializer = ViewHistorySerializer(history, many=True)
+        history_ids = ViewHistory.objects.filter(user=user).order_by('-viewed_at')
+        serializer = ViewHistorySerializer(history_ids, many=True, context={'request': request})
+
         return Response(serializer.data)
+    
+
+    @action(detail=True, methods=['get'])
+    def success_thing(self,request,username=None):
+        """Get exercises completed successfully for the user"""
+        user = self.get_object()
+        if user.id != request.user.id and not request.user.is_superuser:
+            return Response(
+                {'error' : 'You cannnot view other users \' progress'}
+            )
+        content_type = ContentType.objects.get_for_model(Exercise)
+        complete_ids = Complete.objects.filter(user=user, status ='success',content_type=content_type).order_by('-updated_at').values_list('object_id', flat=True)
+        success_exercises = Exercise.objects.filter(id__in=complete_ids)
+        serializer = ExerciseSerializer(success_exercises,many=True,context ={'request' : request})
+        return Response(serializer.data)
+    
+
+    @action(detail=True, methods=['get'])
+    def review_thing(self,request,username=None):
+        """Get exercises in review for the user"""
+        user = self.get_object()
+        if user.id != request.user.id and not request.user.is_superuser:
+            return Response(
+                {'error' : 'You cannnot view other users \' progress'}
+            )
+        content_type = ContentType.objects.get_for_model(Exercise)
+        complete_ids = Complete.objects.filter(user=user, status ='review',content_type=content_type).order_by('-updated_at').values_list('object_id')
+        review_exercises = Exercise.objects.filter(id__in=complete_ids)
+        serializer = ExerciseSerializer(review_exercises,many=True,context ={'request' : request})
+        return Response(serializer.data)
+
+
 
 class UserSettingsView(APIView):
     permission_classes = [IsAuthenticated]

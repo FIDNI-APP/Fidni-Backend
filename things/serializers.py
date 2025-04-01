@@ -338,3 +338,15 @@ class LessonSerializer(serializers.ModelSerializer):
         instance.save()
         return instance
     
+class ViewHistorySerializer(serializers.ModelSerializer):
+    """Serializer for the ViewHistory model"""
+
+    content_type = serializers.ReadOnlyField(source='content.content_type')
+    content = ExerciseSerializer('content', read_only=True)
+    viewed_at = serializers.ReadOnlyField()
+    time_spent = serializers.ReadOnlyField(source='time_spent_in_seconds')
+    
+    class Meta:
+        model = ViewHistory  
+        fields = ('content', 'viewed_at', 'time_spent','content_type', 'content')
+        read_only_fields = ('viewed_at', 'time_spent', 'content_type')

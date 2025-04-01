@@ -68,9 +68,8 @@ class UserProfile(models.Model):
         stats = {
             'exercises_completed': 0,
             'exercises_in_review': 0,
-            'exercises_saved': 0,
             'subjects_studied': set(),
-            'total_viewed': 0
+            'total_viewed': 0,
         }
         
         # Get completed exercises
@@ -78,8 +77,6 @@ class UserProfile(models.Model):
         stats['exercises_completed'] = completed.filter(status='success').count()
         stats['exercises_in_review'] = completed.filter(status='review').count()
         
-        # Get saved exercises
-        stats['exercises_saved'] = Save.objects.filter(user=self.user).count()
         
         # Get total viewed
         stats['total_viewed'] = ViewHistory.objects.filter(user=self.user).count()
@@ -104,7 +101,8 @@ class ViewHistory(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='view_history')
     content = models.ForeignKey(Exercise, on_delete=models.CASCADE)
     viewed_at = models.DateTimeField(auto_now=True)
-    completed = models.BooleanField(default=False)
+    completed = models.CharField(max_length=10, choices=[('success', 'success'), ('review', 'review')], default='review')
+    # This field is used to track the time spent on the content
     time_spent = models.PositiveIntegerField(default=0, help_text="Time spent in seconds")
     
     class Meta:
