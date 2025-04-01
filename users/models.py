@@ -12,8 +12,6 @@ class UserProfile(models.Model):
     bio = models.TextField(max_length=500, blank=True)
     avatar = models.URLField(blank=True)
     favorite_subjects = models.JSONField(default=list, blank=True)
-    github_username = models.CharField(max_length=39, blank=True)
-    website = models.URLField(blank=True)
     location = models.CharField(max_length=100, blank=True)
     last_activity_date = models.DateField(null=True, blank=True, auto_now=True)
     joined_at = models.DateTimeField(auto_now_add=True)
@@ -23,15 +21,6 @@ class UserProfile(models.Model):
     display_stats = models.BooleanField(default=True)
     
     # Theme and display preferences
-    theme_preference = models.CharField(max_length=10, choices=[
-        ('light', 'Light'),
-        ('dark', 'Dark'),
-        ('system', 'System Default')
-    ], default='system')
-    math_notation = models.CharField(max_length=10, choices=[
-        ('latex', 'LaTeX'),
-        ('ascii', 'ASCII')
-    ], default='latex')
     
     # Notification preferences
     email_notifications = models.BooleanField(default=True)

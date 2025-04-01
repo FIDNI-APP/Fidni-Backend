@@ -13,8 +13,8 @@ class UserProfileSerializer(serializers.ModelSerializer):
         model = UserProfile
         fields = (
             'bio', 'avatar', 'favorite_subjects', 'reputation',
-            'github_username', 'website', 'location', 'last_activity_date',
-            'theme_preference', 'math_notation', 'display_email', 'display_stats',
+            'location', 'last_activity_date',
+            'display_email', 'display_stats',
             'email_notifications', 'comment_notifications', 'solution_notifications',
             'contribution_stats', 'learning_stats', 'joined_at'
         )
@@ -78,6 +78,6 @@ class UserSettingsSerializer(serializers.ModelSerializer):
     class Meta:
         model = UserProfile
         fields = (
-            'theme_preference', 'math_notation', 'display_email', 'display_stats',
+            'display_email', 'display_stats',
             'email_notifications', 'comment_notifications', 'solution_notifications',
         )
