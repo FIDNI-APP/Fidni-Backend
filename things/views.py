@@ -317,6 +317,27 @@ class ExerciseViewSet(VoteMixin, viewsets.ModelViewSet):
             serializer.errors,
             status=status.HTTP_400_BAD_REQUEST
         )
+    @action(detail=True, methods=['post'])
+    def solution(self, request, pk=None):
+        exercise = self.get_object()
+        serializer = SolutionSerializer(
+            data=request.data,
+            context={'request': request}
+        )
+        if serializer.is_valid():
+            serializer.save(
+                exercise=exercise,
+                author=request.user,
+                content=request.data.get('content')  
+            )
+            return Response(
+                serializer.data,
+                status=status.HTTP_201_CREATED
+            )
+        return Response(
+            serializer.errors,
+            status=status.HTTP_400_BAD_REQUEST
+        )
     
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
     def mark_progress(self, request, pk=None):

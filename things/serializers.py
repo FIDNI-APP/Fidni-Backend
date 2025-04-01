@@ -84,6 +84,7 @@ class SolutionSerializer(serializers.ModelSerializer):
     author = UserSerializer(read_only=True)
     vote_count = serializers.IntegerField(read_only=True)
     user_vote = serializers.SerializerMethodField()
+    content = serializers.CharField(required=True, allow_blank=False)
 
     class Meta:
         model = Solution
