@@ -8,8 +8,7 @@ from things.views import (
 )
 from users.views import (
     LoginView, RegisterView, LogoutView, get_current_user,
-    get_user_stats, get_user_history,
-    mark_content_viewed
+    UserProfileViewSet, UserSettingsView, mark_content_viewed
 )
 from users import views
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
@@ -24,6 +23,8 @@ router.register(r'comments', CommentViewSet, basename='comment')
 router.register(r'solutions', SolutionViewSet, basename='solution')
 router.register(r'subfields', SubfieldViewSet, basename='subfield')
 router.register(r'theorems', TheoremViewSet, basename='theorem')
+router.register(r'users', UserProfileViewSet, basename='user-profile')
+
 
 
 urlpatterns = [
@@ -42,13 +43,15 @@ urlpatterns = [
     path('api/auth/user/', get_current_user, name='current-user'),
     path("api/token/", TokenObtainPairView.as_view(), name="get_token"),
     path("api/token/refresh/", TokenRefreshView.as_view(), name="refresh"),
-    path('api/users/stats/', get_user_stats, name='user-stats'),
-    path('api/users/history/', get_user_history, name='user-history'),
+    path('api/content/<str:content_id>/view/', mark_content_viewed, name='mark-content-viewed'),
+
+     # User endpoints
+    path('api/auth/settings/', UserSettingsView.as_view(), name='user-settings'),
+    
+    # Content interaction
     path('api/content/<str:content_id>/view/', mark_content_viewed, name='mark-content-viewed'),
 
     # User profile endpoints
-    path('api/users/<str:username>/', views.get_user_profile, name='user_profile'),
-    path('api/users/<str:username>/exercises/', views.get_user_exercises, name='user_exercises'),
     path('api/users/bulk-status/', get_bulk_user_status, name='bulk-user-status'),
     
 ]

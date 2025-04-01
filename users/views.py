@@ -13,11 +13,9 @@ from django.contrib.contenttypes.models import ContentType
 from .models import ViewHistory
 from .serializers import (
     UserSerializer, 
-    UserStatsSerializer, 
 )
-
 from things.serializers import UserHistorySerializer,ExerciseSerializer
-from things.models import Exercise,Vote
+from things.models import Exercise,Vote,Complete
 
 import logging
 
@@ -115,162 +113,204 @@ class LogoutView(views.APIView):
 #----------------------------API FUNCTIONS-------------------------------
 
 
+# users/views.py
+from rest_framework import status, views, generics, viewsets
+from rest_framework.response import Response
+from rest_framework.decorators import api_view, permission_classes, action
+from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework.views import APIView
+
+from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth.models import User
+from django.db.models import Count, Sum
+from django.shortcuts import get_object_or_404
+from django.contrib.contenttypes.models import ContentType
+
+from .models import ViewHistory, UserProfile
+from .serializers import (
+    UserSerializer, 
+    UserProfileSerializer,
+    ViewHistorySerializer,
+    UserSettingsSerializer
+)
+
+from things.serializers import ExerciseSerializer
+from things.models import Exercise, Vote, Complete, Save
+
+import logging
+
+logger = logging.getLogger('django')
+
+# Keep your existing LoginView, RegisterView, and LogoutView...
+
 @api_view(['GET'])
 def get_current_user(request):
-    print('hello',request.user)
     if request.user.is_authenticated:
-        return Response(UserSerializer(request.user).data)
+        serializer = UserSerializer(request.user, context={'request': request, 'is_owner': True})
+        return Response(serializer.data)
     return Response(status=status.HTTP_401_UNAUTHORIZED)
 
-@api_view(['GET'])
-@permission_classes([IsAuthenticated])
-def get_user_stats(request):
-    user = request.user
-    stats = {
-        'exercisesCompleted': ViewHistory.objects.filter(
-            user=user, 
-            completed=True, 
-            content__type='exercise'
-        ).count(),
-        'lessonsCompleted': ViewHistory.objects.filter(
-            user=user, 
-            completed=True, 
-            content__type='course'
-        ).count(),
-        'totalUpvotes': Exercise.objects.filter(author=user).aggregate(
-            total=Count('votes')
-        )['total'] or 0,
-    }
-    return Response(UserStatsSerializer(user, context={'stats': stats}).data)
+class UserProfileViewSet(viewsets.ModelViewSet):
+    queryset = User.objects.all()
+    serializer_class = UserSerializer
+    lookup_field = 'username'
+    
+    def get_permissions(self):
+        if self.action in ['update', 'partial_update']:
+            return [IsAuthenticated()]
+        return [AllowAny()]
+    
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        user = self.get_object() if self.action != 'list' else None
+        if user and self.request.user.is_authenticated:
+            context['is_owner'] = user.id == self.request.user.id
+        return context
+    
+    def update(self, request, *args, **kwargs):
+        user = self.get_object()
+        
+        # Only allow users to update their own profile
+        if user.id != request.user.id:
+            return Response(
+                {'error': 'You cannot update other users\' profiles'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        return super().update(request, *args, **kwargs)
+    
+    @action(detail=True, methods=['get'])
+    def stats(self, request, username=None):
+        user = self.get_object()
+        
+        # Determine if requester is the profile owner
+        is_owner = request.user.is_authenticated and request.user.id == user.id
+        
+        # If not owner and stats are private, restrict access
+        if not is_owner and not user.profile.display_stats:
+            return Response(
+                {'error': 'This user\'s statistics are private'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        # Get comprehensive stats
+        contribution_stats = user.profile.get_contribution_stats()
+        
+        # Only include learning stats for the owner
+        response_data = {
+            'contribution_stats': contribution_stats,
+        }
+        
+        if is_owner:
+            response_data['learning_stats'] = user.profile.get_learning_stats()
+        
+        return Response(response_data)
+    
+    @action(detail=True, methods=['get'])
+    def contributions(self, request, username=None):
+        user = self.get_object()
+        exercises = Exercise.objects.filter(author=user).order_by('-created_at')
+        
+        page = self.paginate_queryset(exercises)
+        if page is not None:
+            serializer = ExerciseSerializer(page, many=True, context={'request': request})
+            return self.get_paginated_response(serializer.data)
+        
+        serializer = ExerciseSerializer(exercises, many=True, context={'request': request})
+        return Response(serializer.data)
+    
+    @action(detail=True, methods=['get'])
+    def saved_exercises(self, request, username=None):
+        user = self.get_object()
+        
+        # Only allow users to view their own saved exercises
+        if user.id != request.user.id:
+            return Response(
+                {'error': 'You cannot view other users\' saved exercises'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        content_type = ContentType.objects.get_for_model(Exercise)
+        saved_ids = Save.objects.filter(
+            user=user,
+            content_type=content_type
+        ).values_list('object_id', flat=True)
+        
+        exercises = Exercise.objects.filter(id__in=saved_ids).order_by('-created_at')
+        
+        page = self.paginate_queryset(exercises)
+        if page is not None:
+            serializer = ExerciseSerializer(page, many=True, context={'request': request})
+            return self.get_paginated_response(serializer.data)
+        
+        serializer = ExerciseSerializer(exercises, many=True, context={'request': request})
+        return Response(serializer.data)
+    
+    @action(detail=True, methods=['get'])
+    def history(self, request, username=None):
+        user = self.get_object()
+        
+        # Only allow users to view their own history
+        if user.id != request.user.id:
+            return Response(
+                {'error': 'You cannot view other users\' history'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        history = ViewHistory.objects.filter(user=user).order_by('-viewed_at')
+        
+        page = self.paginate_queryset(history)
+        if page is not None:
+            serializer = ViewHistorySerializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        
+        serializer = ViewHistorySerializer(history, many=True)
+        return Response(serializer.data)
 
-@api_view(['GET'])
-@permission_classes([IsAuthenticated])
-def get_user_history(request):
-    user = request.user
-    exercise_content_type = ContentType.objects.get_for_model(Exercise)
-
-    history = {
-        'recentlyViewed': Exercise.objects.filter(
-            viewhistory__user=user
-        ).order_by('-viewhistory__viewed_at')[:5],
-        'upvoted': Exercise.objects.filter(
-            votes__user=user,
-            votes__value=Vote.UP,
-            votes__content_type=exercise_content_type
-        ).order_by('-votes__created_at')[:5],
-    }
-    return Response(UserHistorySerializer(history).data)
+class UserSettingsView(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        """Get current user settings"""
+        serializer = UserSettingsSerializer(request.user.profile)
+        return Response(serializer.data)
+    
+    def patch(self, request):
+        """Update user settings"""
+        serializer = UserSettingsSerializer(request.user.profile, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def mark_content_viewed(request, content_id):
+    """Mark content as viewed and update view count"""
     try:
         content = Exercise.objects.get(id=content_id)
-        ViewHistory.objects.get_or_create(
+        time_spent = request.data.get('time_spent', 0)
+        
+        # Get or create view history entry
+        view_history, created = ViewHistory.objects.get_or_create(
             user=request.user,
-            content=content
+            content=content,
+            defaults={'time_spent': time_spent}
         )
-        content.view_count += 1
-        content.save()
+        
+        # If existing record, update time spent
+        if not created and time_spent:
+            view_history.time_spent += int(time_spent)
+            view_history.save()
+        
+        # Increment view count only on first view
+        if created:
+            content.view_count += 1
+            content.save()
+        
         return Response(status=status.HTTP_200_OK)
     except Exercise.DoesNotExist:
         return Response(
             {'error': 'Content not found'},
             status=status.HTTP_404_NOT_FOUND
         )
-
-@api_view(['POST'])
-@permission_classes([IsAuthenticated])
-def mark_content_completed(request, content_id):
-    try:
-        content = Exercise.objects.get(id=content_id)
-        history, created = ViewHistory.objects.get_or_create(
-            user=request.user,
-            content=content
-        )
-        history.completed = True
-        history.save()
-        return Response(status=status.HTTP_200_OK)
-    except Exercise.DoesNotExist:
-        return Response(
-            {'error': 'Content not found'},
-            status=status.HTTP_404_NOT_FOUND
-        )
-    
-
-
-@api_view(['GET'])
-@permission_classes([AllowAny])  # Allow anyone to view public profiles
-def get_user_profile(request, username):
-    """
-    Get public profile for any user by username
-    """
-    try:
-        user = User.objects.get(username=username)
-        logger.info(f"GET request to view profile for user: {user.username}")
-        logger.info(f"User data: {request.data}")
-        
-        # Get basic user data
-        user_data = UserSerializer(user).data
-        
-        # Get contribution counts
-        contributions_count = Exercise.objects.filter(author=user).count()
-        
-        # Get reputation (total upvotes on their content)
-        exercise_content_type = ContentType.objects.get_for_model(Exercise)
-        reputation = Vote.objects.filter(
-            content_type=exercise_content_type,
-            object_id__in=Exercise.objects.filter(author=user).values_list('id', flat=True),
-            value=Vote.UP
-        ).count()
-        
-        # Add these to user data
-        user_data['contributionsCount'] = contributions_count
-        user_data['reputation'] = reputation
-        
-        return Response(user_data)
-    except User.DoesNotExist:
-        return Response({'error': 'User not found'}, status=404)
-
-@api_view(['GET'])
-def get_user_exercises(request, username):
-    """
-    Get exercises created by a specific user
-    """
-    try:
-        user = User.objects.get(username=username)
-        exercises = Exercise.objects.filter(author=user).order_by('-created_at')
-        
-        # Apply pagination if needed
-        page = request.query_params.get('page', 1)
-        per_page = request.query_params.get('per_page', 10)
-        
-        # You can add pagination code here
-        
-        data = ExerciseSerializer(exercises, many=True).data
-        return Response({
-            'results': data,
-            'count': exercises.count()
-        })
-    except User.DoesNotExist:
-        return Response({'error': 'User not found'}, status=404)
-
-@api_view(['GET'])
-@permission_classes([IsAuthenticated])
-def get_upvoted_content(request):
-    """
-    Get content saved by the current user
-    This uses the upvoted content until you implement a separate save feature
-    """
-    user = request.user
-    exercise_content_type = ContentType.objects.get_for_model(Exercise)
-    
-    upvoted_exercises = Exercise.objects.filter(
-        votes__user=user,
-        votes__value=Vote.UP,
-    ).order_by('-votes__created_at')
-    
-    serializer = ExerciseSerializer(upvoted_exercises, many=True)
-    
-    return Response(serializer.data)
-
