@@ -393,40 +393,55 @@ class ExerciseViewSet(VoteMixin, viewsets.ModelViewSet):
                 status=status.HTTP_404_NOT_FOUND
             )
     
+    # Update this function in things/views.py
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
     def save_exercise(self, request, pk=None):
         """
         Save an exercise for later
         """
-        exercise = self.get_object()
-        content_type = ContentType.objects.get_for_model(Exercise)
-        
-        # Check if already saved
-        existing = Save.objects.filter(
-            user=request.user,
-            content_type=content_type,
-            object_id=exercise.id
-        ).first()
-        
-        if existing:
-            return Response(
-                {'error': 'Exercise already saved'}, 
-                status=status.HTTP_400_BAD_REQUEST
+        try:
+            exercise = self.get_object()
+            content_type = ContentType.objects.get_for_model(Exercise)
+            
+            # Check if already saved
+            existing = Save.objects.filter(
+                user=request.user,
+                content_type=content_type,
+                object_id=exercise.id
+            ).first()
+            
+            if existing:
+                # Return a more descriptive response for already saved
+                print('heeellloo')
+                return Response(
+                    {
+                        'error': 'Exercise already saved',
+                        'message': 'This exercise is already in your saved list',
+                        'already_saved': True
+                    }, 
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Create new save record
+            save = Save.objects.create(
+                user=request.user,
+                content_type=content_type,
+                object_id=exercise.id
             )
-        
-        # Create new save record
-        save = Save.objects.create(
-            user=request.user,
-            content_type=content_type,
-            object_id=exercise.id
-        )
-        
-        logger.debug(f"Exercise {exercise.id} saved by user {request.user.id}")
-        
-        return Response({
-            'id': save.id,
-            'saved_at': save.saved_at
-        }, status=status.HTTP_201_CREATED)
+            
+            logger.debug(f"Exercise {exercise.id} saved by user {request.user.id}")
+            
+            return Response({
+                'id': save.id,
+                'saved_at': save.saved_at,
+                'message': 'Exercise saved successfully'
+            }, status=status.HTTP_201_CREATED)
+        except Exception as e:
+            logger.error(f"Error saving exercise: {str(e)}")
+            return Response(
+                {'error': 'Failed to save exercise', 'detail': str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
     
     @action(detail=True, methods=['delete'], permission_classes=[IsAuthenticated])
     def unsave_exercise(self, request, pk=None):

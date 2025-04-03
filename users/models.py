@@ -1,13 +1,20 @@
-# users/models.py
+# users/models.py - Ajoutons les champs nécessaires au modèle UserProfile
+
 from django.db import models
 from django.contrib.auth.models import User
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from things.models import Exercise
 from django.contrib.contenttypes.models import ContentType
-from things.models import Complete, Save, Vote
+from django.contrib.contenttypes.fields import GenericForeignKey
+from things.models import Complete
 
 class UserProfile(models.Model):
+    USER_TYPE_CHOICES = (
+        ('student', 'Student'),
+        ('teacher', 'Teacher'),
+    )
+    
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
     bio = models.TextField(max_length=500, blank=True)
     avatar = models.URLField(blank=True)
@@ -16,11 +23,14 @@ class UserProfile(models.Model):
     last_activity_date = models.DateField(null=True, blank=True, auto_now=True)
     joined_at = models.DateTimeField(auto_now_add=True)
     
+    # Nouveaux champs pour l'onboarding
+    class_level = models.ForeignKey('things.ClassLevel', on_delete=models.SET_NULL, null=True, blank=True, related_name='user_profiles')
+    user_type = models.CharField(max_length=10, choices=USER_TYPE_CHOICES, default='student')
+    onboarding_completed = models.BooleanField(default=False)
+    
     # Profile settings
     display_email = models.BooleanField(default=False)
     display_stats = models.BooleanField(default=True)
-    
-    # Theme and display preferences
     
     # Notification preferences
     email_notifications = models.BooleanField(default=True)
@@ -45,19 +55,6 @@ class UserProfile(models.Model):
             'view_count': 0
         }
         
-        # Calculate total upvotes received on contributions
-        exercise_type = ContentType.objects.get_for_model(Exercise)
-        exercises = self.user.exercises.all()
-        
-        stats['upvotes_received'] = Vote.objects.filter(
-            content_type=exercise_type,
-            object_id__in=exercises.values_list('id', flat=True),
-            value=1
-        ).count()
-        
-        # Calculate total views on exercises
-        stats['view_count'] = sum(ex.view_count for ex in exercises)
-        
         # Calculate total contributions
         stats['total_contributions'] = stats['exercises'] + stats['solutions'] + stats['comments']
         
@@ -77,7 +74,6 @@ class UserProfile(models.Model):
         stats['exercises_completed'] = completed.filter(status='success').count()
         stats['exercises_in_review'] = completed.filter(status='review').count()
         
-        
         # Get total viewed
         stats['total_viewed'] = ViewHistory.objects.filter(user=self.user).count()
         
@@ -87,15 +83,37 @@ class UserProfile(models.Model):
         stats['subjects_studied'] = list(filter(None, subjects))
         
         return stats
+
+
+# Nouveau modèle pour les notes par matière
+class SubjectGrade(models.Model):
+    user_profile = models.ForeignKey(UserProfile, on_delete=models.CASCADE, related_name='subject_grades')
+    subject = models.ForeignKey('things.Subject', on_delete=models.CASCADE)
+    min_grade = models.DecimalField(max_digits=4, decimal_places=2, default=0)
+    max_grade = models.DecimalField(max_digits=4, decimal_places=2, default=20)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
     
-    @property
-    def reputation(self):
-        """Calculate reputation based on contributions and votes"""
-        stats = self.get_contribution_stats()
-        
-        # Simple reputation formula: upvotes + (contributions * 5)
-        reputation = stats['upvotes_received'] + (stats['total_contributions'] * 5)
-        return reputation
+    class Meta:
+        unique_together = ('user_profile', 'subject')
+        verbose_name = "Subject Grade"
+        verbose_name_plural = "Subject Grades"
+    
+    def __str__(self):
+        return f"{self.user_profile.user.username}'s grade for {self.subject.name}"
+
+
+# Signal pour créer le profil quand un utilisateur est créé
+@receiver(post_save, sender=User)
+def create_user_profile(sender, instance, created, **kwargs):
+    if created:
+        UserProfile.objects.create(user=instance)
+
+@receiver(post_save, sender=User)
+def save_user_profile(sender, instance, **kwargs):
+    if not hasattr(instance, 'profile'):
+        UserProfile.objects.create(user=instance)
+    instance.profile.save()
 
 class ViewHistory(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='view_history')
@@ -111,14 +129,3 @@ class ViewHistory(models.Model):
         verbose_name = "View History"
         verbose_name_plural = "View Histories"
 
-# Signal to create profile when user is created
-@receiver(post_save, sender=User)
-def create_user_profile(sender, instance, created, **kwargs):
-    if created:
-        UserProfile.objects.create(user=instance)
-
-@receiver(post_save, sender=User)
-def save_user_profile(sender, instance, **kwargs):
-    if not hasattr(instance, 'profile'):
-        UserProfile.objects.create(user=instance)
-    instance.profile.save()

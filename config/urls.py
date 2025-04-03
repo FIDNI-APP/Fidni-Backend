@@ -8,10 +8,11 @@ from things.views import (
 )
 from users.views import (
     LoginView, RegisterView, LogoutView, get_current_user,
-    UserProfileViewSet, UserSettingsView, mark_content_viewed
+    UserProfileViewSet, UserSettingsView, mark_content_viewed, OnboardingView,
 )
 from users import views
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
+
 
 
 router = DefaultRouter()
@@ -44,6 +45,8 @@ urlpatterns = [
     path("api/token/", TokenObtainPairView.as_view(), name="get_token"),
     path("api/token/refresh/", TokenRefreshView.as_view(), name="refresh"),
     path('api/content/<str:content_id>/view/', mark_content_viewed, name='mark-content-viewed'),
+    path('api/onboarding/', OnboardingView.as_view(), name='onboarding'),
+    path('api/users/<str:username>/onboarding-status/', UserProfileViewSet.as_view({'get': 'onboarding_status'}), name='onboarding-status'),
 
      # User endpoints
     path('api/auth/settings/', UserSettingsView.as_view(), name='user-settings'),

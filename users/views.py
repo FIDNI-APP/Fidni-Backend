@@ -7,6 +7,20 @@ from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.models import User
 from django.db.models import Count
 from django.contrib.contenttypes.models import ContentType
+from django.contrib.contenttypes.fields import GenericRelation
+from django.utils import timezone
+from django.core.exceptions import ObjectDoesNotExist
+from django.db import transaction
+from django.db.models import Q
+from django.contrib.auth import get_user_model
+from .serializers import (
+    UserSerializer,
+    UserSettingsSerializer,
+    OnboardingSerializer,
+    SubjectGradeSerializer,
+)
+from .models import UserProfile, SubjectGrade
+from things.models import ClassLevel, Subject, Exercise, Vote, Complete, Save
 
 # users/views.py
 from rest_framework.views import APIView
@@ -128,6 +142,88 @@ def get_current_user(request):
         return Response(serializer.data)
     return Response(status=status.HTTP_401_UNAUTHORIZED)
 
+
+# Ajouter cette nouvelle vue pour l'onboarding
+class OnboardingView(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        """Get onboarding status and current data"""
+        user = request.user
+        profile = user.profile
+        
+        # Get subject grades
+        subject_grades = SubjectGradeSerializer(profile.subject_grades.all(), many=True).data
+        
+        # Get favorite subjects
+        favorite_subjects = []
+        for subject_id in profile.favorite_subjects:
+            try:
+                subject = Subject.objects.get(id=subject_id)
+                favorite_subjects.append({
+                    'id': subject.id,
+                    'name': subject.name
+                })
+            except Subject.DoesNotExist:
+                pass
+        
+        return Response({
+            'onboarding_completed': profile.onboarding_completed,
+            'user_type': profile.user_type,
+            'class_level': profile.class_level.id if profile.class_level else None,
+            'class_level_name': profile.class_level.name if profile.class_level else None,
+            'bio': profile.bio,
+            'favorite_subjects': favorite_subjects,
+            'subject_grades': subject_grades
+        })
+    
+    def post(self, request):
+        """Complete or update onboarding data"""
+        user = request.user
+        serializer = OnboardingSerializer(data=request.data)
+        
+        if serializer.is_valid():
+            serializer.update(user, serializer.validated_data)
+            return Response({
+                'status': 'success',
+                'message': 'Onboarding completed successfully.',
+                'onboarding_completed': True
+            })
+        
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+
+# Ajouter un nouvel endpoint pour les notes par matière
+class SubjectGradeViewSet(viewsets.ModelViewSet):
+    serializer_class = SubjectGradeSerializer
+    permission_classes = [IsAuthenticated]
+    
+    def get_queryset(self):
+        return SubjectGrade.objects.filter(user_profile=self.request.user.profile)
+    
+    def perform_create(self, serializer):
+        serializer.save(user_profile=self.request.user.profile)
+    
+    def create(self, request, *args, **kwargs):
+        # Check if the subject grade already exists
+        subject_id = request.data.get('subject')
+        existing = SubjectGrade.objects.filter(
+            user_profile=request.user.profile,
+            subject_id=subject_id
+        ).first()
+        
+        if existing:
+            # Update existing
+            serializer = self.get_serializer(existing, data=request.data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            self.perform_update(serializer)
+            return Response(serializer.data)
+        
+        # Create new
+        return super().create(request, *args, **kwargs)
+
+
+# Mettre à jour UserProfileViewSet pour vérifier l'état de l'onboarding
 class UserProfileViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
     serializer_class = UserSerializer
@@ -144,6 +240,35 @@ class UserProfileViewSet(viewsets.ModelViewSet):
         if user and self.request.user.is_authenticated:
             context['is_owner'] = user.id == self.request.user.id
         return context
+    
+    def update(self, request, *args, **kwargs):
+        user = self.get_object()
+        
+        # Only allow users to update their own profile
+        if user.id != request.user.id:
+            return Response(
+                {'error': 'You cannot update other users\' profiles'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        return super().update(request, *args, **kwargs)
+    
+    @action(detail=True, methods=['get'])
+    def onboarding_status(self, request, username=None):
+        """Get the user's onboarding status"""
+        user = self.get_object()
+        
+        # Only allow users to check their own onboarding status
+        if user.id != request.user.id and not request.user.is_superuser:
+            return Response(
+                {'error': 'You cannot check other users\' onboarding status'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        
+        return Response({
+            'onboarding_completed': user.profile.onboarding_completed,
+            'needs_profile_completion': not user.profile.onboarding_completed
+        })
     
     def update(self, request, *args, **kwargs):
         user = self.get_object()
