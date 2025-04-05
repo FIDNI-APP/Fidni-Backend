@@ -143,7 +143,7 @@ class UserProfile(models.Model):
 
 class SubjectGrade(models.Model):
     """Gestion des notes par matière"""
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='subject_grades')
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='subject_grades', default=None)
     subject = models.ForeignKey('caracteristics.Subject', on_delete=models.CASCADE)
     min_grade = models.DecimalField(max_digits=4, decimal_places=2, default=0)
     max_grade = models.DecimalField(max_digits=4, decimal_places=2, default=20)
