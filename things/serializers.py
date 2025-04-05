@@ -1,7 +1,9 @@
 from rest_framework import serializers
-from .models import ClassLevel, Subject, Chapter, Exercise, Solution, Comment, Vote, Subfield, Theorem, Save,Complete
+from .models import Solution, Comment, Vote, Subfield, Theorem, Save,Complete, Exercise
+from caracteristics.models import ClassLevel, Chapter, Subfield, Theorem
 from users.serializers import UserSerializer
 from users.models import ViewHistory
+from caracteristics.serializers import ChapterSerializer, ClassLevelSerializer, SubjectSerializer, SubfieldSerializer, TheoremSerializer
 import logging 
 
 
@@ -9,50 +11,6 @@ import logging
 logger = logging.getLogger('django')
 
 
-#----------------------------CLASS LEVELS/ SUBJECT / CHAPTER-------------------------------
-
-
-class ClassLevelSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = ClassLevel
-        fields = ['id', 'name', 'order']
-
-class SubjectSerializer(serializers.ModelSerializer):
-    class_levels = ClassLevelSerializer(many=True, read_only=True)
-
-    class Meta:
-        model = Subject
-        fields = ['id', 'name', 'class_levels']
-class SubfieldSerializer(serializers.ModelSerializer):
-    subject = SubjectSerializer(read_only=True)
-    class_levels = ClassLevelSerializer(many=True, read_only=True)
-
-
-    class Meta:
-        model = Subfield
-        fields = ['id', 'name', 'subject', 'class_levels']
-
-
-class ChapterSerializer(serializers.ModelSerializer):
-    subject = SubjectSerializer(read_only=True)
-    class_levels = ClassLevelSerializer(many=True, read_only=True)
-    subfield = SubfieldSerializer(read_only = True)
-
-
-    class Meta:
-        model = Chapter
-        fields = ['id', 'name', 'subject', 'class_levels', 'subfield']
-
-class TheoremSerializer(serializers.ModelSerializer):
-    subject = SubjectSerializer(read_only=True)
-    class_levels = ClassLevelSerializer(many=True, read_only=True)
-    chapters = ChapterSerializer(read_only = True)
-    subfield = SubfieldSerializer(read_only=  True)
-
-
-    class Meta:
-        model = Theorem
-        fields = ['id', 'name', 'subject', 'class_levels','chapters','subfield']
 #----------------------------COMMENT-------------------------------
 
 

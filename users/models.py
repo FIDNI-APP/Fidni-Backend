@@ -1,93 +1,145 @@
-# users/models.py - Ajoutons les champs nécessaires au modèle UserProfile
-
 from django.db import models
 from django.contrib.auth.models import User
 from django.db.models.signals import post_save
 from django.dispatch import receiver
-from things.models import Exercise
+from things.models import ClassLevel, Subject
+from django.utils import timezone
 from django.contrib.contenttypes.models import ContentType
-from django.contrib.contenttypes.fields import GenericForeignKey
-from things.models import Complete
 
 class UserProfile(models.Model):
+    # Types d'utilisateurs
     USER_TYPE_CHOICES = (
         ('student', 'Student'),
         ('teacher', 'Teacher'),
     )
+    # Champs de préférences avec valeurs par défaut
+    _defaults = {
+        'display_email': False,
+        'display_stats': True,
+        'email_notifications': True,
+        'comment_notifications': True,
+        'solution_notifications': True,
+        'onboarding_completed': False,
+        'user_type': 'student',
+        
+    }
     
+    # Relations principales
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
+    class_level = models.ForeignKey('things.ClassLevel', on_delete=models.SET_NULL, 
+                                   null=True, blank=True, related_name='user_profiles')
+    
+    # Attributs de base
     bio = models.TextField(max_length=500, blank=True)
     avatar = models.URLField(blank=True)
-    favorite_subjects = models.JSONField(default=list, blank=True)
     location = models.CharField(max_length=100, blank=True)
-    last_activity_date = models.DateField(null=True, blank=True, auto_now=True)
+    user_type = models.CharField(max_length=10, choices=USER_TYPE_CHOICES, default=_defaults['user_type'])
+    
+    # Dates
     joined_at = models.DateTimeField(auto_now_add=True)
+    last_activity_date = models.DateTimeField(null=True, blank=True)
     
-    # Nouveaux champs pour l'onboarding
-    class_level = models.ForeignKey('things.ClassLevel', on_delete=models.SET_NULL, null=True, blank=True, related_name='user_profiles')
-    user_type = models.CharField(max_length=10, choices=USER_TYPE_CHOICES, default='student')
-    onboarding_completed = models.BooleanField(default=False)
     
-    # Profile settings
-    display_email = models.BooleanField(default=False)
-    display_stats = models.BooleanField(default=True)
     
-    # Notification preferences
-    email_notifications = models.BooleanField(default=True)
-    comment_notifications = models.BooleanField(default=True)
-    solution_notifications = models.BooleanField(default=True)
+    # Implémentation des préférences comme propriétés dynamiques
+    display_email = models.BooleanField(default=_defaults['display_email'])
+    display_stats = models.BooleanField(default=_defaults['display_stats'])
+    email_notifications = models.BooleanField(default=_defaults['email_notifications'])
+    comment_notifications = models.BooleanField(default=_defaults['comment_notifications'])
+    solution_notifications = models.BooleanField(default=_defaults['solution_notifications'])
+    onboarding_completed = models.BooleanField(default=_defaults['onboarding_completed'])
+    
+    # Données JSON pour les préférences flexibles ou données supplémentaires
+    favorite_subjects = models.JSONField(default=list, blank=True)
+    extra_data = models.JSONField(default=dict, blank=True)
     
     class Meta:
         verbose_name = "User Profile"
         verbose_name_plural = "User Profiles"
-
+    
     def __str__(self):
         return f"{self.user.username}'s profile"
     
+    def update_last_activity(self):
+        """Met à jour la date de dernière activité"""
+        self.last_activity_date = timezone.now()
+        self.save(update_fields=['last_activity_date'])
+    
     def get_contribution_stats(self):
-        """Get comprehensive statistics about user contributions"""
-        stats = {
-            'exercises': self.user.exercises.count(),
-            'solutions': self.user.solutions.count(),
-            'comments': self.user.comments.count(),
-            'total_contributions': 0,
-            'upvotes_received': 0,
-            'view_count': 0
-        }
+        """Obtient des statistiques sur les contributions de l'utilisateur"""
+        from things.models import Exercise, Solution, Comment
         
-        # Calculate total contributions
-        stats['total_contributions'] = stats['exercises'] + stats['solutions'] + stats['comments']
+        stats = {
+            'exercises': Exercise.objects.filter(author=self.user).count(),
+            'solutions': Solution.objects.filter(author=self.user).count(),
+            'comments': Comment.objects.filter(author=self.user).count(),
+        }
+        stats['total_contributions'] = sum(stats.values())
         
         return stats
     
     def get_learning_stats(self):
-        """Get statistics about learning progress"""
+        """Obtient des statistiques sur la progression d'apprentissage"""
+        from things.models import Complete, ViewHistory, Exercise
+        
         stats = {
-            'exercises_completed': 0,
-            'exercises_in_review': 0,
-            'subjects_studied': set(),
-            'total_viewed': 0,
+            'exercises_completed': Complete.objects.filter(
+                user=self.user, status='success').count(),
+            'exercises_in_review': Complete.objects.filter(
+                user=self.user, status='review').count(),
+            'total_viewed': ViewHistory.objects.filter(user=self.user).count(),
         }
         
-        # Get completed exercises
-        completed = Complete.objects.filter(user=self.user)
-        stats['exercises_completed'] = completed.filter(status='success').count()
-        stats['exercises_in_review'] = completed.filter(status='review').count()
+        exercise_ids = ViewHistory.objects.filter(
+            user=self.user
+        ).values_list('content_id', flat=True)
         
-        # Get total viewed
-        stats['total_viewed'] = ViewHistory.objects.filter(user=self.user).count()
+        subjects = Exercise.objects.filter(
+            id__in=exercise_ids
+        ).values_list('subject__name', flat=True).distinct()
         
-        # Get unique subjects studied
-        exercise_ids = ViewHistory.objects.filter(user=self.user).values_list('content_id', flat=True)
-        subjects = Exercise.objects.filter(id__in=exercise_ids).values_list('subject__name', flat=True).distinct()
         stats['subjects_studied'] = list(filter(None, subjects))
         
         return stats
+    
+    # Méthodes utilitaires, comme dans le code Reddit
+    def has_completed_exercise(self, exercise):
+        """Vérifie si l'utilisateur a terminé un exercice avec succès"""
+        from things.models import Complete, ContentType
+        content_type = ContentType.objects.get_for_model(exercise)
+        return Complete.objects.filter(
+            user=self.user,
+            content_type=content_type,
+            object_id=exercise.id,
+            status='success'
+        ).exists()
+    
+    def is_favorite_subject(self, subject_id):
+        """Vérifie si un sujet est dans les favoris de l'utilisateur"""
+        return subject_id in self.favorite_subjects
+    
+    def add_favorite_subject(self, subject_id):
+        """Ajoute un sujet aux favoris"""
+        if subject_id not in self.favorite_subjects:
+            self.favorite_subjects.append(subject_id)
+            self.save(update_fields=['favorite_subjects'])
+    
+    def remove_favorite_subject(self, subject_id):
+        """Retire un sujet des favoris"""
+        if subject_id in self.favorite_subjects:
+            self.favorite_subjects.remove(subject_id)
+            self.save(update_fields=['favorite_subjects'])
+    def saved_exercises(self):
+        """Récupère les exercices sauvegardés par l'utilisateur"""
+        from things.models import Save, Exercise
+        content_type = ContentType.objects.get_for_model(Exercise)
+        return Save.objects.filter(user=self.user, content_type=content_type).values_list('object_id', flat=True)
 
 
-# Nouveau modèle pour les notes par matière
+
 class SubjectGrade(models.Model):
-    user_profile = models.ForeignKey(UserProfile, on_delete=models.CASCADE, related_name='subject_grades')
+    """Gestion des notes par matière"""
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='subject_grades')
     subject = models.ForeignKey('things.Subject', on_delete=models.CASCADE)
     min_grade = models.DecimalField(max_digits=4, decimal_places=2, default=0)
     max_grade = models.DecimalField(max_digits=4, decimal_places=2, default=20)
@@ -95,12 +147,61 @@ class SubjectGrade(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     
     class Meta:
-        unique_together = ('user_profile', 'subject')
+        unique_together = ('user', 'subject')
         verbose_name = "Subject Grade"
         verbose_name_plural = "Subject Grades"
     
     def __str__(self):
-        return f"{self.user_profile.user.username}'s grade for {self.subject.name}"
+        return f"{self.user.username}'s grade for {self.subject.name}"
+
+
+class ViewHistory(models.Model):
+    """Historique de consultation avec traçage du temps passé"""
+    STATUS_CHOICES = [
+        ('success', 'success'),
+        ('review', 'review'),
+        ('viewed', 'viewed')
+    ]
+    
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='view_history')
+    
+    # Utilisation de ContentType pour support générique
+    from django.contrib.contenttypes.models import ContentType
+    from django.contrib.contenttypes.fields import GenericForeignKey
+    
+    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
+    object_id = models.PositiveIntegerField()
+    content_object = GenericForeignKey('content_type', 'object_id')
+    
+    viewed_at = models.DateTimeField(auto_now=True)
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='viewed')
+    time_spent = models.PositiveIntegerField(default=0, help_text="Time spent in seconds")
+    
+    class Meta:
+        ordering = ['-viewed_at']
+        unique_together = ['user', 'content_type', 'object_id']
+        verbose_name = "View History"
+        verbose_name_plural = "View Histories"
+    
+    @classmethod
+    def record_view(cls, user, content_object, time_spent=None):
+        """Enregistre une vue avec le temps passé en option"""
+        content_type = ContentType.objects.get_for_model(content_object)
+        
+        view, created = cls.objects.get_or_create(
+            user=user,
+            content_type=content_type,
+            object_id=content_object.id,
+            defaults={'status': 'viewed'}
+        )
+        
+        if time_spent is not None:
+            view.time_spent = time_spent
+            view.save(update_fields=['time_spent', 'viewed_at'])
+        else:
+            view.save(update_fields=['viewed_at'])
+        
+        return view
 
 
 # Signal pour créer le profil quand un utilisateur est créé
@@ -114,18 +215,3 @@ def save_user_profile(sender, instance, **kwargs):
     if not hasattr(instance, 'profile'):
         UserProfile.objects.create(user=instance)
     instance.profile.save()
-
-class ViewHistory(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='view_history')
-    content = models.ForeignKey(Exercise, on_delete=models.CASCADE)
-    viewed_at = models.DateTimeField(auto_now=True)
-    completed = models.CharField(max_length=10, choices=[('success', 'success'), ('review', 'review')], default='review')
-    # This field is used to track the time spent on the content
-    time_spent = models.PositiveIntegerField(default=0, help_text="Time spent in seconds")
-    
-    class Meta:
-        ordering = ['-viewed_at']
-        unique_together = ['user', 'content']
-        verbose_name = "View History"
-        verbose_name_plural = "View Histories"
-

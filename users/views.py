@@ -3,133 +3,27 @@ from rest_framework.response import Response
 from rest_framework.decorators import api_view, permission_classes, action
 from rest_framework.permissions import IsAuthenticated, AllowAny
 
-from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth import logout
 from django.contrib.auth.models import User
-from django.db.models import Count
 from django.contrib.contenttypes.models import ContentType
-from django.contrib.contenttypes.fields import GenericRelation
-from django.utils import timezone
-from django.core.exceptions import ObjectDoesNotExist
 from django.db import transaction
-from django.db.models import Q
-from django.contrib.auth import get_user_model
 from .serializers import (
     UserSerializer,
     UserSettingsSerializer,
-    OnboardingSerializer,
     SubjectGradeSerializer,
 )
 from .models import UserProfile, SubjectGrade
 from things.models import ClassLevel, Subject, Exercise, Vote, Complete, Save
-
-# users/views.py
 from rest_framework.views import APIView
-
-
-from .serializers import (
-    UserSerializer, 
-    UserSettingsSerializer
-)
-
 from .models import ViewHistory
-from .serializers import (
-    UserSerializer, 
-)
 from things.serializers import ViewHistorySerializer,ExerciseSerializer
-from things.models import Exercise,Vote,Complete,Save
+
 
 import logging
 
 logger = logging.getLogger('django')
 
 
-#----------------------------LOGIN-------------------------------
-
-class LoginView(views.APIView):
-    permission_classes = [AllowAny]
-
-    def post(self, request):
-        identifier = request.data.get('identifier')
-        password = request.data.get('password')
-
-        if not all([identifier, password]):
-            return Response(
-                {'error': 'Please provide email/username and password'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        # Try to find user by email or username
-        try:
-            if '@' in identifier:
-                user = User.objects.get(email=identifier)
-            else:
-                user = User.objects.get(username=identifier)
-        except User.DoesNotExist:
-            return Response(
-                {'error': 'Invalid credentials'},
-                status=status.HTTP_401_UNAUTHORIZED
-            )
-
-        # Authenticate with username
-        user = authenticate(username=user.username, password=password)
-        if user is None:
-            return Response(
-                {'error': 'Invalid credentials'},
-                status=status.HTTP_401_UNAUTHORIZED
-            )
-
-        login(request, user)
-        return Response(UserSerializer(user).data)
-
-
-#----------------------------REGISTER-------------------------------
-
-class RegisterView(views.APIView):
-    permission_classes = [AllowAny]
-    queryset = User.objects.all()
-    serializer_class = UserSerializer
-
-    def post(self, request):
-        username = request.data.get('username')
-        email = request.data.get('email')
-        password = request.data.get('password')
-
-        if not all([username, email, password]):
-            return Response(
-                {'error': 'Please provide all required fields'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        if User.objects.filter(username=username).exists():
-            return Response(
-                {'error': 'Username already exists'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        if User.objects.filter(email=email).exists():
-            return Response(
-                {'error': 'Email already exists'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        user = User.objects.create_user(
-            username=username,
-            email=email,
-            password=password
-        )
-
-        login(request, user)
-        return Response(UserSerializer(user).data)
-    
-   
-
-
-#----------------------------LOGOUT-------------------------------
-
-class LogoutView(views.APIView):
-    def post(self, request):
-        logout(request)
-        return Response(status=status.HTTP_200_OK)
 
 #----------------------------API FUNCTIONS-------------------------------
 
@@ -153,7 +47,14 @@ class OnboardingView(APIView):
         profile = user.profile
         
         # Get subject grades
-        subject_grades = SubjectGradeSerializer(profile.subject_grades.all(), many=True).data
+        subject_grades = []
+        for grade in profile.subject_grades.all():
+            subject_grades.append({
+                'id': grade.id,
+                'subject': grade.subject.id,
+                'min_grade': grade.min_grade,
+                'max_grade': grade.max_grade
+            })
         
         # Get favorite subjects
         favorite_subjects = []
@@ -177,20 +78,78 @@ class OnboardingView(APIView):
             'subject_grades': subject_grades
         })
     
+    @transaction.atomic
     def post(self, request):
         """Complete or update onboarding data"""
         user = request.user
-        serializer = OnboardingSerializer(data=request.data)
+        data = request.data
         
-        if serializer.is_valid():
-            serializer.update(user, serializer.validated_data)
+        try:
+            # Update UserProfile fields
+            profile = user.profile
+            
+            # Update class level
+            if 'class_level' in data and data['class_level']:
+                try:
+                    class_level = ClassLevel.objects.get(id=data['class_level'])
+                    profile.class_level = class_level
+                except ClassLevel.DoesNotExist:
+                    return Response(
+                        {'error': f"Class level with ID {data['class_level']} not found"}, 
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+            
+            # Update user type
+            if 'user_type' in data:
+                profile.user_type = data['user_type']
+            
+            # Update bio
+            if 'bio' in data:
+                profile.bio = data['bio']
+            
+            # Update favorite subjects
+            if 'favorite_subjects' in data:
+                profile.favorite_subjects = data['favorite_subjects']
+            
+            # Mark onboarding as completed
+            profile.onboarding_completed = True
+            profile.save()
+            
+            # Process subject grades if provided
+            if 'subject_grades' in data and isinstance(data['subject_grades'], list):
+                # Clear existing grades and create new ones
+                profile.subject_grades.all().delete()
+                
+                for grade_data in data['subject_grades']:
+                    subject_id = grade_data.get('subject')
+                    min_grade = grade_data.get('min_grade', 0)
+                    max_grade = grade_data.get('max_grade', 20)
+                    
+                    try:
+                        subject = Subject.objects.get(id=subject_id)
+                        SubjectGrade.objects.create(
+                            user_profile=profile,
+                            subject=subject,
+                            min_grade=min_grade,
+                            max_grade=max_grade
+                        )
+                    except Subject.DoesNotExist:
+                        # Log this but continue processing other grades
+                        print(f"Subject with ID {subject_id} not found")
+            
             return Response({
                 'status': 'success',
                 'message': 'Onboarding completed successfully.',
                 'onboarding_completed': True
             })
         
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            # Roll back transaction on error
+            transaction.set_rollback(True)
+            return Response(
+                {'error': f'Failed to complete onboarding: {str(e)}'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
 
 # Ajouter un nouvel endpoint pour les notes par matière

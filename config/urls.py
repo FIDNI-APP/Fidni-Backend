@@ -3,16 +3,19 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 
 from things.views import (
-    ExerciseViewSet, ClassLevelViewSet, SubjectViewSet, ChapterViewSet,SolutionViewSet,
-    CommentViewSet,SubfieldViewSet, TheoremViewSet, get_bulk_user_status
+    ExerciseViewSet,SolutionViewSet,
+    CommentViewSet
 )
 from users.views import (
-    LoginView, RegisterView, LogoutView, get_current_user,
+    get_current_user,
     UserProfileViewSet, UserSettingsView, mark_content_viewed, OnboardingView,
 )
-from users import views
-from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
+from caracteristics.views import (
+    ClassLevelViewSet, SubjectViewSet, ChapterViewSet, SubfieldViewSet, TheoremViewSet)
+from auth.views import LogoutView
 
+from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
+from auth.views import LoginView, RegisterView
 
 
 router = DefaultRouter()
@@ -32,7 +35,6 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/', include(router.urls)),
     path("api-auth/", include("rest_framework.urls")),
-
     
     
     # Legacy Authentication (kept for backward compatibility)
