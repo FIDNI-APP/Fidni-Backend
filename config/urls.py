@@ -12,10 +12,10 @@ from users.views import (
 )
 from caracteristics.views import (
     ClassLevelViewSet, SubjectViewSet, ChapterViewSet, SubfieldViewSet, TheoremViewSet)
-from auth.views import LogoutView
+from authentication.views import LogoutView
 
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
-from auth.views import LoginView, RegisterView
+from authentication.views import LoginView, RegisterView
 
 
 router = DefaultRouter()
@@ -36,7 +36,6 @@ urlpatterns = [
     path('api/', include(router.urls)),
     path("api-auth/", include("rest_framework.urls")),
     
-    
     # Legacy Authentication (kept for backward compatibility)
     path('api/auth/login/', LoginView.as_view(), name='login'),
     path('api/auth/register/', RegisterView.as_view(), name='register'),
@@ -55,5 +54,4 @@ urlpatterns = [
     
     # Content interaction
     path('api/content/<str:content_id>/view/', mark_content_viewed, name='mark-content-viewed'),
-
 ]
