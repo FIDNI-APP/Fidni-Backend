@@ -8,8 +8,9 @@ from django.contrib.contenttypes.models import ContentType
 from django.db.models import Count, Q
 
 
-from .models import Exercise, Solution, Comment, Vote, Lesson,Save,Complete
-from .serializers import  ExerciseSerializer, SolutionSerializer, CommentSerializer, ExerciseCreateSerializer,LessonSerializer
+from .models import Exercise, Solution, Comment, Save,Complete
+from .serializers import  ExerciseSerializer, SolutionSerializer, CommentSerializer, ExerciseCreateSerializer
+from interactions.models import Vote
 from interactions.views import VoteMixin
 from rest_framework.permissions import IsAuthenticatedOrReadOnly,IsAuthenticated
 
