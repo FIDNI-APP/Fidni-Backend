@@ -2,7 +2,6 @@ from django.db import models
 from django.contrib.auth.models import User
 from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
 from django.contrib.contenttypes.models import ContentType
-from caracteristics.models import Chapter, ClassLevel, Subject, Theorem, Subfield
 import logging
 
 logger = logging.getLogger('django')
@@ -47,7 +46,7 @@ class VotableMixin(models.Model):
 
 
 class SaveableMixin(models.Model):
-    saved = GenericRelation('Save')
+    saved = GenericRelation('interactions.Save')
 
     class Meta:
         abstract = True
@@ -56,8 +55,10 @@ class SaveableMixin(models.Model):
     def is_saved(self):
         return self.saved.exists()
     
+
+    
 class CompleteableMixin(SaveableMixin,VotableMixin,models.Model):
-    completed = GenericRelation('Complete')
+    completed = GenericRelation('interactions.Complete')
 
     class Meta:
         abstract = True

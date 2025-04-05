@@ -5,6 +5,8 @@ from django.dispatch import receiver
 from django.utils import timezone
 from django.contrib.contenttypes.models import ContentType
 
+
+
 class UserProfile(models.Model):
     # Types d'utilisateurs
     USER_TYPE_CHOICES = (
@@ -79,7 +81,8 @@ class UserProfile(models.Model):
     
     def get_learning_stats(self):
         """Obtient des statistiques sur la progression d'apprentissage"""
-        from things.models import Complete, ViewHistory, Exercise
+        from things.models import Exercise
+        from interactions.models import Complete
         
         stats = {
             'exercises_completed': Complete.objects.filter(
@@ -104,7 +107,8 @@ class UserProfile(models.Model):
     # Méthodes utilitaires, comme dans le code Reddit
     def has_completed_exercise(self, exercise):
         """Vérifie si l'utilisateur a terminé un exercice avec succès"""
-        from things.models import Complete, ContentType
+        from things.models import ContentType
+        from interactions.models import Complete
         content_type = ContentType.objects.get_for_model(exercise)
         return Complete.objects.filter(
             user=self.user,
@@ -130,7 +134,8 @@ class UserProfile(models.Model):
             self.save(update_fields=['favorite_subjects'])
     def saved_exercises(self):
         """Récupère les exercices sauvegardés par l'utilisateur"""
-        from things.models import Save, Exercise
+        from things.models import Exercise
+        from interactions.models import Save
         content_type = ContentType.objects.get_for_model(Exercise)
         return Save.objects.filter(user=self.user, content_type=content_type).values_list('object_id', flat=True)
 
