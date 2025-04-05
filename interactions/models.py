@@ -67,48 +67,6 @@ class CompleteableMixin(SaveableMixin,VotableMixin,models.Model):
         return self.completed.exists()
     
 
- 
-#----------------------------EXERCISE-------------------------------
-
-class Exercise(CompleteableMixin, models.Model):
-    DIFFICULTY_CHOICES = [
-        ('easy', 'easy'),
-        ('medium', 'medium'),
-        ('hard', 'hard'),
-    ]
-    
-    title = models.CharField(max_length=200)
-    content = models.TextField()
-    difficulty = models.CharField(max_length=10, choices=DIFFICULTY_CHOICES)
-    chapters = models.ManyToManyField(Chapter, related_name='exercises')
-    class_levels = models.ManyToManyField(ClassLevel, related_name='exercises')
-    author = models.ForeignKey(User, on_delete=models.PROTECT, related_name='exercises')
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-    view_count = models.PositiveIntegerField(default=0)
-    subject = models.ForeignKey(Subject, on_delete=models.PROTECT, related_name='exercises', null=True)
-    theorems = models.ManyToManyField(Theorem, related_name='exercises' )
-    subfields = models.ManyToManyField(Subfield, related_name='exercises')
-
-    def __str__(self):
-        return self.title
-    
-    @property
-    def average_perceived_difficulty(self):
-        ratings = self.difficulty_ratings.all()
-        if not ratings:
-            return None
-        return sum(rating.rating for rating in ratings) / ratings.count()
-
-    @property
-    def success_count(self):
-        return self.progress.filter(status='success').count()
-
-    @property
-    def review_count(self):
-        return self.progress.filter(status='review').count()
-    
-
 
 #----------------------------REPORT-------------------------------
 

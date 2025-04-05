@@ -1,70 +1,12 @@
 from django.db import models
 from django.contrib.auth.models import User
-from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
+from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from caracteristics.models import Chapter, ClassLevel, Subject, Theorem, Subfield
+from interactions.models import VotableMixin, CompleteableMixin
 import logging
 
 logger = logging.getLogger('django')
-    
-#----------------------------VOTE-------------------------------
-class Vote(models.Model):
-    UP = 1
-    DOWN = -1
-    UNVOTE = 0
-
-    VOTE_CHOICES = [
-        (UP, 'Upvote'),
-        (DOWN, 'Downvote'),
-        (UNVOTE, 'Unvote'),
-    ]
-
-    user = models.ForeignKey(User, on_delete=models.PROTECT)
-    value = models.SmallIntegerField(choices=VOTE_CHOICES)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    content_type = models.ForeignKey(ContentType, on_delete=models.PROTECT)
-    object_id = models.PositiveIntegerField()
-    content_object = GenericForeignKey('content_type', 'object_id')
-
-    class Meta:
-        unique_together = ('user', 'content_type', 'object_id')
-        indexes = [
-            models.Index(fields=['content_type', 'object_id']),
-        ]
-
-class VotableMixin(models.Model):
-    votes = GenericRelation(Vote)
-
-    class Meta:
-        abstract = True
-
-    @property
-    def vote_count(self):
-        return self.votes.filter(value=Vote.UP).count() - self.votes.filter(value=Vote.DOWN).count()
-    
-
-
-class SaveableMixin(models.Model):
-    saved = GenericRelation('Save')
-
-    class Meta:
-        abstract = True
-
-    @property
-    def is_saved(self):
-        return self.saved.exists()
-    
-class CompleteableMixin(SaveableMixin,VotableMixin,models.Model):
-    completed = GenericRelation('Complete')
-
-    class Meta:
-        abstract = True
-
-    @property
-    def is_completed(self):
-        return self.completed.exists()
     
 
  
