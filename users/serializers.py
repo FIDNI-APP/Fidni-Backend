@@ -2,7 +2,7 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
 from .models import UserProfile, SubjectGrade
-from things.models import ClassLevel, Subject
+from caracteristics.models import ClassLevel, Subject
 
 class SubjectGradeSerializer(serializers.ModelSerializer):
     subject_name = serializers.SerializerMethodField()

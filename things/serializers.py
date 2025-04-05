@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Solution, Comment, Vote, Subfield, Theorem, Save,Complete, Exercise
+from .models import Solution, Comment,Subfield, Theorem,Exercise
 from caracteristics.models import ClassLevel, Chapter, Subfield, Theorem
 from users.serializers import UserSerializer
 from users.models import ViewHistory
@@ -234,33 +234,6 @@ class UserHistorySerializer(serializers.Serializer):
     upvoted = ExerciseSerializer(many=True)
 
 
-
-class VoteSerializer(serializers.ModelSerializer):
-    user = UserSerializer(read_only=True)
-    exercise = ExerciseSerializer(read_only=True)
-    comment = CommentSerializer(read_only=True)
-    solution = SolutionSerializer(read_only=True)
-
-    class Meta:
-        model = Vote
-        fields = ['id', 'value', 'created_at', 'updated_at','user','exercise','comment','solution']
-
-
-class SaveSerializer(serializers.ModelSerializer):
-    user = UserSerializer(read_only=True)
-    exercise = ExerciseSerializer(read_only=True)
-
-    class Meta:
-        model = Save
-        fields = ['id','created_at','updated_at','user', 'exercise']
-        
-class CompleteSerializer(serializers.ModelSerializer):
-    user = UserSerializer(read_only=True)
-    exercise = ExerciseSerializer(read_only=True)
-
-    class Meta:
-        model = Complete
-        fields = ['id','created_at','updated_at','user', 'exercise']
 
 class LessonSerializer(serializers.ModelSerializer):
     author = UserSerializer(read_only=True)

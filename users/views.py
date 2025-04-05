@@ -1,9 +1,8 @@
-from rest_framework import status, views, generics,viewsets
+from rest_framework import status,viewsets
 from rest_framework.response import Response
 from rest_framework.decorators import api_view, permission_classes, action
 from rest_framework.permissions import IsAuthenticated, AllowAny
 
-from django.contrib.auth import logout
 from django.contrib.auth.models import User
 from django.contrib.contenttypes.models import ContentType
 from django.db import transaction
@@ -12,8 +11,10 @@ from .serializers import (
     UserSettingsSerializer,
     SubjectGradeSerializer,
 )
-from .models import UserProfile, SubjectGrade
-from things.models import ClassLevel, Subject, Exercise, Vote, Complete, Save
+from .models import SubjectGrade
+from things.models import Exercise
+from caracteristics.models import Subject, ClassLevel
+from interactions.models import Complete, Save
 from rest_framework.views import APIView
 from .models import ViewHistory
 from things.serializers import ViewHistorySerializer,ExerciseSerializer
