@@ -28,16 +28,9 @@ INSTALLED_APPS = [
     'corsheaders',
     'things',
     'users',
-    'auth',
+    'authentication',
     'interactions',
     'caracteristics',
-    'django_extensions',
-    'rest_framework_simplejwt.token_blacklist',
-    'django.contrib.sites',
-    'allauth',
-    'allauth.account',
-    'allauth.socialaccount',
-    'allauth.socialaccount.providers.google',
     
 ]
 
