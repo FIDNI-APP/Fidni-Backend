@@ -63,7 +63,6 @@ class ExerciseViewSet(VoteMixin, viewsets.ModelViewSet):
                                   Count('votes', filter=Q(votes__value=Vote.DOWN))
         )
 
-        
         # Filtering
         class_levels = self.request.query_params.getlist('class_levels[]')
         subjects = self.request.query_params.getlist('subjects[]')
