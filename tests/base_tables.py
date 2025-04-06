@@ -13,7 +13,7 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")  # Update wit
 django.setup()
 
 # Now import models
-from things.models import ClassLevel, Subject, Chapter, Subfield, Theorem
+from caracteristics.models import ClassLevel, Subject, Chapter, Subfield, Theorem
 
 import logging
 

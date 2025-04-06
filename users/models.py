@@ -4,7 +4,7 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.utils import timezone
 from django.contrib.contenttypes.models import ContentType
-
+from django.contrib.contenttypes.fields import GenericForeignKey
 
 
 class UserProfile(models.Model):
@@ -22,13 +22,12 @@ class UserProfile(models.Model):
         'solution_notifications': True,
         'onboarding_completed': False,
         'user_type': 'student',
-        
     }
     
     # Relations principales
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='profile')
     class_level = models.ForeignKey('caracteristics.ClassLevel', on_delete=models.SET_NULL, 
-                                   null=True, blank=True, related_name='user_profiles')
+                                   null=True, blank=True, related_name='user_profiles', default=None)
     
     # Attributs de base
     bio = models.TextField(max_length=500, blank=True)
@@ -39,8 +38,6 @@ class UserProfile(models.Model):
     # Dates
     joined_at = models.DateTimeField(auto_now_add=True)
     last_activity_date = models.DateTimeField(null=True, blank=True)
-    
-    
     
     # Implémentation des préférences comme propriétés dynamiques
     display_email = models.BooleanField(default=_defaults['display_email'])
@@ -83,6 +80,7 @@ class UserProfile(models.Model):
         """Obtient des statistiques sur la progression d'apprentissage"""
         from things.models import Exercise
         from interactions.models import Complete
+        from users.models import ViewHistory  # Utiliser le chemin d'import correct
         
         stats = {
             'exercises_completed': Complete.objects.filter(
@@ -94,7 +92,14 @@ class UserProfile(models.Model):
         
         exercise_ids = ViewHistory.objects.filter(
             user=self.user
-        ).values_list('content_id', flat=True)
+        ).values_list('object_id', flat=True)
+        
+        # Assurez-vous que content_type est filtré pour Exercise
+        content_type = ContentType.objects.get_for_model(Exercise)
+        exercise_ids = ViewHistory.objects.filter(
+            user=self.user, 
+            content_type=content_type
+        ).values_list('object_id', flat=True)
         
         subjects = Exercise.objects.filter(
             id__in=exercise_ids
@@ -107,7 +112,6 @@ class UserProfile(models.Model):
     # Méthodes utilitaires, comme dans le code Reddit
     def has_completed_exercise(self, exercise):
         """Vérifie si l'utilisateur a terminé un exercice avec succès"""
-        from things.models import ContentType
         from interactions.models import Complete
         content_type = ContentType.objects.get_for_model(exercise)
         return Complete.objects.filter(
@@ -119,19 +123,22 @@ class UserProfile(models.Model):
     
     def is_favorite_subject(self, subject_id):
         """Vérifie si un sujet est dans les favoris de l'utilisateur"""
-        return subject_id in self.favorite_subjects
+        return str(subject_id) in self.favorite_subjects
     
     def add_favorite_subject(self, subject_id):
         """Ajoute un sujet aux favoris"""
+        subject_id = str(subject_id)  # Convertir en string pour cohérence
         if subject_id not in self.favorite_subjects:
             self.favorite_subjects.append(subject_id)
             self.save(update_fields=['favorite_subjects'])
     
     def remove_favorite_subject(self, subject_id):
         """Retire un sujet des favoris"""
+        subject_id = str(subject_id)  # Convertir en string pour cohérence
         if subject_id in self.favorite_subjects:
             self.favorite_subjects.remove(subject_id)
             self.save(update_fields=['favorite_subjects'])
+    
     def saved_exercises(self):
         """Récupère les exercices sauvegardés par l'utilisateur"""
         from things.models import Exercise
@@ -140,11 +147,10 @@ class UserProfile(models.Model):
         return Save.objects.filter(user=self.user, content_type=content_type).values_list('object_id', flat=True)
 
 
-
 class SubjectGrade(models.Model):
     """Gestion des notes par matière"""
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='subject_grades', default=None)
-    subject = models.ForeignKey('caracteristics.Subject', on_delete=models.CASCADE)
+    user = models.ForeignKey(UserProfile, on_delete=models.CASCADE, related_name='subject_grades')
+    subject = models.ForeignKey('caracteristics.Subject', on_delete=models.CASCADE, related_name='subject_grades')
     min_grade = models.DecimalField(max_digits=4, decimal_places=2, default=0)
     max_grade = models.DecimalField(max_digits=4, decimal_places=2, default=20)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -162,17 +168,12 @@ class SubjectGrade(models.Model):
 class ViewHistory(models.Model):
     """Historique de consultation avec traçage du temps passé"""
     STATUS_CHOICES = [
-        ('success', 'success'),
-        ('review', 'review'),
-        ('viewed', 'viewed')
+        ('success', 'Success'),
+        ('review', 'Review'),
+        ('viewed', 'Viewed')
     ]
     
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='view_history')
-    
-    # Utilisation de ContentType pour support générique
-    from django.contrib.contenttypes.models import ContentType
-    from django.contrib.contenttypes.fields import GenericForeignKey
-    
     content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
     object_id = models.PositiveIntegerField()
     content_object = GenericForeignKey('content_type', 'object_id')

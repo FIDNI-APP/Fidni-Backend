@@ -9,7 +9,7 @@ class SubjectGradeSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = SubjectGrade
-        fields = ('id', 'subject', 'subject_name', 'min_grade', 'max_grade')
+        fields = ('id', 'subject', 'min_grade', 'max_grade', 'user')
         read_only_fields = ('id',)
     
     def get_subject_name(self, obj):
@@ -110,7 +110,7 @@ class UserSerializer(serializers.ModelSerializer):
                     try:
                         subject = Subject.objects.get(id=subject_id)
                         SubjectGrade.objects.create(
-                            user_profile=profile,
+                            user=profile,
                             subject=subject,
                             min_grade=grade_data.get('min_grade', 0),
                             max_grade=grade_data.get('max_grade', 20)
@@ -162,7 +162,7 @@ class OnboardingSerializer(serializers.Serializer):
                 subject = grade_data.get('subject')
                 if subject:
                     SubjectGrade.objects.create(
-                        user_profile=profile,
+                        user=profile,
                         subject=subject,
                         min_grade=grade_data.get('min_grade', 0),
                         max_grade=grade_data.get('max_grade', 20)

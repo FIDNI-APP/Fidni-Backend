@@ -129,7 +129,7 @@ class OnboardingView(APIView):
                     try:
                         subject = Subject.objects.get(id=subject_id)
                         SubjectGrade.objects.create(
-                            user_profile=profile,
+                            user=profile,
                             subject=subject,
                             min_grade=min_grade,
                             max_grade=max_grade
@@ -159,16 +159,16 @@ class SubjectGradeViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
     
     def get_queryset(self):
-        return SubjectGrade.objects.filter(user_profile=self.request.user.profile)
+        return SubjectGrade.objects.filter(user=self.request.user.profile)
     
     def perform_create(self, serializer):
-        serializer.save(user_profile=self.request.user.profile)
+        serializer.save(user=self.request.user.profile)
     
     def create(self, request, *args, **kwargs):
         # Check if the subject grade already exists
         subject_id = request.data.get('subject')
         existing = SubjectGrade.objects.filter(
-            user_profile=request.user.profile,
+            user=request.user.profile,
             subject_id=subject_id
         ).first()
         
