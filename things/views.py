@@ -10,7 +10,8 @@ from django.db.models import Count, Q
 
 from .models import Exercise, Solution, Comment
 from .serializers import  ExerciseSerializer, SolutionSerializer, CommentSerializer, ExerciseCreateSerializer
-from interactions.models import Vote, Save, Complete
+from interactions.models import Vote, Save, Complete, TimeSpent
+from interactions.serializers import VoteSerializer, SaveSerializer, CompleteSerializer, TimeSpentSerializer
 from interactions.views import VoteMixin
 from rest_framework.permissions import IsAuthenticatedOrReadOnly,IsAuthenticated
 
@@ -213,7 +214,6 @@ class ExerciseViewSet(VoteMixin, viewsets.ModelViewSet):
             
             if existing:
                 # Return a more descriptive response for already saved
-                print('heeellloo')
                 return Response(
                     {
                         'error': 'Exercise already saved',
@@ -266,6 +266,53 @@ class ExerciseViewSet(VoteMixin, viewsets.ModelViewSet):
                 {'error': 'Exercise not found in saved list'}, 
                 status=status.HTTP_404_NOT_FOUND
             )
+        
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
+    def time_spent(self, request, pk=None):
+        """
+        Record time spent on an exercise
+        """
+        exercise = self.get_object()
+        time_spent = request.data.get('time_spent', 0)
+        content_type = ContentType.objects.get_for_model(Exercise)
+        try:
+            time_spent = TimeSpent.objects.create(
+                user=request.user,
+                content_type=content_type,
+                object_id=exercise.id,
+                time_spent_in_seconds=time_spent
+            )
+            logger.debug(f"Time spent on exercise {exercise.id} recorded for user {request.user.id}")
+            return Response(TimeSpentSerializer(time_spent).data, status=status.HTTP_201_CREATED)
+        except Exception as e:
+            logger.error(f"Error recording time spent: {str(e)}")
+            return Response(
+                {'error': 'Failed to record time spent', 'detail': str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+    @action(detail=True, methods=['delete'], permission_classes=[IsAuthenticated])
+    def delete_time_spent(self, request, pk=None):
+        """
+        Delete time spent record for an exercise
+        """
+        exercise = self.get_object()
+        content_type = ContentType.objects.get_for_model(Exercise)
+        
+        try:
+            time_spent = TimeSpent.objects.get(
+                user=request.user,
+                content_type=content_type,
+                object_id=exercise.id
+            )
+            time_spent.delete()
+            logger.debug(f"Time spent record deleted for exercise {exercise.id} by user {request.user.id}")
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        except TimeSpent.DoesNotExist:
+            return Response(
+                {'error': 'Time spent record not found'}, 
+                status=status.HTTP_404_NOT_FOUND
+            )
+                    
     
     
 #----------------------------SOLUTION-------------------------------

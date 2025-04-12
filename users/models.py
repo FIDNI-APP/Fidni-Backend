@@ -46,10 +46,9 @@ class UserProfile(models.Model):
     comment_notifications = models.BooleanField(default=_defaults['comment_notifications'])
     solution_notifications = models.BooleanField(default=_defaults['solution_notifications'])
     onboarding_completed = models.BooleanField(default=_defaults['onboarding_completed'])
-    
-    # Données JSON pour les préférences flexibles ou données supplémentaires
-    favorite_subjects = models.JSONField(default=list, blank=True)
-    extra_data = models.JSONField(default=dict, blank=True)
+
+    # Target Subjects
+    target_subjects = models.ManyToManyField('caracteristics.Subject', blank=True, related_name='target_users')
     
     class Meta:
         verbose_name = "User Profile"
@@ -163,6 +162,7 @@ class SubjectGrade(models.Model):
     
     def __str__(self):
         return f"{self.user.username}'s grade for {self.subject.name}"
+    
 
 
 class ViewHistory(models.Model):

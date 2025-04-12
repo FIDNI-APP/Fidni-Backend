@@ -1,5 +1,6 @@
 from rest_framework import serializers
-from .models import Vote,Save,Complete, Exercise
+from .models import Vote,Save,Complete, TimeSpent
+from things.models import Exercise
 from users.serializers import UserSerializer
 from users.models import ViewHistory
 from caracteristics.serializers import ChapterSerializer, ClassLevelSerializer, SubjectSerializer, TheoremSerializer
@@ -39,6 +40,14 @@ class CompleteSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Complete
+        fields = ['id','created_at','updated_at','user', 'exercise']
+
+class TimeSpentSerializer(serializers.ModelSerializer):
+    user = UserSerializer(read_only=True)
+    exercise = ExerciseSerializer(read_only=True)
+
+    class Meta:
+        model = TimeSpent
         fields = ['id','created_at','updated_at','user', 'exercise']
 
 class LessonSerializer(serializers.ModelSerializer):

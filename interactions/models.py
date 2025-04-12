@@ -2,6 +2,7 @@ from django.db import models
 from django.contrib.auth.models import User
 from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
 from django.contrib.contenttypes.models import ContentType
+from datetime import timedelta
 import logging
 
 logger = logging.getLogger('django')
@@ -44,9 +45,28 @@ class VotableMixin(models.Model):
         return self.votes.filter(value=Vote.UP).count() - self.votes.filter(value=Vote.DOWN).count()
     
 
+#----------------------------SAVE-------------------------------
 
+class Save(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='saved_exercises')
+    saved_at = models.DateTimeField(auto_now_add=True)
+
+    content_type = models.ForeignKey(ContentType, on_delete=models.PROTECT)
+    object_id = models.PositiveIntegerField()
+    content_object = GenericForeignKey('content_type', 'object_id')
+
+    class Meta:
+        unique_together = ('user', 'content_type', 'object_id')
+        indexes = [
+            models.Index(fields=['user']),
+            models.Index(fields=['content_type', 'object_id']),
+        ]
+
+    def __str__(self):
+        return f"{self.user.username} saved {self.content_object.title}"
+    
 class SaveableMixin(models.Model):
-    saved = GenericRelation('interactions.Save')
+    saved = GenericRelation(Save)
 
     class Meta:
         abstract = True
@@ -56,8 +76,37 @@ class SaveableMixin(models.Model):
         return self.saved.exists()
     
 
+
+#----------------------------EXERCISE PROGRESS-------------------------------
+class Complete(models.Model):
+    PROGRESS_CHOICES = [
+        ('success', 'success'),
+        ('review', 'review'),
+        # ('in_progress', 'in_progress'),
+        # ('not_started', 'not_started'),
+        # ('failed', 'failed'),
+        # ('abandoned', 'abandoned'),
+    ]
     
-class CompleteableMixin(SaveableMixin,VotableMixin,models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='exercise_progress')
+    content_type = models.ForeignKey(ContentType, on_delete=models.PROTECT)
+    object_id = models.PositiveIntegerField()
+    content_object = GenericForeignKey('content_type', 'object_id')
+    status = models.CharField(max_length=10, choices=PROGRESS_CHOICES)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        unique_together = ('user', 'content_type', 'object_id')
+        indexes = [
+            models.Index(fields=['user']),
+            models.Index(fields=['content_type', 'object_id']),
+        ]
+
+    def __str__(self):
+        return f"{self.user.username} - {self.content_object.title}: {self.get_status_display()}"
+    
+class CompleteableMixin(SaveableMixin,VotableMixin):
     completed = GenericRelation('interactions.Complete')
 
     class Meta:
@@ -88,56 +137,6 @@ class Report(models.Model):
     def __str__(self):
         return f"Report by {self.user.username} on {self.content_object}"
     
-#----------------------------COMPLETE-------------------------------
-
-class Complete(models.Model):
-    PROGRESS_CHOICES = [
-        ('success', 'success'),
-        ('review', 'review'),
-        # ('in_progress', 'in_progress'),
-        # ('not_started', 'not_started'),
-        # ('failed', 'failed'),
-        # ('abandoned', 'abandoned'),
-    ]
-    
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='exercise_progress')
-    content_type = models.ForeignKey(ContentType, on_delete=models.PROTECT)
-    object_id = models.PositiveIntegerField()
-    content_object = GenericForeignKey('content_type', 'object_id')
-    status = models.CharField(max_length=10, choices=PROGRESS_CHOICES)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-    
-    class Meta:
-        unique_together = ('user', 'content_type', 'object_id')
-        indexes = [
-            models.Index(fields=['user']),
-            models.Index(fields=['content_type', 'object_id']),
-        ]
-
-    def __str__(self):
-        return f"{self.user.username} - {self.content_object.title}: {self.get_status_display()}"
-
-#----------------------------SAVE-------------------------------
-
-class Save(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='saved_exercises')
-    saved_at = models.DateTimeField(auto_now_add=True)
-
-    content_type = models.ForeignKey(ContentType, on_delete=models.PROTECT)
-    object_id = models.PositiveIntegerField()
-    content_object = GenericForeignKey('content_type', 'object_id')
-
-    class Meta:
-        unique_together = ('user', 'content_type', 'object_id')
-        indexes = [
-            models.Index(fields=['user']),
-            models.Index(fields=['content_type', 'object_id']),
-        ]
-
-    def __str__(self):
-        return f"{self.user.username} saved {self.content_object.title}"
-
 
 #----------------------------PERCEIVED DIFFICULTY-------------------------------
 class Evaluate(models.Model):
@@ -158,5 +157,34 @@ class Evaluate(models.Model):
     def __str__(self):
         return f"{self.user.username} rated {self.content_object.title} as {self.rating}/5"
     
+#----------------------------TIME SPENT-------------------------------
+class TimeSpent(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='time_spent')
+    time_spent = models.DurationField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    content_type = models.ForeignKey(ContentType, on_delete=models.PROTECT)
+    object_id = models.PositiveIntegerField()
+    content_object = GenericForeignKey('content_type', 'object_id')
+
+    class Meta:
+        unique_together = ('user', 'content_type', 'object_id')
+        indexes = [
+            models.Index(fields=['user']),
+            models.Index(fields=['content_type', 'object_id']),
+        ]
+
+    def __str__(self):
+        return f"{self.user.username} spent {self.time_spent} on {self.content_object.title}"
+
+class TimeSpentMixin(CompleteableMixin):
+    time_spent = GenericRelation(TimeSpent)
+
+    class Meta:
+        abstract = True
+
+    @property
+    def total_time_spent(self):
+        return sum([time.time_spent for time in self.time_spent.all()], timedelta())
 
 

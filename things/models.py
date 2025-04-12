@@ -3,7 +3,7 @@ from django.contrib.auth.models import User
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from caracteristics.models import Chapter, ClassLevel, Subject, Theorem, Subfield
-from interactions.models import VotableMixin, CompleteableMixin
+from interactions.models import VotableMixin, CompleteableMixin, TimeSpentMixin
 import logging
 
 logger = logging.getLogger('django')
@@ -12,7 +12,7 @@ logger = logging.getLogger('django')
  
 #----------------------------EXERCISE-------------------------------
 
-class Exercise(CompleteableMixin, models.Model):
+class Exercise(TimeSpentMixin, models.Model):
     DIFFICULTY_CHOICES = [
         ('easy', 'easy'),
         ('medium', 'medium'),
@@ -37,6 +37,9 @@ class Exercise(CompleteableMixin, models.Model):
     
     @property
     def average_perceived_difficulty(self):
+        """Calculate the average perceived difficulty of this exercise based on user ratings.
+
+        """
         ratings = self.difficulty_ratings.all()
         if not ratings:
             return None
@@ -44,11 +47,31 @@ class Exercise(CompleteableMixin, models.Model):
 
     @property
     def success_count(self):
+        """Count the number of users who have successfully completed this exercise.
+
+        """
         return self.progress.filter(status='success').count()
 
     @property
     def review_count(self):
+        """Count the number of users who are currently reviewing this exercise.
+
+        """
         return self.progress.filter(status='review').count()
+    
+    @property
+    def average_time_spent(self):
+        """Calculate the average time spent on this exercise by all users.
+
+        """
+        if not self.time_spent.exists():
+            return 0
+        
+        total_time = sum([time.time_spent for time in self.time_spent.all()])
+        count = self.time_spent.count()
+        if count == 0:
+            return 0
+        return total_time / count
     
 
 #----------------------------SOLUTION-------------------------------
@@ -78,7 +101,7 @@ class Comment(VotableMixin, models.Model):
 
 #----------------------------LESSON-------------------------------
 
-class Lesson(VotableMixin, models.Model):
+class Lesson(VotableMixin):
     title = models.CharField(max_length=200)
     content = models.TextField()
     subject = models.ForeignKey(Subject, on_delete=models.PROTECT, related_name='lessons')
@@ -93,7 +116,7 @@ class Lesson(VotableMixin, models.Model):
         return self.title
     
 #----------------------------EXAM-------------------------------
-class exam(VotableMixin, models.Model):
+class Exam(TimeSpentMixin):
     title = models.CharField(max_length=200)
     content = models.TextField()
     subject = models.ForeignKey(Subject, on_delete=models.PROTECT, related_name='examples')

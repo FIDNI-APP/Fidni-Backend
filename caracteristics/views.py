@@ -52,6 +52,12 @@ class SubjectViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [permissions.AllowAny]
 
 
+    def list(self, request, *args, **kwargs):
+        queryset = self.get_queryset()
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
+
+
     def get_queryset(self):
         queryset = Subject.objects.all()
         class_level_id = self.request.query_params.getlist('class_level[]')

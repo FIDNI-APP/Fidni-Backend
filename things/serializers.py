@@ -74,6 +74,7 @@ class ExerciseSerializer(serializers.ModelSerializer):
     subfields= SubfieldSerializer(many= True,read_only = True)
     user_save = serializers.SerializerMethodField()
     user_complete = serializers.SerializerMethodField()
+    user_timespent = serializers.SerializerMethodField()
 
 
     class Meta:
@@ -102,6 +103,13 @@ class ExerciseSerializer(serializers.ModelSerializer):
 
             return completed_exercise.status if completed_exercise else None
         return False
+    
+    def get_user_timespent(self, obj):
+        user = self.context['request'].user
+        if user.is_authenticated:
+            time_spent = obj.time_spent.filter(user=user).first()
+            return time_spent.time_spent if time_spent else None
+        return None
 
     def update(self, instance, validated_data):
         solution_content = validated_data.pop('solution_content', None)
