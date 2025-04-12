@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Solution, Comment,Subfield, Theorem,Exercise
+from .models import Solution, Comment,Subfield, Theorem,Exercise,Lesson
 from caracteristics.models import ClassLevel, Chapter, Subfield, Theorem
 from users.serializers import UserSerializer
 from users.models import ViewHistory
@@ -20,9 +20,13 @@ class CommentSerializer(serializers.ModelSerializer):
     vote_count = serializers.IntegerField(read_only=True)
     user_vote = serializers.SerializerMethodField()
     parent_id = serializers.IntegerField(required=False, allow_null=True)
+    exercise_id = serializers.IntegerField(required=False, allow_null=True, write_only=True)
+    lesson_id = serializers.IntegerField(required=False, allow_null=True, write_only=True)
+    
     class Meta:
         model = Comment
-        fields = ['id', 'content', 'author', 'created_at', 'replies', 'vote_count', 'user_vote','parent_id']
+        fields = ['id', 'content', 'author', 'created_at', 'replies', 
+                 'vote_count', 'user_vote', 'parent_id', 'exercise_id', 'lesson_id']
 
     def get_replies(self, obj):
         if obj.replies.exists():
@@ -35,6 +39,21 @@ class CommentSerializer(serializers.ModelSerializer):
             vote = obj.votes.filter(user=user).first()
             return vote.value if vote else None
         return None
+        
+    def create(self, validated_data):
+        parent_id = validated_data.pop('parent_id', None)
+        exercise_id = validated_data.pop('exercise_id', None)
+        lesson_id = validated_data.pop('lesson_id', None)
+        
+        if exercise_id:
+            validated_data['exercise'] = Exercise.objects.get(pk=exercise_id)
+        elif lesson_id:
+            validated_data['lesson'] = Lesson.objects.get(pk=lesson_id)
+        
+        if parent_id:
+            validated_data['parent'] = Comment.objects.get(pk=parent_id)
+            
+        return super().create(validated_data)
 #----------------------------SOLUTION-------------------------------
 
 
@@ -81,7 +100,7 @@ class ExerciseSerializer(serializers.ModelSerializer):
         model = Exercise
         fields = ['id', 'title', 'content', 'difficulty', 'chapters', 'author', 'created_at', 
                 'updated_at', 'view_count', 'comments', 'solution', 'vote_count', 'user_vote', 
-                'class_levels', 'subject','subfields','theorems','user_save','user_complete']
+                'class_levels', 'subject','subfields','theorems','user_save','user_complete', 'user_timespent']
 
     def get_user_vote(self, obj):
         user = self.context['request'].user
@@ -247,17 +266,19 @@ class LessonSerializer(serializers.ModelSerializer):
     author = UserSerializer(read_only=True)
     chapters = ChapterSerializer(many=True, read_only=True)
     comments = CommentSerializer(many=True, read_only=True)
-    solution = SolutionSerializer(read_only=True)
     vote_count = serializers.IntegerField(read_only=True)
     user_vote = serializers.SerializerMethodField()
     view_count = serializers.IntegerField(read_only=True)
     class_levels = ClassLevelSerializer(many=True, read_only=True)
     subject = SubjectSerializer(read_only=True)
-    theorems = TheoremSerializer(many = True)
+    subfields = SubfieldSerializer(many=True, read_only=True)
+    theorems = TheoremSerializer(many=True, read_only=True)
 
     class Meta:
-        model = Exercise
-        fields = ['id', 'title', 'content', 'chapters', 'author', 'created_at', 'updated_at', 'view_count', 'comments', 'solution', 'vote_count', 'user_vote', 'class_levels', 'subject']
+        model = Lesson
+        fields = ['id', 'title', 'content', 'chapters', 'author', 'created_at', 
+                  'updated_at', 'view_count', 'comments', 'vote_count', 'user_vote', 
+                  'class_levels', 'subject', 'subfields', 'theorems']
 
     def get_user_vote(self, obj):
         user = self.context['request'].user
@@ -269,14 +290,64 @@ class LessonSerializer(serializers.ModelSerializer):
     def update(self, instance, validated_data):
         chapters = validated_data.pop('chapters', None)
         class_levels = validated_data.pop('class_levels', None)
+        subfields = validated_data.pop('subfields', None)
+        theorems = validated_data.pop('theorems', None)
+        
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
+        
         if chapters is not None:
             instance.chapters.set(chapters)
         if class_levels is not None:
             instance.class_levels.set(class_levels)
+        if subfields is not None:
+            instance.subfields.set(subfields)
+        if theorems is not None:
+            instance.theorems.set(theorems)
+        
         instance.save()
         return instance
+
+
+class LessonCreateSerializer(serializers.ModelSerializer):
+    chapters = serializers.PrimaryKeyRelatedField(many=True, queryset=Chapter.objects.all(), required=False)
+    class_levels = serializers.PrimaryKeyRelatedField(many=True, queryset=ClassLevel.objects.all(), required=False)
+    subfields = serializers.PrimaryKeyRelatedField(many=True, queryset=Subfield.objects.all(), required=False)
+    theorems = serializers.PrimaryKeyRelatedField(many=True, queryset=Theorem.objects.all(), required=False)
+
+    class Meta:
+        model = Lesson
+        fields = [
+            'title', 
+            'content',
+            'chapters',
+            'class_levels',
+            'subject',
+            'subfields',
+            'theorems'
+        ]
+
+    def create(self, validated_data):
+        chapters = validated_data.pop('chapters', [])
+        class_levels = validated_data.pop('class_levels', [])
+        subfields = validated_data.pop('subfields', [])
+        theorems = validated_data.pop('theorems', [])
+        
+        lesson = Lesson.objects.create(
+            author=self.context['request'].user,
+            **validated_data
+        )
+
+        if chapters:
+            lesson.chapters.set(chapters)
+        if class_levels:
+            lesson.class_levels.set(class_levels)
+        if subfields:
+            lesson.subfields.set(subfields)
+        if theorems:
+            lesson.theorems.set(theorems)
+        
+        return lesson
     
 class ViewHistorySerializer(serializers.ModelSerializer):
     """Serializer for the ViewHistory model"""

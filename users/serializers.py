@@ -26,7 +26,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = UserProfile
         fields = (
-            'bio', 'avatar', 'favorite_subjects', 'reputation',
+            'bio', 'avatar', 'target_subjects', 'reputation',
             'location', 'last_activity_date', 'joined_at',
             'class_level', 'class_level_name', 'user_type', 'onboarding_completed',
             'display_email', 'display_stats',
@@ -126,7 +126,7 @@ class OnboardingSerializer(serializers.Serializer):
     class_level = serializers.PrimaryKeyRelatedField(queryset=ClassLevel.objects.all())
     user_type = serializers.ChoiceField(choices=UserProfile.USER_TYPE_CHOICES)
     bio = serializers.CharField(required=False, allow_blank=True)
-    favorite_subjects = serializers.ListField(
+    target_subjects = serializers.ListField(
         child=serializers.PrimaryKeyRelatedField(queryset=Subject.objects.all())
     )
     subject_grades = serializers.ListField(
@@ -137,7 +137,7 @@ class OnboardingSerializer(serializers.Serializer):
     def update(self, instance, validated_data):
         # Extract and process subject_grades
         subject_grades_data = validated_data.pop('subject_grades', None)
-        favorite_subjects = validated_data.pop('favorite_subjects', [])
+        target_subjects = validated_data.pop('target_subjects', [])
         
         # Update profile fields
         profile = instance.profile
@@ -145,8 +145,8 @@ class OnboardingSerializer(serializers.Serializer):
         profile.user_type = validated_data.get('user_type')
         profile.bio = validated_data.get('bio', profile.bio)
         
-        # Update favorite_subjects as a list of subject IDs
-        profile.favorite_subjects = [str(subject.id) for subject in favorite_subjects]
+        # Update target_subjects as a list of subject IDs
+        profile.target_subjects = [str(subject.id) for subject in target_subjects]
         
         # Mark onboarding as completed
         profile.onboarding_completed = True

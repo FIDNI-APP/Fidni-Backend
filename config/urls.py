@@ -4,14 +4,14 @@ from rest_framework.routers import DefaultRouter
 
 from things.views import (
     ExerciseViewSet,SolutionViewSet,
-    CommentViewSet
+    CommentViewSet, LessonViewSet
 )
 from users.views import (
     get_current_user,
     UserProfileViewSet, UserSettingsView, mark_content_viewed, OnboardingView,
 )
 from caracteristics.views import (
-    ClassLevelViewSet, SubjectViewSet, ChapterViewSet, SubfieldViewSet, TheoremViewSet)
+    ClassLevelViewSet, SubjectViewSet, ChapterViewSet, SubfieldViewSet, TheoremViewSet,)
 from authentication.views import LogoutView
 
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
@@ -28,6 +28,7 @@ router.register(r'solutions', SolutionViewSet, basename='solution')
 router.register(r'subfields', SubfieldViewSet, basename='subfield')
 router.register(r'theorems', TheoremViewSet, basename='theorem')
 router.register(r'users', UserProfileViewSet, basename='user-profile')
+router.register(r'lessons', LessonViewSet, basename='lesson')
 
 
 

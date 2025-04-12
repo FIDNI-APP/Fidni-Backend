@@ -8,8 +8,8 @@ from django.contrib.contenttypes.models import ContentType
 from django.db.models import Count, Q
 
 
-from .models import Exercise, Solution, Comment
-from .serializers import  ExerciseSerializer, SolutionSerializer, CommentSerializer, ExerciseCreateSerializer
+from .models import Exercise, Solution, Comment, Lesson
+from .serializers import  ExerciseSerializer, SolutionSerializer, CommentSerializer, ExerciseCreateSerializer, LessonSerializer, LessonCreateSerializer
 from interactions.models import Vote, Save, Complete, TimeSpent
 from interactions.serializers import VoteSerializer, SaveSerializer, CompleteSerializer, TimeSpentSerializer
 from interactions.views import VoteMixin
@@ -369,3 +369,82 @@ def get_bulk_user_status(request):
         }
     
     return Response(result)
+
+class LessonViewSet(VoteMixin, viewsets.ModelViewSet):
+    queryset = Lesson.objects.all()
+    permission_classes = [IsAuthenticatedOrReadOnly]
+    pagination_class = StandardResultsSetPagination
+
+    def get_serializer_class(self):
+        if self.action in ['create', 'update', 'partial_update']:
+            return LessonCreateSerializer
+        return LessonSerializer
+
+    def get_queryset(self):
+        queryset = Lesson.objects.all().select_related(
+            'author', 'subject'
+        ).prefetch_related(
+            'chapters',
+            'class_levels',
+            'subject',
+            'comments',
+            'votes',
+            'theorems',
+            'subfields'
+        ).annotate(
+            vote_count_annotation=Count('votes', filter=Q(votes__value=Vote.UP)) - 
+                                  Count('votes', filter=Q(votes__value=Vote.DOWN))
+        )
+
+        # Filtering
+        class_levels = self.request.query_params.getlist('class_levels[]')
+        subjects = self.request.query_params.getlist('subjects[]')
+        chapters = self.request.query_params.getlist('chapters[]')
+        subfields = self.request.query_params.getlist('subfields[]')
+        theorems = self.request.query_params.getlist('theorems[]')
+
+        
+        filters_subject = Q()
+        filters_class_level = Q()
+        filters_subfield = Q()
+        filters_chapter = Q()
+        filters_theorem = Q()
+
+        if class_levels:
+            filters_class_level |= Q(class_levels__id__in=class_levels)
+        if subjects:
+            filters_subject |= Q(subject__id__in=subjects)
+        if subfields:
+            filters_subfield |= Q(subfields__id__in=subfields)
+        if theorems:
+            filters_theorem |= Q(theorems__id__in=theorems)
+        if chapters:
+            filters_chapter |= Q(chapters__id__in=chapters)
+            
+        filters = (filters_subject) & (filters_class_level) & (filters_subfield) & (filters_chapter) & (filters_theorem)
+        queryset = queryset.filter(filters)
+        return queryset.distinct()
+
+    @action(detail=True, methods=['post'])
+    def comment(self, request, pk=None):
+        lesson = self.get_object()
+        
+        # Add the lesson_id to the request data
+        request_data = request.data.copy()
+        request_data['lesson_id'] = pk
+        
+        serializer = CommentSerializer(
+            data=request_data,
+            context={'request': request}
+        )
+        
+        if serializer.is_valid():
+            comment = serializer.save(author=request.user)
+            return Response(
+                CommentSerializer(comment, context={'request': request}).data,
+                status=status.HTTP_201_CREATED
+            )
+        return Response(
+            serializer.errors,
+            status=status.HTTP_400_BAD_REQUEST
+        )

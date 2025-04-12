@@ -2,6 +2,7 @@ from django.db import models
 from django.contrib.auth.models import User
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
+from django.core.exceptions import ValidationError
 from caracteristics.models import Chapter, ClassLevel, Subject, Theorem, Subfield
 from interactions.models import VotableMixin, CompleteableMixin, TimeSpentMixin
 import logging
@@ -85,23 +86,10 @@ class Solution(VotableMixin, models.Model):
 
     def __str__(self):
         return f"Solution for {self.exercise.title}"
-
-#----------------------------COMMENT-------------------------------
-
-class Comment(VotableMixin, models.Model):
-    exercise = models.ForeignKey(Exercise, on_delete=models.PROTECT, related_name='comments')
-    author = models.ForeignKey(User, on_delete=models.PROTECT, related_name='comments')
-    content = models.TextField()
-    created_at = models.DateTimeField(auto_now_add=True)
-    parent = models.ForeignKey('self', null=True, blank=True, on_delete=models.PROTECT, related_name='replies')
-
-    def __str__(self):
-        return f"Comment by {self.author.username} on {self.exercise.title}"
     
-
 #----------------------------LESSON-------------------------------
 
-class Lesson(VotableMixin):
+class Lesson(VotableMixin, models.Model):
     title = models.CharField(max_length=200)
     content = models.TextField()
     subject = models.ForeignKey(Subject, on_delete=models.PROTECT, related_name='lessons')
@@ -111,9 +99,38 @@ class Lesson(VotableMixin):
     updated_at = models.DateTimeField(auto_now=True)
     view_count = models.PositiveIntegerField(default=0)
     theorems = models.ManyToManyField(Theorem, related_name='lessons')
+    chapters = models.ManyToManyField(Chapter, related_name='lessons')
+    subfields = models.ManyToManyField(Subfield, related_name='lessons')
 
     def __str__(self):
         return self.title
+
+#----------------------------COMMENT-------------------------------
+
+class Comment(VotableMixin, models.Model):
+    exercise = models.ForeignKey(Exercise, on_delete=models.PROTECT, related_name='comments', null=True, blank=True)
+    lesson = models.ForeignKey(Lesson, on_delete=models.PROTECT, related_name='comments', null=True, blank=True)
+    author = models.ForeignKey(User, on_delete=models.PROTECT, related_name='comments')
+    content = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    parent = models.ForeignKey('self', null=True, blank=True, on_delete=models.PROTECT, related_name='replies')
+
+    def __str__(self):
+        if self.exercise:
+            return f"Comment by {self.author.username} on exercise {self.exercise.title}"
+        elif self.lesson:
+            return f"Comment by {self.author.username} on lesson {self.lesson.title}"
+        return f"Comment by {self.author.username}"
+    
+    def clean(self):
+        # Ensure that either exercise or lesson is set, but not both
+        if not self.exercise and not self.lesson:
+            raise ValidationError("Comment must be associated with either an exercise or a lesson")
+        if self.exercise and self.lesson:
+            raise ValidationError("Comment cannot be associated with both an exercise and a lesson")
+    
+
+
     
 #----------------------------EXAM-------------------------------
 class Exam(TimeSpentMixin):

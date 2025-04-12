@@ -57,12 +57,12 @@ class OnboardingView(APIView):
                 'max_grade': grade.max_grade
             })
         
-        # Get favorite subjects
-        favorite_subjects = []
-        for subject_id in profile.favorite_subjects:
+        # Get target subjects
+        target_subjects = []
+        for subject_id in profile.target_subjects:
             try:
                 subject = Subject.objects.get(id=subject_id)
-                favorite_subjects.append({
+                target_subjects.append({
                     'id': subject.id,
                     'name': subject.name
                 })
@@ -75,7 +75,7 @@ class OnboardingView(APIView):
             'class_level': profile.class_level.id if profile.class_level else None,
             'class_level_name': profile.class_level.name if profile.class_level else None,
             'bio': profile.bio,
-            'favorite_subjects': favorite_subjects,
+            'target_subjects': target_subjects,
             'subject_grades': subject_grades
         })
     
@@ -108,9 +108,9 @@ class OnboardingView(APIView):
             if 'bio' in data:
                 profile.bio = data['bio']
             
-            # Update favorite subjects
-            if 'favorite_subjects' in data:
-                profile.favorite_subjects = data['favorite_subjects']
+            # Update target subjects
+            if 'target_subjects' in data:
+                profile.target_subjects = data['target_subjects']
             
             # Mark onboarding as completed
             profile.onboarding_completed = True
@@ -358,6 +358,16 @@ class UserProfileViewSet(viewsets.ModelViewSet):
         review_exercises = Exercise.objects.filter(id__in=complete_ids)
         serializer = ExerciseSerializer(review_exercises,many=True,context ={'request' : request})
         return Response(serializer.data)
+    @action(detail=True, methods=['get'])
+    def get_time_spent(self,request,username = None):
+        """Get time spent on specific exercise for the user"""
+        user = self.get_object()
+        if user.id != request.user.id and not request.user.is_superuser:
+            return Response(
+                {'error' : 'You cannnot view other users \' progress'}
+            )
+        content_type = ContentType.objects.get_for_model(Exercise)
+        
 
 
 
