@@ -16,6 +16,7 @@ from authentication.views import LogoutView
 
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from authentication.views import LoginView, RegisterView
+from notebooks.views import NotebookViewSet, NotebookSectionViewSet
 
 
 router = DefaultRouter()
@@ -29,6 +30,8 @@ router.register(r'subfields', SubfieldViewSet, basename='subfield')
 router.register(r'theorems', TheoremViewSet, basename='theorem')
 router.register(r'users', UserProfileViewSet, basename='user-profile')
 router.register(r'lessons', LessonViewSet, basename='lesson')
+router.register(r'notebooks', NotebookViewSet, basename='notebook')
+router.register(r'sections', NotebookSectionViewSet, basename='section')
 
 
 

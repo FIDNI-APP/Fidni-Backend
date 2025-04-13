@@ -120,23 +120,23 @@ class UserProfile(models.Model):
             status='success'
         ).exists()
     
-    def is_favorite_subject(self, subject_id):
+    def is_target_subject(self, subject_id):
         """Vérifie si un sujet est dans les favoris de l'utilisateur"""
-        return str(subject_id) in self.favorite_subjects
+        return str(subject_id) in self.target_subjects
     
-    def add_favorite_subject(self, subject_id):
+    def add_target_subject(self, subject_id):
         """Ajoute un sujet aux favoris"""
         subject_id = str(subject_id)  # Convertir en string pour cohérence
-        if subject_id not in self.favorite_subjects:
-            self.favorite_subjects.append(subject_id)
-            self.save(update_fields=['favorite_subjects'])
+        if subject_id not in self.target_subjects:
+            self.target_subjects.append(subject_id)
+            self.save(update_fields=['target_subjects'])
     
-    def remove_favorite_subject(self, subject_id):
+    def remove_target_subject(self, subject_id):
         """Retire un sujet des favoris"""
         subject_id = str(subject_id)  # Convertir en string pour cohérence
-        if subject_id in self.favorite_subjects:
-            self.favorite_subjects.remove(subject_id)
-            self.save(update_fields=['favorite_subjects'])
+        if subject_id in self.target_subjects:
+            self.target_subjects.remove(subject_id)
+            self.save(update_fields=['target_subjects'])
     
     def saved_exercises(self):
         """Récupère les exercices sauvegardés par l'utilisateur"""
@@ -220,3 +220,5 @@ def save_user_profile(sender, instance, **kwargs):
     if not hasattr(instance, 'profile'):
         UserProfile.objects.create(user=instance)
     instance.profile.save()
+
+

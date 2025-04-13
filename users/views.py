@@ -418,3 +418,5 @@ def mark_content_viewed(request, content_id):
             {'error': 'Content not found'},
             status=status.HTTP_404_NOT_FOUND
         )
+    
+

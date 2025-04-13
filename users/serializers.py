@@ -179,3 +179,5 @@ class UserSettingsSerializer(serializers.ModelSerializer):
             'display_email', 'display_stats',
             'email_notifications', 'comment_notifications', 'solution_notifications',
         )
+
+

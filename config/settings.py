@@ -30,7 +30,8 @@ INSTALLED_APPS = [
     'users',
     'authentication',
     'interactions',
-    'caracteristics',    
+    'caracteristics',  
+    'notebooks',
 ]
 
 
