@@ -89,7 +89,7 @@ class Solution(VotableMixin, models.Model):
     
 #----------------------------LESSON-------------------------------
 
-class Lesson(VotableMixin, models.Model):
+class Lesson(CompleteableMixin):
     title = models.CharField(max_length=200)
     content = models.TextField()
     subject = models.ForeignKey(Subject, on_delete=models.PROTECT, related_name='lessons')
