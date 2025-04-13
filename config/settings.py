@@ -16,6 +16,10 @@ DEBUG = True
 
 ALLOWED_HOSTS = ['*']
 
+import logging
+logger = logging.getLogger('django')
+
+# Add this line to verify CORS is loaded
 # Application definition
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -36,14 +40,12 @@ INSTALLED_APPS = [
 
 
 MIDDLEWARE = [
-    'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
-    'corsheaders.middleware.CorsMiddleware',
-    'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
-    'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'corsheaders.middleware.CorsMiddleware',  # This should be before CommonMiddleware
+    'django.middleware.common.CommonMiddleware',
 ]
 
 ROOT_URLCONF = 'config.urls'
@@ -103,7 +105,7 @@ REST_FRAMEWORK = {
         "rest_framework_simplejwt.authentication.JWTAuthentication",
     ],
     "DEFAULT_PERMISSION_CLASSES": [
-        "rest_framework.permissions.IsAuthenticatedOrReadOnly",  # This should allow read-only access
+        "rest_framework.permissions.AllowAny",  # Change this to AllowAny by default
     ],
 }
 
@@ -142,6 +144,9 @@ LOGGING = {
 
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
-    "http://127.0.0.1:3000",
+    "http://127.0.0.1:5173",
 ]
 CORS_ALLOW_CREDENTIALS = True
+
+
+logger.info(f"CORS settings loaded: {CORS_ALLOWED_ORIGINS}")
