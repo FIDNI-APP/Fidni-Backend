@@ -18,7 +18,7 @@ class Notebook(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     
     class Meta:
-        unique_together = ['user', 'subject', 'class_level']
+        unique_together = ['user', 'title']
         ordering = ['subject__name']
     
     def __str__(self):
