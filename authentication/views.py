@@ -16,6 +16,8 @@ logger = logging.getLogger('django')
 #----------------------------LOGIN-------------------------------
 class LoginView(views.APIView):
     permission_classes = [AllowAny]
+    authentication_classes = []  # Skip authentication
+
 
     def post(self, request):
         identifier = request.data.get('identifier')
@@ -57,6 +59,8 @@ class RegisterView(views.APIView):
     permission_classes = [AllowAny]
     queryset = User.objects.all()
     serializer_class = UserSerializer
+    authentication_classes = []  # Skip authentication
+
 
     def post(self, request):
         username = request.data.get('username')
@@ -94,6 +98,8 @@ class RegisterView(views.APIView):
 #----------------------------LOGOUT-------------------------------
 
 class LogoutView(views.APIView):
+    authentication_classes = []  # Skip authentication
+
     def post(self, request):
         logout(request)
         return Response(status=status.HTTP_200_OK)

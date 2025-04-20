@@ -2,6 +2,8 @@ from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.pagination import PageNumberPagination
+from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly, AllowAny
+
 
 from .models import Vote
 
@@ -31,7 +33,7 @@ class VoteMixin:
     """
     
     @action(detail=True, methods=['post'])
-    def vote(self, request, pk=None):
+    def vote(self, request, pk=None, permission_classes=[IsAuthenticated]):
         obj = self.get_object()
         vote_value = request.data.get('value')
         

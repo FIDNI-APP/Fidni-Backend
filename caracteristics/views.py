@@ -37,7 +37,8 @@ class ClassLevelViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = ClassLevel.objects.all()
     serializer_class = ClassLevelSerializer
     pagination_class = StandardResultsSetPagination  # Ajouter cette ligne
-    permission_classes = [permissions.AllowAny]
+    authentication_classes = []  # Skip authentication
+
 
 
     def list(self, request, *args, **kwargs):
@@ -49,7 +50,8 @@ class SubjectViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Subject.objects.all()
     serializer_class = SubjectSerializer
     pagination_class = StandardResultsSetPagination  # Ajouter cette ligne
-    permission_classes = [permissions.AllowAny]
+    authentication_classes = []  # Skip authentication
+
 
 
     def list(self, request, *args, **kwargs):
@@ -73,7 +75,8 @@ class SubfieldViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Subject.objects.all()
     serializer_class = SubfieldSerializer
     pagination_class = StandardResultsSetPagination
-    permission_classes = [permissions.AllowAny]
+    authentication_classes = []  # Skip authentication
+
 
 
 
@@ -103,7 +106,7 @@ class TheoremViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Theorem.objects.all()
     serializer_class = TheoremSerializer
     pagination_class = StandardResultsSetPagination
-    permission_classes = [permissions.AllowAny]
+    authentication_classes = []  # Skip authentication
 
 
     def get_queryset(self):
@@ -146,7 +149,7 @@ class ChapterViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Chapter.objects.all()
     serializer_class = ChapterSerializer
     pagination_class = StandardResultsSetPagination
-    permission_classes = [permissions.AllowAny]
+    authentication_classes = []  # Skip authentication
 
 
     def get_queryset(self):

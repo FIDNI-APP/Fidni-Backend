@@ -2,6 +2,7 @@ from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.pagination import PageNumberPagination
+import rest_framework
 
 
 from django.contrib.contenttypes.models import ContentType
@@ -41,6 +42,8 @@ class ExerciseViewSet(VoteMixin, viewsets.ModelViewSet):
     queryset = Exercise.objects.all()
     permission_classes = [IsAuthenticatedOrReadOnly]
     pagination_class = StandardResultsSetPagination  
+
+
 
 
     def get_serializer_class(self):
@@ -96,6 +99,10 @@ class ExerciseViewSet(VoteMixin, viewsets.ModelViewSet):
         filters = (filters_subject) & (filters_class_level) & (filters_subfield) & (filters_chapter) & (filters_theorem) & (filters_difficulty)
         queryset = queryset.filter(filters)
         return queryset.distinct()
+    
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
+    def vote(self, request, pk=None):
+        return super().vote(request, pk)  # Call the parent class implementation
 
      
     @action(detail=True, methods=['post'])
@@ -320,6 +327,8 @@ class SolutionViewSet(VoteMixin, viewsets.ModelViewSet):
     queryset = Solution.objects.all()
     serializer_class = SolutionSerializer
     permission_classes = [IsAuthenticatedOrReadOnly]
+    authentication_classes = []  # Skip authentication
+
 
     def perform_create(self, serializer):
         serializer.save(author=self.request.user)
@@ -330,6 +339,8 @@ class CommentViewSet(VoteMixin, viewsets.ModelViewSet):
     queryset = Comment.objects.all()
     serializer_class = CommentSerializer
     permission_classes = [IsAuthenticatedOrReadOnly]
+    authentication_classes = []  # Skip authentication
+
 
     def perform_create(self, serializer):
         serializer.save(author=self.request.user)
@@ -374,6 +385,7 @@ class LessonViewSet(VoteMixin, viewsets.ModelViewSet):
     queryset = Lesson.objects.all()
     permission_classes = [IsAuthenticatedOrReadOnly]
     pagination_class = StandardResultsSetPagination
+
 
     def get_serializer_class(self):
         if self.action in ['create', 'update', 'partial_update']:

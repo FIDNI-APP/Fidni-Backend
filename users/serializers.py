@@ -66,7 +66,7 @@ class UserSerializer(serializers.ModelSerializer):
     
     def get_is_self(self, obj):
         request = self.context.get('request')
-        if request and request.user.is_authenticated:
+        if request and hasattr(request, 'user') and request.user and hasattr(request.user, 'is_authenticated') and request.user.is_authenticated:
             return obj.id == request.user.id
         return False
     

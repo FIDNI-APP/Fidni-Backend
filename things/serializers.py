@@ -34,8 +34,8 @@ class CommentSerializer(serializers.ModelSerializer):
         return []
 
     def get_user_vote(self, obj):
-        user = self.context['request'].user
-        if user.is_authenticated:
+        user = self.context.get('request').user if self.context.get('request') else None
+        if user and hasattr(user, 'is_authenticated') and user.is_authenticated:
             vote = obj.votes.filter(user=user).first()
             return vote.value if vote else None
         return None
@@ -68,10 +68,9 @@ class SolutionSerializer(serializers.ModelSerializer):
         fields = ['id', 'content', 'author', 'created_at', 'updated_at', 'vote_count', 'user_vote']
 
     def get_user_vote(self, obj):
-        user = self.context['request'].user
-        if user.is_authenticated:
+        user = self.context.get('request').user if self.context.get('request') else None
+        if user and hasattr(user, 'is_authenticated') and user.is_authenticated:
             vote = obj.votes.filter(user=user).first()
-
             return vote.value if vote else None
         return None
     
@@ -103,21 +102,21 @@ class ExerciseSerializer(serializers.ModelSerializer):
                 'class_levels', 'subject','subfields','theorems','user_save','user_complete', 'user_timespent']
 
     def get_user_vote(self, obj):
-        user = self.context['request'].user
-        if user.is_authenticated:
+        user = self.context.get('request').user if self.context.get('request') else None
+        if user and hasattr(user, 'is_authenticated') and user.is_authenticated:
             vote = obj.votes.filter(user=user).first()
             return vote.value if vote else None
         return None
     def get_user_save(self, obj):
         user = self.context['request'].user
-        if user.is_authenticated:
+        if user and hasattr(user, 'is_authenticated') and user.is_authenticated:
             saved_exercise = obj.saved.filter(user=user).first()
             return saved_exercise is not None
         return False
     
     def get_user_complete(self, obj):
         user = self.context['request'].user
-        if user.is_authenticated:
+        if user and hasattr(user, 'is_authenticated') and user.is_authenticated:
             completed_exercise = obj.completed.filter(user=user).first()
 
             return completed_exercise.status if completed_exercise else None
@@ -125,7 +124,7 @@ class ExerciseSerializer(serializers.ModelSerializer):
     
     def get_user_timespent(self, obj):
         user = self.context['request'].user
-        if user.is_authenticated:
+        if user and hasattr(user, 'is_authenticated') and user.is_authenticated:
             time_spent = obj.time_spent.filter(user=user).first()
             return time_spent.time_spent if time_spent else None
         return None
@@ -281,8 +280,8 @@ class LessonSerializer(serializers.ModelSerializer):
                   'class_levels', 'subject', 'subfields', 'theorems']
 
     def get_user_vote(self, obj):
-        user = self.context['request'].user
-        if user.is_authenticated:
+        user = self.context.get('request').user if self.context.get('request') else None
+        if user and hasattr(user, 'is_authenticated') and user.is_authenticated:
             vote = obj.votes.filter(user=user).first()
             return vote.value if vote else None
         return None
