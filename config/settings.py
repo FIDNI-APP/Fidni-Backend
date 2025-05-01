@@ -40,19 +40,17 @@ INSTALLED_APPS = [
 
 
 MIDDLEWARE = [
+    'django.middleware.security.SecurityMiddleware',  # Add this
     'django.contrib.sessions.middleware.SessionMiddleware',
-    'corsheaders.middleware.CorsMiddleware',  # Move this up
+    'corsheaders.middleware.CorsMiddleware',  
+    'django.middleware.common.CommonMiddleware',  # Move this up
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
-    'django.middleware.common.CommonMiddleware',
+    'django.middleware.clickjacking.XFrameOptionsMiddleware',  # Add this
 ]
 
 
-CSRF_TRUSTED_ORIGINS = [
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-]
 CORS_ALLOW_HEADERS = [
     'accept',
     'accept-encoding',
@@ -162,6 +160,13 @@ LOGGING = {
 }
 
 
-CORS_ALLOW_ALL_ORIGINS = True  # For testing only - change back later
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:5173",  # Your frontend origin
+    "http://127.0.0.1:5173",  # Alternative way to access frontend
+    # Add any other origins you need
+]
 
 CORS_ALLOW_CREDENTIALS = True
+
+
+
