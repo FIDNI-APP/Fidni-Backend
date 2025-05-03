@@ -33,5 +33,5 @@ media
 .vscode/
 *.swp
 *.swo
-*/migrations/*
-/things/migrations/*
+*/migrations/00*
+/things/migrations/00*
