@@ -168,6 +168,7 @@ LOGGING = {
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",  # Your frontend origin
     "http://127.0.0.1:5173",  # Alternative way to access frontend
+    "http://ec2-13-39-158-215.eu-west-3.compute.amazonaws.com"
     # Add any other origins you need
 ]
 

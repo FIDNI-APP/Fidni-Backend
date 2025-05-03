@@ -29,6 +29,8 @@ ENV SQLITE_PATH=/app/data/db.sqlite3
 # Collect static files
 RUN python manage.py makemigrations
 RUN python manage.py migrate
+RUN python ./tests/base_tables.py
+RUN python manage.py collectstatic --noinput
 # Expose the port the app runs on   
 EXPOSE 8000
 
