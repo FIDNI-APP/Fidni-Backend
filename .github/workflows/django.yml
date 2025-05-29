@@ -122,10 +122,10 @@ jobs:
         chmod +x deploy.sh
         
         # Copy deployment script to EC2
-        scp -o StrictHostKeyChecking=no -i private_key.pem deploy.sh ${{ env.EC2_USER }}@${{ env.EC2_HOST }}:/tmp/
+        scp -o StrictHostKeyChecking=no -i private_key.pem deploy.sh ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:/tmp/
         
         # Execute deployment script on EC2
-        ssh -o StrictHostKeyChecking=no -i private_key.pem ${{ env.EC2_USER }}@${{ env.EC2_HOST }} \
+        ssh -o StrictHostKeyChecking=no -i private_key.pem ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} \
           "ECR_REGISTRY=$ECR_REGISTRY ECR_REPOSITORY=${{ env.ECR_REPOSITORY }} IMAGE_TAG=$IMAGE_TAG AWS_REGION=${{ env.AWS_REGION }} bash /tmp/deploy.sh"
         
         # Clean up
@@ -139,7 +139,7 @@ jobs:
         chmod 600 private_key.pem
         
         # Check if containers are running
-        ssh -o StrictHostKeyChecking=no -i private_key.pem ${{ env.EC2_USER }}@${{ env.EC2_HOST }} \
+        ssh -o StrictHostKeyChecking=no -i private_key.pem ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} \
           "docker-compose ps"
         
         rm private_key.pem
