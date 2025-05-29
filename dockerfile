@@ -33,18 +33,10 @@ RUN adduser --disabled-password --gecos "" appuser
 RUN mkdir -p /app/static /app/media /app/data && \
     chown -R appuser:appuser /app
 
-COPY entrypoint.sh /app/entrypoint.sh
-RUN chmod +x /app/entrypoint.sh
-
 USER appuser
-
-# Run migrations and collect static files
-RUN python manage.py collectstatic --noinput
-
 
 # Expose the port the app runs on   
 EXPOSE 8000
-
 
 ENTRYPOINT ["/app/entrypoint.sh"]
 CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--workers", "4", "--timeout", "120", "config.wsgi:application"]
