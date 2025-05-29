@@ -3,7 +3,6 @@ version: '3.8'
 services:
   web:
     # This will be replaced by the ECR image during deployment
-    image: "${ECR_REGISTRY}/${ECR_REPOSITORY}:latest"
     build: .
     restart: always
     volumes:
