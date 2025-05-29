@@ -2,9 +2,12 @@ version: '3.8'
 
 services:
   web:
-    # This will be replaced by the ECR image during deployment
-    build: .
-    command: sh -c "python manage.py makemigrations && python manage.py migrate && python manage.py collectstatic --noinput && gunicorn myproject.wsgi:application --bind 0.0.0.0:8000"
+    # If the image isn't available, use the local build context
+    build:
+      context: .
+      dockerfile: Dockerfile
+    # Command to run the application
+    command: sh -c "python manage.py makemigrations && python manage.py migrate && python manage.py collectstatic --noinput && gunicorn config.wsgi:application --bind 0.0.0.0:8000 --workers 2 --threads 2 --timeout 120 --keep-alive 5 --max-requests 1000 --max-requests-jitter 50"
     restart: always
     volumes:
       - static_volume:/app/static
@@ -14,6 +17,7 @@ services:
       - .env
     networks:
       - app_network
+    # Expose port 8000 to the host
     ports:
       - "8000:8000"
 
