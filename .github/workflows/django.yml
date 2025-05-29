@@ -98,9 +98,6 @@ jobs:
         cd /home/ec2-user/Fidni-Backend
         
 
-        # Fix Git safe.directory issue
-        git config --global --add safe.directory /home/ec2-user/Fidni-Backend
-
         # Pull the latest code
         git fetch origin
         git reset --hard origin/master
@@ -145,6 +142,6 @@ jobs:
         
         # Check if containers are running
         ssh -o StrictHostKeyChecking=no -i private_key.pem ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} \
-          "docker-compose ps"
+                    "cd /home/ec2-user/Fidni-Backend && docker-compose ps"
         
         rm private_key.pem
