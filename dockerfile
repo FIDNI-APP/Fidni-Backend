@@ -18,26 +18,31 @@ RUN pip install gunicorn
 # Copy project
 COPY . .
 
-
 # Set environment variables
 ENV DJANGO_SETTINGS_MODULE=config.settings
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
-ENV SQLITE_PATH=/app/data/db.sqlite3
 
-
-# Collect static files
-RUN python manage.py makemigrations
-RUN python manage.py migrate
-RUN python ./tests/base_tables.py
-RUN python manage.py collectstatic --noinput
-# Expose the port the app runs on   
-EXPOSE 8000
+# Create directory for SQLite database
+RUN mkdir -p /app/data
 
 # Create a non-root user to run the app
 RUN adduser --disabled-password --gecos "" appuser
-RUN chown -R appuser:appuser /app
+
+# Create necessary directories and set permissions
+RUN mkdir -p /app/static /app/media /app/data && \
+    chown -R appuser:appuser /app
+
 USER appuser
 
+# Run migrations and collect static files
+RUN python manage.py makemigrations && \
+    python manage.py migrate && \
+    python ./tests/base_tables.py && \
+    python manage.py collectstatic --noinput
+
+# Expose the port the app runs on   
+EXPOSE 8000
+
 # Start Gunicorn
-CMD ["gunicorn", "--bind", "0.0.0.0:8000", "config.wsgi:application"]
+CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--workers", "4", "--timeout", "120", "config.wsgi:application"]

@@ -1,34 +1,145 @@
-name: Django CI
+name: Deploy to AWS ECR and EC2
 
 on:
   push:
-    branches: [ "master" ]
+    branches: [ main, master ]
   pull_request:
-    branches: [ "master" ]
+    branches: [ main, master ]
+
+env:
+  AWS_REGION: eu-west-3  # Paris region based on your EC2 instance
+  ECR_REPOSITORY: fidni-backend
+  ECR_REGISTRY: ${{ secrets.AWS_ECR_REGISTRY }}  # Set this in your repository secrets
 
 jobs:
-  build:
-
+  test:
     runs-on: ubuntu-latest
-    strategy:
-      max-parallel: 4
-      matrix:
-        python-version: [3.12]
-
+    
     steps:
     - uses: actions/checkout@v4
-    - name: Set up Python ${{ matrix.python-version }}
-      uses: actions/setup-python@v3
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
       with:
-        python-version: ${{ matrix.python-version }}
-    - name: Install Dependencies
+        python-version: '3.12'
+    
+    - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
-    - name: Run Tests
+    
+    - name: Run tests
       run: |
         python manage.py test
-    - name: Run migrations
+    
+  build-and-push:
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
+    
+    - name: Login to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v2
+    
+    - name: Build, tag, and push image to Amazon ECR
+      id: build-image
+      env:
+        ECR_REGISTRY: ${{ secrets.AWS_ECR_REGISTRY }}
+        IMAGE_TAG: ${{ github.sha }}
       run: |
-        python manage.py makemigrations && python manage.py migrate
-
+        # Build the Docker image
+        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+        docker tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:latest
+        
+        # Push both tags to ECR
+        docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+        docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+        
+        echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
+    
+    - name: Deploy to EC2
+      env:
+        ECR_REGISTRY: ${{ secrets.AWS_ECR_REGISTRY }}
+        IMAGE_TAG: ${{ github.sha }}
+        PRIVATE_KEY: ${{ secrets.EC2_SSH_KEY }}
+      run: |
+        # Save the private key to a file
+        echo "$PRIVATE_KEY" > private_key.pem
+        chmod 600 private_key.pem
+        
+        # Create deployment script
+        cat > deploy.sh << 'EOF'
+        #!/bin/bash
+        set -e
+        
+        # Variables
+        ECR_REGISTRY="${ECR_REGISTRY}"
+        ECR_REPOSITORY="${ECR_REPOSITORY}"
+        IMAGE_TAG="${IMAGE_TAG}"
+        AWS_REGION="${AWS_REGION}"
+        
+        echo "Starting deployment..."
+        
+        # Login to ECR
+        aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ECR_REGISTRY
+        
+        # Navigate to project directory
+        cd /home/ec2-user/Fidni-Backend
+        
+        # Pull the latest code (optional, if you want to sync docker-compose.yml)
+        git pull origin main || git pull origin master
+        
+        # Update docker-compose.yml with new image
+        sed -i "s|build: \.|image: $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG|g" docker-compose.yml
+        
+        # Pull new images
+        docker-compose pull
+        
+        # Stop and remove old containers
+        docker-compose down
+        
+        # Start new containers
+        docker-compose up -d
+        
+        # Clean up old images
+        docker image prune -f
+        
+        echo "Deployment completed successfully!"
+        EOF
+        
+        # Make deployment script executable
+        chmod +x deploy.sh
+        
+        # Copy deployment script to EC2
+        scp -o StrictHostKeyChecking=no -i private_key.pem deploy.sh ${{ env.EC2_USER }}@${{ env.EC2_HOST }}:/tmp/
+        
+        # Execute deployment script on EC2
+        ssh -o StrictHostKeyChecking=no -i private_key.pem ${{ env.EC2_USER }}@${{ env.EC2_HOST }} \
+          "ECR_REGISTRY=$ECR_REGISTRY ECR_REPOSITORY=${{ env.ECR_REPOSITORY }} IMAGE_TAG=$IMAGE_TAG AWS_REGION=${{ env.AWS_REGION }} bash /tmp/deploy.sh"
+        
+        # Clean up
+        rm private_key.pem deploy.sh
+    
+    - name: Verify deployment
+      env:
+        PRIVATE_KEY: ${{ secrets.EC2_SSH_KEY }}
+      run: |
+        echo "$PRIVATE_KEY" > private_key.pem
+        chmod 600 private_key.pem
+        
+        # Check if containers are running
+        ssh -o StrictHostKeyChecking=no -i private_key.pem ${{ env.EC2_USER }}@${{ env.EC2_HOST }} \
+          "docker-compose ps"
+        
+        rm private_key.pem

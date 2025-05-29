@@ -4,17 +4,29 @@ Django settings for educational_platform project.
 from pathlib import Path
 import os 
 from datetime import timedelta
+import environ
+
+# Initialize environment variables
+env = environ.Env(
+    # Set default values
+    DEBUG=(bool, False),
+    SECRET_KEY=(str, 'gr-5s4^9^nz%*1)843r*7)+xrk!zc3==nm#zgroldi0*x#y+8e'),
+    ALLOWED_HOSTS=(list, ['*']),
+)
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+# Read environment variables from .env file
+environ.Env.read_env(os.path.join(BASE_DIR, '.env'))
+
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-your-secret-key-here'
+SECRET_KEY = env('SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = env('DEBUG')
 
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = env.list('ALLOWED_HOSTS')
 
 import logging
 logger = logging.getLogger('django')
@@ -86,10 +98,19 @@ WSGI_APPLICATION = 'config.wsgi.application'
 # Database
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': env('DB_NAME'),
+        'USER': env('DB_USER'),
+        'PASSWORD': env('DB_PASSWORD'),
+        'HOST': env('DB_HOST'),
+        'PORT': env('DB_PORT'),
+        'OPTIONS': {
+            'connect_timeout': 5,
+        }
     }
 }
+
+
 
 CORS_ALLOW_METHODS = [
     'DELETE',
@@ -147,19 +168,14 @@ LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
     'handlers': {
-        'file': {
-            'level': 'DEBUG',
-            'class': 'logging.FileHandler',
-            'filename': 'debug.log',
-        },
         'console': {
             'class': 'logging.StreamHandler',
         },
     },
     'loggers': {
         'django': {
-            'handlers': ['file','console'],
-            'level': os.getenv('DJANGO_LOG_LEVEL', 'INFO'),
+            'handlers': ['console'],
+            'level': 'INFO',
         },
     },
 }
@@ -167,10 +183,8 @@ LOGGING = {
 
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",  # Your frontend origin
-    "http://127.0.0.1:5173",  # Alternative way to access frontend
-    "http://ec2-13-39-158-215.eu-west-3.compute.amazonaws.com"
-    # Add any other origins you need
-]
+    "http://ec2-52-47-77-14.eu-west-3.compute.amazonaws.com",
+    "http://ec2-52-47-77-14.eu-west-3.compute.amazonaws.com:5173", ] # Your frontend origin]
 
 CORS_ALLOW_CREDENTIALS = True
 

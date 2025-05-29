@@ -2,15 +2,19 @@ version: '3.8'
 
 services:
   web:
+    # This will be replaced by the ECR image during deployment
     build: .
     restart: always
     volumes:
       - static_volume:/app/static
       - media_volume:/app/media
+      - sqlite_data:/app/data
     env_file:
       - .env
     networks:
       - app_network
+    ports:
+      - "8000:8000"
 
   nginx:
     image: nginx:latest
@@ -32,4 +36,4 @@ networks:
 volumes:
   static_volume:
   media_volume:
-  sqlite_data:  # Volume for the SQLite database
+  sqlite_data:

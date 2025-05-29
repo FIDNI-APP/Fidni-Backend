@@ -133,16 +133,67 @@ class Comment(VotableMixin, models.Model):
 
     
 #----------------------------EXAM-------------------------------
-class Exam(TimeSpentMixin):
+class Exam(TimeSpentMixin, models.Model):
+    DIFFICULTY_CHOICES = [
+        ('easy', 'easy'),
+        ('medium', 'medium'),
+        ('hard', 'hard'),
+    ]
+    
     title = models.CharField(max_length=200)
     content = models.TextField()
-    subject = models.ForeignKey(Subject, on_delete=models.PROTECT, related_name='examples')
-    class_levels = models.ManyToManyField(ClassLevel, related_name='examples')
-    author = models.ForeignKey(User, on_delete=models.PROTECT, related_name='examples')
+    difficulty = models.CharField(max_length=10, choices=DIFFICULTY_CHOICES)
+    chapters = models.ManyToManyField(Chapter, related_name='exercises')
+    class_levels = models.ManyToManyField(ClassLevel, related_name='exercises')
+    author = models.ForeignKey(User, on_delete=models.PROTECT, related_name='exercises')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     view_count = models.PositiveIntegerField(default=0)
+    subject = models.ForeignKey(Subject, on_delete=models.PROTECT, related_name='exercises', null=True)
+    theorems = models.ManyToManyField(Theorem, related_name='exercises' )
+    subfields = models.ManyToManyField(Subfield, related_name='exercises')
+    is_national_exam = models.BooleanField(default=False, help_text="Indicates if this exam is a national exam")
+    national_date = models.DateField(null=True, blank=True, help_text="Date of the exam if it is a national exam")
+    
 
     def __str__(self):
         return self.title
+    
+    @property
+    def average_perceived_difficulty(self):
+        """Calculate the average perceived difficulty of this exercise based on user ratings.
+
+        """
+        ratings = self.difficulty_ratings.all()
+        if not ratings:
+            return None
+        return sum(rating.rating for rating in ratings) / ratings.count()
+
+    @property
+    def success_count(self):
+        """Count the number of users who have successfully completed this exercise.
+
+        """
+        return self.progress.filter(status='success').count()
+
+    @property
+    def review_count(self):
+        """Count the number of users who are currently reviewing this exercise.
+
+        """
+        return self.progress.filter(status='review').count()
+    
+    @property
+    def average_time_spent(self):
+        """Calculate the average time spent on this exercise by all users.
+
+        """
+        if not self.time_spent.exists():
+            return 0
+        
+        total_time = sum([time.time_spent for time in self.time_spent.all()])
+        count = self.time_spent.count()
+        if count == 0:
+            return 0
+        return total_time / count
     
