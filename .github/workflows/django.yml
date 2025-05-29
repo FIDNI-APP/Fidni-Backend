@@ -97,8 +97,13 @@ jobs:
         # Navigate to project directory
         cd /home/ec2-user/Fidni-Backend
         
-        # Pull the latest code (optional, if you want to sync docker-compose.yml)
-        git pull origin main || git pull origin master
+
+        # Fix Git safe.directory issue
+        git config --global --add safe.directory /home/ec2-user/Fidni-Backend
+
+        # Pull the latest code
+        git fetch origin
+        git reset --hard origin/master
         
         # Update docker-compose.yml with new image
         sed -i "s|build: \.|image: $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG|g" docker-compose.yml
