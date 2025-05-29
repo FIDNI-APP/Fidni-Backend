@@ -36,13 +36,13 @@ RUN mkdir -p /app/static /app/media /app/data && \
 USER appuser
 
 # Run migrations and collect static files
-RUN python manage.py makemigrations && \
-    python manage.py migrate && \
-    python ./tests/base_tables.py && \
-    python manage.py collectstatic --noinput
+RUN python manage.py collectstatic --noinput
+
 
 # Expose the port the app runs on   
 EXPOSE 8000
+COPY entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
 
-# Start Gunicorn
+ENTRYPOINT ["/app/entrypoint.sh"]
 CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--workers", "4", "--timeout", "120", "config.wsgi:application"]
