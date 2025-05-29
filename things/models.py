@@ -143,17 +143,18 @@ class Exam(TimeSpentMixin, models.Model):
     title = models.CharField(max_length=200)
     content = models.TextField()
     difficulty = models.CharField(max_length=10, choices=DIFFICULTY_CHOICES)
-    chapters = models.ManyToManyField(Chapter, related_name='exercises')
-    class_levels = models.ManyToManyField(ClassLevel, related_name='exercises')
-    author = models.ForeignKey(User, on_delete=models.PROTECT, related_name='exercises')
+    chapters = models.ManyToManyField(Chapter, related_name='exams')
+    class_levels = models.ManyToManyField(ClassLevel, related_name='exams')
+    author = models.ForeignKey(User, on_delete=models.PROTECT, related_name='exams')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     view_count = models.PositiveIntegerField(default=0)
-    subject = models.ForeignKey(Subject, on_delete=models.PROTECT, related_name='exercises', null=True)
-    theorems = models.ManyToManyField(Theorem, related_name='exercises' )
-    subfields = models.ManyToManyField(Subfield, related_name='exercises')
+    subject = models.ForeignKey(Subject, on_delete=models.PROTECT, related_name='exams', null=True)
+    theorems = models.ManyToManyField(Theorem, related_name='exams' )
+    subfields = models.ManyToManyField(Subfield, related_name='exams')
     is_national_exam = models.BooleanField(default=False, help_text="Indicates if this exam is a national exam")
     national_date = models.DateField(null=True, blank=True, help_text="Date of the exam if it is a national exam")
+    
     
 
     def __str__(self):
