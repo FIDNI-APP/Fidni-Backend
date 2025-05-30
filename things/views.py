@@ -460,3 +460,251 @@ class LessonViewSet(VoteMixin, viewsets.ModelViewSet):
             serializer.errors,
             status=status.HTTP_400_BAD_REQUEST
         )
+    
+
+# Add these to your things/views.py file
+
+from .models import Exam
+from .serializers import ExamSerializer, ExamCreateSerializer
+
+class ExamViewSet(VoteMixin, viewsets.ModelViewSet):
+    queryset = Exam.objects.all()
+    permission_classes = [IsAuthenticatedOrReadOnly]
+    pagination_class = StandardResultsSetPagination
+
+    def get_serializer_class(self):
+        if self.action in ['create', 'update', 'partial_update']:
+            return ExamCreateSerializer
+        return ExamSerializer
+
+    def get_queryset(self):
+        queryset = Exam.objects.all().select_related(
+            'author', 'subject'
+        ).prefetch_related(
+            'chapters',
+            'class_levels',
+            'subject',
+            'comments',
+            'votes',
+            'theorems',
+            'subfields'
+        ).annotate(
+            vote_count_annotation=Count('votes', filter=Q(votes__value=Vote.UP)) - 
+                                  Count('votes', filter=Q(votes__value=Vote.DOWN))
+        )
+
+        # Filtering
+        class_levels = self.request.query_params.getlist('class_levels[]')
+        subjects = self.request.query_params.getlist('subjects[]')
+        chapters = self.request.query_params.getlist('chapters[]')
+        difficulties = self.request.query_params.getlist('difficulties[]')
+        subfields = self.request.query_params.getlist('subfields[]')
+        theorems = self.request.query_params.getlist('theorems[]')
+        is_national_exam = self.request.query_params.get('is_national_exam')
+        date_from = self.request.query_params.get('date_from')
+        date_to = self.request.query_params.get('date_to')
+        
+        filters_subject = Q()
+        filters_class_level = Q()
+        filters_subfield = Q()
+        filters_chapter = Q()
+        filters_theorem = Q()
+        filters_difficulty = Q()
+        filters_national = Q()
+        filters_date = Q()
+
+        if class_levels:
+            filters_class_level |= Q(class_levels__id__in=class_levels)
+        if subjects:
+            filters_subject |= Q(subject__id__in=subjects)
+        if subfields:
+            filters_subfield |= Q(subfields__id__in=subfields)
+        if theorems:
+            filters_theorem |= Q(theorems__id__in=theorems)
+        if chapters:
+            filters_chapter |= Q(chapters__id__in=chapters)
+        if difficulties:
+            filters_difficulty |= Q(difficulty__in=difficulties)
+        if is_national_exam is not None:
+            # Convert string to boolean
+            is_national = is_national_exam.lower() in ['true', '1', 'yes']
+            filters_national |= Q(is_national_exam=is_national)
+        if date_from:
+            filters_date &= Q(national_date__gte=date_from)
+        if date_to:
+            filters_date &= Q(national_date__lte=date_to)
+            
+        filters = (filters_subject) & (filters_class_level) & (filters_subfield) & (filters_chapter) & (filters_theorem) & (filters_difficulty) & (filters_national) & (filters_date)
+        queryset = queryset.filter(filters)
+        return queryset.distinct()
+
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
+    def vote(self, request, pk=None):
+        return super().vote(request, pk)
+
+    @action(detail=True, methods=['post'])
+    def comment(self, request, pk=None):
+        exam = self.get_object()
+        
+        # Create a custom comment serializer for exams or modify the existing one
+        # For now, we'll use the existing CommentSerializer but we need to modify it
+        # to handle exams as well as exercises and lessons
+        
+        serializer = CommentSerializer(
+            data=request.data,
+            context={'request': request}
+        )
+        if serializer.is_valid():
+            # We need to modify the Comment model to also support exams
+            # For now, this will require adding an exam field to the Comment model
+            serializer.save(
+                # exam=exam,  # This would require modifying the Comment model
+                author=request.user,
+                parent_id=request.data.get('parent')
+            )
+            return Response(
+                serializer.data,
+                status=status.HTTP_201_CREATED
+            )
+        return Response(
+            serializer.errors,
+            status=status.HTTP_400_BAD_REQUEST
+        )
+
+    @action(detail=True, methods=['post'])
+    def view(self, request, pk=None):
+        """
+        Mark exam as viewed and increment view count
+        """
+        exam = self.get_object()
+        exam.view_count += 1
+        exam.save()
+        
+        # Optionally, you can track user view history here
+        # This would require creating a ViewHistory record
+        
+        return Response({'view_count': exam.view_count})
+
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
+    def mark_progress(self, request, pk=None):
+        """
+        Mark an exam as completed with status 'success' or 'review'
+        """
+        exam = self.get_object()
+        status_value = request.data.get('status')
+        
+        if status_value not in ['success', 'review']:
+            return Response(
+                {'error': 'Invalid status value. Must be "success" or "review".'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        content_type = ContentType.objects.get_for_model(Exam)
+        progress, created = Complete.objects.update_or_create(
+            user=request.user,
+            content_type=content_type,
+            object_id=exam.id,
+            defaults={'status': status_value}
+        )
+        
+        logger.debug(f"Exam {exam.id} marked as {status_value} by user {request.user.id}")
+        
+        return Response({
+            'id': progress.id,
+            'status': progress.status,
+            'created_at': progress.created_at,
+            'updated_at': progress.updated_at
+        })
+
+    @action(detail=True, methods=['delete'], permission_classes=[IsAuthenticated])
+    def remove_progress(self, request, pk=None):
+        """
+        Remove progress marking from an exam
+        """
+        exam = self.get_object()
+        content_type = ContentType.objects.get_for_model(Exam)
+        
+        try:
+            progress = Complete.objects.get(
+                user=request.user,
+                content_type=content_type,
+                object_id=exam.id
+            )
+            progress.delete()
+            logger.debug(f"Progress removed for exam {exam.id} by user {request.user.id}")
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        except Complete.DoesNotExist:
+            return Response(
+                {'error': 'No progress record found for this exam'}, 
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
+    def save_exam(self, request, pk=None):
+        """
+        Save an exam for later
+        """
+        try:
+            exam = self.get_object()
+            content_type = ContentType.objects.get_for_model(Exam)
+            
+            # Check if already saved
+            existing = Save.objects.filter(
+                user=request.user,
+                content_type=content_type,
+                object_id=exam.id
+            ).first()
+            
+            if existing:
+                return Response(
+                    {
+                        'error': 'Exam already saved',
+                        'message': 'This exam is already in your saved list',
+                        'already_saved': True
+                    }, 
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            
+            # Create new save record
+            save = Save.objects.create(
+                user=request.user,
+                content_type=content_type,
+                object_id=exam.id
+            )
+            
+            logger.debug(f"Exam {exam.id} saved by user {request.user.id}")
+            
+            return Response({
+                'id': save.id,
+                'saved_at': save.saved_at,
+                'message': 'Exam saved successfully'
+            }, status=status.HTTP_201_CREATED)
+        except Exception as e:
+            logger.error(f"Error saving exam: {str(e)}")
+            return Response(
+                {'error': 'Failed to save exam', 'detail': str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+    @action(detail=True, methods=['delete'], permission_classes=[IsAuthenticated])
+    def unsave_exam(self, request, pk=None):
+        """
+        Remove exam from saved list
+        """
+        exam = self.get_object()
+        content_type = ContentType.objects.get_for_model(Exam)
+        
+        try:
+            save = Save.objects.get(
+                user=request.user,
+                content_type=content_type,
+                object_id=exam.id
+            )
+            save.delete()
+            logger.debug(f"Exam {exam.id} unsaved by user {request.user.id}")
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        except Save.DoesNotExist:
+            return Response(
+                {'error': 'Exam not found in saved list'}, 
+                status=status.HTTP_404_NOT_FOUND
+            )

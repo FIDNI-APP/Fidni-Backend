@@ -104,34 +104,6 @@ class Lesson(CompleteableMixin):
 
     def __str__(self):
         return self.title
-
-#----------------------------COMMENT-------------------------------
-
-class Comment(VotableMixin, models.Model):
-    exercise = models.ForeignKey(Exercise, on_delete=models.PROTECT, related_name='comments', null=True, blank=True)
-    lesson = models.ForeignKey(Lesson, on_delete=models.PROTECT, related_name='comments', null=True, blank=True)
-    author = models.ForeignKey(User, on_delete=models.PROTECT, related_name='comments')
-    content = models.TextField()
-    created_at = models.DateTimeField(auto_now_add=True)
-    parent = models.ForeignKey('self', null=True, blank=True, on_delete=models.PROTECT, related_name='replies')
-
-    def __str__(self):
-        if self.exercise:
-            return f"Comment by {self.author.username} on exercise {self.exercise.title}"
-        elif self.lesson:
-            return f"Comment by {self.author.username} on lesson {self.lesson.title}"
-        return f"Comment by {self.author.username}"
-    
-    def clean(self):
-        # Ensure that either exercise or lesson is set, but not both
-        if not self.exercise and not self.lesson:
-            raise ValidationError("Comment must be associated with either an exercise or a lesson")
-        if self.exercise and self.lesson:
-            raise ValidationError("Comment cannot be associated with both an exercise and a lesson")
-    
-
-
-    
 #----------------------------EXAM-------------------------------
 class Exam(TimeSpentMixin, models.Model):
     DIFFICULTY_CHOICES = [
@@ -197,4 +169,37 @@ class Exam(TimeSpentMixin, models.Model):
         if count == 0:
             return 0
         return total_time / count
+#----------------------------COMMENT-------------------------------
+class Comment(VotableMixin, models.Model):
+    exercise = models.ForeignKey(Exercise, on_delete=models.PROTECT, related_name='comments', null=True, blank=True)
+    lesson = models.ForeignKey(Lesson, on_delete=models.PROTECT, related_name='comments', null=True, blank=True)
+    exam = models.ForeignKey(Exam, on_delete=models.PROTECT, related_name='comments', null=True, blank=True)  # Add this line
+    author = models.ForeignKey(User, on_delete=models.PROTECT, related_name='comments')
+    content = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    parent = models.ForeignKey('self', null=True, blank=True, on_delete=models.PROTECT, related_name='replies')
+
+    def __str__(self):
+        if self.exercise:
+            return f"Comment by {self.author.username} on exercise {self.exercise.title}"
+        elif self.lesson:
+            return f"Comment by {self.author.username} on lesson {self.lesson.title}"
+        elif self.exam:
+            return f"Comment by {self.author.username} on exam {self.exam.title}"
+        return f"Comment by {self.author.username}"
+    
+    def clean(self):
+        # Ensure that exactly one of exercise, lesson, or exam is set
+        content_objects = [self.exercise, self.lesson, self.exam]
+        non_null_objects = [obj for obj in content_objects if obj is not None]
+        
+        if len(non_null_objects) == 0:
+            raise ValidationError("Comment must be associated with either an exercise, lesson, or exam")
+        if len(non_null_objects) > 1:
+            raise ValidationError("Comment cannot be associated with multiple content types")
+    
+
+
+    
+
     

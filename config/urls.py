@@ -4,7 +4,7 @@ from rest_framework.routers import DefaultRouter
 
 from things.views import (
     ExerciseViewSet,SolutionViewSet,
-    CommentViewSet, LessonViewSet
+    CommentViewSet, LessonViewSet,ExamViewSet
 )
 from users.views import (
     get_current_user,
@@ -32,6 +32,8 @@ router.register(r'users', UserProfileViewSet, basename='user-profile')
 router.register(r'lessons', LessonViewSet, basename='lesson')
 router.register(r'notebooks', NotebookViewSet, basename='notebook')
 router.register(r'sections', NotebookSectionViewSet, basename='section')
+router.register(r'exams', ExamViewSet)  # Add this line
+
 
 
 
