@@ -467,6 +467,8 @@ class LessonViewSet(VoteMixin, viewsets.ModelViewSet):
 from .models import Exam
 from .serializers import ExamSerializer, ExamCreateSerializer
 
+# things/views.py (Update the ExamViewSet class)
+
 class ExamViewSet(VoteMixin, viewsets.ModelViewSet):
     queryset = Exam.objects.all()
     permission_classes = [IsAuthenticatedOrReadOnly]
@@ -501,8 +503,10 @@ class ExamViewSet(VoteMixin, viewsets.ModelViewSet):
         subfields = self.request.query_params.getlist('subfields[]')
         theorems = self.request.query_params.getlist('theorems[]')
         is_national_exam = self.request.query_params.get('is_national_exam')
-        date_from = self.request.query_params.get('date_from')
-        date_to = self.request.query_params.get('date_to')
+        
+        # Change from date_from/date_to to year_from/year_to
+        year_from = self.request.query_params.get('year_from')
+        year_to = self.request.query_params.get('year_to')
         
         filters_subject = Q()
         filters_class_level = Q()
@@ -511,7 +515,7 @@ class ExamViewSet(VoteMixin, viewsets.ModelViewSet):
         filters_theorem = Q()
         filters_difficulty = Q()
         filters_national = Q()
-        filters_date = Q()
+        filters_year = Q()
 
         if class_levels:
             filters_class_level |= Q(class_levels__id__in=class_levels)
@@ -529,12 +533,23 @@ class ExamViewSet(VoteMixin, viewsets.ModelViewSet):
             # Convert string to boolean
             is_national = is_national_exam.lower() in ['true', '1', 'yes']
             filters_national |= Q(is_national_exam=is_national)
-        if date_from:
-            filters_date &= Q(national_date__gte=date_from)
-        if date_to:
-            filters_date &= Q(national_date__lte=date_to)
+        
+        # Year filtering
+        if year_from:
+            try:
+                year_from_int = int(year_from)
+                filters_year &= Q(national_year__gte=year_from_int)
+            except ValueError:
+                pass  # Invalid year format, ignore
+                
+        if year_to:
+            try:
+                year_to_int = int(year_to)
+                filters_year &= Q(national_year__lte=year_to_int)
+            except ValueError:
+                pass  # Invalid year format, ignore
             
-        filters = (filters_subject) & (filters_class_level) & (filters_subfield) & (filters_chapter) & (filters_theorem) & (filters_difficulty) & (filters_national) & (filters_date)
+        filters = (filters_subject) & (filters_class_level) & (filters_subfield) & (filters_chapter) & (filters_theorem) & (filters_difficulty) & (filters_national) & (filters_year)
         queryset = queryset.filter(filters)
         return queryset.distinct()
 
@@ -546,24 +561,19 @@ class ExamViewSet(VoteMixin, viewsets.ModelViewSet):
     def comment(self, request, pk=None):
         exam = self.get_object()
         
-        # Create a custom comment serializer for exams or modify the existing one
-        # For now, we'll use the existing CommentSerializer but we need to modify it
-        # to handle exams as well as exercises and lessons
+        # Add the exam_id to the request data
+        request_data = request.data.copy()
+        request_data['exam_id'] = pk
         
         serializer = CommentSerializer(
-            data=request.data,
+            data=request_data,
             context={'request': request}
         )
+        
         if serializer.is_valid():
-            # We need to modify the Comment model to also support exams
-            # For now, this will require adding an exam field to the Comment model
-            serializer.save(
-                # exam=exam,  # This would require modifying the Comment model
-                author=request.user,
-                parent_id=request.data.get('parent')
-            )
+            comment = serializer.save(author=request.user)
             return Response(
-                serializer.data,
+                CommentSerializer(comment, context={'request': request}).data,
                 status=status.HTTP_201_CREATED
             )
         return Response(

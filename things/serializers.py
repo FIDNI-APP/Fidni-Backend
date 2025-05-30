@@ -372,6 +372,8 @@ class ViewHistorySerializer(serializers.ModelSerializer):
 from .models import Exam
 from caracteristics.models import ClassLevel, Chapter, Subfield, Theorem
 
+# things/serializers.py (Update the Exam serializer sections)
+
 class ExamSerializer(serializers.ModelSerializer):
     author = UserSerializer(read_only=True)
     chapters = ChapterSerializer(many=True, read_only=True)
@@ -386,6 +388,8 @@ class ExamSerializer(serializers.ModelSerializer):
     user_save = serializers.SerializerMethodField()
     user_complete = serializers.SerializerMethodField()
     user_timespent = serializers.SerializerMethodField()
+    # Add backward compatibility for national_date
+    national_date = serializers.SerializerMethodField()
 
     class Meta:
         model = Exam
@@ -394,8 +398,12 @@ class ExamSerializer(serializers.ModelSerializer):
             'created_at', 'updated_at', 'view_count', 'comments', 'vote_count', 
             'user_vote', 'class_levels', 'subject', 'subfields', 'theorems',
             'user_save', 'user_complete', 'user_timespent', 'is_national_exam', 
-            'national_date'
+            'national_year', 'national_date'  # Include both for compatibility
         ]
+
+    def get_national_date(self, obj):
+        """Return the year as a string for backward compatibility"""
+        return str(obj.national_year) if obj.national_year else None
 
     def get_user_vote(self, obj):
         user = self.context.get('request').user if self.context.get('request') else None
@@ -431,13 +439,39 @@ class ExamCreateSerializer(serializers.ModelSerializer):
     class_levels = serializers.PrimaryKeyRelatedField(many=True, queryset=ClassLevel.objects.all(), required=False)
     subfields = serializers.PrimaryKeyRelatedField(many=True, queryset=Subfield.objects.all(), required=False)
     theorems = serializers.PrimaryKeyRelatedField(many=True, queryset=Theorem.objects.all(), required=False)
+    # Accept both national_date (for backward compatibility) and national_year
+    national_date = serializers.CharField(required=False, allow_null=True, write_only=True)
 
     class Meta:
         model = Exam
         fields = [
             'title', 'content', 'difficulty', 'chapters', 'class_levels',
-            'subject', 'subfields', 'theorems', 'is_national_exam', 'national_date'
+            'subject', 'subfields', 'theorems', 'is_national_exam', 'national_year', 'national_date'
         ]
+
+    def validate(self, data):
+        """Convert national_date to national_year if provided"""
+        national_date = data.pop('national_date', None)
+        if national_date:
+            try:
+                # Try to parse as year first
+                if len(str(national_date)) == 4 and str(national_date).isdigit():
+                    data['national_year'] = int(national_date)
+                else:
+                    # Try to parse as date and extract year
+                    from datetime import datetime
+                    parsed_date = datetime.strptime(str(national_date), '%Y-%m-%d')
+                    data['national_year'] = parsed_date.year
+            except (ValueError, TypeError):
+                # If all parsing fails, try to extract year from string
+                try:
+                    year_str = str(national_date)[:4]
+                    if year_str.isdigit():
+                        data['national_year'] = int(year_str)
+                except:
+                    pass  # Ignore invalid date formats
+        
+        return data
 
     def create(self, validated_data):
         chapters = validated_data.pop('chapters', [])

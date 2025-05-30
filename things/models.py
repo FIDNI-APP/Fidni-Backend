@@ -105,6 +105,7 @@ class Lesson(CompleteableMixin):
     def __str__(self):
         return self.title
 #----------------------------EXAM-------------------------------
+#----------------------------EXAM-------------------------------
 class Exam(TimeSpentMixin, models.Model):
     DIFFICULTY_CHOICES = [
         ('easy', 'easy'),
@@ -125,18 +126,20 @@ class Exam(TimeSpentMixin, models.Model):
     theorems = models.ManyToManyField(Theorem, related_name='exams' )
     subfields = models.ManyToManyField(Subfield, related_name='exams')
     is_national_exam = models.BooleanField(default=False, help_text="Indicates if this exam is a national exam")
-    national_date = models.DateField(null=True, blank=True, help_text="Date of the exam if it is a national exam")
+    # Change this field to store year as integer instead of full date
+    national_year = models.PositiveIntegerField(null=True, blank=True, help_text="Year of the exam if it is a national exam (YYYY format)")
     
-    
-
     def __str__(self):
         return self.title
     
     @property
+    def national_date(self):
+        """Backward compatibility property that returns the year as a string"""
+        return str(self.national_year) if self.national_year else None
+    
+    @property
     def average_perceived_difficulty(self):
-        """Calculate the average perceived difficulty of this exercise based on user ratings.
-
-        """
+        """Calculate the average perceived difficulty of this exercise based on user ratings."""
         ratings = self.difficulty_ratings.all()
         if not ratings:
             return None
@@ -144,23 +147,17 @@ class Exam(TimeSpentMixin, models.Model):
 
     @property
     def success_count(self):
-        """Count the number of users who have successfully completed this exercise.
-
-        """
+        """Count the number of users who have successfully completed this exercise."""
         return self.progress.filter(status='success').count()
 
     @property
     def review_count(self):
-        """Count the number of users who are currently reviewing this exercise.
-
-        """
+        """Count the number of users who are currently reviewing this exercise."""
         return self.progress.filter(status='review').count()
     
     @property
     def average_time_spent(self):
-        """Calculate the average time spent on this exercise by all users.
-
-        """
+        """Calculate the average time spent on this exercise by all users."""
         if not self.time_spent.exists():
             return 0
         
