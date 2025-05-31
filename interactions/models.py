@@ -275,39 +275,6 @@ class TimeSpent(models.Model):
             self.total_time += session_duration
             self.current_session_time = timedelta(0)  # Reset session courante
             self.save()
-class TimeSpent(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='time_spent')
-    time_spent = models.DurationField()  # Stocke la durée totale
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-    content_type = models.ForeignKey(ContentType, on_delete=models.PROTECT)
-    object_id = models.PositiveIntegerField()
-    content_object = GenericForeignKey('content_type', 'object_id')
-
-    class Meta:
-        unique_together = ('user', 'content_type', 'object_id')
-        indexes = [
-            models.Index(fields=['user']),
-            models.Index(fields=['content_type', 'object_id']),
-        ]
-
-    def __str__(self):
-        return f"{self.user.username} spent {self.time_spent} on {self.content_object}"
-    
-    def add_time(self, seconds):
-        """Ajoute du temps à la durée existante"""
-        if self.time_spent:
-            self.time_spent += timedelta(seconds=seconds)
-        else:
-            self.time_spent = timedelta(seconds=seconds)
-        self.save()
-    
-    @property
-    def time_spent_in_seconds(self):
-        """Retourne le temps passé en secondes"""
-        if self.time_spent:
-            return int(self.time_spent.total_seconds())
-        return 0
 
 class TimeSpentMixin(CompleteableMixin):
     time_spent = GenericRelation(TimeSpent)
