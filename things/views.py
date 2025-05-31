@@ -274,29 +274,6 @@ class ExerciseViewSet(VoteMixin, viewsets.ModelViewSet):
                 status=status.HTTP_404_NOT_FOUND
             )
         
-    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
-    def time_spent(self, request, pk=None):
-        """
-        Record time spent on an exercise
-        """
-        exercise = self.get_object()
-        time_spent = request.data.get('time_spent', 0)
-        content_type = ContentType.objects.get_for_model(Exercise)
-        try:
-            time_spent = TimeSpent.objects.create(
-                user=request.user,
-                content_type=content_type,
-                object_id=exercise.id,
-                time_spent_in_seconds=time_spent
-            )
-            logger.debug(f"Time spent on exercise {exercise.id} recorded for user {request.user.id}")
-            return Response(TimeSpentSerializer(time_spent).data, status=status.HTTP_201_CREATED)
-        except Exception as e:
-            logger.error(f"Error recording time spent: {str(e)}")
-            return Response(
-                {'error': 'Failed to record time spent', 'detail': str(e)},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
     @action(detail=True, methods=['delete'], permission_classes=[IsAuthenticated])
     def delete_time_spent(self, request, pk=None):
         """
@@ -319,6 +296,74 @@ class ExerciseViewSet(VoteMixin, viewsets.ModelViewSet):
                 {'error': 'Time spent record not found'}, 
                 status=status.HTTP_404_NOT_FOUND
             )
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
+    def save_time_spent(self, request, pk=None):
+        """
+        Sauvegarde le temps passé sur un exercice
+        """
+        exercise = self.get_object()
+        time_seconds = request.data.get('time_spent', 0)
+        
+        if not isinstance(time_seconds, (int, float)) or time_seconds < 0:
+            return Response(
+                {'error': 'Invalid time_spent value. Must be a positive number.'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            content_type = ContentType.objects.get_for_model(Exercise)
+            time_spent, created = TimeSpent.objects.get_or_create(
+                user=request.user,
+                content_type=content_type,
+                object_id=exercise.id,
+                defaults={'time_spent': timedelta(seconds=time_seconds)}
+            )
+            
+            if not created:
+                # Si l'enregistrement existe déjà, ajouter le temps
+                time_spent.add_time(time_seconds)
+            
+            logger.debug(f"Time spent updated for exercise {exercise.id} by user {request.user.id}: +{time_seconds}s")
+            
+            return Response({
+                'id': time_spent.id,
+                'total_time_seconds': time_spent.time_spent_in_seconds,
+                'session_time_seconds': time_seconds,
+                'message': 'Time saved successfully'
+            }, status=status.HTTP_200_OK)
+            
+        except Exception as e:
+            logger.error(f"Error saving time spent: {str(e)}")
+            return Response(
+                {'error': 'Failed to save time spent', 'detail': str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+    
+    @action(detail=True, methods=['get'], permission_classes=[IsAuthenticated])
+    def get_time_spent(self, request, pk=None):
+        """
+        Récupère le temps total passé sur un exercice par l'utilisateur
+        """
+        exercise = self.get_object()
+        content_type = ContentType.objects.get_for_model(Exercise)
+        
+        try:
+            time_spent = TimeSpent.objects.get(
+                user=request.user,
+                content_type=content_type,
+                object_id=exercise.id
+            )
+            
+            return Response({
+                'total_time_seconds': time_spent.time_spent_in_seconds,
+                'last_updated': time_spent.updated_at
+            })
+            
+        except TimeSpent.DoesNotExist:
+            return Response({
+                'total_time_seconds': 0,
+                'last_updated': None
+            })
                     
     
     
@@ -718,3 +763,71 @@ class ExamViewSet(VoteMixin, viewsets.ModelViewSet):
                 {'error': 'Exam not found in saved list'}, 
                 status=status.HTTP_404_NOT_FOUND
             )
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
+    def save_time_spent(self, request, pk=None):
+        """
+        Sauvegarde le temps passé sur un examen
+        """
+        exam = self.get_object()
+        time_seconds = request.data.get('time_spent', 0)
+        
+        if not isinstance(time_seconds, (int, float)) or time_seconds < 0:
+            return Response(
+                {'error': 'Invalid time_spent value. Must be a positive number.'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            content_type = ContentType.objects.get_for_model(Exam)
+            time_spent, created = TimeSpent.objects.get_or_create(
+                user=request.user,
+                content_type=content_type,
+                object_id=exam.id,
+                defaults={'time_spent': timedelta(seconds=time_seconds)}
+            )
+            
+            if not created:
+                # Si l'enregistrement existe déjà, ajouter le temps
+                time_spent.add_time(time_seconds)
+            
+            logger.debug(f"Time spent updated for exam {exam.id} by user {request.user.id}: +{time_seconds}s")
+            
+            return Response({
+                'id': time_spent.id,
+                'total_time_seconds': time_spent.time_spent_in_seconds,
+                'session_time_seconds': time_seconds,
+                'message': 'Time saved successfully'
+            }, status=status.HTTP_200_OK)
+            
+        except Exception as e:
+            logger.error(f"Error saving time spent: {str(e)}")
+            return Response(
+                {'error': 'Failed to save time spent', 'detail': str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+    
+    @action(detail=True, methods=['get'], permission_classes=[IsAuthenticated])
+    def get_time_spent(self, request, pk=None):
+        """
+        Récupère le temps total passé sur un examen par l'utilisateur
+        """
+        exam = self.get_object()
+        content_type = ContentType.objects.get_for_model(Exam)
+        
+        try:
+            time_spent = TimeSpent.objects.get(
+                user=request.user,
+                content_type=content_type,
+                object_id=exam.id
+            )
+            
+            return Response({
+                'total_time_seconds': time_spent.time_spent_in_seconds,
+                'last_updated': time_spent.updated_at
+            })
+            
+        except TimeSpent.DoesNotExist:
+            return Response({
+                'total_time_seconds': 0,
+                'last_updated': None
+            })
