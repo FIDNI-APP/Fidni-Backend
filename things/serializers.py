@@ -430,7 +430,7 @@ class ExamSerializer(serializers.ModelSerializer):
         user = self.context.get('request').user if self.context.get('request') else None
         if user and hasattr(user, 'is_authenticated') and user.is_authenticated:
             time_spent = obj.time_spent.filter(user=user).first()
-            return time_spent.time_spent if time_spent else None
+            return time_spent.total_time if time_spent else None  # ← Utilisez total_time maintenant
         return None
 
 
