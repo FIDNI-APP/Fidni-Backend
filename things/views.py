@@ -275,60 +275,10 @@ class ExerciseViewSet(VoteMixin, viewsets.ModelViewSet):
                 status=status.HTTP_404_NOT_FOUND
             )
         
-    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
-    def save_time_spent(self, request, pk=None):
-        """
-        Sauvegarde le temps passé sur un exercice
-        """
-        exercise = self.get_object()
-        time_seconds = request.data.get('time_spent', 0)
-        
-        if not isinstance(time_seconds, (int, float)) or time_seconds < 0:
-            return Response(
-                {'error': 'Invalid time_spent value. Must be a positive number.'}, 
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
-        try:
-            content_type = ContentType.objects.get_for_model(Exercise)
-            time_spent, created = TimeSpent.objects.get_or_create(
-                user=request.user,
-                content_type=content_type,
-                object_id=exercise.id,
-                defaults={'time_spent': timedelta(seconds=time_seconds)}
-            )
-            
-            if not created:
-                # Si l'enregistrement existe déjà, ajouter le temps
-                if time_spent.time_spent:
-                    time_spent.time_spent += timedelta(seconds=time_seconds)
-                else:
-                    time_spent.time_spent = timedelta(seconds=time_seconds)
-                time_spent.save()
-            
-            logger.debug(f"Time spent updated for exercise {exercise.id} by user {request.user.id}: +{time_seconds}s")
-            
-            # Calculer le temps total en secondes
-            total_seconds = int(time_spent.time_spent.total_seconds()) if time_spent.time_spent else 0
-            
-            return Response({
-                'id': time_spent.id,
-                'total_time_seconds': total_seconds,
-                'session_time_seconds': time_seconds,
-                'message': 'Time saved successfully'
-            }, status=status.HTTP_200_OK)
-            
-        except Exception as e:
-            logger.error(f"Error saving time spent: {str(e)}")
-            return Response(
-                {'error': 'Failed to save time spent', 'detail': str(e)},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
-    
     @action(detail=True, methods=['get'], permission_classes=[IsAuthenticated])
-    def get_time_spent(self, request, pk=None):
+    def time_status(self, request, pk=None):
         """
-        Récupère le temps total passé sur un exercice par l'utilisateur
+        Récupère le statut complet du temps pour un exercice
         """
         exercise = self.get_object()
         content_type = ContentType.objects.get_for_model(Exercise)
@@ -340,18 +290,229 @@ class ExerciseViewSet(VoteMixin, viewsets.ModelViewSet):
                 object_id=exercise.id
             )
             
-            total_seconds = int(time_spent.time_spent.total_seconds()) if time_spent.time_spent else 0
+            # Récupérer les dernières sessions
+            recent_sessions = time_spent.get_sessions_history()[:5]
+            sessions_data = [
+                {
+                    'id': session.id,
+                    'duration_seconds': session.session_duration_in_seconds,
+                    'session_type': session.session_type,
+                    'started_at': session.started_at,
+                    'ended_at': session.ended_at,
+                    'notes': session.notes
+                }
+                for session in recent_sessions
+            ]
             
             return Response({
-                'total_time_seconds': total_seconds,
-                'last_updated': time_spent.updated_at
+                'total_time_seconds': time_spent.total_time_in_seconds,
+                'current_session_seconds': time_spent.current_session_in_seconds,
+                'resume_preference': time_spent.resume_preference,
+                'last_session_start': time_spent.last_session_start,
+                'recent_sessions': sessions_data,
+                'sessions_count': time_spent.get_sessions_history().count()
             })
             
         except TimeSpent.DoesNotExist:
             return Response({
                 'total_time_seconds': 0,
-                'last_updated': None
+                'current_session_seconds': 0,
+                'resume_preference': 'ask',
+                'last_session_start': None,
+                'recent_sessions': [],
+                'sessions_count': 0
             })
+    
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
+    def update_session_time(self, request, pk=None):
+        """
+        Met à jour le temps de la session courante
+        """
+        exercise = self.get_object()
+        time_seconds = request.data.get('time_seconds', 0)
+        action_type = request.data.get('action', 'update')  # 'update', 'reset', 'start'
+        
+        if not isinstance(time_seconds, (int, float)) or time_seconds < 0:
+            return Response(
+                {'error': 'Invalid time_seconds value'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            content_type = ContentType.objects.get_for_model(Exercise)
+            time_spent, created = TimeSpent.objects.get_or_create(
+                user=request.user,
+                content_type=content_type,
+                object_id=exercise.id,
+                defaults={
+                    'total_time': timedelta(0),
+                    'current_session_time': timedelta(seconds=time_seconds),
+                    'last_session_start': timezone.now()
+                }
+            )
+            
+            if not created:
+                if action_type == 'start':
+                    time_spent.last_session_start = timezone.now()
+                elif action_type == 'reset':
+                    time_spent.current_session_time = timedelta(seconds=time_seconds)
+                else:  # update
+                    time_spent.current_session_time = timedelta(seconds=time_seconds)
+                
+                time_spent.save()
+            
+            return Response({
+                'total_time_seconds': time_spent.total_time_in_seconds,
+                'current_session_seconds': time_spent.current_session_in_seconds,
+                'action_performed': action_type
+            })
+            
+        except Exception as e:
+            logger.error(f"Error updating session time: {str(e)}")
+            return Response(
+                {'error': 'Failed to update session time', 'detail': str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+    
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
+    def save_session(self, request, pk=None):
+        """
+        Sauvegarde la session courante dans l'historique
+        """
+        exercise = self.get_object()
+        session_type = request.data.get('session_type', 'study')
+        notes = request.data.get('notes', '')
+        
+        try:
+            content_type = ContentType.objects.get_for_model(Exercise)
+            time_spent = TimeSpent.objects.get(
+                user=request.user,
+                content_type=content_type,
+                object_id=exercise.id
+            )
+            
+            session_seconds = time_spent.current_session_in_seconds
+            if session_seconds > 0:
+                time_spent.save_session(
+                    session_duration_seconds=session_seconds,
+                    session_type=session_type,
+                    notes=notes
+                )
+                
+                return Response({
+                    'message': 'Session saved successfully',
+                    'session_duration_seconds': session_seconds,
+                    'total_time_seconds': time_spent.total_time_in_seconds,
+                    'sessions_count': time_spent.get_sessions_history().count()
+                })
+            else:
+                return Response({
+                    'message': 'No session time to save'
+                })
+            
+        except TimeSpent.DoesNotExist:
+            return Response(
+                {'error': 'No time tracking found for this exercise'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        except Exception as e:
+            logger.error(f"Error saving session: {str(e)}")
+            return Response(
+                {'error': 'Failed to save session', 'detail': str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+    
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
+    def set_resume_preference(self, request, pk=None):
+        """
+        Définit la préférence de reprise pour cet exercice
+        """
+        exercise = self.get_object()
+        preference = request.data.get('preference')
+        
+        if preference not in ['continue', 'restart', 'ask']:
+            return Response(
+                {'error': 'Invalid preference. Must be "continue", "restart", or "ask"'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            content_type = ContentType.objects.get_for_model(Exercise)
+            time_spent, created = TimeSpent.objects.get_or_create(
+                user=request.user,
+                content_type=content_type,
+                object_id=exercise.id,
+                defaults={'resume_preference': preference}
+            )
+            
+            if not created:
+                time_spent.resume_preference = preference
+                time_spent.save()
+            
+            return Response({
+                'preference': time_spent.resume_preference,
+                'message': 'Preference updated successfully'
+            })
+            
+        except Exception as e:
+            logger.error(f"Error setting resume preference: {str(e)}")
+            return Response(
+                {'error': 'Failed to set preference', 'detail': str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+    @action(detail=True, methods=['get'], permission_classes=[IsAuthenticated])
+    def sessions_history(self, request, pk=None):
+        """
+        Récupère l'historique complet des sessions
+        """
+        exercise = self.get_object()
+        content_type = ContentType.objects.get_for_model(Exercise)
+        
+        sessions = TimeSession.objects.filter(
+            user=request.user,
+            content_type=content_type,
+            object_id=exercise.id
+        ).order_by('-created_at')
+        
+        # Pagination optionnelle
+        page_size = int(request.query_params.get('page_size', 10))
+        page = int(request.query_params.get('page', 1))
+        start = (page - 1) * page_size
+        end = start + page_size
+        
+        sessions_data = [
+            {
+                'id': session.id,
+                'duration_seconds': session.session_duration_in_seconds,
+                'session_type': session.session_type,
+                'started_at': session.started_at,
+                'ended_at': session.ended_at,
+                'notes': session.notes,
+                'date': session.created_at.date()
+            }
+            for session in sessions[start:end]
+        ]
+        
+        # Statistiques
+        total_sessions = sessions.count()
+        total_time = sum(s.session_duration_in_seconds for s in sessions)
+        avg_session = total_time / total_sessions if total_sessions > 0 else 0
+        
+        return Response({
+            'sessions': sessions_data,
+            'pagination': {
+                'page': page,
+                'page_size': page_size,
+                'total': total_sessions,
+                'has_next': end < total_sessions
+            },
+            'statistics': {
+                'total_sessions': total_sessions,
+                'total_time_seconds': total_time,
+                'average_session_seconds': int(avg_session)
+            }
+        })
                     
     
     
@@ -751,60 +912,10 @@ class ExamViewSet(VoteMixin, viewsets.ModelViewSet):
                 {'error': 'Exam not found in saved list'}, 
                 status=status.HTTP_404_NOT_FOUND
             )
-    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
-    def save_time_spent(self, request, pk=None):
-        """
-        Sauvegarde le temps passé sur un examen
-        """
-        exam = self.get_object()
-        time_seconds = request.data.get('time_spent', 0)
-        
-        if not isinstance(time_seconds, (int, float)) or time_seconds < 0:
-            return Response(
-                {'error': 'Invalid time_spent value. Must be a positive number.'}, 
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
-        try:
-            content_type = ContentType.objects.get_for_model(Exam)
-            time_spent, created = TimeSpent.objects.get_or_create(
-                user=request.user,
-                content_type=content_type,
-                object_id=exam.id,
-                defaults={'time_spent': timedelta(seconds=time_seconds)}
-            )
-            
-            if not created:
-                # Si l'enregistrement existe déjà, ajouter le temps
-                if time_spent.time_spent:
-                    time_spent.time_spent += timedelta(seconds=time_seconds)
-                else:
-                    time_spent.time_spent = timedelta(seconds=time_seconds)
-                time_spent.save()
-            
-            logger.debug(f"Time spent updated for exam {exam.id} by user {request.user.id}: +{time_seconds}s")
-            
-            # Calculer le temps total en secondes
-            total_seconds = int(time_spent.time_spent.total_seconds()) if time_spent.time_spent else 0
-            
-            return Response({
-                'id': time_spent.id,
-                'total_time_seconds': total_seconds,
-                'session_time_seconds': time_seconds,
-                'message': 'Time saved successfully'
-            }, status=status.HTTP_200_OK)
-            
-        except Exception as e:
-            logger.error(f"Error saving time spent: {str(e)}")
-            return Response(
-                {'error': 'Failed to save time spent', 'detail': str(e)},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
-    
     @action(detail=True, methods=['get'], permission_classes=[IsAuthenticated])
-    def get_time_spent(self, request, pk=None):
+    def time_status(self, request, pk=None):
         """
-        Récupère le temps total passé sur un examen par l'utilisateur
+        Récupère le statut complet du temps pour un exercice
         """
         exam = self.get_object()
         content_type = ContentType.objects.get_for_model(Exam)
@@ -816,15 +927,226 @@ class ExamViewSet(VoteMixin, viewsets.ModelViewSet):
                 object_id=exam.id
             )
             
-            total_seconds = int(time_spent.time_spent.total_seconds()) if time_spent.time_spent else 0
+            # Récupérer les dernières sessions
+            recent_sessions = time_spent.get_sessions_history()[:5]
+            sessions_data = [
+                {
+                    'id': session.id,
+                    'duration_seconds': session.session_duration_in_seconds,
+                    'session_type': session.session_type,
+                    'started_at': session.started_at,
+                    'ended_at': session.ended_at,
+                    'notes': session.notes
+                }
+                for session in recent_sessions
+            ]
             
             return Response({
-                'total_time_seconds': total_seconds,
-                'last_updated': time_spent.updated_at
+                'total_time_seconds': time_spent.total_time_in_seconds,
+                'current_session_seconds': time_spent.current_session_in_seconds,
+                'resume_preference': time_spent.resume_preference,
+                'last_session_start': time_spent.last_session_start,
+                'recent_sessions': sessions_data,
+                'sessions_count': time_spent.get_sessions_history().count()
             })
             
         except TimeSpent.DoesNotExist:
             return Response({
                 'total_time_seconds': 0,
-                'last_updated': None
+                'current_session_seconds': 0,
+                'resume_preference': 'ask',
+                'last_session_start': None,
+                'recent_sessions': [],
+                'sessions_count': 0
             })
+    
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
+    def update_session_time(self, request, pk=None):
+        """
+        Met à jour le temps de la session courante
+        """
+        exam = self.get_object()
+        time_seconds = request.data.get('time_seconds', 0)
+        action_type = request.data.get('action', 'update')  # 'update', 'reset', 'start'
+        
+        if not isinstance(time_seconds, (int, float)) or time_seconds < 0:
+            return Response(
+                {'error': 'Invalid time_seconds value'}, 
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            content_type = ContentType.objects.get_for_model(Exam)
+            time_spent, created = TimeSpent.objects.get_or_create(
+                user=request.user,
+                content_type=content_type,
+                object_id=exam.id,
+                defaults={
+                    'total_time': timedelta(0),
+                    'current_session_time': timedelta(seconds=time_seconds),
+                    'last_session_start': timezone.now()
+                }
+            )
+            
+            if not created:
+                if action_type == 'start':
+                    time_spent.last_session_start = timezone.now()
+                elif action_type == 'reset':
+                    time_spent.current_session_time = timedelta(seconds=time_seconds)
+                else:  # update
+                    time_spent.current_session_time = timedelta(seconds=time_seconds)
+                
+                time_spent.save()
+            
+            return Response({
+                'total_time_seconds': time_spent.total_time_in_seconds,
+                'current_session_seconds': time_spent.current_session_in_seconds,
+                'action_performed': action_type
+            })
+            
+        except Exception as e:
+            logger.error(f"Error updating session time: {str(e)}")
+            return Response(
+                {'error': 'Failed to update session time', 'detail': str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+    
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
+    def save_session(self, request, pk=None):
+        """
+        Sauvegarde la session courante dans l'historique
+        """
+        exam = self.get_object()
+        session_type = request.data.get('session_type', 'study')
+        notes = request.data.get('notes', '')
+        
+        try:
+            content_type = ContentType.objects.get_for_model(Exam)
+            time_spent = TimeSpent.objects.get(
+                user=request.user,
+                content_type=content_type,
+                object_id=exam.id
+            )
+            
+            session_seconds = time_spent.current_session_in_seconds
+            if session_seconds > 0:
+                time_spent.save_session(
+                    session_duration_seconds=session_seconds,
+                    session_type=session_type,
+                    notes=notes
+                )
+                
+                return Response({
+                    'message': 'Session saved successfully',
+                    'session_duration_seconds': session_seconds,
+                    'total_time_seconds': time_spent.total_time_in_seconds,
+                    'sessions_count': time_spent.get_sessions_history().count()
+                })
+            else:
+                return Response({
+                    'message': 'No session time to save'
+                })
+            
+        except TimeSpent.DoesNotExist:
+            return Response(
+                {'error': 'No time tracking found for this exam'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        except Exception as e:
+            logger.error(f"Error saving session: {str(e)}")
+            return Response(
+                {'error': 'Failed to save session', 'detail': str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+    
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
+    def set_resume_preference(self, request, pk=None):
+        """
+        Définit la préférence de reprise pour cet exercice
+        """
+        exam = self.get_object()
+        preference = request.data.get('preference')
+        
+        if preference not in ['continue', 'restart', 'ask']:
+            return Response(
+                {'error': 'Invalid preference. Must be "continue", "restart", or "ask"'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        try:
+            content_type = ContentType.objects.get_for_model(Exam)
+            time_spent, created = TimeSpent.objects.get_or_create(
+                user=request.user,
+                content_type=content_type,
+                object_id=exam.id,
+                defaults={'resume_preference': preference}
+            )
+            
+            if not created:
+                time_spent.resume_preference = preference
+                time_spent.save()
+            
+            return Response({
+                'preference': time_spent.resume_preference,
+                'message': 'Preference updated successfully'
+            })
+            
+        except Exception as e:
+            logger.error(f"Error setting resume preference: {str(e)}")
+            return Response(
+                {'error': 'Failed to set preference', 'detail': str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+    @action(detail=True, methods=['get'], permission_classes=[IsAuthenticated])
+    def sessions_history(self, request, pk=None):
+        """
+        Récupère l'historique complet des sessions
+        """
+        exam = self.get_object()
+        content_type = ContentType.objects.get_for_model(Exam)
+        
+        sessions = TimeSession.objects.filter(
+            user=request.user,
+            content_type=content_type,
+            object_id=exam.id
+        ).order_by('-created_at')
+        
+        # Pagination optionnelle
+        page_size = int(request.query_params.get('page_size', 10))
+        page = int(request.query_params.get('page', 1))
+        start = (page - 1) * page_size
+        end = start + page_size
+        
+        sessions_data = [
+            {
+                'id': session.id,
+                'duration_seconds': session.session_duration_in_seconds,
+                'session_type': session.session_type,
+                'started_at': session.started_at,
+                'ended_at': session.ended_at,
+                'notes': session.notes,
+                'date': session.created_at.date()
+            }
+            for session in sessions[start:end]
+        ]
+        
+        # Statistiques
+        total_sessions = sessions.count()
+        total_time = sum(s.session_duration_in_seconds for s in sessions)
+        avg_session = total_time / total_sessions if total_sessions > 0 else 0
+        
+        return Response({
+            'sessions': sessions_data,
+            'pagination': {
+                'page': page,
+                'page_size': page_size,
+                'total': total_sessions,
+                'has_next': end < total_sessions
+            },
+            'statistics': {
+                'total_sessions': total_sessions,
+                'total_time_seconds': total_time,
+                'average_session_seconds': int(avg_session)
+            }
+        })
