@@ -274,28 +274,6 @@ class ExerciseViewSet(VoteMixin, viewsets.ModelViewSet):
                 status=status.HTTP_404_NOT_FOUND
             )
         
-    @action(detail=True, methods=['delete'], permission_classes=[IsAuthenticated])
-    def delete_time_spent(self, request, pk=None):
-        """
-        Delete time spent record for an exercise
-        """
-        exercise = self.get_object()
-        content_type = ContentType.objects.get_for_model(Exercise)
-        
-        try:
-            time_spent = TimeSpent.objects.get(
-                user=request.user,
-                content_type=content_type,
-                object_id=exercise.id
-            )
-            time_spent.delete()
-            logger.debug(f"Time spent record deleted for exercise {exercise.id} by user {request.user.id}")
-            return Response(status=status.HTTP_204_NO_CONTENT)
-        except TimeSpent.DoesNotExist:
-            return Response(
-                {'error': 'Time spent record not found'}, 
-                status=status.HTTP_404_NOT_FOUND
-            )
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
     def save_time_spent(self, request, pk=None):
         """
@@ -321,13 +299,20 @@ class ExerciseViewSet(VoteMixin, viewsets.ModelViewSet):
             
             if not created:
                 # Si l'enregistrement existe déjà, ajouter le temps
-                time_spent.add_time(time_seconds)
+                if time_spent.time_spent:
+                    time_spent.time_spent += timedelta(seconds=time_seconds)
+                else:
+                    time_spent.time_spent = timedelta(seconds=time_seconds)
+                time_spent.save()
             
             logger.debug(f"Time spent updated for exercise {exercise.id} by user {request.user.id}: +{time_seconds}s")
             
+            # Calculer le temps total en secondes
+            total_seconds = int(time_spent.time_spent.total_seconds()) if time_spent.time_spent else 0
+            
             return Response({
                 'id': time_spent.id,
-                'total_time_seconds': time_spent.time_spent_in_seconds,
+                'total_time_seconds': total_seconds,
                 'session_time_seconds': time_seconds,
                 'message': 'Time saved successfully'
             }, status=status.HTTP_200_OK)
@@ -354,8 +339,10 @@ class ExerciseViewSet(VoteMixin, viewsets.ModelViewSet):
                 object_id=exercise.id
             )
             
+            total_seconds = int(time_spent.time_spent.total_seconds()) if time_spent.time_spent else 0
+            
             return Response({
-                'total_time_seconds': time_spent.time_spent_in_seconds,
+                'total_time_seconds': total_seconds,
                 'last_updated': time_spent.updated_at
             })
             
@@ -788,13 +775,20 @@ class ExamViewSet(VoteMixin, viewsets.ModelViewSet):
             
             if not created:
                 # Si l'enregistrement existe déjà, ajouter le temps
-                time_spent.add_time(time_seconds)
+                if time_spent.time_spent:
+                    time_spent.time_spent += timedelta(seconds=time_seconds)
+                else:
+                    time_spent.time_spent = timedelta(seconds=time_seconds)
+                time_spent.save()
             
             logger.debug(f"Time spent updated for exam {exam.id} by user {request.user.id}: +{time_seconds}s")
             
+            # Calculer le temps total en secondes
+            total_seconds = int(time_spent.time_spent.total_seconds()) if time_spent.time_spent else 0
+            
             return Response({
                 'id': time_spent.id,
-                'total_time_seconds': time_spent.time_spent_in_seconds,
+                'total_time_seconds': total_seconds,
                 'session_time_seconds': time_seconds,
                 'message': 'Time saved successfully'
             }, status=status.HTTP_200_OK)
@@ -821,8 +815,10 @@ class ExamViewSet(VoteMixin, viewsets.ModelViewSet):
                 object_id=exam.id
             )
             
+            total_seconds = int(time_spent.time_spent.total_seconds()) if time_spent.time_spent else 0
+            
             return Response({
-                'total_time_seconds': time_spent.time_spent_in_seconds,
+                'total_time_seconds': total_seconds,
                 'last_updated': time_spent.updated_at
             })
             
