@@ -965,24 +965,27 @@ class ExamViewSet(VoteMixin, viewsets.ModelViewSet):
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
     def update_session_time(self, request, pk=None):
         """
-        Met à jour le temps de la session courante
+        Update current session time
         """
-        exam = self.get_object()
+        exercise = self.get_object()
         time_seconds = request.data.get('time_seconds', 0)
-        action_type = request.data.get('action', 'update')  # 'update', 'reset', 'start'
         
-        if not isinstance(time_seconds, (int, float)) or time_seconds < 0:
+        try:
+            time_seconds = int(time_seconds)
+            if time_seconds < 0:
+                raise ValueError("Time cannot be negative")
+        except (TypeError, ValueError):
             return Response(
                 {'error': 'Invalid time_seconds value'}, 
                 status=status.HTTP_400_BAD_REQUEST
             )
         
         try:
-            content_type = ContentType.objects.get_for_model(Exam)
+            content_type = ContentType.objects.get_for_model(Exercise)
             time_spent, created = TimeSpent.objects.get_or_create(
                 user=request.user,
                 content_type=content_type,
-                object_id=exam.id,
+                object_id=exercise.id,
                 defaults={
                     'total_time': timedelta(0),
                     'current_session_time': timedelta(seconds=time_seconds),
@@ -991,74 +994,55 @@ class ExamViewSet(VoteMixin, viewsets.ModelViewSet):
             )
             
             if not created:
-                if action_type == 'start':
+                time_spent.update_session_time(time_seconds)
+                if not time_spent.last_session_start:
                     time_spent.last_session_start = timezone.now()
-                elif action_type == 'reset':
-                    time_spent.current_session_time = timedelta(seconds=time_seconds)
-                else:  # update
-                    time_spent.current_session_time = timedelta(seconds=time_seconds)
-                
-                time_spent.save()
+                    time_spent.save()
             
             return Response({
                 'total_time_seconds': time_spent.total_time_in_seconds,
                 'current_session_seconds': time_spent.current_session_in_seconds,
-                'action_performed': action_type
+                'success': True
             })
             
         except Exception as e:
             logger.error(f"Error updating session time: {str(e)}")
             return Response(
-                {'error': 'Failed to update session time', 'detail': str(e)},
+                {'error': 'Failed to update session time'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
-    
+
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
     def save_session(self, request, pk=None):
         """
-        Sauvegarde la session courante dans l'historique
+        Save current session and add to total time
         """
-        exam = self.get_object()
-        session_type = request.data.get('session_type', 'study')
-        notes = request.data.get('notes', '')
+        exercise = self.get_object()
         
         try:
-            content_type = ContentType.objects.get_for_model(Exam)
+            content_type = ContentType.objects.get_for_model(Exercise)
             time_spent = TimeSpent.objects.get(
                 user=request.user,
                 content_type=content_type,
-                object_id=exam.id
+                object_id=exercise.id
             )
             
-            session_seconds = time_spent.current_session_in_seconds
-            if session_seconds > 0:
-                time_spent.save_session(
-                    session_duration_seconds=session_seconds,
-                    session_type=session_type,
-                    notes=notes
-                )
-                
+            if time_spent.save_and_reset_session():
                 return Response({
                     'message': 'Session saved successfully',
-                    'session_duration_seconds': session_seconds,
                     'total_time_seconds': time_spent.total_time_in_seconds,
                     'sessions_count': time_spent.get_sessions_history().count()
                 })
             else:
                 return Response({
-                    'message': 'No session time to save'
+                    'message': 'No session time to save',
+                    'total_time_seconds': time_spent.total_time_in_seconds
                 })
             
         except TimeSpent.DoesNotExist:
             return Response(
-                {'error': 'No time tracking found for this exam'},
+                {'error': 'No time tracking found for this exercise'},
                 status=status.HTTP_404_NOT_FOUND
-            )
-        except Exception as e:
-            logger.error(f"Error saving session: {str(e)}")
-            return Response(
-                {'error': 'Failed to save session', 'detail': str(e)},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
     
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])

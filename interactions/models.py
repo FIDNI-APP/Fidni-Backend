@@ -202,6 +202,7 @@ class TimeSession(models.Model):
     def session_duration_in_seconds(self):
         return int(self.session_duration.total_seconds()) if self.session_duration else 0
     
+# In TimeSpent model, add these methods to properly handle time calculations
 class TimeSpent(models.Model):
     """
     Garde le temps total et le temps de la session courante pour un contenu
@@ -217,12 +218,8 @@ class TimeSpent(models.Model):
     # Temps de la session courante (peut être remis à zéro)
     current_session_time = models.DurationField(default=timedelta(0))
     
-    # Préférence de l'utilisateur pour ce contenu
-    resume_preference = models.CharField(max_length=20, choices=[
-        ('continue', 'Continuer la session précédente'),
-        ('restart', 'Toujours recommencer'),
-        ('ask', 'Demander à chaque fois'),
-    ], default='ask')
+    # Remove or simplify the resume preference - it's confusing
+    # resume_preference = models.CharField(...)  # REMOVE THIS
     
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -240,42 +237,47 @@ class TimeSpent(models.Model):
     
     @property
     def total_time_in_seconds(self):
-        return int(self.total_time.total_seconds()) if self.total_time else 0
+        """Safely return total time in seconds"""
+        if self.total_time:
+            return int(self.total_time.total_seconds())
+        return 0
     
     @property
     def current_session_in_seconds(self):
-        return int(self.current_session_time.total_seconds()) if self.current_session_time else 0
+        """Safely return current session time in seconds"""
+        if self.current_session_time:
+            return int(self.current_session_time.total_seconds())
+        return 0
     
-    def get_sessions_history(self):
-        """Retourne l'historique des sessions pour ce contenu"""
-        return TimeSession.objects.filter(
-            user=self.user,
-            content_type=self.content_type,
-            object_id=self.object_id
-        ).order_by('-created_at')
+    def update_session_time(self, seconds):
+        """Update current session time"""
+        self.current_session_time = timedelta(seconds=seconds)
+        self.save()
     
-    def save_session(self, session_duration_seconds, session_type='study', notes=''):
-        """Sauvegarde la session courante dans l'historique"""
-        if session_duration_seconds > 0:
-            session_duration = timedelta(seconds=session_duration_seconds)
+    def save_and_reset_session(self):
+        """Add current session to total and reset"""
+        if self.current_session_time and self.current_session_time.total_seconds() > 0:
+            self.total_time += self.current_session_time
             
-            # Créer l'enregistrement de session
+            # Create a session record
             TimeSession.objects.create(
                 user=self.user,
                 content_type=self.content_type,
                 object_id=self.object_id,
-                session_duration=session_duration,
-                started_at=self.last_session_start or timezone.now() - session_duration,
+                session_duration=self.current_session_time,
+                started_at=self.last_session_start or (timezone.now() - self.current_session_time),
                 ended_at=timezone.now(),
-                session_type=session_type,
-                notes=notes
+                session_type='study'
             )
             
-            # Mettre à jour le temps total
-            self.total_time += session_duration
-            self.current_session_time = timedelta(0)  # Reset session courante
+            self.current_session_time = timedelta(0)
+            self.last_session_start = None
             self.save()
-
+            
+            return True
+        return False
+    
+    
 class TimeSpentMixin(CompleteableMixin):
     time_spent = GenericRelation(TimeSpent)
 
