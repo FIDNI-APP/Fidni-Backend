@@ -115,7 +115,8 @@ jobs:
         docker-compose up -d
         
         # Clean up old images
-        docker image prune -f
+        docker image prune -a -f
+        docker volume prune -f
         
         echo "Deployment completed successfully!"
         EOF
