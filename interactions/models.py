@@ -3,6 +3,7 @@ from django.contrib.auth.models import User
 from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
 from django.contrib.contenttypes.models import ContentType
 from datetime import timedelta
+from django.utils import timezone
 import logging
 
 logger = logging.getLogger('django')
@@ -158,6 +159,122 @@ class Evaluate(models.Model):
         return f"{self.user.username} rated {self.content_object.title} as {self.rating}/5"
     
 #----------------------------TIME SPENT-------------------------------
+
+class TimeSession(models.Model):
+    """
+    Enregistre chaque session de travail sur un contenu spécifique
+    """
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='time_sessions')
+    content_type = models.ForeignKey(ContentType, on_delete=models.PROTECT)
+    object_id = models.PositiveIntegerField()
+    content_object = GenericForeignKey('content_type', 'object_id')
+    
+    # Temps de cette session spécifique
+    session_duration = models.DurationField()
+    
+    # Métadonnées de la session
+    started_at = models.DateTimeField()
+    ended_at = models.DateTimeField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    # Optionnel : type de session pour analytics
+    session_type = models.CharField(max_length=20, choices=[
+        ('study', 'Étude'),
+        ('review', 'Révision'),
+        ('practice', 'Pratique'),
+        ('exam', 'Examen'),
+    ], default='study')
+    
+    # Notes optionnelles de l'utilisateur sur cette session
+    notes = models.TextField(blank=True)
+    
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['user', 'content_type', 'object_id']),
+            models.Index(fields=['created_at']),
+        ]
+    
+    def __str__(self):
+        return f"{self.user.username} - {self.session_duration} on {self.content_object}"
+    
+    @property
+    def session_duration_in_seconds(self):
+        return int(self.session_duration.total_seconds()) if self.session_duration else 0
+    
+class TimeSpent(models.Model):
+    """
+    Garde le temps total et le temps de la session courante pour un contenu
+    """
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='time_spent')
+    content_type = models.ForeignKey(ContentType, on_delete=models.PROTECT)
+    object_id = models.PositiveIntegerField()
+    content_object = GenericForeignKey('content_type', 'object_id')
+    
+    # Temps total cumulé de toutes les sessions
+    total_time = models.DurationField(default=timedelta(0))
+    
+    # Temps de la session courante (peut être remis à zéro)
+    current_session_time = models.DurationField(default=timedelta(0))
+    
+    # Préférence de l'utilisateur pour ce contenu
+    resume_preference = models.CharField(max_length=20, choices=[
+        ('continue', 'Continuer la session précédente'),
+        ('restart', 'Toujours recommencer'),
+        ('ask', 'Demander à chaque fois'),
+    ], default='ask')
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    last_session_start = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        unique_together = ('user', 'content_type', 'object_id')
+        indexes = [
+            models.Index(fields=['user']),
+            models.Index(fields=['content_type', 'object_id']),
+        ]
+
+    def __str__(self):
+        return f"{self.user.username} - Total: {self.total_time}, Session: {self.current_session_time}"
+    
+    @property
+    def total_time_in_seconds(self):
+        return int(self.total_time.total_seconds()) if self.total_time else 0
+    
+    @property
+    def current_session_in_seconds(self):
+        return int(self.current_session_time.total_seconds()) if self.current_session_time else 0
+    
+    def get_sessions_history(self):
+        """Retourne l'historique des sessions pour ce contenu"""
+        return TimeSession.objects.filter(
+            user=self.user,
+            content_type=self.content_type,
+            object_id=self.object_id
+        ).order_by('-created_at')
+    
+    def save_session(self, session_duration_seconds, session_type='study', notes=''):
+        """Sauvegarde la session courante dans l'historique"""
+        if session_duration_seconds > 0:
+            session_duration = timedelta(seconds=session_duration_seconds)
+            
+            # Créer l'enregistrement de session
+            TimeSession.objects.create(
+                user=self.user,
+                content_type=self.content_type,
+                object_id=self.object_id,
+                session_duration=session_duration,
+                started_at=self.last_session_start or timezone.now() - session_duration,
+                ended_at=timezone.now(),
+                session_type=session_type,
+                notes=notes
+            )
+            
+            # Mettre à jour le temps total
+            self.total_time += session_duration
+            self.current_session_time = timedelta(0)  # Reset session courante
+            self.save()
 class TimeSpent(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='time_spent')
     time_spent = models.DurationField()  # Stocke la durée totale
