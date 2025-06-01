@@ -8,7 +8,7 @@ from things.views import (
 )
 from users.views import (
     get_current_user,
-    UserViewSet, UserSettingsView, mark_content_viewed, OnboardingView,
+    UserProfileViewSet, UserSettingsView, mark_content_viewed, OnboardingView,
 )
 from caracteristics.views import (
     ClassLevelViewSet, SubjectViewSet, ChapterViewSet, SubfieldViewSet, TheoremViewSet,)
@@ -28,7 +28,7 @@ router.register(r'comments', CommentViewSet, basename='comment')
 router.register(r'solutions', SolutionViewSet, basename='solution')
 router.register(r'subfields', SubfieldViewSet, basename='subfield')
 router.register(r'theorems', TheoremViewSet, basename='theorem')
-router.register(r'users', UserViewSet, basename='user')
+router.register(r'users', UserProfileViewSet, basename='user-profile')
 router.register(r'lessons', LessonViewSet, basename='lesson')
 router.register(r'notebooks', NotebookViewSet, basename='notebook')
 router.register(r'sections', NotebookSectionViewSet, basename='section')
@@ -53,7 +53,7 @@ urlpatterns = [
     path("api/token/refresh/", TokenRefreshView.as_view(), name="refresh"),
     path('api/content/<str:content_id>/view/', mark_content_viewed, name='mark-content-viewed'),
     path('api/onboarding/', OnboardingView.as_view(), name='onboarding'),
-    path('api/users/<str:username>/onboarding-status/', UserViewSet.as_view({'get': 'onboarding_status'}), name='onboarding-status'),
+    path('api/users/<str:username>/onboarding-status/', UserProfileViewSet.as_view({'get': 'onboarding_status'}), name='onboarding-status'),
 
      # User endpoints
     path('api/auth/settings/', UserSettingsView.as_view(), name='user-settings'),

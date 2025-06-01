@@ -11,7 +11,7 @@ from datetime import datetime, timedelta
 from django.utils import timezone
 
 from .models import UserProfile
-from .serializers import UserProfileSerializer, UserSerializer, UserSettingsSerializer
+from .serializers import UserProfileSerializer, UserSerializer, UserSettingsSerializer, OnboardingSerializer
 from things.models import Exercise, Exam
 from .models import ViewHistory
 from interactions.models import TimeSession, TimeSpent
@@ -422,5 +422,9 @@ def mark_content_viewed(request, content_id):
         return Response({'status': 'success'})
     except Exercise.DoesNotExist:
         return Response({'error': 'Exercise not found'}, status=status.HTTP_404_NOT_FOUND)
+    
+
+# Alias for URL routing
+UserProfileViewSet = UserViewSet
     
 
