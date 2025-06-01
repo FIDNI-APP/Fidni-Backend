@@ -254,7 +254,7 @@ class TimeSpent(models.Model):
         self.current_session_time = timedelta(seconds=seconds)
         self.save()
     
-    def save_and_reset_session(self):
+    def save_and_reset_session(self, session_type='study', notes=''):
         """Add current session to total and reset"""
         if self.current_session_time and self.current_session_time.total_seconds() > 0:
             self.total_time += self.current_session_time
@@ -267,7 +267,8 @@ class TimeSpent(models.Model):
                 session_duration=self.current_session_time,
                 started_at=self.last_session_start or (timezone.now() - self.current_session_time),
                 ended_at=timezone.now(),
-                session_type='study'
+                session_type=session_type,
+                notes=notes
             )
             
             self.current_session_time = timedelta(0)

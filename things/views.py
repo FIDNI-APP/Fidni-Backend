@@ -14,7 +14,7 @@ from django.db.models import Count, Q
 
 from .models import Exercise, Solution, Comment, Lesson
 from .serializers import  ExerciseSerializer, SolutionSerializer, CommentSerializer, ExerciseCreateSerializer, LessonSerializer, LessonCreateSerializer
-from interactions.models import Vote, Save, Complete, TimeSpent
+from interactions.models import Vote, Save, Complete, TimeSpent, TimeSession
 from interactions.serializers import VoteSerializer, SaveSerializer, CompleteSerializer, TimeSpentSerializer
 from interactions.views import VoteMixin
 from rest_framework.permissions import IsAuthenticatedOrReadOnly,IsAuthenticated
@@ -333,6 +333,8 @@ class ExerciseViewSet(VoteMixin, viewsets.ModelViewSet):
         Save current session and add to total time
         """
         exercise = self.get_object()
+        session_type = request.data.get('session_type', 'study')
+        notes = request.data.get('notes', '')
         
         try:
             content_type = ContentType.objects.get_for_model(Exercise)
@@ -342,7 +344,7 @@ class ExerciseViewSet(VoteMixin, viewsets.ModelViewSet):
                 object_id=exercise.id
             )
             
-            if time_spent.save_and_reset_session():
+            if time_spent.save_and_reset_session(session_type=session_type, notes=notes):
                 return Response({
                     'message': 'Session saved successfully',
                     'total_time_seconds': time_spent.total_time
@@ -357,6 +359,84 @@ class ExerciseViewSet(VoteMixin, viewsets.ModelViewSet):
             return Response(
                 {'error': 'No time tracking found for this exercise'},
                 status=status.HTTP_404_NOT_FOUND
+            )
+            
+    @action(detail=True, methods=['get'], permission_classes=[IsAuthenticated])
+    def session_history(self, request, pk=None):
+        """
+        Get session history for this exercise
+        """
+        exercise = self.get_object()
+        
+        try:
+            content_type = ContentType.objects.get_for_model(Exercise)
+            
+            # Get all sessions for this exercise
+            sessions = TimeSession.objects.filter(
+                user=request.user,
+                content_type=content_type,
+                object_id=exercise.id
+            ).order_by('-created_at')[:20]  # Limit to last 20 sessions
+            
+            # Format the response
+            session_data = [{
+                'id': str(session.id),
+                'session_duration': int(session.session_duration.total_seconds()),
+                'started_at': session.started_at.isoformat(),
+                'ended_at': session.ended_at.isoformat(),
+                'created_at': session.created_at.isoformat(),
+                'session_type': session.session_type,
+                'notes': session.notes
+            } for session in sessions]
+            
+            return Response({
+                'sessions': session_data
+            })
+            
+        except Exception as e:
+            logger.error(f"Error retrieving session history: {str(e)}")
+            return Response(
+                {'error': 'Failed to retrieve session history'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+            
+    @action(detail=True, methods=['get'], permission_classes=[IsAuthenticated])
+    def session_history(self, request, pk=None):
+        """
+        Get session history for this exercise
+        """
+        exercise = self.get_object()
+        
+        try:
+            content_type = ContentType.objects.get_for_model(Exercise)
+            
+            # Get all sessions for this exercise
+            sessions = TimeSession.objects.filter(
+                user=request.user,
+                content_type=content_type,
+                object_id=exercise.id
+            ).order_by('-created_at')[:20]  # Limit to last 20 sessions
+            
+            # Format the response
+            session_data = [{
+                'id': str(session.id),
+                'session_duration': int(session.session_duration.total_seconds()),
+                'started_at': session.started_at.isoformat(),
+                'ended_at': session.ended_at.isoformat(),
+                'created_at': session.created_at.isoformat(),
+                'session_type': session.session_type,
+                'notes': session.notes
+            } for session in sessions]
+            
+            return Response({
+                'sessions': session_data
+            })
+            
+        except Exception as e:
+            logger.error(f"Error retrieving session history: {str(e)}")
+            return Response(
+                {'error': 'Failed to retrieve session history'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
                     
@@ -815,6 +895,8 @@ class ExamViewSet(VoteMixin, viewsets.ModelViewSet):
         Save current session and add to total time
         """
         exam = self.get_object()
+        session_type = request.data.get('session_type', 'study')
+        notes = request.data.get('notes', '')
         
         try:
             content_type = ContentType.objects.get_for_model(Exam)
@@ -824,7 +906,7 @@ class ExamViewSet(VoteMixin, viewsets.ModelViewSet):
                 object_id=exam.id
             )
             
-            if time_spent.save_and_reset_session():
+            if time_spent.save_and_reset_session(session_type=session_type, notes=notes):
                 return Response({
                     'message': 'Session saved successfully',
                     'total_time_seconds': time_spent.total_time,
@@ -839,4 +921,43 @@ class ExamViewSet(VoteMixin, viewsets.ModelViewSet):
             return Response(
                 {'error': 'No time tracking found for this exercise'},
                 status=status.HTTP_404_NOT_FOUND
+            )
+            
+    @action(detail=True, methods=['get'], permission_classes=[IsAuthenticated])
+    def session_history(self, request, pk=None):
+        """
+        Get session history for this exam
+        """
+        exam = self.get_object()
+        
+        try:
+            content_type = ContentType.objects.get_for_model(Exam)
+            
+            # Get all sessions for this exam
+            sessions = TimeSession.objects.filter(
+                user=request.user,
+                content_type=content_type,
+                object_id=exam.id
+            ).order_by('-created_at')[:20]  # Limit to last 20 sessions
+            
+            # Format the response
+            session_data = [{
+                'id': str(session.id),
+                'session_duration': int(session.session_duration.total_seconds()),
+                'started_at': session.started_at.isoformat(),
+                'ended_at': session.ended_at.isoformat(),
+                'created_at': session.created_at.isoformat(),
+                'session_type': session.session_type,
+                'notes': session.notes
+            } for session in sessions]
+            
+            return Response({
+                'sessions': session_data
+            })
+            
+        except Exception as e:
+            logger.error(f"Error retrieving session history: {str(e)}")
+            return Response(
+                {'error': 'Failed to retrieve session history'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )

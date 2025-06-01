@@ -32,8 +32,8 @@ class VoteMixin:
     Mixin that provides vote functionality with toggle behavior
     """
     
-    @action(detail=True, methods=['post'])
-    def vote(self, request, pk=None, permission_classes=[IsAuthenticated]):
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
+    def vote(self, request, pk=None):
         obj = self.get_object()
         vote_value = request.data.get('value')
         
