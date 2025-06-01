@@ -4,9 +4,10 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django.db.models import Q
 from django.shortcuts import get_object_or_404
+from django.db import transaction
 
-from .models import Notebook, NotebookSection
-from .serializers import NotebookSerializer, NotebookSectionSerializer
+from .models import Notebook, NotebookSection, NotebookAnnotation
+from .serializers import NotebookSerializer, NotebookSectionSerializer, NotebookAnnotationSerializer
 from caracteristics.models import Subject, Chapter, ClassLevel
 from things.models import Lesson
 

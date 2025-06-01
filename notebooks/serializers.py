@@ -1,7 +1,7 @@
 # notebooks/serializers.py
 
 from rest_framework import serializers
-from .models import Notebook, NotebookSection
+from .models import Notebook, NotebookSection, NotebookAnnotation
 from caracteristics.serializers import SubjectSerializer, ClassLevelSerializer, ChapterSerializer
 from caracteristics.models import Chapter, Subject, ClassLevel
 from things.models import Lesson
@@ -17,6 +17,13 @@ class NotebookSectionSerializer(serializers.ModelSerializer):
         model = NotebookSection
         fields = ['id', 'chapter', 'chapter_id', 'lesson', 'lesson_id', 'user_notes', 'order']
         read_only_fields = ['id']
+
+class NotebookAnnotationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = NotebookAnnotation
+        fields = ['id', 'annotation_id', 'annotation_type', 'position_x', 'position_y', 
+                 'width', 'height', 'color', 'content', 'path_data', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'created_at', 'updated_at']
 
 class NotebookSerializer(serializers.ModelSerializer):
     subject = SubjectSerializer(read_only=True)
