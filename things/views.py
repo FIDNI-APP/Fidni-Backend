@@ -446,13 +446,47 @@ class ExerciseViewSet(VoteMixin, viewsets.ModelViewSet):
             return Response(
                 {'error': 'Session not found'},
                 status=status.HTTP_404_NOT_FOUND
-            )
+            )    
+    @action(detail=True, methods=['get'], permission_classes=[IsAuthenticated])
+    def session_history(self, request, pk=None):
+        """
+        Get session history for this exercise
+        """
+        exercise = self.get_object()
+        
+        try:
+            content_type = ContentType.objects.get_for_model(Exercise)
             
-    
+            # Get all sessions for this exercise
+            sessions = TimeSession.objects.filter(
+                user=request.user,
+                content_type=content_type,
+                object_id=exercise.id
+            ).order_by('-created_at')[:20]  # Limit to last 20 sessions
+            
+            # Format the response
+            session_data = [{
+                'id': str(session.id),
+                'session_duration': int(session.session_duration.total_seconds()),
+                'started_at': session.started_at.isoformat(),
+                'ended_at': session.ended_at.isoformat(),
+                'created_at': session.created_at.isoformat(),
+                'session_type': session.session_type,
+                'notes': session.notes
+            } for session in sessions]
+            
+            return Response({
+                'sessions': session_data
+            })
+            
+        except Exception as e:
+            logger.error(f"Error retrieving session history: {str(e)}")
+            return Response(
+                {'error': 'Failed to retrieve session history'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
-                    
-    
-    
+
 #----------------------------SOLUTION-------------------------------
 class SolutionViewSet(VoteMixin, viewsets.ModelViewSet):
     queryset = Solution.objects.all()
