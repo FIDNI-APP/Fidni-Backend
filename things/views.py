@@ -9,9 +9,9 @@ from datetime import timedelta
 import logging
 
 from .models import (
-    Exercise, Solution, Comment, Lesson, Exam,
-    TimeSpent, TimeSession
+    Exercise, Solution, Comment, Lesson, Exam
 )
+from interactions.models import TimeSpent, TimeSession
 from .serializers import (
     ExerciseSerializer, SolutionSerializer, CommentSerializer,
     LessonSerializer, ExamSerializer
