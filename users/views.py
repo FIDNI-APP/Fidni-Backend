@@ -12,7 +12,8 @@ from django.utils import timezone
 
 from .models import UserProfile
 from .serializers import UserProfileSerializer, UserSerializer, UserSettingsSerializer
-from things.models import Exercise, Exam, ViewHistory
+from things.models import Exercise, Exam
+from .models import ViewHistory
 from interactions.models import TimeSession, TimeSpent
 
 
