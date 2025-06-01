@@ -277,167 +277,178 @@ class ExerciseViewSet(VoteMixin, viewsets.ModelViewSet):
                 status=status.HTTP_404_NOT_FOUND
             )
         
-    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
-    def update_session_time(self, request, pk=None):
+    @action(detail=True, methods=['get'], permission_classes=[IsAuthenticated])
+    def session_stats(self, request, pk=None):
         """
-        Update current session time
+        Get session statistics and history for comparison
         """
         exercise = self.get_object()
-        time_seconds = request.data.get('time_seconds', 0)
+        content_type = ContentType.objects.get_for_model(Exercise)
+        
+        # Get all sessions for this user and exercise
+        sessions = TimeSession.objects.filter(
+            user=request.user,
+            content_type=content_type,
+            object_id=exercise.id
+        ).order_by('-created_at')[:10]  # Last 10 sessions
+        
+        # Calculate statistics
+        if sessions.exists():
+            durations = [s.session_duration_in_seconds for s in sessions]
+            stats = {
+                'total_sessions': sessions.count(),
+                'best_time': min(durations),
+                'worst_time': max(durations),
+                'average_time': sum(durations) / len(durations),
+                'last_session': {
+                    'id': sessions[0].id,
+                    'duration_seconds': sessions[0].session_duration_in_seconds,
+                    'session_type': sessions[0].session_type,
+                    'started_at': sessions[0].started_at,
+                    'ended_at': sessions[0].ended_at,
+                    'notes': sessions[0].notes,
+                    'created_at': sessions[0].created_at
+                } if sessions else None,
+                'improvement_percentage': None
+            }
+            
+            # Calculate improvement between last two sessions
+            if len(sessions) >= 2:
+                last_time = sessions[0].session_duration_in_seconds
+                previous_time = sessions[1].session_duration_in_seconds
+                if previous_time > 0:
+                    improvement = ((previous_time - last_time) / previous_time) * 100
+                    stats['improvement_percentage'] = round(improvement, 1)
+        else:
+            stats = {
+                'total_sessions': 0,
+                'best_time': None,
+                'worst_time': None,
+                'average_time': None,
+                'last_session': None,
+                'improvement_percentage': None
+            }
+        
+        # Format sessions for response
+        sessions_data = [
+            {
+                'id': session.id,
+                'duration_seconds': session.session_duration_in_seconds,
+                'session_type': session.session_type,
+                'started_at': session.started_at,
+                'ended_at': session.ended_at,
+                'notes': session.notes,
+                'created_at': session.created_at
+            }
+            for session in sessions
+        ]
+        
+        return Response({
+            'sessions': sessions_data,
+            'stats': stats
+        })
+
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
+    def save_session(self, request, pk=None):
+        """
+        Save a completed timing session
+        """
+        exercise = self.get_object()
+        duration_seconds = request.data.get('duration_seconds', 0)
+        session_type = request.data.get('session_type', 'practice')
+        notes = request.data.get('notes', '')
         
         try:
-            time_seconds = int(time_seconds)
-            if time_seconds < 0:
-                raise ValueError("Time cannot be negative")
+            duration_seconds = int(duration_seconds)
+            if duration_seconds <= 0:
+                return Response(
+                    {'error': 'Duration must be greater than 0'}, 
+                    status=status.HTTP_400_BAD_REQUEST
+                )
         except (TypeError, ValueError):
             return Response(
-                {'error': 'Invalid time_seconds value'}, 
+                {'error': 'Invalid duration value'}, 
                 status=status.HTTP_400_BAD_REQUEST
             )
         
         try:
             content_type = ContentType.objects.get_for_model(Exercise)
-            time_spent, created = TimeSpent.objects.get_or_create(
+            
+            # Create the session record
+            session = TimeSession.objects.create(
                 user=request.user,
                 content_type=content_type,
                 object_id=exercise.id,
-                defaults={
-                    'total_time': timedelta(0),
-                    'current_session_time': timedelta(seconds=time_seconds),
-                    'last_session_start': timezone.now()
-                }
+                session_duration=timedelta(seconds=duration_seconds),
+                started_at=timezone.now() - timedelta(seconds=duration_seconds),
+                ended_at=timezone.now(),
+                session_type=session_type,
+                notes=notes
             )
             
-            if not created:
-                time_spent.update_session_time(time_seconds)
-                if not time_spent.last_session_start:
-                    time_spent.last_session_start = timezone.now()
-                    time_spent.save()
+            # Get previous session for comparison
+            previous_sessions = TimeSession.objects.filter(
+                user=request.user,
+                content_type=content_type,
+                object_id=exercise.id
+            ).exclude(id=session.id).order_by('-created_at')
             
-            return Response({
-                'total_time_seconds': time_spent.total_time,
-                'current_session_seconds': time_spent.current_session_time,
-                'success': True
-            })
+            response_data = {
+                'message': 'Session saved successfully',
+                'session': {
+                    'id': session.id,
+                    'duration_seconds': session.session_duration_in_seconds,
+                    'created_at': session.created_at
+                }
+            }
+            
+            # Add comparison data if there's a previous session
+            if previous_sessions.exists():
+                previous = previous_sessions.first()
+                improvement = None
+                if previous.session_duration_in_seconds > 0:
+                    improvement = ((previous.session_duration_in_seconds - duration_seconds) / previous.session_duration_in_seconds) * 100
+                
+                response_data['comparison'] = {
+                    'previous_duration': previous.session_duration_in_seconds,
+                    'difference': duration_seconds - previous.session_duration_in_seconds,
+                    'improvement_percentage': round(improvement, 1) if improvement is not None else None
+                }
+            
+            return Response(response_data, status=status.HTTP_201_CREATED)
             
         except Exception as e:
-            logger.error(f"Error updating session time: {str(e)}")
+            logger.error(f"Error saving session: {str(e)}")
             return Response(
-                {'error': 'Failed to update session time'},
+                {'error': 'Failed to save session'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
-    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
-    def save_session(self, request, pk=None):
+    @action(detail=True, methods=['delete'], permission_classes=[IsAuthenticated], url_path='delete_session/(?P<session_id>[^/.]+)')
+    def delete_session(self, request, pk=None, session_id=None):
         """
-        Save current session and add to total time
+        Delete a specific session
         """
         exercise = self.get_object()
-        session_type = request.data.get('session_type', 'study')
-        notes = request.data.get('notes', '')
         
         try:
             content_type = ContentType.objects.get_for_model(Exercise)
-            time_spent = TimeSpent.objects.get(
+            session = TimeSession.objects.get(
+                id=session_id,
                 user=request.user,
                 content_type=content_type,
                 object_id=exercise.id
             )
+            session.delete()
             
-            if time_spent.save_and_reset_session(session_type=session_type, notes=notes):
-                return Response({
-                    'message': 'Session saved successfully',
-                    'total_time_seconds': time_spent.total_time
-                })
-            else:
-                return Response({
-                    'message': 'No session time to save',
-                    'total_time_seconds': time_spent.total_time
-                })
-            
-        except TimeSpent.DoesNotExist:
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        except TimeSession.DoesNotExist:
             return Response(
-                {'error': 'No time tracking found for this exercise'},
+                {'error': 'Session not found'},
                 status=status.HTTP_404_NOT_FOUND
             )
             
-    @action(detail=True, methods=['get'], permission_classes=[IsAuthenticated])
-    def session_history(self, request, pk=None):
-        """
-        Get session history for this exercise
-        """
-        exercise = self.get_object()
-        
-        try:
-            content_type = ContentType.objects.get_for_model(Exercise)
-            
-            # Get all sessions for this exercise
-            sessions = TimeSession.objects.filter(
-                user=request.user,
-                content_type=content_type,
-                object_id=exercise.id
-            ).order_by('-created_at')[:20]  # Limit to last 20 sessions
-            
-            # Format the response
-            session_data = [{
-                'id': str(session.id),
-                'session_duration': int(session.session_duration.total_seconds()),
-                'started_at': session.started_at.isoformat(),
-                'ended_at': session.ended_at.isoformat(),
-                'created_at': session.created_at.isoformat(),
-                'session_type': session.session_type,
-                'notes': session.notes
-            } for session in sessions]
-            
-            return Response({
-                'sessions': session_data
-            })
-            
-        except Exception as e:
-            logger.error(f"Error retrieving session history: {str(e)}")
-            return Response(
-                {'error': 'Failed to retrieve session history'},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
-            
-    @action(detail=True, methods=['get'], permission_classes=[IsAuthenticated])
-    def session_history(self, request, pk=None):
-        """
-        Get session history for this exercise
-        """
-        exercise = self.get_object()
-        
-        try:
-            content_type = ContentType.objects.get_for_model(Exercise)
-            
-            # Get all sessions for this exercise
-            sessions = TimeSession.objects.filter(
-                user=request.user,
-                content_type=content_type,
-                object_id=exercise.id
-            ).order_by('-created_at')[:20]  # Limit to last 20 sessions
-            
-            # Format the response
-            session_data = [{
-                'id': str(session.id),
-                'session_duration': int(session.session_duration.total_seconds()),
-                'started_at': session.started_at.isoformat(),
-                'ended_at': session.ended_at.isoformat(),
-                'created_at': session.created_at.isoformat(),
-                'session_type': session.session_type,
-                'notes': session.notes
-            } for session in sessions]
-            
-            return Response({
-                'sessions': session_data
-            })
-            
-        except Exception as e:
-            logger.error(f"Error retrieving session history: {str(e)}")
-            return Response(
-                {'error': 'Failed to retrieve session history'},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
+    
 
                     
     
