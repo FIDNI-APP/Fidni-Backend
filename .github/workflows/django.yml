@@ -43,7 +43,8 @@ jobs:
     - name: Build and push Docker image
       env:
         ECR_REGISTRY: ${{ secrets.AWS_ECR_REGISTRY }}
-        IMAGE_TAG: ${{ github.sha }}
+        IMAGE_TAG: latest
+        ECR_REPOSITORY: ${{ env.ECR_REPOSITORY }}
       run: |
         docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
         docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
@@ -109,44 +110,24 @@ jobs:
           sudo chown ubuntu:ubuntu "$PROJECT_DIR"
         fi
         
-        cd "$PROJECT_DIR"
         
-        # Initialize git repository if needed
-        if [ ! -d ".git" ]; then
-          echo "Initializing git repository..."
-          git init
-          git remote add origin https://github.com/FIDNI-APP/Fidni-Backend.git
-        fi
-        
-        # Pull the latest code
-        git fetch origin
-        git reset --hard origin/main
-        
-        # Navigate to backend directory
-        cd backend
-        
-        # Check if docker-compose.yml exists
-        if [ ! -f "docker-compose.yml" ]; then
-          echo "Error: docker-compose.yml not found in $(pwd)"
-          ls -la
-          exit 1
-        fi
-        
-        # Update docker-compose.yml with new image
-        sed -i "s|build: \.|image: $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG|g" docker-compose.yml
         
         # Pull new images
-        docker-compose pull
+        docker pull 322609219907.dkr.ecr.eu-west-3.amazonaws.com/fidni-backend:latest
         
         # Stop and remove old containers
-        docker-compose down
-        
-        # Start new containers
-        docker-compose up -d
-        
-        # Clean up old images
-        docker image prune -a -f
+        docker container prune -f
+        docker stop $(docker ps -aq) || true
+        docker rm $(docker ps -aq) || true
         docker volume prune -f
+        docker network prune -f
+        docker rmi $(docker images -q) || true
+        
+        docker run -d \
+            --name fidni-backend \
+            -p 80:80 \
+            --restart unless-stopped \
+            322609219907.dkr.ecr.eu-west-3.amazonaws.com/fidni-backend:latest
         
         echo "Deployment completed successfully!"
         EOF
