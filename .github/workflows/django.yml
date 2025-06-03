@@ -56,51 +56,99 @@ jobs:
     - name: Generate deployment script
       id: generate-script
       run: |
-        cat << 'EOF' > deploy.sh
-        #!/bin/bash
-        set -euo pipefail
+        cat > deploy.sh << 'EOF'
+        #!/bin/bash -ex
         
-        # Environment variables
-        export ECR_REGISTRY="$1"
-        export ECR_REPOSITORY="$2"
-        export IMAGE_TAG="$3"
-        export AWS_REGION="$4"
-        export COMPOSE_PATH="$5"
+        # Install Docker and AWS CLI if not installed
+        if ! command -v docker &> /dev/null; then
+          echo "Installing Docker..."
+          sudo apt update
+          sudo apt install -y docker.io
+          sudo usermod -aG docker ubuntu
+          newgrp docker
+        fi
+
+        if ! command -v docker-compose &> /dev/null; then
+          echo "Installing Docker Compose..."
+          sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+          sudo chmod +x /usr/local/bin/docker-compose
+        fi
+
+        # Install AWS CLI if not present
+        if ! command -v aws &> /dev/null; then
+          echo "Installing AWS CLI..."
+          if ! command -v unzip &> /dev/null; then
+            sudo apt update
+            sudo apt install -y unzip
+          fi
+          curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+          unzip -o awscliv2.zip
+          rm awscliv2.zip
+          sudo ./aws/install --update
+        fi
+
+        # Configuration AWS - Use environment variables directly
+        echo "Configuring AWS CLI..."
+        export AWS_ACCESS_KEY_ID="$AWS_ACCESS_KEY_ID"
+        export AWS_SECRET_ACCESS_KEY="$AWS_SECRET_ACCESS_KEY"
+        export AWS_DEFAULT_REGION="$AWS_REGION"
         
-        # Login to ECR (using instance role)
-        aws ecr get-login-password --region $AWS_REGION | docker login -u AWS --password-stdin $ECR_REGISTRY
+        # Test AWS credentials
+        aws sts get-caller-identity
         
-        # Ensure project directory exists
-        mkdir -p $COMPOSE_PATH
-        cd $COMPOSE_PATH
+        echo "Starting deployment..."
         
-        # Create .env file for Docker Compose
-        echo "TAG=$IMAGE_TAG" > .env
-        echo "REGISTRY=$ECR_REGISTRY" >> .env
-        echo "REPO=$ECR_REPOSITORY" >> .env
+        # Login to ECR
+        aws ecr get-login-password --region "$AWS_REGION" | docker login --username AWS --password-stdin "$ECR_REGISTRY"
         
-        # Create docker-compose.yml if missing
-        if [ ! -f docker-compose.yml ]; then
-          cat << 'EOD' > docker-compose.yml
-        version: '3.8'
-        services:
-          app:
-            image: ${REGISTRY}/${REPO}:${TAG}
-            restart: always
-            ports:
-              - "80:8000"
-          # Add other services as needed
-        EOD
+        # Create and navigate to project directory
+        PROJECT_DIR="/home/ubuntu/Fidni-Backend"
+        if [ ! -d "$PROJECT_DIR" ]; then
+          echo "Creating project directory..."
+          sudo mkdir -p "$PROJECT_DIR"
+          sudo chown ubuntu:ubuntu "$PROJECT_DIR"
         fi
         
-        # Pull new image
-        docker-compose pull --quiet
+        cd "$PROJECT_DIR"
         
-        # Redeploy containers
-        docker-compose up -d --remove-orphans
+        # Initialize git repository if needed
+        if [ ! -d ".git" ]; then
+          echo "Initializing git repository..."
+          git init
+          git remote add origin https://github.com/YOUR_USERNAME/Fidni.git
+        fi
         
-        # Cleanup old images
-        docker image prune -a --force --filter "until=48h"
+        # Pull the latest code
+        git fetch origin
+        git reset --hard origin/main
+        
+        # Navigate to backend directory
+        cd backend
+        
+        # Check if docker-compose.yml exists
+        if [ ! -f "docker-compose.yml" ]; then
+          echo "Error: docker-compose.yml not found in $(pwd)"
+          ls -la
+          exit 1
+        fi
+        
+        # Update docker-compose.yml with new image
+        sed -i "s|build: \.|image: $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG|g" docker-compose.yml
+        
+        # Pull new images
+        docker-compose pull
+        
+        # Stop and remove old containers
+        docker-compose down
+        
+        # Start new containers
+        docker-compose up -d
+        
+        # Clean up old images
+        docker image prune -a -f
+        docker volume prune -f
+        
+        echo "Deployment completed successfully!"
         EOF
         chmod +x deploy.sh
 
@@ -117,21 +165,21 @@ jobs:
             -i private_key.pem \
             deploy.sh ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:/tmp/
 
-        # Execute deployment
-        ssh -o StrictHostKeyChecking=no \
-            -i private_key.pem \
-            ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} \
-            "sudo bash /tmp/deploy.sh \
-            '${{ secrets.AWS_ECR_REGISTRY }}' \
-            '${{ env.ECR_REPOSITORY }}' \
-            '${{ github.sha }}' \
-            '${{ env.AWS_REGION }}' \
-            '${{ env.PROJECT_DIR }}'"
+        aws configure set aws_access_key_id ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws configure set aws_secret_access_key ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws configure set region eu-west-3
+          
+        # Connexion à ECR
+        echo "Logging in to ECR..."
+        aws ecr get-login-password --region eu-west-3 | docker login --username AWS --password-stdin 322609219907.dkr.ecr.eu-west-3.amazonaws.com
+
+        # Execute deployment script on EC2 with proper environment variables
+        ssh -o StrictHostKeyChecking=no -i private_key.pem ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} \
+          "export ECR_REGISTRY='${{ secrets.AWS_ECR_REGISTRY }}' && export ECR_REPOSITORY='${{ env.ECR_REPOSITORY }}' && export IMAGE_TAG='${{ github.sha }}' && export AWS_REGION='${{ env.AWS_REGION }}' && export AWS_ACCESS_KEY_ID='${{ secrets.AWS_ACCESS_KEY_ID }}' && export AWS_SECRET_ACCESS_KEY='${{ secrets.AWS_SECRET_ACCESS_KEY }}' && bash /tmp/deploy.sh"
 
     - name: Verify deployment
       run: |
-        ssh -o StrictHostKeyChecking=no \
-            -i private_key.pem \
-            ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} \
-            "docker ps --filter 'name=app' --format 'table {{.Names}}\t{{.Status}}'"
+        # Check if containers are running
+        ssh -o StrictHostKeyChecking=no -i private_key.pem ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} \
+                    "cd /home/ubuntu/Fidni-Backend/backend && docker-compose ps"
         rm private_key.pem
