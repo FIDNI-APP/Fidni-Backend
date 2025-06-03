@@ -113,7 +113,8 @@ jobs:
         curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
         unzip -o awscliv2.zip
         rm awscliv2.zip
-        sudo ./aws/install
+        sudo ./aws/install --update
+
 
         # Configuration AWS
         aws configure set AWS_ACCESS_KEY_ID $1
