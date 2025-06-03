@@ -83,12 +83,8 @@ jobs:
         
         # Create deployment script
         cat > deploy.sh << 'EOF'
-        #!/bin/bash
-        export AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
-        export AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
-        export AWS_DEFAULT_REGION=${AWS_REGION}
-
-        set -e
+        #!/bin/bash -ex
+        
         # Install Docker and AWS CLI if not installed
         if ! command -v docker &> /dev/null; then
           echo "Installing Docker..."
@@ -115,10 +111,13 @@ jobs:
         rm awscliv2.zip
         sudo ./aws/install --update
 
-
+        echo ${AWS_ACCESS_KEY_ID}
+        echo ${AWS_SECRET_ACCESS_KEY}
+        echo ${AWS_REGION}
         # Configuration AWS
-        aws configure set AWS_ACCESS_KEY_ID $1
-        aws configure set AWS_SECRET_ACCESS_KEY $2
+        echo "Configuring AWS CLI..."
+        aws configure set aws_access_key_id ${AWS_ACCESS_KEY_ID}
+        aws configure set aws_secret_access_key ${AWS_SECRET_ACCESS_KEY}
         aws configure set region eu-west-3
         
         # Variables
@@ -130,6 +129,7 @@ jobs:
         echo "Starting deployment..."
         
         # Login to ECR
+        
         
         aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ECR_REGISTRY
         
