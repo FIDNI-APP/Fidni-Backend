@@ -6,7 +6,7 @@ set -e
 echo "Deploying Django application..."
 
 # Allow git to trust this directory
-git config --global --add safe.directory /home/ec2-user/Fidni-Backend
+git config --global --add safe.directory /home/ubuntu/Fidni-Backend
 
 # Pull latest code
 git pull
