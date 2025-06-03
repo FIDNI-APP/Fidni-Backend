@@ -1,80 +1,137 @@
-name: CI/CD Pipeline
+name: Deploy to AWS ECR and EC2
 
 on:
   push:
     branches: [main, master]
-  pull_request:
 
 env:
+  AWS_REGION: eu-west-3
   ECR_REPOSITORY: fidni-backend
-  AWS_REGION: us-east-1
+  PROJECT_DIR: /home/ubuntu/Fidni-Backend
 
 jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - name: Run tests
-        run: echo "Insert your test commands here"
+    - uses: actions/checkout@v4
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.12'
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+    - name: Run tests
+      run: python manage.py test
 
   build-and-push:
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
     needs: test
     runs-on: ubuntu-latest
-
+    environment: production  # Add environment protection
     steps:
-      - uses: actions/checkout@v4
+    - uses: actions/checkout@v4
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ env.AWS_REGION }}
+    - name: Login to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v2
+    - name: Build and push Docker image
+      env:
+        ECR_REGISTRY: ${{ secrets.AWS_ECR_REGISTRY }}
+        IMAGE_TAG: ${{ github.sha }}
+      run: |
+        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+        docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
 
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v3
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
+  deploy:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+    - name: Generate deployment script
+      id: generate-script
+      run: |
+        cat << 'EOF' > deploy.sh
+        #!/bin/bash
+        set -euo pipefail
+        
+        # Environment variables
+        export ECR_REGISTRY="$1"
+        export ECR_REPOSITORY="$2"
+        export IMAGE_TAG="$3"
+        export AWS_REGION="$4"
+        export COMPOSE_PATH="$5"
+        
+        # Login to ECR (using instance role)
+        aws ecr get-login-password --region $AWS_REGION | docker login -u AWS --password-stdin $ECR_REGISTRY
+        
+        # Ensure project directory exists
+        mkdir -p $COMPOSE_PATH
+        cd $COMPOSE_PATH
+        
+        # Create .env file for Docker Compose
+        echo "TAG=$IMAGE_TAG" > .env
+        echo "REGISTRY=$ECR_REGISTRY" >> .env
+        echo "REPO=$ECR_REPOSITORY" >> .env
+        
+        # Create docker-compose.yml if missing
+        if [ ! -f docker-compose.yml ]; then
+          cat << 'EOD' > docker-compose.yml
+        version: '3.8'
+        services:
+          app:
+            image: ${REGISTRY}/${REPO}:${TAG}
+            restart: always
+            ports:
+              - "80:8000"
+          # Add other services as needed
+        EOD
+        fi
+        
+        # Pull new image
+        docker-compose pull --quiet
+        
+        # Redeploy containers
+        docker-compose up -d --remove-orphans
+        
+        # Cleanup old images
+        docker image prune -a --force --filter "until=48h"
+        EOF
+        chmod +x deploy.sh
 
-      - name: Login to Amazon ECR
-        id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v2
+    - name: Deploy to EC2
+      env:
+        PRIVATE_KEY: ${{ secrets.EC2_SSH_KEY }}
+      run: |
+        # Setup SSH
+        echo "$PRIVATE_KEY" > private_key.pem
+        chmod 600 private_key.pem
+        
+        # Copy deployment script
+        scp -o StrictHostKeyChecking=no \
+            -i private_key.pem \
+            deploy.sh ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:/tmp/
 
-      - name: Build, tag, and push image to ECR
-        run: |
-          IMAGE_TAG=${{ github.sha }}
-          docker build -t ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:$IMAGE_TAG .
-          docker push ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:$IMAGE_TAG
+        # Execute deployment
+        ssh -o StrictHostKeyChecking=no \
+            -i private_key.pem \
+            ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} \
+            "sudo bash /tmp/deploy.sh \
+            '${{ secrets.AWS_ECR_REGISTRY }}' \
+            '${{ env.ECR_REPOSITORY }}' \
+            '${{ github.sha }}' \
+            '${{ env.AWS_REGION }}' \
+            '${{ env.PROJECT_DIR }}'"
 
-      - name: Deploy to EC2
-        env:
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          IMAGE_TAG: ${{ github.sha }}
-        run: |
-          echo "$PRIVATE_KEY" > private_key.pem
-          chmod 600 private_key.pem
-
-          REMOTE_DIR=/home/ubuntu/Fidni-Backend
-
-          # Copy docker-compose.yml
-          scp -o StrictHostKeyChecking=no -i private_key.pem docker-compose.yml ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:$REMOTE_DIR/
-
-          # Create and copy .env file with tag
-          echo "ECR_REGISTRY=$ECR_REGISTRY" > .env.deploy
-          echo "ECR_REPOSITORY=${{ env.ECR_REPOSITORY }}" >> .env.deploy
-          echo "IMAGE_TAG=$IMAGE_TAG" >> .env.deploy
-          scp -o StrictHostKeyChecking=no -i private_key.pem .env.deploy ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:$REMOTE_DIR/.env
-
-          # SSH and deploy
-          ssh -o StrictHostKeyChecking=no -i private_key.pem ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} << 'EOF'
-          set -ex
-          cd /home/ubuntu/Fidni-Backend
-
-          # Login to ECR (instance uses IAM role)
-          aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin $ECR_REGISTRY
-
-          docker-compose down
-          docker-compose pull
-          docker-compose up -d
-
-          docker image prune -af
-          EOF
-
-          rm -f private_key.pem .env.deploy
-          echo "Deployment completed successfully."
+    - name: Verify deployment
+      run: |
+        ssh -o StrictHostKeyChecking=no \
+            -i private_key.pem \
+            ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} \
+            "docker ps --filter 'name=app' --format 'table {{.Names}}\t{{.Status}}'"
+        rm private_key.pem
