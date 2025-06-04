@@ -114,16 +114,34 @@ jobs:
         # Stop existing container if running
         docker stop fidni-backend 2>/dev/null || true
         docker rm fidni-backend 2>/dev/null || true
+
+        # Django settings
+        DEBUG=True
+        SECRET_KEY=gr-5s4^9^nz%*1)843r*7)+xrk!zc3==nm#zgroldi0*x#y+8e
+        ALLOWED_HOSTS=*
+
+        # Database
+        SQLITE_PATH=/app/data/db.sqlite3
+        DB_NAME=fidni
+        DB_USER=fidni
+        DB_PASSWORD=Oussama0909!
+        DB_HOST=fidni.c7gqmm4ayxos.eu-west-3.rds.amazonaws.com
+        DB_PORT=5432
+        # Other settings
+        DJANGO_SETTINGS_MODULE=config.settings
+        DJANGO_SUPERUSER_USERNAME=natsuhadder
+        DJANGO_SUPERUSER_PASSWORD=Oussama0909!
+
+
+        ECR_REGISTRY=322609219907.dkr.ecr.eu-west-3.amazonaws.com
+        ECR_REPOSITORY=fidni-backend
+
         
         # Run new container with environment variables
         docker run -d \
           --name fidni-backend \
           -p 80:8000 \
           --restart unless-stopped \
-          -e SECRET_KEY="${SECRET_KEY}" \
-          -e DEBUG="${DEBUG}" \
-          -e ALLOWED_HOSTS="${ALLOWED_HOSTS}" \
-          -e DATABASE_URL="${DATABASE_URL}" \
           -v /home/ubuntu/fidni-data:/app/data \
           -v /home/ubuntu/fidni-media:/app/media \
           -v /home/ubuntu/fidni-static:/app/static \
@@ -146,10 +164,6 @@ jobs:
            AWS_REGION='${{ env.AWS_REGION }}' \
            ECR_REGISTRY='${ECR_REGISTRY}' \
            ECR_REPOSITORY='${{ env.ECR_REPOSITORY }}' \
-           SECRET_KEY='${{ secrets.DJANGO_SECRET_KEY }}' \
-           DEBUG='${{ secrets.DJANGO_DEBUG }}' \
-           ALLOWED_HOSTS='${{ secrets.DJANGO_ALLOWED_HOSTS }}' \
-           DATABASE_URL='${{ secrets.DATABASE_URL }}' \
            bash /tmp/deploy.sh"
         
         # Cleanup
