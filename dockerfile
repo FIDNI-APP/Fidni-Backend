@@ -8,34 +8,31 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     python3-dev \
     && rm -rf /var/lib/apt/lists/*
 
+# Create a non-root user first
+RUN adduser --disabled-password --gecos "" appuser
+
 # Copy requirements first to leverage Docker cache
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt gunicorn
 
-# Install gunicorn
-RUN pip install gunicorn
-
-# Copy project
-COPY . .
+# Copy project and set ownership
+COPY --chown=appuser:appuser . .
 
 # Set environment variables
 ENV DJANGO_SETTINGS_MODULE=config.settings
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 
-# Create directory for SQLite database
-RUN mkdir -p /app/data
-
-# Create a non-root user to run the app
-RUN adduser --disabled-password --gecos "" appuser
-
-# Create necessary directories and set permissions
+# Create necessary directories with proper permissions
 RUN mkdir -p /app/static /app/media /app/data && \
     chown -R appuser:appuser /app
 
 USER appuser
 
-# Expose the port the app runs on   
+# Add health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD python manage.py check --deploy || exit 1
+
 EXPOSE 8000
 
 CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--workers", "4", "--timeout", "120", "config.wsgi:application"]

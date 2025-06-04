@@ -7,7 +7,7 @@ on:
 env:
   AWS_REGION: eu-west-3
   ECR_REPOSITORY: fidni-backend
-
+  
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -32,6 +32,7 @@ jobs:
       image-tag: ${{ steps.meta.outputs.tags }}
     steps:
     - uses: actions/checkout@v4
+    
     - name: Configure AWS credentials
       uses: aws-actions/configure-aws-credentials@v4
       with:
@@ -40,109 +41,122 @@ jobs:
         aws-region: ${{ env.AWS_REGION }}
     
     - name: Login to Amazon ECR
+      id: login-ecr
       uses: aws-actions/amazon-ecr-login@v2
-    
-    - name: Extract metadata
+
+    - name: Generate image metadata
       id: meta
-      run: |
-        echo "tags=${{ secrets.AWS_ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}" >> $GITHUB_OUTPUT
-        echo "latest=${{ secrets.AWS_ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:latest" >> $GITHUB_OUTPUT
-    
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}
+        tags: |
+          type=ref,event=branch
+          type=sha,prefix={{branch}}-
+          type=raw,value=latest,enable={{is_default_branch}}
+
     - name: Build and push Docker image
-      run: |
-        docker build -t ${{ steps.meta.outputs.tags }} -t ${{ steps.meta.outputs.latest }} .
-        docker push ${{ steps.meta.outputs.tags }}
-        docker push ${{ steps.meta.outputs.latest }}
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        push: true
+        tags: ${{ steps.meta.outputs.tags }}
+        cache-from: type=registry,ref=${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:buildcache
+        cache-to: type=registry,ref=${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:buildcache,mode=max
 
   deploy:
     needs: build-and-push
     runs-on: ubuntu-latest
     environment: production
     steps:
-    - name: Generate deployment script
-      run: |
-        cat > deploy.sh << 'EOF'
-        #!/bin/bash -e
-        
-        IMAGE_TAG="$1"
-        SERVICE_NAME="fidni-backend"
-        
-        echo "Deploying image: $IMAGE_TAG"
-        
-        # Configure AWS using environment variables
-        export AWS_ACCESS_KEY_ID="$AWS_ACCESS_KEY_ID"
-        export AWS_SECRET_ACCESS_KEY="$AWS_SECRET_ACCESS_KEY"
-        export AWS_DEFAULT_REGION="$AWS_REGION"
-        
-        # Login to ECR
-        aws ecr get-login-password --region "$AWS_REGION" | docker login --username AWS --password-stdin "$ECR_REGISTRY"
-        
-        # Pull new image
-        docker pull "$IMAGE_TAG"
-        
-        # Stop existing container gracefully
-        if docker ps | grep -q "$SERVICE_NAME"; then
-            echo "Stopping existing container..."
-            docker stop "$SERVICE_NAME" || true
-            docker rm "$SERVICE_NAME" || true
-        fi
-        
-        # Start new container
-        docker run -d \
-            --name "$SERVICE_NAME" \
-            -p 80:8000 \
-            --restart unless-stopped \
-            -v /home/ubuntu/app-data:/app/data \
-            "$IMAGE_TAG"
-        
-        # Health check
-        echo "Waiting for service to start..."
-        sleep 10
-        
-        if ! docker ps | grep -q "$SERVICE_NAME"; then
-            echo "Deployment failed - container not running"
-            exit 1
-        fi
-        
-        # Cleanup old images (keep last 3)
-        docker images "$ECR_REGISTRY/$ECR_REPOSITORY" --format "table {{.Tag}}\t{{.ID}}" | tail -n +4 | awk '{print $2}' | xargs -r docker rmi || true
-        
-        echo "Deployment completed successfully!"
-        EOF
-
     - name: Deploy to EC2
       env:
         PRIVATE_KEY: ${{ secrets.EC2_SSH_KEY }}
-        IMAGE_TAG: ${{ needs.build-and-push.outputs.image-tag }}
+        ECR_REGISTRY: ${{ secrets.AWS_ECR_REGISTRY }}
       run: |
+        # Setup SSH
         echo "$PRIVATE_KEY" > private_key.pem
         chmod 600 private_key.pem
         
-        # Copy deployment script
+        # Create deployment script
+        cat > deploy.sh << 'EOF'
+        #!/bin/bash -ex
+        
+        # Exit on error
+        set -e
+        
+        # Install Docker if needed
+        if ! command -v docker &> /dev/null; then
+          echo "Installing Docker..."
+          sudo apt update
+          sudo apt install -y docker.io
+          sudo systemctl start docker
+          sudo systemctl enable docker
+          sudo usermod -aG docker ubuntu
+          newgrp docker
+        fi
+        
+        # Configure AWS CLI
+        export AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID}"
+        export AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY}"
+        export AWS_DEFAULT_REGION="${AWS_REGION}"
+        
+        # Login to ECR
+        aws ecr get-login-password --region "${AWS_REGION}" | docker login --username AWS --password-stdin "${ECR_REGISTRY}"
+        
+        # Pull the latest image
+        docker pull "${ECR_REGISTRY}/${ECR_REPOSITORY}:latest"
+        
+        # Stop existing container if running
+        docker stop fidni-backend 2>/dev/null || true
+        docker rm fidni-backend 2>/dev/null || true
+        
+        # Run new container with environment variables
+        docker run -d \
+          --name fidni-backend \
+          -p 80:8000 \
+          --restart unless-stopped \
+          -e SECRET_KEY="${SECRET_KEY}" \
+          -e DEBUG="${DEBUG}" \
+          -e ALLOWED_HOSTS="${ALLOWED_HOSTS}" \
+          -e DATABASE_URL="${DATABASE_URL}" \
+          -v /home/ubuntu/fidni-data:/app/data \
+          -v /home/ubuntu/fidni-media:/app/media \
+          -v /home/ubuntu/fidni-static:/app/static \
+          "${ECR_REGISTRY}/${ECR_REPOSITORY}:latest"
+        
+        # Run migrations
+        docker exec fidni-backend python manage.py migrate --noinput
+        
+        # Collect static files
+        docker exec fidni-backend python manage.py collectstatic --noinput
+        
+        # Clean up old images
+        docker image prune -af
+        
+        echo "Deployment completed successfully!"
+        EOF
+        
+        # Copy and execute deployment script
         scp -o StrictHostKeyChecking=no -i private_key.pem \
-            deploy.sh ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:/tmp/
+          deploy.sh ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}:/tmp/
         
-        # Execute deployment
         ssh -o StrictHostKeyChecking=no -i private_key.pem \
-            ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} \
-            "export ECR_REGISTRY='${{ secrets.AWS_ECR_REGISTRY }}' && \
-             export ECR_REPOSITORY='${{ env.ECR_REPOSITORY }}' && \
-             export AWS_REGION='${{ env.AWS_REGION }}' && \
-             export AWS_ACCESS_KEY_ID='${{ secrets.AWS_ACCESS_KEY_ID }}' && \
-             export AWS_SECRET_ACCESS_KEY='${{ secrets.AWS_SECRET_ACCESS_KEY }}' && \
-             bash /tmp/deploy.sh '${{ env.IMAGE_TAG }}'"
+          ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} \
+          "AWS_ACCESS_KEY_ID='${{ secrets.AWS_ACCESS_KEY_ID }}' \
+           AWS_SECRET_ACCESS_KEY='${{ secrets.AWS_SECRET_ACCESS_KEY }}' \
+           AWS_REGION='${{ env.AWS_REGION }}' \
+           ECR_REGISTRY='${ECR_REGISTRY}' \
+           ECR_REPOSITORY='${{ env.ECR_REPOSITORY }}' \
+           SECRET_KEY='${{ secrets.DJANGO_SECRET_KEY }}' \
+           DEBUG='${{ secrets.DJANGO_DEBUG }}' \
+           ALLOWED_HOSTS='${{ secrets.DJANGO_ALLOWED_HOSTS }}' \
+           DATABASE_URL='${{ secrets.DATABASE_URL }}' \
+           bash /tmp/deploy.sh"
         
-        rm private_key.pem
+        # Cleanup
+        rm -f private_key.pem
 
-    - name: Verify deployment
-      env:
-        PRIVATE_KEY: ${{ secrets.EC2_SSH_KEY }}
+    - name: Health check
       run: |
-        echo "$PRIVATE_KEY" > private_key.pem
-        chmod 600 private_key.pem
-        
-        ssh -o StrictHostKeyChecking=no -i private_key.pem \
-            ${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }} \
-            "docker ps --filter name=fidni-backend --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}'"
-        
-        rm private_key.pem
+        sleep 10
+        curl -f http://${{ secrets.EC2_HOST }}/health/ || exit 1
