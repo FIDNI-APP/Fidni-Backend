@@ -129,12 +129,6 @@ jobs:
           -v /home/ubuntu/fidni-static:/app/static \
           "${ECR_REGISTRY}/${ECR_REPOSITORY}:latest"
         
-        # Run migrations
-        docker exec fidni-backend python manage.py migrate --noinput
-        
-        # Collect static files
-        docker exec fidni-backend python manage.py collectstatic --noinput
-        
         # Clean up old images
         docker image prune -af
         
