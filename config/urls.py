@@ -17,6 +17,7 @@ from authentication.views import LogoutView
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from authentication.views import LoginView, RegisterView
 from notebooks.views import NotebookViewSet, NotebookSectionViewSet
+from .views import health_check
 
 
 router = DefaultRouter()
@@ -60,4 +61,6 @@ urlpatterns = [
     
     # Content interaction
     path('api/content/<str:content_id>/view/', mark_content_viewed, name='mark-content-viewed'),
+    path('health/', health_check, name='health_check'),
+
 ]
