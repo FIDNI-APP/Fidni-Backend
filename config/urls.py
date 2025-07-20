@@ -18,6 +18,10 @@ from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from authentication.views import LoginView, RegisterView
 from notebooks.views import NotebookViewSet, NotebookSectionViewSet
 from .views import health_check
+from learningpath.views import (
+    LearningPathViewSet, PathChapterViewSet,
+    VideoViewSet, ChapterQuizViewSet
+)
 
 
 router = DefaultRouter()
@@ -34,6 +38,10 @@ router.register(r'lessons', LessonViewSet, basename='lesson')
 router.register(r'notebooks', NotebookViewSet, basename='notebook')
 router.register(r'sections', NotebookSectionViewSet, basename='section')
 router.register(r'exams', ExamViewSet)  # Add this line
+router.register(r'learning-paths', LearningPathViewSet, basename='learningpath')
+router.register(r'path-chapters', PathChapterViewSet, basename='pathchapter')
+router.register(r'videos', VideoViewSet, basename='video')
+router.register(r'chapter-quizzes', ChapterQuizViewSet, basename='chapterquiz')
 
 
 
@@ -47,7 +55,6 @@ urlpatterns = [
     path('api/auth/login/', LoginView.as_view(), name='login'),
     path('api/auth/register/', RegisterView.as_view(), name='register'),
     path('api/auth/logout/', LogoutView.as_view(), name='logout'),
-        
     # User endpoints
     path('api/auth/user/', get_current_user, name='current-user'),
     path("api/token/", TokenObtainPairView.as_view(), name="get_token"),
@@ -55,6 +62,7 @@ urlpatterns = [
     path('api/content/<str:content_id>/view/', mark_content_viewed, name='mark-content-viewed'),
     path('api/onboarding/', OnboardingView.as_view(), name='onboarding'),
     path('api/users/<str:username>/onboarding-status/', UserProfileViewSet.as_view({'get': 'onboarding_status'}), name='onboarding-status'),
+
 
      # User endpoints
     path('api/auth/settings/', UserSettingsView.as_view(), name='user-settings'),

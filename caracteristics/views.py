@@ -65,10 +65,10 @@ class SubjectViewSet(viewsets.ReadOnlyModelViewSet):
         class_level_id = self.request.query_params.getlist('class_level[]')
 
         filters = Q()
-        if class_level_id or class_level_id != '':
+        if class_level_id and any(class_level_id):
             filters |= Q(class_levels__id__in=class_level_id)
-        queryset = queryset.filter(filters)
-
+            queryset = queryset.filter(filters)
+        
         return queryset
     
 class SubfieldViewSet(viewsets.ReadOnlyModelViewSet):

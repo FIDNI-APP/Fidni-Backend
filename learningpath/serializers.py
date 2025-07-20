@@ -1,21 +1,21 @@
+# learningpath/serializers.py
+
 from rest_framework import serializers
-from django.contrib.auth.models import User
-from django.utils import timezone
 from .models import (
     LearningPath, PathChapter, Video, VideoResource,
-    ChapterQuiz, QuizQuestion, Achievement,
+    ChapterQuiz, QuizQuestion,
     UserLearningPathProgress, UserChapterProgress,
-    UserVideoProgress, QuizAttempt, QuizAnswer,
-    UserAchievement, LearningStreak
+    UserVideoProgress, QuizAttempt,
 )
+from caracteristics.models import Subject, ClassLevel, Chapter
 from caracteristics.serializers import SubjectSerializer, ClassLevelSerializer, ChapterSerializer
-from users.serializers import UserSerializer
 
 
 class VideoResourceSerializer(serializers.ModelSerializer):
     class Meta:
         model = VideoResource
-        fields = ['id', 'title', 'resource_type', 'url', 'order']
+        fields = ['id', 'title', 'resource_type', 'url']
+        read_only_fields = ['id']
 
 
 class VideoSerializer(serializers.ModelSerializer):
@@ -26,10 +26,15 @@ class VideoSerializer(serializers.ModelSerializer):
     class Meta:
         model = Video
         fields = [
-            'id', 'title', 'description', 'url', 'thumbnail_url',
-            'video_type', 'duration_seconds', 'duration', 'order',
-            'transcript', 'resources', 'user_progress'
+            'id', 'path_chapter', 'title', 'description', 'url', 'thumbnail_url',
+            'video_type', 'duration_seconds', 'duration',
+            'resources', 'user_progress', 'created_at', 'updated_at'
         ]
+        read_only_fields = ['id', 'created_at', 'updated_at', 'duration']
+        extra_kwargs = {
+            'path_chapter': {'required': True},
+            'duration_seconds': {'required': True},
+        }
     
     def get_user_progress(self, obj):
         request = self.context.get('request')
@@ -52,26 +57,59 @@ class QuizQuestionSerializer(serializers.ModelSerializer):
     class Meta:
         model = QuizQuestion
         fields = [
-            'id', 'question_text', 'options', 'correct_answer_index',
-            'explanation', 'difficulty', 'points', 'order'
+            'id', 'quiz', 'question_text', 'options', 'correct_answer_index',
+            'explanation', 'difficulty', 'points',
         ]
+        read_only_fields = ['id']
         extra_kwargs = {
-            'correct_answer_index': {'write_only': True},
-            'explanation': {'write_only': True}
+            'quiz': {'required': False, 'read_only': True}
         }
+    
+    def validate_options(self, value):
+        """Ensure options is a list with at least 2 items"""
+        if not isinstance(value, list) or len(value) < 2:
+            raise serializers.ValidationError("At least 2 options are required")
+        return value
+    
+    def validate_correct_answer_index(self, value):
+        """Ensure correct answer index is valid"""
+        if value < 0:
+            raise serializers.ValidationError("Correct answer index must be non-negative")
+        return value
+    
+    def validate(self, attrs):
+        """Ensure correct answer index is within options range"""
+        options = attrs.get('options', [])
+        correct_index = attrs.get('correct_answer_index', 0)
+        
+        if correct_index >= len(options):
+            raise serializers.ValidationError({
+                'correct_answer_index': 'Index must be less than the number of options'
+            })
+        
+        return attrs
 
 
 class ChapterQuizSerializer(serializers.ModelSerializer):
     questions = QuizQuestionSerializer(many=True, read_only=True)
     user_attempts = serializers.SerializerMethodField()
+    questions_count = serializers.SerializerMethodField()
     
     class Meta:
         model = ChapterQuiz
         fields = [
-            'id', 'title', 'description', 'passing_score',
-            'time_limit_minutes', 'max_attempts', 'shuffle_questions',
-            'show_correct_answers', 'questions', 'user_attempts'
+            'id', 'path_chapter', 'title', 'description', 'passing_score',
+            'time_limit_minutes', 'shuffle_questions',
+            'show_correct_answers', 'questions', 'questions_count', 
+            'user_attempts', 'created_at', 'updated_at'
         ]
+        read_only_fields = ['id', 'created_at', 'updated_at']
+        extra_kwargs = {
+            'path_chapter': {'required': True}
+        }
+    
+    def get_questions_count(self, obj):
+        return obj.questions.count()
     
     def get_user_attempts(self, obj):
         request = self.context.get('request')
@@ -79,7 +117,7 @@ class ChapterQuizSerializer(serializers.ModelSerializer):
             attempts = QuizAttempt.objects.filter(
                 user=request.user,
                 quiz=obj
-            ).order_by('-started_at')[:5]  # Last 5 attempts
+            ).order_by('-started_at')[:5]
             
             return [{
                 'id': str(attempt.id),
@@ -90,9 +128,13 @@ class ChapterQuizSerializer(serializers.ModelSerializer):
             } for attempt in attempts]
         return []
 
-
 class PathChapterSerializer(serializers.ModelSerializer):
     chapter = ChapterSerializer(read_only=True)
+    chapter_id = serializers.PrimaryKeyRelatedField(
+        queryset=Chapter.objects.all(),
+        source='chapter',
+        write_only=True
+    )
     videos = VideoSerializer(many=True, read_only=True)
     quiz = ChapterQuizSerializer(read_only=True)
     user_progress = serializers.SerializerMethodField()
@@ -102,11 +144,16 @@ class PathChapterSerializer(serializers.ModelSerializer):
     class Meta:
         model = PathChapter
         fields = [
-            'id', 'order', 'title', 'description', 'chapter',
-            'estimated_time', 'is_milestone', 'videos', 'quiz',
-            'user_progress', 'is_locked', 'total_videos',
-            'total_quiz_questions'
+            'id', 'learning_path', 'chapter', 'chapter_id', 'title', 
+            'description', 'estimated_time', 'estimated_minutes', 'is_milestone', 
+            'videos', 'quiz', 'user_progress', 'is_locked', 'total_videos', 
+            'total_quiz_questions',
+            'created_at', 'updated_at'
         ]
+        read_only_fields = ['id', 'created_at', 'updated_at', 'estimated_time']
+        extra_kwargs = {
+            'learning_path': {'required': True},
+        }
     
     def get_user_progress(self, obj):
         request = self.context.get('request')
@@ -129,22 +176,43 @@ class PathChapterSerializer(serializers.ModelSerializer):
         if request and request.user.is_authenticated:
             return obj.is_locked_for_user(request.user)
         return True
+    
+    
+    def create(self, validated_data):
+        path_chapter = super().create(validated_data)
+        return path_chapter
+    
+    def update(self, instance, validated_data):
+        path_chapter = super().update(instance, validated_data)
+        return path_chapter
 
 
 class LearningPathSerializer(serializers.ModelSerializer):
     subject = SubjectSerializer(read_only=True)
+    subject_id = serializers.PrimaryKeyRelatedField(
+        queryset=Subject.objects.all(),
+        source='subject',
+        write_only=True
+    )
     class_level = ClassLevelSerializer(read_only=True)
+    class_level_id = serializers.PrimaryKeyRelatedField(
+        queryset=ClassLevel.objects.all(),
+        source='class_level',
+        write_only=True
+    )
     path_chapters = PathChapterSerializer(many=True, read_only=True)
     user_progress = serializers.SerializerMethodField()
     
     class Meta:
         model = LearningPath
         fields = [
-            'id', 'subject', 'class_level', 'title', 'description',
-            'estimated_hours', 'is_active', 'path_chapters',
-            'total_chapters', 'total_videos', 'total_quiz_questions',
-            'user_progress'
+            'id', 'subject', 'subject_id', 'class_level', 'class_level_id',
+            'title', 'description', 'estimated_hours', 'is_active', 
+            'path_chapters', 'total_chapters', 'total_videos', 
+            'total_quiz_questions', 'user_progress',
+            'created_at', 'updated_at'
         ]
+        read_only_fields = ['id', 'created_by', 'created_at', 'updated_at']
     
     def get_user_progress(self, obj):
         request = self.context.get('request')
@@ -158,63 +226,71 @@ class LearningPathSerializer(serializers.ModelSerializer):
                     'started_at': progress.started_at,
                     'progress_percentage': progress.progress_percentage,
                     'completed_chapters': progress.completed_chapters_count,
-                    'current_streak': progress.current_streak,
-                    'level': progress.level,
-                    'experience_points': progress.experience_points
                 }
         return None
-
-
-class AchievementSerializer(serializers.ModelSerializer):
-    is_earned = serializers.SerializerMethodField()
     
-    class Meta:
-        model = Achievement
-        fields = [
-            'id', 'name', 'description', 'icon',
-            'achievement_type', 'points', 'is_earned'
-        ]
-    
-    def get_is_earned(self, obj):
-        request = self.context.get('request')
-        if request and request.user.is_authenticated:
-            return UserAchievement.objects.filter(
-                user=request.user,
-                achievement=obj
-            ).exists()
-        return False
+    def validate(self, attrs):
+        """Ensure subject and class level combination is unique"""
+        subject = attrs.get('subject')
+        class_level = attrs.get('class_level')
+        
+        if self.instance:
+            # Update case - exclude current instance
+            existing = LearningPath.objects.filter(
+                subject=subject,
+                class_level=class_level
+            ).exclude(id=self.instance.id)
+        else:
+            # Create case
+            existing = LearningPath.objects.filter(
+                subject=subject,
+                class_level=class_level
+            )
+        
+        if existing.exists():
+            raise serializers.ValidationError(
+                "A learning path already exists for this subject and class level combination"
+            )
+        
+        return attrs
+
 
 
 class UserLearningPathProgressSerializer(serializers.ModelSerializer):
     learning_path = LearningPathSerializer(read_only=True)
-    achievements = serializers.SerializerMethodField()
+    chapter_progress = serializers.SerializerMethodField()
     
     class Meta:
         model = UserLearningPathProgress
         fields = [
             'id', 'learning_path', 'started_at', 'last_activity',
-            'current_streak', 'longest_streak', 'total_time_seconds',
+            'total_time_seconds',
             'experience_points', 'level', 'progress_percentage',
-            'completed_chapters_count', 'achievements'
+            'completed_chapters_count', 'chapter_progress'
         ]
+        read_only_fields = fields
     
-    def get_achievements(self, obj):
-        achievements = UserAchievement.objects.filter(
+    def get_chapter_progress(self, obj):
+        """Get progress for all chapters in this path"""
+        progress = UserChapterProgress.objects.filter(
             path_progress=obj
-        ).select_related('achievement')
-        return AchievementSerializer(
-            [ua.achievement for ua in achievements],
-            many=True,
-            context=self.context
-        ).data
+        ).select_related('path_chapter')
+        
+        return [{
+            'chapter_id': str(cp.path_chapter.id),
+            'is_completed': cp.is_completed,
+            'progress_percentage': cp.progress_percentage,
+            'quiz_score': cp.quiz_score,
+            'started_at': cp.started_at,
+            'completed_at': cp.completed_at
+        } for cp in progress]
 
 
 class QuizSubmissionSerializer(serializers.Serializer):
     """Serializer for submitting quiz answers"""
     answers = serializers.ListField(
-        child=serializers.DictField(
-            child=serializers.IntegerField()
-        )
+        child=serializers.DictField(),
+        required=True
     )
     
     def validate_answers(self, value):
@@ -224,6 +300,12 @@ class QuizSubmissionSerializer(serializers.Serializer):
                 raise serializers.ValidationError(
                     "Each answer must have 'question_id' and 'answer_index'"
                 )
+            
+            if not isinstance(answer['answer_index'], int) or answer['answer_index'] < 0:
+                raise serializers.ValidationError(
+                    "answer_index must be a non-negative integer"
+                )
+        
         return value
 
 
@@ -237,13 +319,8 @@ class VideoProgressUpdateSerializer(serializers.Serializer):
 class LearningPathStatsSerializer(serializers.Serializer):
     """Overall learning statistics for a user"""
     total_progress = serializers.IntegerField()
-    current_streak = serializers.IntegerField()
-    longest_streak = serializers.IntegerField()
     total_time_spent = serializers.IntegerField()
     completed_chapters = serializers.IntegerField()
     total_chapters = serializers.IntegerField()
     quiz_average = serializers.FloatField()
-    level = serializers.IntegerField()
-    experience = serializers.IntegerField()
-    next_level_experience = serializers.IntegerField()
-    recent_achievements = AchievementSerializer(many=True)
+

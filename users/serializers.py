@@ -56,13 +56,14 @@ class UserProfileSerializer(serializers.ModelSerializer):
 class UserSerializer(serializers.ModelSerializer):
     profile = UserProfileSerializer(read_only=False)
     is_self = serializers.SerializerMethodField()
-    
+    is_superuser = serializers.BooleanField(read_only=True)  # Add this
+
     class Meta:
         model = User
         fields = (
-            'id', 'username', 'email', 'date_joined', 'profile', 'is_self'
+            'id', 'username', 'email', 'date_joined', 'profile', 'is_self', 'is_superuser'
         )
-        read_only_fields = ('date_joined', 'is_self')
+        read_only_fields = ('date_joined', 'is_self', 'is_superuser')
     
     def get_is_self(self, obj):
         request = self.context.get('request')
