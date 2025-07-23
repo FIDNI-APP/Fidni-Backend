@@ -351,6 +351,7 @@ class LessonCreateSerializer(serializers.ModelSerializer):
             lesson.theorems.set(theorems)
         
         return lesson
+
     
 class ViewHistorySerializer(serializers.ModelSerializer):
     """Serializer for the ViewHistory model"""

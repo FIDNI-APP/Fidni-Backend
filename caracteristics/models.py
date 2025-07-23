@@ -41,7 +41,6 @@ class Subfield(models.Model):
 
 
 #----------------------------CHAPTER-------------------------------
-
 class Chapter(models.Model):
     name = models.CharField(max_length=100)
     subject = models.ForeignKey(Subject, on_delete=models.PROTECT, related_name='chapters', null = True)
@@ -52,8 +51,12 @@ class Chapter(models.Model):
         ordering = ['name']
 
     def __str__(self):
-        return f"{self.name}_{self.class_levels.name}"
+        return f"{self.name}_{self.class_levels_display}"
     
+    @property
+    def class_levels_display(self):
+        """Display all class levels as a comma-separated string"""
+        return ", ".join([cl.name for cl in self.class_levels.all()])
 
 
 #----------------------------THEOREME-------------------------------

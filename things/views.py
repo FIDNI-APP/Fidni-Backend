@@ -46,9 +46,6 @@ class ExerciseViewSet(VoteMixin, viewsets.ModelViewSet):
     permission_classes = [IsAuthenticatedOrReadOnly]
     pagination_class = StandardResultsSetPagination  
 
-
-
-
     def get_serializer_class(self):
         if self.action in ['create', 'update', 'partial_update']:
             return ExerciseCreateSerializer
