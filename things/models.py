@@ -86,6 +86,16 @@ class Solution(VotableMixin, models.Model):
 
     def __str__(self):
         return f"Solution for {self.exercise.title}"
+
+class ExamSolution(VotableMixin, models.Model):
+    exam = models.OneToOneField('Exam', on_delete=models.PROTECT, related_name='solution')
+    content = models.TextField()
+    author = models.ForeignKey(User, on_delete=models.PROTECT, related_name='exam_solutions')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Solution for {self.exam.title}"
     
 #----------------------------LESSON-------------------------------
 

@@ -1,5 +1,5 @@
 from django.contrib import admin
-from things.models import ClassLevel, Subject, Chapter, Exercise, Solution, Comment
+from things.models import ClassLevel, Subject, Chapter, Exercise, Solution, ExamSolution, Comment
 
 @admin.register(ClassLevel)
 class ClassLevelAdmin(admin.ModelAdmin):
@@ -32,6 +32,14 @@ class SolutionAdmin(admin.ModelAdmin):
     list_display = ('exercise', 'author', 'created_at')
     list_filter = ('exercise__difficulty',)
     search_fields = ('exercise__title', 'content', 'author__username')
+    date_hierarchy = 'created_at'
+    readonly_fields = ('created_at', 'updated_at')
+
+@admin.register(ExamSolution)
+class ExamSolutionAdmin(admin.ModelAdmin):
+    list_display = ('exam', 'author', 'created_at')
+    list_filter = ('exam__difficulty',)
+    search_fields = ('exam__title', 'content', 'author__username')
     date_hierarchy = 'created_at'
     readonly_fields = ('created_at', 'updated_at')
 

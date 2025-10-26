@@ -6,17 +6,33 @@ import rest_framework
 from datetime import timedelta
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
+from django.db import transaction
 
 
 from django.contrib.contenttypes.models import ContentType
-from django.db.models import Count, Q
+from django.db.models import Count, Q, Avg, F
+from django.conf import settings
+
+# Check if using PostgreSQL for trigram support
+USE_TRIGRAM = 'postgresql' in settings.DATABASES['default']['ENGINE']
+
+# Import TrigramSimilarity only if using PostgreSQL
+if USE_TRIGRAM:
+    try:
+        from django.contrib.postgres.search import TrigramSimilarity
+    except ImportError:
+        USE_TRIGRAM = False
+        TrigramSimilarity = None  # Dummy value
+else:
+    TrigramSimilarity = None  # Dummy value for SQLite
 
 
-from .models import Exercise, Solution, Comment, Lesson
+from .models import Exercise, Solution, Comment, Lesson, Exam
 from .serializers import  ExerciseSerializer, SolutionSerializer, CommentSerializer, ExerciseCreateSerializer, LessonSerializer, LessonCreateSerializer
-from interactions.models import Vote, Save, Complete, TimeSpent, TimeSession
+from interactions.models import Vote, Save, Complete, TimeSpent, TimeSession, SolutionView, SolutionMatch
 from interactions.serializers import VoteSerializer, SaveSerializer, CompleteSerializer, TimeSpentSerializer
 from interactions.views import VoteMixin
+from users.models import ViewHistory
 from rest_framework.permissions import IsAuthenticatedOrReadOnly,IsAuthenticated
 
 
@@ -67,6 +83,37 @@ class ExerciseViewSet(VoteMixin, viewsets.ModelViewSet):
                                   Count('votes', filter=Q(votes__value=Vote.DOWN))
         )
 
+        # Search functionality with optional fuzzy matching
+        search_query = self.request.query_params.get('search', None)
+        if search_query:
+            if USE_TRIGRAM:
+                # PostgreSQL: Use trigram similarity for fuzzy matching
+                queryset = queryset.annotate(
+                    title_similarity=TrigramSimilarity('title', search_query),
+                    content_similarity=TrigramSimilarity('content', search_query),
+                ).filter(
+                    Q(title__icontains=search_query) |
+                    Q(content__icontains=search_query) |
+                    Q(subject__name__icontains=search_query) |
+                    Q(chapters__name__icontains=search_query) |
+                    Q(theorems__name__icontains=search_query) |
+                    Q(subfields__name__icontains=search_query) |
+                    Q(class_levels__name__icontains=search_query) |
+                    Q(title_similarity__gt=0.1) |
+                    Q(content_similarity__gt=0.1)
+                ).order_by('-title_similarity', '-content_similarity')
+            else:
+                # SQLite: Use simple case-insensitive search
+                queryset = queryset.filter(
+                    Q(title__icontains=search_query) |
+                    Q(content__icontains=search_query) |
+                    Q(subject__name__icontains=search_query) |
+                    Q(chapters__name__icontains=search_query) |
+                    Q(theorems__name__icontains=search_query) |
+                    Q(subfields__name__icontains=search_query) |
+                    Q(class_levels__name__icontains=search_query)
+                )
+
         # Filtering
         class_levels = self.request.query_params.getlist('class_levels[]')
         subjects = self.request.query_params.getlist('subjects[]')
@@ -75,7 +122,7 @@ class ExerciseViewSet(VoteMixin, viewsets.ModelViewSet):
         subfields = self.request.query_params.getlist('subfields[]')
         theorems = self.request.query_params.getlist('theorems[]')
 
-        
+
         filters_subject = Q()
         filters_class_level = Q()
         filters_subfield = Q()
@@ -483,14 +530,297 @@ class ExerciseViewSet(VoteMixin, viewsets.ModelViewSet):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
+    @action(detail=True, methods=['get'])
+    def statistics(self, request, pk=None):
+        """
+        Get statistics for this exercise
+        Returns: success rate, average time, best time, user's percentile, etc.
+        """
+        exercise = self.get_object()
+
+        try:
+            content_type = ContentType.objects.get_for_model(Exercise)
+
+            # Get all completions for this exercise
+            completions = Complete.objects.filter(
+                content_type=content_type,
+                object_id=exercise.id
+            )
+
+            success_count = completions.filter(status='success').count()
+            review_count = completions.filter(status='review').count()
+            total_participants = completions.values('user').distinct().count()
+
+            # Calculate success percentage
+            success_percentage = int((success_count / total_participants * 100)) if total_participants > 0 else 0
+
+            # Get average time
+            sessions = TimeSession.objects.filter(
+                content_type=content_type,
+                object_id=exercise.id
+            ).all()
+
+            if sessions.exists():
+                # Calculate average in Python to avoid DurationField issues
+                total_seconds = sum(int(s.session_duration.total_seconds()) for s in sessions)
+                average_time_seconds = int(total_seconds / sessions.count())
+
+                # Get best time
+                best_time_seconds = min(int(s.session_duration.total_seconds()) for s in sessions)
+            else:
+                average_time_seconds = 0
+                best_time_seconds = 0
+
+            # User's stats
+            user_time_seconds = None
+            user_time_percentile = None
+            user_completed = None
+
+            # Check if user is authenticated
+            is_user_authenticated = (hasattr(self.request, 'user') and self.request.user and self.request.user.is_authenticated)
+
+            if is_user_authenticated:
+                # Get user's completion status
+                user_completion = Complete.objects.filter(
+                    user=request.user,
+                    content_type=content_type,
+                    object_id=exercise.id
+                ).first()
+                user_completed = user_completion.status if user_completion else None
+
+                # Get user's time
+                user_session = sessions.filter(user=request.user).order_by('-created_at').first()
+                if user_session:
+                    user_time_seconds = int(user_session.session_duration.total_seconds())
+
+                    # Calculate percentile (how many are slower)
+                    slower_count = sessions.filter(
+                        session_duration__gt=user_session.session_duration
+                    ).values('user').distinct().count()
+                    user_time_percentile = int((slower_count / max(total_participants, 1)) * 100) if total_participants > 0 else 0
+
+            # Get solution view tracking data
+            solution_views = SolutionView.objects.filter(
+                content_type=content_type,
+                object_id=exercise.id
+            )
+
+            # Count users who viewed solution before success
+            users_viewed_before_success = 0
+            for user in solution_views.values('user').distinct():
+                user_id = user['user']
+                user_view = solution_views.filter(user=user_id).first()
+                user_completion = Complete.objects.filter(
+                    user=user_id,
+                    content_type=content_type,
+                    object_id=exercise.id,
+                    status='success'
+                ).first()
+
+                # If user viewed solution and either didn't complete or viewed before completing
+                if user_view and user_completion:
+                    if user_view.viewed_at <= user_completion.created_at:
+                        users_viewed_before_success += 1
+
+            solution_views_before_success = users_viewed_before_success
+
+            # Check if current user viewed solution
+            user_viewed_solution = False
+            # Check if user is authenticated
+            is_user_authenticated = (hasattr(self.request, 'user') and self.request.user and self.request.user.is_authenticated)
+
+            if is_user_authenticated:
+                user_viewed_solution = solution_views.filter(user=request.user).exists()
+
+            # Get solution match tracking data
+            solution_matches = SolutionMatch.objects.filter(
+                content_type=content_type,
+                object_id=exercise.id
+            )
+
+            solution_match_count = solution_matches.count()
+            user_solution_matched = False
+
+            if is_user_authenticated:
+                user_solution_matched = solution_matches.filter(user=request.user).exists()
+
+            return Response({
+                'total_participants': total_participants,
+                'success_count': success_count,
+                'review_count': review_count,
+                'success_percentage': success_percentage,
+                'average_time_seconds': average_time_seconds,
+                'best_time_seconds': best_time_seconds,
+                'solution_views_before_success': solution_views_before_success,
+                'user_time_percentile': user_time_percentile,
+                'user_completed': user_completed,
+                'user_viewed_solution': user_viewed_solution,
+                'user_time_seconds': user_time_seconds,
+                'solution_match_count': solution_match_count,
+                'user_solution_matched': user_solution_matched
+            })
+
+        except Exception as e:
+            logger.error(f"Error calculating statistics: {str(e)}")
+            return Response(
+                {'error': 'Failed to calculate statistics'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+    @action(detail=True, methods=['post', 'delete'], permission_classes=[IsAuthenticated])
+    def mark_solution_viewed(self, request, pk=None):
+        """
+        Mark or unmark that the current user viewed the solution for this exercise
+        POST: Mark solution as viewed
+        DELETE: Remove the solution view flag
+        """
+        exercise = self.get_object()
+
+        try:
+            content_type = ContentType.objects.get_for_model(Exercise)
+
+            if request.method == 'POST':
+                # Create or get the solution view record
+                solution_view, created = SolutionView.objects.get_or_create(
+                    user=request.user,
+                    content_type=content_type,
+                    object_id=exercise.id
+                )
+
+                return Response({
+                    'marked_as_viewed': True,
+                    'message': 'Solution view recorded'
+                })
+
+            elif request.method == 'DELETE':
+                # Delete the solution view record
+                deleted_count, _ = SolutionView.objects.filter(
+                    user=request.user,
+                    content_type=content_type,
+                    object_id=exercise.id
+                ).delete()
+
+                if deleted_count > 0:
+                    return Response({
+                        'marked_as_viewed': False,
+                        'message': 'Solution view flag removed'
+                    })
+                else:
+                    return Response({
+                        'marked_as_viewed': False,
+                        'message': 'No solution view flag found'
+                    })
+
+        except Exception as e:
+            logger.error(f"Error managing solution view: {str(e)}")
+            return Response(
+                {'error': 'Failed to manage solution view'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+    @action(detail=True, methods=['post', 'delete'], permission_classes=[IsAuthenticated])
+    def mark_solution_match(self, request, pk=None):
+        """Mark or unmark that the current user's solution matches the proposed solution"""
+        exercise = self.get_object()
+        try:
+            content_type = ContentType.objects.get_for_model(Exercise)
+
+            if request.method == 'POST':
+                solution_match, created = SolutionMatch.objects.get_or_create(
+                    user=request.user,
+                    content_type=content_type,
+                    object_id=exercise.id
+                )
+                return Response({
+                    'solution_matched': True,
+                    'message': 'Solution match recorded'
+                })
+
+            elif request.method == 'DELETE':
+                deleted_count, _ = SolutionMatch.objects.filter(
+                    user=request.user,
+                    content_type=content_type,
+                    object_id=exercise.id
+                ).delete()
+
+                if deleted_count > 0:
+                    return Response({
+                        'solution_matched': False,
+                        'message': 'Solution match flag removed'
+                    })
+                else:
+                    return Response({
+                        'solution_matched': False,
+                        'message': 'No solution match flag found'
+                    })
+
+        except Exception as e:
+            logger.error(f"Error managing solution match: {str(e)}")
+            return Response(
+                {'error': 'Failed to manage solution match'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+    @action(detail=True, methods=['post'])
+    def view(self, request, pk=None):
+        """
+        Mark exercise as viewed and increment view count.
+        Only counts as a new view if 1 hour has passed since the last view.
+        """
+        exercise = self.get_object()
+        should_count_view = True
+
+        # Check if user is authenticated
+        if request.user.is_authenticated:
+            content_type = ContentType.objects.get_for_model(Exercise)
+            one_hour_ago = timezone.now() - timedelta(hours=1)
+
+            try:
+                # Check if there's a recent view (without locking to avoid SQLite issues)
+                last_view = ViewHistory.objects.filter(
+                    user=request.user,
+                    content_type=content_type,
+                    object_id=exercise.id,
+                    viewed_at__gte=one_hour_ago
+                ).exists()
+
+                if last_view:
+                    # User viewed this exercise within the last hour, don't count it
+                    should_count_view = False
+                else:
+                    # This is a new view after 1 hour, count it
+                    should_count_view = True
+                    # Increment view count
+                    Exercise.objects.filter(id=exercise.id).update(
+                        view_count=F('view_count') + 1
+                    )
+                    exercise.refresh_from_db()
+
+                # Always update view history (creates or updates the record)
+                # Do this after the view count update to minimize lock time
+                ViewHistory.objects.update_or_create(
+                    user=request.user,
+                    content_type=content_type,
+                    object_id=exercise.id,
+                    defaults={'status': 'viewed'}
+                )
+
+            except Exception as e:
+                logger.error(f"Error recording view: {str(e)}")
+                # If there's an error, still return a response but don't count it
+                should_count_view = False
+
+        return Response({
+            'view_count': exercise.view_count,
+            'counted': should_count_view
+        })
+
 
 #----------------------------SOLUTION-------------------------------
 class SolutionViewSet(VoteMixin, viewsets.ModelViewSet):
     queryset = Solution.objects.all()
     serializer_class = SolutionSerializer
     permission_classes = [IsAuthenticatedOrReadOnly]
-    authentication_classes = []  # Skip authentication
-
 
     def perform_create(self, serializer):
         serializer.save(author=self.request.user)
@@ -566,9 +896,40 @@ class LessonViewSet(VoteMixin, viewsets.ModelViewSet):
             'theorems',
             'subfields'
         ).annotate(
-            vote_count_annotation=Count('votes', filter=Q(votes__value=Vote.UP)) - 
+            vote_count_annotation=Count('votes', filter=Q(votes__value=Vote.UP)) -
                                   Count('votes', filter=Q(votes__value=Vote.DOWN))
         )
+
+        # Search functionality with optional fuzzy matching
+        search_query = self.request.query_params.get('search', None)
+        if search_query:
+            if USE_TRIGRAM:
+                # PostgreSQL: Use trigram similarity for fuzzy matching
+                queryset = queryset.annotate(
+                    title_similarity=TrigramSimilarity('title', search_query),
+                    content_similarity=TrigramSimilarity('content', search_query),
+                ).filter(
+                    Q(title__icontains=search_query) |
+                    Q(content__icontains=search_query) |
+                    Q(subject__name__icontains=search_query) |
+                    Q(chapters__name__icontains=search_query) |
+                    Q(theorems__name__icontains=search_query) |
+                    Q(subfields__name__icontains=search_query) |
+                    Q(class_levels__name__icontains=search_query) |
+                    Q(title_similarity__gt=0.1) |
+                    Q(content_similarity__gt=0.1)
+                ).order_by('-title_similarity', '-content_similarity')
+            else:
+                # SQLite: Use simple case-insensitive search
+                queryset = queryset.filter(
+                    Q(title__icontains=search_query) |
+                    Q(content__icontains=search_query) |
+                    Q(subject__name__icontains=search_query) |
+                    Q(chapters__name__icontains=search_query) |
+                    Q(theorems__name__icontains=search_query) |
+                    Q(subfields__name__icontains=search_query) |
+                    Q(class_levels__name__icontains=search_query)
+                )
 
         # Filtering
         class_levels = self.request.query_params.getlist('class_levels[]')
@@ -577,7 +938,7 @@ class LessonViewSet(VoteMixin, viewsets.ModelViewSet):
         subfields = self.request.query_params.getlist('subfields[]')
         theorems = self.request.query_params.getlist('theorems[]')
 
-        
+
         filters_subject = Q()
         filters_class_level = Q()
         filters_subfield = Q()
@@ -594,7 +955,7 @@ class LessonViewSet(VoteMixin, viewsets.ModelViewSet):
             filters_theorem |= Q(theorems__id__in=theorems)
         if chapters:
             filters_chapter |= Q(chapters__id__in=chapters)
-            
+
         filters = (filters_subject) & (filters_class_level) & (filters_subfield) & (filters_chapter) & (filters_theorem)
         queryset = queryset.filter(filters)
         return queryset.distinct()
@@ -643,7 +1004,7 @@ class ExamViewSet(VoteMixin, viewsets.ModelViewSet):
 
     def get_queryset(self):
         queryset = Exam.objects.all().select_related(
-            'author', 'subject'
+            'author', 'subject', 'solution'
         ).prefetch_related(
             'chapters',
             'class_levels',
@@ -651,11 +1012,44 @@ class ExamViewSet(VoteMixin, viewsets.ModelViewSet):
             'comments',
             'votes',
             'theorems',
-            'subfields'
+            'subfields',
+            'solution__author',
+            'solution__votes'
         ).annotate(
-            vote_count_annotation=Count('votes', filter=Q(votes__value=Vote.UP)) - 
+            vote_count_annotation=Count('votes', filter=Q(votes__value=Vote.UP)) -
                                   Count('votes', filter=Q(votes__value=Vote.DOWN))
         )
+
+        # Search functionality with optional fuzzy matching
+        search_query = self.request.query_params.get('search', None)
+        if search_query:
+            if USE_TRIGRAM:
+                # PostgreSQL: Use trigram similarity for fuzzy matching
+                queryset = queryset.annotate(
+                    title_similarity=TrigramSimilarity('title', search_query),
+                    content_similarity=TrigramSimilarity('content', search_query),
+                ).filter(
+                    Q(title__icontains=search_query) |
+                    Q(content__icontains=search_query) |
+                    Q(subject__name__icontains=search_query) |
+                    Q(chapters__name__icontains=search_query) |
+                    Q(theorems__name__icontains=search_query) |
+                    Q(subfields__name__icontains=search_query) |
+                    Q(class_levels__name__icontains=search_query) |
+                    Q(title_similarity__gt=0.1) |
+                    Q(content_similarity__gt=0.1)
+                ).order_by('-title_similarity', '-content_similarity')
+            else:
+                # SQLite: Use simple case-insensitive search
+                queryset = queryset.filter(
+                    Q(title__icontains=search_query) |
+                    Q(content__icontains=search_query) |
+                    Q(subject__name__icontains=search_query) |
+                    Q(chapters__name__icontains=search_query) |
+                    Q(theorems__name__icontains=search_query) |
+                    Q(subfields__name__icontains=search_query) |
+                    Q(class_levels__name__icontains=search_query)
+                )
 
         # Filtering
         class_levels = self.request.query_params.getlist('class_levels[]')
@@ -665,11 +1059,11 @@ class ExamViewSet(VoteMixin, viewsets.ModelViewSet):
         subfields = self.request.query_params.getlist('subfields[]')
         theorems = self.request.query_params.getlist('theorems[]')
         is_national_exam = self.request.query_params.get('is_national_exam')
-        
+
         # Change from date_from/date_to to year_from/year_to
         year_from = self.request.query_params.get('year_from')
         year_to = self.request.query_params.get('year_to')
-        
+
         filters_subject = Q()
         filters_class_level = Q()
         filters_subfield = Q()
@@ -695,7 +1089,7 @@ class ExamViewSet(VoteMixin, viewsets.ModelViewSet):
             # Convert string to boolean
             is_national = is_national_exam.lower() in ['true', '1', 'yes']
             filters_national |= Q(is_national_exam=is_national)
-        
+
         # Year filtering
         if year_from:
             try:
@@ -703,14 +1097,14 @@ class ExamViewSet(VoteMixin, viewsets.ModelViewSet):
                 filters_year &= Q(national_year__gte=year_from_int)
             except ValueError:
                 pass  # Invalid year format, ignore
-                
+
         if year_to:
             try:
                 year_to_int = int(year_to)
                 filters_year &= Q(national_year__lte=year_to_int)
             except ValueError:
                 pass  # Invalid year format, ignore
-            
+
         filters = (filters_subject) & (filters_class_level) & (filters_subfield) & (filters_chapter) & (filters_theorem) & (filters_difficulty) & (filters_national) & (filters_year)
         queryset = queryset.filter(filters)
         return queryset.distinct()
@@ -746,16 +1140,56 @@ class ExamViewSet(VoteMixin, viewsets.ModelViewSet):
     @action(detail=True, methods=['post'])
     def view(self, request, pk=None):
         """
-        Mark exam as viewed and increment view count
+        Mark exam as viewed and increment view count.
+        Only counts as a new view if 1 hour has passed since the last view.
         """
         exam = self.get_object()
-        exam.view_count += 1
-        exam.save()
-        
-        # Optionally, you can track user view history here
-        # This would require creating a ViewHistory record
-        
-        return Response({'view_count': exam.view_count})
+        should_count_view = True
+
+        # Check if user is authenticated
+        if request.user.is_authenticated:
+            content_type = ContentType.objects.get_for_model(Exam)
+            one_hour_ago = timezone.now() - timedelta(hours=1)
+
+            try:
+                # Check if there's a recent view (without locking to avoid SQLite issues)
+                last_view = ViewHistory.objects.filter(
+                    user=request.user,
+                    content_type=content_type,
+                    object_id=exam.id,
+                    viewed_at__gte=one_hour_ago
+                ).exists()
+
+                if last_view:
+                    # User viewed this exam within the last hour, don't count it
+                    should_count_view = False
+                else:
+                    # This is a new view after 1 hour, count it
+                    should_count_view = True
+                    # Increment view count
+                    Exam.objects.filter(id=exam.id).update(
+                        view_count=F('view_count') + 1
+                    )
+                    exam.refresh_from_db()
+
+                # Always update view history (creates or updates the record)
+                # Do this after the view count update to minimize lock time
+                ViewHistory.objects.update_or_create(
+                    user=request.user,
+                    content_type=content_type,
+                    object_id=exam.id,
+                    defaults={'status': 'viewed'}
+                )
+
+            except Exception as e:
+                logger.error(f"Error recording view: {str(e)}")
+                # If there's an error, still return a response but don't count it
+                should_count_view = False
+
+        return Response({
+            'view_count': exam.view_count,
+            'counted': should_count_view
+        })
 
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
     def mark_progress(self, request, pk=None):
@@ -1057,17 +1491,17 @@ class ExamViewSet(VoteMixin, viewsets.ModelViewSet):
         Get session history for this exam
         """
         exam = self.get_object()
-        
+
         try:
             content_type = ContentType.objects.get_for_model(Exam)
-            
+
             # Get all sessions for this exam
             sessions = TimeSession.objects.filter(
                 user=request.user,
                 content_type=content_type,
                 object_id=exam.id
             ).order_by('-created_at')[:20]  # Limit to last 20 sessions
-            
+
             # Format the response
             session_data = [{
                 'id': str(session.id),
@@ -1078,14 +1512,202 @@ class ExamViewSet(VoteMixin, viewsets.ModelViewSet):
                 'session_type': session.session_type,
                 'notes': session.notes
             } for session in sessions]
-            
+
             return Response({
                 'sessions': session_data
             })
-            
+
         except Exception as e:
             logger.error(f"Error retrieving session history: {str(e)}")
             return Response(
                 {'error': 'Failed to retrieve session history'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+    @action(detail=True, methods=['get'])
+    def statistics(self, request, pk=None):
+        """
+        Get statistics for this exam
+        Returns: success rate, average time, best time, user's percentile, etc.
+        """
+        exam = self.get_object()
+
+        try:
+            content_type = ContentType.objects.get_for_model(Exam)
+
+            # Get all completions for this exam
+            completions = Complete.objects.filter(
+                content_type=content_type,
+                object_id=exam.id
+            )
+
+            success_count = completions.filter(status='success').count()
+            review_count = completions.filter(status='review').count()
+            total_participants = completions.values('user').distinct().count()
+
+            # Calculate success percentage
+            success_percentage = int((success_count / total_participants * 100)) if total_participants > 0 else 0
+
+            # Get average time
+            sessions = TimeSession.objects.filter(
+                content_type=content_type,
+                object_id=exam.id
+            ).all()
+
+            if sessions.exists():
+                # Calculate average in Python to avoid DurationField issues
+                total_seconds = sum(int(s.session_duration.total_seconds()) for s in sessions)
+                average_time_seconds = int(total_seconds / sessions.count())
+
+                # Get best time
+                best_time_seconds = min(int(s.session_duration.total_seconds()) for s in sessions)
+            else:
+                average_time_seconds = 0
+                best_time_seconds = 0
+
+            # User's stats
+            user_time_seconds = None
+            user_time_percentile = None
+            user_completed = None
+
+            # Check if user is authenticated
+            is_user_authenticated = (hasattr(self.request, 'user') and self.request.user and self.request.user.is_authenticated)
+
+            if is_user_authenticated:
+                # Get user's completion status
+                user_completion = Complete.objects.filter(
+                    user=request.user,
+                    content_type=content_type,
+                    object_id=exam.id
+                ).first()
+                user_completed = user_completion.status if user_completion else None
+
+                # Get user's time
+                user_session = sessions.filter(user=request.user).order_by('-created_at').first()
+                if user_session:
+                    user_time_seconds = int(user_session.session_duration.total_seconds())
+
+                    # Calculate percentile (how many are slower)
+                    slower_count = sessions.filter(
+                        session_duration__gt=user_session.session_duration
+                    ).values('user').distinct().count()
+                    user_time_percentile = int((slower_count / max(total_participants, 1)) * 100) if total_participants > 0 else 0
+
+            # Get solution view tracking data
+            solution_views = SolutionView.objects.filter(
+                content_type=content_type,
+                object_id=exam.id
+            )
+
+            # Count users who viewed solution before success
+            users_viewed_before_success = 0
+            for user in solution_views.values('user').distinct():
+                user_id = user['user']
+                user_view = solution_views.filter(user=user_id).first()
+                user_completion = Complete.objects.filter(
+                    user=user_id,
+                    content_type=content_type,
+                    object_id=exam.id,
+                    status='success'
+                ).first()
+
+                # If user viewed solution and either didn't complete or viewed before completing
+                if user_view and user_completion:
+                    if user_view.viewed_at <= user_completion.created_at:
+                        users_viewed_before_success += 1
+
+            solution_views_before_success = users_viewed_before_success
+
+            # Check if current user viewed solution
+            user_viewed_solution = False
+            # Check if user is authenticated
+            is_user_authenticated = (hasattr(self.request, 'user') and self.request.user and self.request.user.is_authenticated)
+
+            if is_user_authenticated:
+                user_viewed_solution = solution_views.filter(user=request.user).exists()
+
+            # Get solution match tracking data
+            solution_matches = SolutionMatch.objects.filter(
+                content_type=content_type,
+                object_id=exam.id
+            )
+
+            solution_match_count = solution_matches.count()
+            user_solution_matched = False
+
+            if is_user_authenticated:
+                user_solution_matched = solution_matches.filter(user=request.user).exists()
+
+            return Response({
+                'total_participants': total_participants,
+                'success_count': success_count,
+                'review_count': review_count,
+                'success_percentage': success_percentage,
+                'average_time_seconds': average_time_seconds,
+                'best_time_seconds': best_time_seconds,
+                'solution_views_before_success': solution_views_before_success,
+                'user_time_percentile': user_time_percentile,
+                'user_completed': user_completed,
+                'user_viewed_solution': user_viewed_solution,
+                'user_time_seconds': user_time_seconds,
+                'solution_match_count': solution_match_count,
+                'user_solution_matched': user_solution_matched
+            })
+
+        except Exception as e:
+            logger.error(f"Error calculating statistics: {str(e)}")
+            return Response(
+                {'error': 'Failed to calculate statistics'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+    @action(detail=True, methods=['post', 'delete'], permission_classes=[IsAuthenticated])
+    def mark_solution_viewed(self, request, pk=None):
+        """
+        Mark or unmark that the current user viewed the solution for this exam
+        POST: Mark solution as viewed
+        DELETE: Remove the solution view flag
+        """
+        exam = self.get_object()
+
+        try:
+            content_type = ContentType.objects.get_for_model(Exam)
+
+            if request.method == 'POST':
+                # Create or get the solution view record
+                solution_view, created = SolutionView.objects.get_or_create(
+                    user=request.user,
+                    content_type=content_type,
+                    object_id=exam.id
+                )
+
+                return Response({
+                    'marked_as_viewed': True,
+                    'message': 'Solution view recorded'
+                })
+
+            elif request.method == 'DELETE':
+                # Delete the solution view record
+                deleted_count, _ = SolutionView.objects.filter(
+                    user=request.user,
+                    content_type=content_type,
+                    object_id=exam.id
+                ).delete()
+
+                if deleted_count > 0:
+                    return Response({
+                        'marked_as_viewed': False,
+                        'message': 'Solution view flag removed'
+                    })
+                else:
+                    return Response({
+                        'marked_as_viewed': False,
+                        'message': 'No solution view flag found'
+                    })
+
+        except Exception as e:
+            logger.error(f"Error managing solution view: {str(e)}")
+            return Response(
+                {'error': 'Failed to manage solution view'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )

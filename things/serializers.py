@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Solution, Comment,Subfield, Theorem,Exercise,Lesson
+from .models import Solution, ExamSolution, Comment, Subfield, Theorem, Exercise, Lesson
 from caracteristics.models import ClassLevel, Chapter, Subfield, Theorem
 from users.serializers import UserSerializer
 from users.models import ViewHistory
@@ -22,6 +22,23 @@ class SolutionSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Solution
+        fields = ['id', 'content', 'author', 'created_at', 'updated_at', 'vote_count', 'user_vote']
+
+    def get_user_vote(self, obj):
+        user = self.context.get('request').user if self.context.get('request') else None
+        if user and hasattr(user, 'is_authenticated') and user.is_authenticated:
+            vote = obj.votes.filter(user=user).first()
+            return vote.value if vote else None
+        return None
+
+class ExamSolutionSerializer(serializers.ModelSerializer):
+    author = UserSerializer(read_only=True)
+    vote_count = serializers.IntegerField(read_only=True)
+    user_vote = serializers.SerializerMethodField()
+    content = serializers.CharField(required=True, allow_blank=False)
+
+    class Meta:
+        model = ExamSolution
         fields = ['id', 'content', 'author', 'created_at', 'updated_at', 'vote_count', 'user_vote']
 
     def get_user_vote(self, obj):
@@ -177,8 +194,9 @@ class ExerciseCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Exercise
         fields = [
-            'title', 
-            'content', 
+            'id',
+            'title',
+            'content',
             'difficulty',
             'chapters',
             'class_levels',
@@ -321,7 +339,8 @@ class LessonCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Lesson
         fields = [
-            'title', 
+            'id',
+            'title',
             'content',
             'chapters',
             'class_levels',
@@ -389,16 +408,17 @@ class ExamSerializer(serializers.ModelSerializer):
     user_save = serializers.SerializerMethodField()
     user_complete = serializers.SerializerMethodField()
     user_timespent = serializers.SerializerMethodField()
+    solution = ExamSolutionSerializer(read_only=True)
     # Add backward compatibility for national_date
     national_date = serializers.SerializerMethodField()
 
     class Meta:
         model = Exam
         fields = [
-            'id', 'title', 'content', 'difficulty', 'chapters', 'author', 
-            'created_at', 'updated_at', 'view_count', 'comments', 'vote_count', 
+            'id', 'title', 'content', 'difficulty', 'chapters', 'author',
+            'created_at', 'updated_at', 'view_count', 'comments', 'vote_count',
             'user_vote', 'class_levels', 'subject', 'subfields', 'theorems',
-            'user_save', 'user_complete', 'user_timespent', 'is_national_exam', 
+            'user_save', 'user_complete', 'user_timespent', 'solution', 'is_national_exam',
             'national_year', 'national_date'  # Include both for compatibility
         ]
 
@@ -442,12 +462,13 @@ class ExamCreateSerializer(serializers.ModelSerializer):
     theorems = serializers.PrimaryKeyRelatedField(many=True, queryset=Theorem.objects.all(), required=False)
     # Accept both national_date (for backward compatibility) and national_year
     national_date = serializers.CharField(required=False, allow_null=True, write_only=True)
+    solution = serializers.CharField(required=False, allow_blank=True, write_only=True)
 
     class Meta:
         model = Exam
         fields = [
-            'title', 'content', 'difficulty', 'chapters', 'class_levels',
-            'subject', 'subfields', 'theorems', 'is_national_exam', 'national_year', 'national_date'
+            'id', 'title', 'content', 'difficulty', 'chapters', 'class_levels',
+            'subject', 'subfields', 'theorems', 'is_national_exam', 'national_year', 'national_date', 'solution'
         ]
 
     def validate(self, data):
@@ -479,6 +500,7 @@ class ExamCreateSerializer(serializers.ModelSerializer):
         class_levels = validated_data.pop('class_levels', [])
         subfields = validated_data.pop('subfields', [])
         theorems = validated_data.pop('theorems', [])
+        solution_content = validated_data.pop('solution', None)
 
         exam = Exam.objects.create(
             author=self.context['request'].user,
@@ -493,7 +515,15 @@ class ExamCreateSerializer(serializers.ModelSerializer):
             exam.subfields.set(subfields)
         if theorems:
             exam.theorems.set(theorems)
-        
+
+        # Create solution if provided
+        if solution_content:
+            ExamSolution.objects.create(
+                exam=exam,
+                content=solution_content,
+                author=self.context['request'].user
+            )
+
         return exam
 
     def update(self, instance, validated_data):
@@ -501,10 +531,11 @@ class ExamCreateSerializer(serializers.ModelSerializer):
         class_levels = validated_data.pop('class_levels', None)
         subfields = validated_data.pop('subfields', None)
         theorems = validated_data.pop('theorems', None)
-        
+        solution_content = validated_data.pop('solution', None)
+
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
-        
+
         if chapters is not None:
             instance.chapters.set(chapters)
         if class_levels is not None:
@@ -513,10 +544,23 @@ class ExamCreateSerializer(serializers.ModelSerializer):
             instance.subfields.set(subfields)
         if theorems is not None:
             instance.theorems.set(theorems)
-        
+
+        # Update or create solution if provided
+        if solution_content:
+            try:
+                solution = instance.solution
+                solution.content = solution_content
+                solution.save()
+            except ExamSolution.DoesNotExist:
+                ExamSolution.objects.create(
+                    exam=instance,
+                    content=solution_content,
+                    author=self.context['request'].user
+                )
+
         instance.save()
         return instance
-    
+
 
 # Update the CommentSerializer in things/serializers.py
 

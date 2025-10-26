@@ -6,27 +6,38 @@ from caracteristics.models import ClassLevel, Subject
 
 class SubjectGradeSerializer(serializers.ModelSerializer):
     subject_name = serializers.SerializerMethodField()
-    
+    current_grade = serializers.SerializerMethodField()
+    target_grade = serializers.SerializerMethodField()
+
     class Meta:
         model = SubjectGrade
-        fields = ('id', 'subject', 'min_grade', 'max_grade', 'user')
+        fields = ('id', 'subject', 'subject_name', 'min_grade', 'max_grade', 'current_grade', 'target_grade')
         read_only_fields = ('id',)
-    
+
     def get_subject_name(self, obj):
         return obj.subject.name
+
+    def get_current_grade(self, obj):
+        """Return min_grade as current grade"""
+        return float(obj.min_grade)
+
+    def get_target_grade(self, obj):
+        """Return max_grade as target grade"""
+        return float(obj.max_grade)
 
 
 class UserProfileSerializer(serializers.ModelSerializer):
     reputation = serializers.ReadOnlyField()
     contribution_stats = serializers.SerializerMethodField()
     learning_stats = serializers.SerializerMethodField()
-    subject_grades = SubjectGradeSerializer(many=True, read_only=True)
+    subject_grades = SubjectGradeSerializer(many=True, required=False)
     class_level_name = serializers.SerializerMethodField()
-    
+    target_subject_names = serializers.SerializerMethodField()
+
     class Meta:
         model = UserProfile
         fields = (
-            'bio', 'avatar', 'target_subjects', 'reputation',
+            'bio', 'avatar', 'target_subjects', 'target_subject_names', 'reputation',
             'location', 'last_activity_date', 'joined_at',
             'class_level', 'class_level_name', 'user_type', 'onboarding_completed',
             'display_email', 'display_stats',
@@ -51,6 +62,10 @@ class UserProfileSerializer(serializers.ModelSerializer):
         if obj.class_level:
             return obj.class_level.name
         return None
+
+    def get_target_subject_names(self, obj):
+        """Return list of target subject names"""
+        return [subject.name for subject in obj.target_subjects.all()]
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -82,42 +97,86 @@ class UserSerializer(serializers.ModelSerializer):
         # Update profile data
         if profile_data:
             profile = instance.profile
-            
-            # Extract and process subject_grades if present
+
+            # Extract special fields that need special handling
             subject_grades_data = profile_data.pop('subject_grades', None)
-            
-            # Update other profile fields
+            target_subjects_data = profile_data.pop('target_subjects', None)
+            class_level_data = profile_data.pop('class_level', None)
+
+            # Debug logging
+            print("=" * 50)
+            print(f"Updating profile for {instance.username}")
+            print(f"Subject grades data: {subject_grades_data}")
+            print(f"Target subjects data: {target_subjects_data}")
+            print(f"Class level data: {class_level_data}")
+            print("=" * 50)
+
+            # Update simple profile fields
             for attr, value in profile_data.items():
                 setattr(profile, attr, value)
-            
+
             # Handle class_level FK relationship
-            class_level_id = profile_data.get('class_level')
-            if class_level_id:
+            if class_level_data:
                 try:
-                    class_level = ClassLevel.objects.get(id=class_level_id)
+                    if isinstance(class_level_data, str):
+                        class_level = ClassLevel.objects.get(id=class_level_data)
+                    else:
+                        class_level = class_level_data
                     profile.class_level = class_level
                 except ClassLevel.DoesNotExist:
                     pass
-            
+
             profile.save()
+
+            # Handle target_subjects ManyToManyField (must be done after save)
+            if target_subjects_data is not None:
+                if isinstance(target_subjects_data, list):
+                    # If it's a list of IDs (strings), convert to Subject objects
+                    if all(isinstance(item, str) for item in target_subjects_data):
+                        subjects = Subject.objects.filter(id__in=target_subjects_data)
+                        profile.target_subjects.set(subjects)
+                    else:
+                        # Already Subject objects
+                        profile.target_subjects.set(target_subjects_data)
+                else:
+                    profile.target_subjects.clear()
             
             # Process subject grades if provided
             if subject_grades_data:
+                print(f"Processing {len(subject_grades_data)} subject grades...")
                 # Clear existing grades and create new ones
-                profile.subject_grades.all().delete()
-                
-                for grade_data in subject_grades_data:
-                    subject_id = grade_data.get('subject')
+                deleted_count = profile.subject_grades.all().delete()
+                print(f"Deleted {deleted_count} existing grades")
+
+                for i, grade_data in enumerate(subject_grades_data):
+                    subject_or_id = grade_data.get('subject')
+                    min_grade = grade_data.get('min_grade', 0)
+                    max_grade = grade_data.get('max_grade', 20)
+                    print(f"Grade {i}: subject={subject_or_id}, min={min_grade}, max={max_grade}")
+
                     try:
-                        subject = Subject.objects.get(id=subject_id)
-                        SubjectGrade.objects.create(
+                        # Handle both Subject object and ID
+                        if isinstance(subject_or_id, Subject):
+                            subject = subject_or_id
+                        else:
+                            subject = Subject.objects.get(id=subject_or_id)
+
+                        new_grade = SubjectGrade.objects.create(
                             user=profile,
                             subject=subject,
-                            min_grade=grade_data.get('min_grade', 0),
-                            max_grade=grade_data.get('max_grade', 20)
+                            min_grade=min_grade,
+                            max_grade=max_grade
                         )
+                        print(f"✓ Created grade: {new_grade.id} for {subject.name}")
                     except Subject.DoesNotExist:
-                        pass
+                        print(f"ERROR: Subject {subject_or_id} does not exist!")
+                    except Exception as e:
+                        print(f"ERROR creating grade: {e}")
+
+                final_count = profile.subject_grades.count()
+                print(f"Final subject_grades count: {final_count}")
+            else:
+                print("No subject_grades_data provided!")
         
         return instance
 
@@ -145,14 +204,15 @@ class OnboardingSerializer(serializers.Serializer):
         profile.class_level = validated_data.get('class_level')
         profile.user_type = validated_data.get('user_type')
         profile.bio = validated_data.get('bio', profile.bio)
-        
-        # Update target_subjects as a list of subject IDs
-        profile.target_subjects = [str(subject.id) for subject in target_subjects]
-        
+
         # Mark onboarding as completed
         profile.onboarding_completed = True
-        
+
         profile.save()
+
+        # Update target_subjects (ManyToManyField - must be set after save())
+        if target_subjects is not None:
+            profile.target_subjects.set(target_subjects)
         
         # Process subject grades if provided
         if subject_grades_data:

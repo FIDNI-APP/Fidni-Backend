@@ -10,9 +10,16 @@ from users.views import (
     get_current_user,
     UserProfileViewSet, UserSettingsView, mark_content_viewed, OnboardingView,
 )
+from users.dashboard_views import (
+    get_user_dashboard_stats,
+    get_learning_path_progress,
+    get_recommended_content,
+)
+from users.study_stats_views import get_study_statistics
 from caracteristics.views import (
     ClassLevelViewSet, SubjectViewSet, ChapterViewSet, SubfieldViewSet, TheoremViewSet,)
 from authentication.views import LogoutView
+from interactions.views import RevisionListViewSet, track_study_time
 
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from authentication.views import LoginView, RegisterView
@@ -42,6 +49,7 @@ router.register(r'learning-paths', LearningPathViewSet, basename='learningpath')
 router.register(r'path-chapters', PathChapterViewSet, basename='pathchapter')
 router.register(r'videos', VideoViewSet, basename='video')
 router.register(r'chapter-quizzes', ChapterQuizViewSet, basename='chapterquiz')
+router.register(r'revision-lists', RevisionListViewSet, basename='revisionlist')
 
 
 
@@ -66,9 +74,21 @@ urlpatterns = [
 
      # User endpoints
     path('api/auth/settings/', UserSettingsView.as_view(), name='user-settings'),
-    
+
+    # Dashboard endpoints
+    path('api/dashboard/stats/', get_user_dashboard_stats, name='dashboard-stats'),
+    path('api/dashboard/learning-path/', get_learning_path_progress, name='learning-path-progress'),
+    path('api/dashboard/recommended/', get_recommended_content, name='recommended-content'),
+
     # Content interaction
     path('api/content/<str:content_id>/view/', mark_content_viewed, name='mark-content-viewed'),
+
+    # Study time tracking
+    path('api/study-time/track/', track_study_time, name='track-study-time'),
+
+    # Study statistics
+    path('api/users/<str:username>/study-stats/', get_study_statistics, name='study-statistics'),
+
     path('health/', health_check, name='health_check'),
 
 ]

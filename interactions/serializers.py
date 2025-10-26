@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Vote,Save,Complete, TimeSpent
+from .models import Vote,Save,Complete, TimeSpent, RevisionList, RevisionListItem
 from things.models import Exercise
 from users.serializers import UserSerializer
 from users.models import ViewHistory
@@ -94,6 +94,56 @@ class ViewHistorySerializer(serializers.ModelSerializer):
     time_spent = serializers.ReadOnlyField(source='time_spent_in_seconds')
     
     class Meta:
-        model = ViewHistory  
+        model = ViewHistory
         fields = ('content', 'viewed_at', 'time_spent','content_type', 'content')
         read_only_fields = ('viewed_at', 'time_spent', 'content_type')
+
+
+#----------------------------REVISION LISTS-------------------------------
+
+class RevisionListItemSerializer(serializers.ModelSerializer):
+    """Serializer for items in a revision list"""
+    content_object = serializers.SerializerMethodField()
+    content_type_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = RevisionListItem
+        fields = ['id', 'content_object', 'content_type', 'object_id', 'content_type_name', 'added_at', 'notes']
+        read_only_fields = ['id', 'added_at']
+
+    def get_content_object(self, obj):
+        """Serialize the actual content (exercise or exam)"""
+        if obj.content_object:
+            # Import here to avoid circular imports
+            from things.serializers import ExerciseSerializer, ExamSerializer
+            if hasattr(obj.content_object, 'subject'):  # It's an exercise or exam
+                if obj.content_type.model == 'exercise':
+                    return ExerciseSerializer(obj.content_object, context=self.context).data
+                elif obj.content_type.model == 'exam':
+                    return ExamSerializer(obj.content_object, context=self.context).data
+        return None
+
+    def get_content_type_name(self, obj):
+        """Return a readable content type name"""
+        return obj.content_type.model if obj.content_type else None
+
+
+class RevisionListSerializer(serializers.ModelSerializer):
+    """Serializer for revision lists"""
+    user = UserSerializer(read_only=True)
+    items = RevisionListItemSerializer(many=True, read_only=True)
+    item_count = serializers.ReadOnlyField()
+
+    class Meta:
+        model = RevisionList
+        fields = ['id', 'name', 'description', 'user', 'items', 'item_count', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'user', 'created_at', 'updated_at']
+
+
+class RevisionListCreateSerializer(serializers.ModelSerializer):
+    """Simplified serializer for creating/updating revision lists"""
+
+    class Meta:
+        model = RevisionList
+        fields = ['id', 'name', 'description']
+        read_only_fields = ['id']
