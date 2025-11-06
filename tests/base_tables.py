@@ -1,19 +1,21 @@
 import os
 import sys
 import django
+from pathlib import Path
 
-# Add backend directory to sys.path so Python can find it
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.append(BASE_DIR)
+# Add src directory to sys.path
+BASE_DIR = Path(__file__).resolve().parent.parent
+src_path = BASE_DIR / 'src'
+sys.path.insert(0, str(src_path))
 
 # Set Django settings module
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")  # Update with your project name
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
 
 # Setup Django
 django.setup()
 
 # Now import models
-from caracteristics.models import ClassLevel, Subject, Chapter, Subfield, Theorem
+from apps.caracteristics.models import ClassLevel, Subject, Chapter, Subfield, Theorem
 
 import logging
 
