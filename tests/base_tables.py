@@ -25,10 +25,8 @@ logger = logging.getLogger('django')
 bac_math = ClassLevel.objects.get_or_create(name="2ème Bac SM", order=1)[0]
 bac_phys = ClassLevel.objects.get_or_create(name="2ème Bac PC", order=2)[0]
 
-
-
-
-
+ 
+ 
 mappings = {
     "2bacsm": {
         "Mathématiques": {
@@ -66,15 +64,23 @@ mappings = {
                         "Théorème des accroissements finis (TAF)"
                     ]
                 ,
+                "Théorème des Accroissements Finis (TAF)": [
+                        "Applications du TAF à l'étude des fonctions"
+                    ]
+                ,
                 "Suites numériques": [
                         "Convergence et divergence",
                         "Suites arithmétiques et géométriques"
                     ]
                 ,
-                "Fonctions logarithmiques et exponentielles": [
-                        "Dérivée et propriétés du logarithme et de l'exponentielle"
+                "Fonctions logarithmiques" : [
+                        "Dérivée et propriétés du logarithme"
                     ]
                 ,
+                "Fonctions exponentielles": [
+                        "Dérivée et propriétés de l'exponentielle"
+                    ],
+
                 "Équations différentielles": [
                         "Équations linéaires du premier ordre",
                         "Méthode de variation de la constante"
@@ -98,61 +104,7 @@ mappings = {
                 
             }
         },
-        "Physique": {
-            "Mécanique": {
-                "Lois de Newton": [
-                        "Principe d'inertie",
-                        "Principe fondamental de la dynamique"
-                    ]
-                ,
-                "Mouvements plans": [
-                        "Mouvement parabolique",
-                        "Mouvement circulaire uniforme"
-                    ]
-                ,
-                "Mouvement des satellites et des planètes": [
-                        "Loi de la gravitation universelle",
-                        "Lois de Kepler"
-                    ]
-                ,
-                "Mouvement de rotation d'un solide autour d'un axe fixe": [
-                        "Théorème du moment cinétique",
-                        "Moment d'inertie"
-                    ]
-                
-            },
-            "Electricité": {
-                "Dipôle RC": [
-                        "Charge et décharge d'un condensateur",
-                        "Constante de temps"
-                    ]
-                ,
-                "Dipôle RL": [
-                        "Établissement et interruption du courant",
-                        "Inductance et auto-induction"
-                    ]
-                ,
-                "Oscillations libres d'un circuit RLC série": [
-                        "Régime sinusoïdal forcé",
-                        "Résonance électrique"
-                    ]
-                ,
-                "Ondes électromagnétiques": [
-                        "Propagation et caractéristiques",
-                        "Spectre électromagnétique"
-                    ]
-                
-            }
-        },
-        "Chimie": {
-            "Transformations chimiques": {"Transformations chimiques": [
-                    "Équilibre chimique et loi d'action de masse",
-                    "Théories acide-base",
-                    "Oxydoréduction et potentiel standard"
-                ]
-            
-        }
-    }
+        
 }}
 
 

@@ -218,25 +218,28 @@ class TimeSession(models.Model):
 class StudyTimeTracker(models.Model):
     """
     Track total study time automatically when users view content pages
-    This is a simpler model for automatic page-based time tracking
+    One entry per user+content combination (accumulated time)
     """
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='study_time_entries')
     content_type = models.ForeignKey(ContentType, on_delete=models.PROTECT)
     object_id = models.PositiveIntegerField()
     content_object = GenericForeignKey('content_type', 'object_id')
 
-    # Time spent in seconds
+    # Total accumulated time in seconds
     time_spent_seconds = models.PositiveIntegerField(default=0)
 
-    # When this time was recorded
-    recorded_at = models.DateTimeField(auto_now_add=True)
+    # When this entry was last updated
+    recorded_at = models.DateTimeField(auto_now=True)  # Changed to auto_now for updates
 
     class Meta:
         app_label = 'interactions'
         ordering = ['-recorded_at']
+        unique_together = ('user', 'content_type', 'object_id')  # ONE entry per user+content
         indexes = [
             models.Index(fields=['user', 'content_type', 'object_id']),
             models.Index(fields=['recorded_at']),
+            models.Index(fields=['user', 'recorded_at']),  # For study stats queries
+            models.Index(fields=['user', 'content_type']),  # For content type filtering
         ]
 
     def __str__(self):
@@ -244,94 +247,137 @@ class StudyTimeTracker(models.Model):
 
 
 
-# In TimeSpent model, add these methods to properly handle time calculations
-class TimeSpent(models.Model):
+
+
+class TaxonomyTimeSpent(models.Model):
     """
-    Garde le temps total et le temps de la session courante pour un contenu
+    Tracks time spent aggregated by taxonomy (subject, subfield, chapter, theorem)
+    Updated in real-time when content time is tracked
     """
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='time_spent')
-    content_type = models.ForeignKey(ContentType, on_delete=models.PROTECT)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='taxonomy_time_spent')
+
+    # Taxonomy type: 'subject', 'subfield', 'chapter', 'theorem'
+    taxonomy_type = models.CharField(max_length=20)
+
+    # Generic foreign key to the taxonomy object
+    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
     object_id = models.PositiveIntegerField()
-    content_object = GenericForeignKey('content_type', 'object_id')
-    
-    # Temps total cumulé de toutes les sessions
+    taxonomy_object = GenericForeignKey('content_type', 'object_id')
+
+    # Aggregated time spent
     total_time = models.DurationField(default=timedelta(0))
-    
-    # Temps de la session courante (peut être remis à zéro)
-    current_session_time = models.DurationField(default=timedelta(0))
-    
-    # Remove or simplify the resume preference - it's confusing
-    # resume_preference = models.CharField(...)  # REMOVE THIS
-    
+
+    # Time breakdown by content type
+    exercise_time = models.DurationField(default=timedelta(0))
+    lesson_time = models.DurationField(default=timedelta(0))
+    exam_time = models.DurationField(default=timedelta(0))
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    last_session_start = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         app_label = 'interactions'
-        unique_together = ('user', 'content_type', 'object_id')
+        unique_together = ('user', 'taxonomy_type', 'content_type', 'object_id')
         indexes = [
-            models.Index(fields=['user']),
+            models.Index(fields=['user', 'taxonomy_type']),
             models.Index(fields=['content_type', 'object_id']),
         ]
 
     def __str__(self):
-        return f"{self.user.username} - Total: {self.total_time}, Session: {self.current_session_time}"
-    
+        return f"{self.user.username} - {self.taxonomy_type} ({self.taxonomy_object}): {self.total_time}"
+
     @property
     def total_time_in_seconds(self):
-        """Safely return total time in seconds"""
+        """Return total time in seconds"""
         if self.total_time:
             return int(self.total_time.total_seconds())
         return 0
-    
-    @property
-    def current_session_in_seconds(self):
-        """Safely return current session time in seconds"""
-        if self.current_session_time:
-            return int(self.current_session_time.total_seconds())
-        return 0
-    
-    def update_session_time(self, seconds):
-        """Update current session time"""
-        self.current_session_time = timedelta(seconds=seconds)
-        self.save()
-    
-    def save_and_reset_session(self, session_type='study', notes=''):
-        """Add current session to total and reset"""
-        if self.current_session_time and self.current_session_time.total_seconds() > 0:
-            self.total_time += self.current_session_time
-            
-            # Create a session record
-            TimeSession.objects.create(
-                user=self.user,
-                content_type=self.content_type,
-                object_id=self.object_id,
-                session_duration=self.current_session_time,
-                started_at=self.last_session_start or (timezone.now() - self.current_session_time),
-                ended_at=timezone.now(),
-                session_type=session_type,
-                notes=notes
-            )
-            
-            self.current_session_time = timedelta(0)
-            self.last_session_start = None
-            self.save()
-            
-            return True
-        return False
-    
-    
-class TimeSpentMixin(CompleteableMixin):
-    time_spent = GenericRelation(TimeSpent)
 
-    class Meta:
-        app_label = 'interactions'
-        abstract = True
 
-    @property
-    def total_time_spent(self):
-        return sum([time.time_spent for time in self.time_spent.all()], timedelta())
+def update_taxonomy_time(user, content_object, time_delta):
+    """
+    Helper function to aggregate time to all related taxonomies
+    Called when TimeSpent is updated
+
+    Args:
+        user: User object
+        content_object: The content object (exercise, lesson, exam)
+        time_delta: timedelta object representing time to add
+    """
+    if time_delta.total_seconds() <= 0:
+        return
+
+    taxonomies_to_update = []
+
+    # Determine content type name for breakdown
+    content_type_name = content_object.__class__.__name__.lower()
+
+    # Get content type models
+    from django.apps import apps
+    Subject = apps.get_model('caracteristics', 'Subject')
+    Subfield = apps.get_model('caracteristics', 'Subfield')
+    Chapter = apps.get_model('caracteristics', 'Chapter')
+    Theorem = apps.get_model('caracteristics', 'Theorem')
+
+    # Extract taxonomies from content object
+    if hasattr(content_object, 'subject') and content_object.subject:
+        taxonomies_to_update.append({
+            'type': 'subject',
+            'content_type': ContentType.objects.get_for_model(Subject),
+            'object_id': content_object.subject.id
+        })
+
+    if hasattr(content_object, 'subfields'):
+        for subfield in content_object.subfields.all():
+            taxonomies_to_update.append({
+                'type': 'subfield',
+                'content_type': ContentType.objects.get_for_model(Subfield),
+                'object_id': subfield.id
+            })
+
+    if hasattr(content_object, 'chapters'):
+        for chapter in content_object.chapters.all():
+            taxonomies_to_update.append({
+                'type': 'chapter',
+                'content_type': ContentType.objects.get_for_model(Chapter),
+                'object_id': chapter.id
+            })
+
+    if hasattr(content_object, 'theorems'):
+        for theorem in content_object.theorems.all():
+            taxonomies_to_update.append({
+                'type': 'theorem',
+                'content_type': ContentType.objects.get_for_model(Theorem),
+                'object_id': theorem.id
+            })
+
+    # Update or create TaxonomyTimeSpent records
+    for taxonomy in taxonomies_to_update:
+        taxonomy_time, created = TaxonomyTimeSpent.objects.get_or_create(
+            user=user,
+            taxonomy_type=taxonomy['type'],
+            content_type=taxonomy['content_type'],
+            object_id=taxonomy['object_id'],
+            defaults={
+                'total_time': timedelta(0),
+                'exercise_time': timedelta(0),
+                'lesson_time': timedelta(0),
+                'exam_time': timedelta(0)
+            }
+        )
+        taxonomy_time.total_time += time_delta
+
+        # Update specific content type time
+        if content_type_name == 'exercise':
+            taxonomy_time.exercise_time += time_delta
+        elif content_type_name == 'lesson':
+            taxonomy_time.lesson_time += time_delta
+        elif content_type_name == 'exam':
+            taxonomy_time.exam_time += time_delta
+
+        taxonomy_time.save()
+
+
 
 
 #----------------------------SOLUTION VIEW TRACKING-------------------------------

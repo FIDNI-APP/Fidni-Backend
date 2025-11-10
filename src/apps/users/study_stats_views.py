@@ -202,29 +202,39 @@ def calculate_overall_stats(user):
 
 
 def calculate_study_streak(user):
-    """Calculate current study streak in days"""
+    """Calculate current study streak in days (optimized)"""
+    from django.db.models.functions import TruncDate
+
     today = timezone.now().date()
+
+    # Get all unique study dates in descending order (last 400 days max)
+    start_date = today - timedelta(days=400)
+
+    study_dates = StudyTimeTracker.objects.filter(
+        user=user,
+        recorded_at__gte=start_date
+    ).annotate(
+        study_date=TruncDate('recorded_at')
+    ).values('study_date').distinct().order_by('-study_date')
+
+    # Convert to set for O(1) lookup
+    study_dates_set = {item['study_date'] for item in study_dates}
+
+    # Calculate streak
     streak = 0
     current_date = today
 
-    while True:
-        has_activity = StudyTimeTracker.objects.filter(
-            user=user,
-            recorded_at__date=current_date
-        ).exists()
+    # Allow skipping today if no activity yet
+    if current_date not in study_dates_set:
+        current_date -= timedelta(days=1)
 
-        if has_activity:
-            streak += 1
-            current_date -= timedelta(days=1)
-        else:
-            # Allow skipping today if no activity yet
-            if current_date == today:
-                current_date -= timedelta(days=1)
-                continue
-            break
+    # Count consecutive days
+    while current_date in study_dates_set:
+        streak += 1
+        current_date -= timedelta(days=1)
 
         # Prevent infinite loop
-        if streak > 365:
+        if streak > 400:
             break
 
     return streak
@@ -284,20 +294,43 @@ def analyze_study_habits(entries):
 
 
 def get_recent_study_activity(user, limit=20):
-    """Get recent study activity"""
+    """Get recent study activity (optimized to prevent N+1 queries)"""
+    from django.contrib.contenttypes.models import ContentType
+    from apps.things.models import Exercise, Lesson, Exam
+
     recent_entries = StudyTimeTracker.objects.filter(
         user=user
     ).select_related('content_type').order_by('-recorded_at')[:limit]
 
+    # Convert to list to avoid multiple DB hits
+    entries_list = list(recent_entries)
+
+    # Get content types
+    exercise_ct = ContentType.objects.get_for_model(Exercise)
+    lesson_ct = ContentType.objects.get_for_model(Lesson)
+    exam_ct = ContentType.objects.get_for_model(Exam)
+
+    # Group entries by content type
+    exercise_ids = [e.object_id for e in entries_list if e.content_type_id == exercise_ct.id]
+    lesson_ids = [e.object_id for e in entries_list if e.content_type_id == lesson_ct.id]
+    exam_ids = [e.object_id for e in entries_list if e.content_type_id == exam_ct.id]
+
+    # Bulk fetch content objects
+    exercises = {e.id: e.title for e in Exercise.objects.filter(id__in=exercise_ids).only('id', 'title')}
+    lessons = {l.id: l.title for l in Lesson.objects.filter(id__in=lesson_ids).only('id', 'title')}
+    exams = {ex.id: ex.title for ex in Exam.objects.filter(id__in=exam_ids).only('id', 'title')}
+
+    # Build activity data
     activity_data = []
-    for entry in recent_entries:
-        # Get content title
+    for entry in entries_list:
+        # Get content title from pre-fetched data
         content_title = 'Unknown'
-        try:
-            content_object = entry.content_object
-            content_title = getattr(content_object, 'title', 'Unknown')
-        except:
-            pass
+        if entry.content_type_id == exercise_ct.id:
+            content_title = exercises.get(entry.object_id, 'Unknown')
+        elif entry.content_type_id == lesson_ct.id:
+            content_title = lessons.get(entry.object_id, 'Unknown')
+        elif entry.content_type_id == exam_ct.id:
+            content_title = exams.get(entry.object_id, 'Unknown')
 
         activity_data.append({
             'id': entry.id,
@@ -313,9 +346,10 @@ def get_recent_study_activity(user, limit=20):
 
 
 def get_daily_activity(user, days=365):
-    """Get daily activity for the last N days (default 365 for year view)"""
+    """Get daily activity for the last N days (optimized with aggregation)"""
     from django.contrib.contenttypes.models import ContentType
     from apps.things.models import Exercise, Lesson, Exam
+    from django.db.models.functions import TruncDate
 
     now = timezone.now()
     end_date = now.replace(hour=23, minute=59, second=59, microsecond=999999)
@@ -327,38 +361,72 @@ def get_daily_activity(user, days=365):
     lesson_ct = ContentType.objects.get_for_model(Lesson)
     exam_ct = ContentType.objects.get_for_model(Exam)
 
+    # Aggregate all data in one query using TruncDate
+    daily_aggregates = StudyTimeTracker.objects.filter(
+        user=user,
+        recorded_at__gte=start_date,
+        recorded_at__lte=end_date
+    ).annotate(
+        date=TruncDate('recorded_at')
+    ).values('date').annotate(
+        total_time=Sum('time_spent_seconds'),
+        entry_count=Count('id')
+    ).order_by('date')
+
+    # Build lookup dictionary for quick access
+    daily_lookup = {item['date']: item for item in daily_aggregates}
+
+    # Count by content type in separate optimized queries
+    exercise_counts = StudyTimeTracker.objects.filter(
+        user=user,
+        recorded_at__gte=start_date,
+        recorded_at__lte=end_date,
+        content_type=exercise_ct
+    ).annotate(date=TruncDate('recorded_at')).values('date').annotate(count=Count('id'))
+
+    lesson_counts = StudyTimeTracker.objects.filter(
+        user=user,
+        recorded_at__gte=start_date,
+        recorded_at__lte=end_date,
+        content_type=lesson_ct
+    ).annotate(date=TruncDate('recorded_at')).values('date').annotate(count=Count('id'))
+
+    exam_counts = StudyTimeTracker.objects.filter(
+        user=user,
+        recorded_at__gte=start_date,
+        recorded_at__lte=end_date,
+        content_type=exam_ct
+    ).annotate(date=TruncDate('recorded_at')).values('date').annotate(count=Count('id'))
+
+    # Build content type lookups
+    exercise_lookup = {item['date']: item['count'] for item in exercise_counts}
+    lesson_lookup = {item['date']: item['count'] for item in lesson_counts}
+    exam_lookup = {item['date']: item['count'] for item in exam_counts}
+
+    # Build response for all days
     daily_data = []
     for i in range(days):
         date = start_date + timedelta(days=i)
-        day_start = date.replace(hour=0, minute=0, second=0, microsecond=0)
-        day_end = day_start + timedelta(days=1)
+        date_key = date.date()
 
-        day_entries = StudyTimeTracker.objects.filter(
-            user=user,
-            recorded_at__gte=day_start,
-            recorded_at__lt=day_end
-        )
-
-        day_time = day_entries.aggregate(total=Sum('time_spent_seconds'))['total'] or 0
-
-        # Count entries by content type
-        content_type_counts = {
-            'exercise': day_entries.filter(content_type=exercise_ct).count(),
-            'lesson': day_entries.filter(content_type=lesson_ct).count(),
-            'exam': day_entries.filter(content_type=exam_ct).count()
-        }
+        # Get aggregated data or use zeros
+        day_data = daily_lookup.get(date_key, {'total_time': 0, 'entry_count': 0})
 
         # Convert Python's weekday (0=Monday, 6=Sunday) to JS's getDay (0=Sunday, 6=Saturday)
-        js_day_of_week = (date.weekday() + 1) % 7  # 0=Sunday, 1=Monday, ..., 6=Saturday
+        js_day_of_week = (date.weekday() + 1) % 7
 
         daily_data.append({
             'date': date.strftime('%Y-%m-%d'),
             'day_name': ['Dim', 'Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'][js_day_of_week],
-            'day_of_week': js_day_of_week,  # 0 = Sunday, 1 = Monday, ..., 6 = Saturday (JavaScript convention)
-            'total_time_seconds': day_time,
-            'total_time_formatted': format_duration(day_time),
-            'entries_count': day_entries.count(),
-            'content_types': content_type_counts
+            'day_of_week': js_day_of_week,
+            'total_time_seconds': day_data['total_time'] or 0,
+            'total_time_formatted': format_duration(day_data['total_time'] or 0),
+            'entries_count': day_data['entry_count'],
+            'content_types': {
+                'exercise': exercise_lookup.get(date_key, 0),
+                'lesson': lesson_lookup.get(date_key, 0),
+                'exam': exam_lookup.get(date_key, 0)
+            }
         })
 
     return daily_data

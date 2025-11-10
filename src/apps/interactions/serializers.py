@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Vote,Save,Complete, TimeSpent, RevisionList, RevisionListItem
+from .models import Vote,Save,Complete, RevisionList, RevisionListItem
 from apps.things.models import Exercise
 from apps.users.serializers import UserSerializer
 from apps.users.models import ViewHistory
@@ -42,13 +42,6 @@ class CompleteSerializer(serializers.ModelSerializer):
         model = Complete
         fields = ['id','created_at','updated_at','user', 'exercise']
 
-class TimeSpentSerializer(serializers.ModelSerializer):
-    user = UserSerializer(read_only=True)
-    exercise = ExerciseSerializer(read_only=True)
-
-    class Meta:
-        model = TimeSpent
-        fields = ['id','created_at','updated_at','user', 'exercise']
 
 class LessonSerializer(serializers.ModelSerializer):
     author = UserSerializer(read_only=True)

@@ -2,7 +2,6 @@ from django.db import models
 from django.contrib.auth.models import User
 from django.core.validators import MinValueValidator, MaxValueValidator
 from apps.caracteristics.models import Subject, ClassLevel, Chapter
-from apps.interactions.models import TimeSpentMixin
 
 class LearningPath(models.Model):
     """Main learning path for a subject and class level"""
@@ -78,7 +77,7 @@ class PathChapter(models.Model):
         return hasattr(self, 'quiz')
 
 
-class Video(TimeSpentMixin, models.Model):
+class Video(models.Model):
     """Video/lesson content within a chapter"""
     VIDEO_TYPES = [
         ('lesson', 'Lesson'),

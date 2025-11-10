@@ -146,9 +146,17 @@ class ExerciseSerializer(serializers.ModelSerializer):
     def get_user_timespent(self, obj):
         user = self.context.get('request').user if self.context.get('request') else None
         if user and hasattr(user, 'is_authenticated') and user.is_authenticated:
-            time_spent = obj.time_spent.filter(user=user).first()
-            return time_spent.total_time if time_spent else None  # ← Utilisez total_time maintenant
-        return None
+            from django.contrib.contenttypes.models import ContentType
+            from apps.interactions.models import StudyTimeTracker
+
+            content_type = ContentType.objects.get_for_model(obj)
+            tracker = StudyTimeTracker.objects.filter(
+                user=user,
+                content_type=content_type,
+                object_id=obj.id
+            ).first()
+            return tracker.time_spent_seconds if tracker else 0
+        return 0
 
     def update(self, instance, validated_data):
         solution_content = validated_data.pop('solution_content', None)
@@ -294,18 +302,34 @@ class LessonSerializer(serializers.ModelSerializer):
     subject = SubjectSerializer(read_only=True)
     subfields = SubfieldSerializer(many=True, read_only=True)
     theorems = TheoremSerializer(many=True, read_only=True)
+    user_save = serializers.SerializerMethodField()
+    user_complete = serializers.SerializerMethodField()
 
     class Meta:
         model = Lesson
-        fields = ['id', 'title', 'content', 'chapters', 'author', 'created_at', 
-                  'updated_at', 'view_count', 'comments', 'vote_count', 'user_vote', 
-                  'class_levels', 'subject', 'subfields', 'theorems']
+        fields = ['id', 'title', 'content', 'chapters', 'author', 'created_at',
+                  'updated_at', 'view_count', 'comments', 'vote_count', 'user_vote',
+                  'class_levels', 'subject', 'subfields', 'theorems', 'user_save', 'user_complete']
 
     def get_user_vote(self, obj):
         user = self.context.get('request').user if self.context.get('request') else None
         if user and hasattr(user, 'is_authenticated') and user.is_authenticated:
             vote = obj.votes.filter(user=user).first()
             return vote.value if vote else None
+        return None
+
+    def get_user_save(self, obj):
+        user = self.context.get('request').user if self.context.get('request') else None
+        if user and hasattr(user, 'is_authenticated') and user.is_authenticated:
+            saved = obj.saved.filter(user=user).first()
+            return saved is not None
+        return False
+
+    def get_user_complete(self, obj):
+        user = self.context.get('request').user if self.context.get('request') else None
+        if user and hasattr(user, 'is_authenticated') and user.is_authenticated:
+            completed = obj.completed.filter(user=user).first()
+            return completed.status if completed else None
         return None
 
     def update(self, instance, validated_data):
@@ -439,7 +463,7 @@ class ExamSerializer(serializers.ModelSerializer):
             saved_exam = obj.saved.filter(user=user).first()
             return saved_exam is not None
         return False
-    
+
     def get_user_complete(self, obj):
         user = self.context.get('request').user if self.context.get('request') else None
         if user and hasattr(user, 'is_authenticated') and user.is_authenticated:
@@ -450,9 +474,17 @@ class ExamSerializer(serializers.ModelSerializer):
     def get_user_timespent(self, obj):
         user = self.context.get('request').user if self.context.get('request') else None
         if user and hasattr(user, 'is_authenticated') and user.is_authenticated:
-            time_spent = obj.time_spent.filter(user=user).first()
-            return time_spent.total_time if time_spent else None  # ← Utilisez total_time maintenant
-        return None
+            from django.contrib.contenttypes.models import ContentType
+            from apps.interactions.models import StudyTimeTracker
+
+            content_type = ContentType.objects.get_for_model(obj)
+            tracker = StudyTimeTracker.objects.filter(
+                user=user,
+                content_type=content_type,
+                object_id=obj.id
+            ).first()
+            return tracker.time_spent_seconds if tracker else 0
+        return 0
 
 
 class ExamCreateSerializer(serializers.ModelSerializer):

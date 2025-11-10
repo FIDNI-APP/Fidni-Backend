@@ -30,8 +30,8 @@ else:
 
 from .models import Exercise, Solution, Comment, Lesson, Exam
 from .serializers import  ExerciseSerializer, SolutionSerializer, CommentSerializer, ExerciseCreateSerializer, LessonSerializer, LessonCreateSerializer
-from apps.interactions.models import Vote, Save, Complete, TimeSpent, TimeSession, SolutionView, SolutionMatch
-from apps.interactions.serializers import VoteSerializer, SaveSerializer, CompleteSerializer, TimeSpentSerializer
+from apps.interactions.models import Vote, Save, Complete, TimeSession, SolutionView, SolutionMatch
+from apps.interactions.serializers import VoteSerializer, SaveSerializer, CompleteSerializer
 from apps.interactions.views import VoteMixin
 from apps.users.models import ViewHistory
 from rest_framework.permissions import IsAuthenticatedOrReadOnly,IsAuthenticated
@@ -46,14 +46,14 @@ logger = logging.getLogger('django')
 
 #----------------------------PAGINATION-------------------------------
 class LargeResultsSetPagination(PageNumberPagination):
-    page_size = 1000
+    page_size = 50
     page_size_query_param = 'page_size'
-    max_page_size = 10000
+    max_page_size = 200
 
 class StandardResultsSetPagination(PageNumberPagination):
-    page_size = 1000
+    page_size = 20
     page_size_query_param = 'page_size'
-    max_page_size = 1000
+    max_page_size = 100
     
 #----------------------------EXERCISE-------------------------------
 
@@ -151,7 +151,7 @@ class ExerciseViewSet(VoteMixin, viewsets.ModelViewSet):
             filters_difficulty |= Q(difficulty__in=difficulties)
 
         # Filter by viewed/completed status (only for authenticated users)
-        if self.request.user.is_authenticated:
+        if self.request.user and self.request.user.is_authenticated:
             if show_viewed:
                 # Show exercises with success or review status
                 filters_status |= Q(completes__user=self.request.user)
@@ -230,13 +230,13 @@ class ExerciseViewSet(VoteMixin, viewsets.ModelViewSet):
         """
         exercise = self.get_object()
         status_value = request.data.get('status')
-        
+
         if status_value not in ['success', 'review']:
             return Response(
-                {'error': 'Invalid status value. Must be "success" or "review".'}, 
+                {'error': 'Invalid status value. Must be "success" or "review".'},
                 status=status.HTTP_400_BAD_REQUEST
             )
-        
+
         content_type = ContentType.objects.get_for_model(Exercise)
         progress, created = Complete.objects.update_or_create(
             user=request.user,
@@ -244,9 +244,11 @@ class ExerciseViewSet(VoteMixin, viewsets.ModelViewSet):
             object_id=exercise.id,
             defaults={'status': status_value}
         )
-        
-        logger.debug(f"Exercise {exercise.id} marked as {status_value} by user {request.user.id}")
-        
+
+        # Clear exercise stats cache when progress is marked
+        cache.delete(f'exercise_stats_{exercise.id}_user_{request.user.id}')
+        cache.delete(f'exercise_stats_{exercise.id}_user_None')
+
         return Response({
             'id': progress.id,
             'status': progress.status,
@@ -269,7 +271,11 @@ class ExerciseViewSet(VoteMixin, viewsets.ModelViewSet):
                 object_id=exercise.id
             )
             progress.delete()
-            logger.debug(f"Progress removed for exercise {exercise.id} by user {request.user.id}")
+
+            # Clear exercise stats cache when progress is removed
+            cache.delete(f'exercise_stats_{exercise.id}_user_{request.user.id}')
+            cache.delete(f'exercise_stats_{exercise.id}_user_None')
+
             return Response(status=status.HTTP_204_NO_CONTENT)
         except Complete.DoesNotExist:
             return Response(
@@ -587,6 +593,83 @@ class ExerciseViewSet(VoteMixin, viewsets.ModelViewSet):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
+    def _get_successful_users_study_stats(self, exercise, content_type):
+        """
+        Calculate average study time for successful users by chapter
+        Returns study time spent on exercises, lessons, and exams for same chapters with chapter names
+        """
+        from apps.interactions.models import TaxonomyTimeSpent
+        from datetime import timedelta
+
+        # Get successful users for this exercise
+        successful_completions = Complete.objects.filter(
+            content_type=content_type,
+            object_id=exercise.id,
+            status='success'
+        ).values_list('user', flat=True)
+
+        if not successful_completions:
+            return {
+                'exercises_avg_seconds': 0,
+                'lessons_avg_seconds': 0,
+                'exams_avg_seconds': 0,
+                'chapters': []
+            }
+
+        # Get all chapters for this exercise
+        chapters = exercise.chapters.all()
+
+        if not chapters:
+            return {
+                'exercises_avg_seconds': 0,
+                'lessons_avg_seconds': 0,
+                'exams_avg_seconds': 0,
+                'chapters': []
+            }
+
+        # Calculate average study time for successful users on these chapters
+        from django.contrib.contenttypes.models import ContentType
+        from apps.caracteristics.models import Chapter
+
+        chapter_content_type = ContentType.objects.get_for_model(Chapter)
+        total_exercise_time = timedelta()
+        total_lesson_time = timedelta()
+        total_exam_time = timedelta()
+        user_count = 0
+
+        for user_id in successful_completions:
+            for chapter in chapters:
+                taxonomy_time = TaxonomyTimeSpent.objects.filter(
+                    user_id=user_id,
+                    taxonomy_type='chapter',
+                    content_type=chapter_content_type,
+                    object_id=chapter.id
+                ).first()
+
+                if taxonomy_time:
+                    total_exercise_time += taxonomy_time.exercise_time
+                    total_lesson_time += taxonomy_time.lesson_time
+                    total_exam_time += taxonomy_time.exam_time
+            user_count += 1
+
+        # Calculate averages
+        if user_count > 0:
+            avg_exercise_seconds = int(total_exercise_time.total_seconds() / user_count)
+            avg_lesson_seconds = int(total_lesson_time.total_seconds() / user_count)
+            avg_exam_seconds = int(total_exam_time.total_seconds() / user_count)
+        else:
+            avg_exercise_seconds = avg_lesson_seconds = avg_exam_seconds = 0
+
+        # Get chapter names
+        chapter_names = [chapter.name for chapter in chapters]
+
+        return {
+            'exercises_avg_seconds': avg_exercise_seconds,
+            'lessons_avg_seconds': avg_lesson_seconds,
+            'exams_avg_seconds': avg_exam_seconds,
+            'chapters': chapter_names
+        }
+
     @action(detail=True, methods=['get'])
     def statistics(self, request, pk=None):
         """
@@ -594,7 +677,7 @@ class ExerciseViewSet(VoteMixin, viewsets.ModelViewSet):
         Returns: success rate, average time, best time, user's percentile, etc.
         """
         exercise = self.get_object()
-        user_id = request.user.id if request.user.is_authenticated else None
+        user_id = request.user.id if (request.user and request.user.is_authenticated) else None
 
         # Create cache key that includes user_id for user-specific data
         cache_key = f'exercise_stats_{exercise.id}_user_{user_id}'
@@ -710,6 +793,9 @@ class ExerciseViewSet(VoteMixin, viewsets.ModelViewSet):
             if is_user_authenticated:
                 user_solution_matched = solution_matches.filter(user=request.user).exists()
 
+            # Calculate study time stats for successful users by chapter
+            successful_users_study_stats = self._get_successful_users_study_stats(exercise, content_type)
+
             response_data = {
                 'total_participants': total_participants,
                 'success_count': success_count,
@@ -718,12 +804,14 @@ class ExerciseViewSet(VoteMixin, viewsets.ModelViewSet):
                 'average_time_seconds': average_time_seconds,
                 'best_time_seconds': best_time_seconds,
                 'solution_views_before_success': solution_views_before_success,
+                'solution_view_percentage': int((solution_views_before_success / max(success_count, 1)) * 100) if success_count > 0 else 0,
                 'user_time_percentile': user_time_percentile,
                 'user_completed': user_completed,
                 'user_viewed_solution': user_viewed_solution,
                 'user_time_seconds': user_time_seconds,
                 'solution_match_count': solution_match_count,
-                'user_solution_matched': user_solution_matched
+                'user_solution_matched': user_solution_matched,
+                'successful_users_study_stats': successful_users_study_stats
             }
 
             # Cache for 5 minutes (300 seconds)
@@ -757,6 +845,8 @@ class ExerciseViewSet(VoteMixin, viewsets.ModelViewSet):
                     content_type=content_type,
                     object_id=exercise.id
                 )
+                # Clear statistics cache when solution view is toggled
+                cache.delete(f'exercise_stats_{exercise.id}_user_{request.user.id}')
 
                 return Response({
                     'marked_as_viewed': True,
@@ -770,6 +860,10 @@ class ExerciseViewSet(VoteMixin, viewsets.ModelViewSet):
                     content_type=content_type,
                     object_id=exercise.id
                 ).delete()
+
+                # Clear statistics cache when solution view is toggled
+                cache.delete(f'exercise_stats_{exercise.id}_user_{request.user.id}')
+                cache.delete(f'exercise_stats_{exercise.id}_user_None')
 
                 if deleted_count > 0:
                     return Response({
@@ -802,6 +896,8 @@ class ExerciseViewSet(VoteMixin, viewsets.ModelViewSet):
                     content_type=content_type,
                     object_id=exercise.id
                 )
+                # Clear statistics cache when solution match is toggled
+                cache.delete(f'exercise_stats_{exercise.id}_user_{request.user.id}')
                 return Response({
                     'solution_matched': True,
                     'message': 'Solution match recorded'
@@ -813,6 +909,10 @@ class ExerciseViewSet(VoteMixin, viewsets.ModelViewSet):
                     content_type=content_type,
                     object_id=exercise.id
                 ).delete()
+
+                # Clear statistics cache when solution match is toggled
+                cache.delete(f'exercise_stats_{exercise.id}_user_{request.user.id}')
+                cache.delete(f'exercise_stats_{exercise.id}_user_None')
 
                 if deleted_count > 0:
                     return Response({
@@ -826,7 +926,7 @@ class ExerciseViewSet(VoteMixin, viewsets.ModelViewSet):
                     })
 
         except Exception as e:
-            logger.error(f"Error managing solution match: {str(e)}")
+            logger.error(f'Failed to manage solution match: {str(e)}')
             return Response(
                 {'error': 'Failed to manage solution match'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
@@ -902,8 +1002,6 @@ class CommentViewSet(VoteMixin, viewsets.ModelViewSet):
     queryset = Comment.objects.all()
     serializer_class = CommentSerializer
     permission_classes = [IsAuthenticatedOrReadOnly]
-    authentication_classes = []  # Skip authentication
-
 
     def perform_create(self, serializer):
         serializer.save(author=self.request.user)
@@ -1066,7 +1164,109 @@ class LessonViewSet(VoteMixin, viewsets.ModelViewSet):
             serializer.errors,
             status=status.HTTP_400_BAD_REQUEST
         )
-    
+
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
+    def save_lesson(self, request, pk=None):
+        """
+        Save a lesson for later
+        """
+        logger.info(f"[SAVE_LESSON] Request received - pk={pk}, user={request.user.id}")
+        logger.info(f"[SAVE_LESSON] Request body: {request.data}")
+        logger.info(f"[SAVE_LESSON] Request headers: {dict(request.headers)}")
+
+        try:
+            lesson = self.get_object()
+            logger.info(f"[SAVE_LESSON] Lesson retrieved: {lesson.id} - {lesson.title}")
+
+            content_type = ContentType.objects.get_for_model(Lesson)
+            logger.info(f"[SAVE_LESSON] Content type: {content_type}")
+
+            # Check if already saved
+            existing = Save.objects.filter(
+                user=request.user,
+                content_type=content_type,
+                object_id=lesson.id
+            ).first()
+
+            if existing:
+                logger.info(f"[SAVE_LESSON] Lesson {lesson.id} already saved by user {request.user.id}")
+                return Response(
+                    {
+                        'error': 'Lesson already saved',
+                        'message': 'This lesson is already in your saved list',
+                        'already_saved': True
+                    },
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # Create new save record
+            save = Save.objects.create(
+                user=request.user,
+                content_type=content_type,
+                object_id=lesson.id
+            )
+            logger.info(f"[SAVE_LESSON] Lesson {lesson.id} saved successfully for user {request.user.id}")
+
+            return Response({
+                'id': save.id,
+                'saved_at': save.saved_at,
+                'message': 'Lesson saved successfully'
+            }, status=status.HTTP_201_CREATED)
+
+        except Lesson.DoesNotExist as e:
+            logger.error(f"[SAVE_LESSON] Lesson not found - pk={pk}, error={str(e)}")
+            return Response(
+                {'error': 'Lesson not found'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        except Exception as e:
+            logger.error(f"[SAVE_LESSON] Unexpected error: {str(e)}", exc_info=True)
+            return Response(
+                {'error': 'Failed to save lesson', 'detail': str(e)},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+    @action(detail=True, methods=['delete'], permission_classes=[IsAuthenticated])
+    def unsave_lesson(self, request, pk=None):
+        """
+        Remove a lesson from saved items
+        """
+        try:
+            lesson = self.get_object()
+            content_type = ContentType.objects.get_for_model(Lesson)
+
+            save = Save.objects.filter(
+                user=request.user,
+                content_type=content_type,
+                object_id=lesson.id
+            ).first()
+
+            if not save:
+                return Response(
+                    {'error': 'Lesson not in saved list'},
+                    status=status.HTTP_404_NOT_FOUND
+                )
+
+            save.delete()
+            logger.debug(f"Lesson {lesson.id} unsaved by user {request.user.id}")
+
+            return Response(
+                {'message': 'Lesson removed from saved'},
+                status=status.HTTP_204_NO_CONTENT
+            )
+
+        except Lesson.DoesNotExist:
+            return Response(
+                {'error': 'Lesson not found'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        except Exception as e:
+            logger.error(f"Error unsaving lesson: {str(e)}")
+            return Response(
+                {'error': 'Failed to unsave lesson'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
 
 # Add these to your things/views.py file
 
@@ -1307,9 +1507,11 @@ class ExamViewSet(VoteMixin, viewsets.ModelViewSet):
             object_id=exam.id,
             defaults={'status': status_value}
         )
-        
-        logger.debug(f"Exam {exam.id} marked as {status_value} by user {request.user.id}")
-        
+
+        # Clear exam stats cache when progress is marked
+        cache.delete(f'exam_stats_{exam.id}_user_{request.user.id}')
+        cache.delete(f'exam_stats_{exam.id}_user_None')
+
         return Response({
             'id': progress.id,
             'status': progress.status,
@@ -1332,11 +1534,15 @@ class ExamViewSet(VoteMixin, viewsets.ModelViewSet):
                 object_id=exam.id
             )
             progress.delete()
-            logger.debug(f"Progress removed for exam {exam.id} by user {request.user.id}")
+
+            # Clear exam stats cache when progress is removed
+            cache.delete(f'exam_stats_{exam.id}_user_{request.user.id}')
+            cache.delete(f'exam_stats_{exam.id}_user_None')
+
             return Response(status=status.HTTP_204_NO_CONTENT)
         except Complete.DoesNotExist:
             return Response(
-                {'error': 'No progress record found for this exam'}, 
+                {'error': 'No progress record found for this exam'},
                 status=status.HTTP_404_NOT_FOUND
             )
 
@@ -1619,6 +1825,83 @@ class ExamViewSet(VoteMixin, viewsets.ModelViewSet):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
+    def _get_successful_users_study_stats(self, exam, content_type):
+        """
+        Calculate average study time for successful users by chapter
+        Returns study time spent on exercises, lessons, and exams for same chapters with chapter names
+        """
+        from apps.interactions.models import TaxonomyTimeSpent
+        from datetime import timedelta
+
+        # Get successful users for this exam
+        successful_completions = Complete.objects.filter(
+            content_type=content_type,
+            object_id=exam.id,
+            status='success'
+        ).values_list('user', flat=True)
+
+        if not successful_completions:
+            return {
+                'exercises_avg_seconds': 0,
+                'lessons_avg_seconds': 0,
+                'exams_avg_seconds': 0,
+                'chapters': []
+            }
+
+        # Get all chapters for this exam
+        chapters = exam.chapters.all()
+
+        if not chapters:
+            return {
+                'exercises_avg_seconds': 0,
+                'lessons_avg_seconds': 0,
+                'exams_avg_seconds': 0,
+                'chapters': []
+            }
+
+        # Calculate average study time for successful users on these chapters
+        from django.contrib.contenttypes.models import ContentType
+        from apps.caracteristics.models import Chapter
+
+        chapter_content_type = ContentType.objects.get_for_model(Chapter)
+        total_exercise_time = timedelta()
+        total_lesson_time = timedelta()
+        total_exam_time = timedelta()
+        user_count = 0
+
+        for user_id in successful_completions:
+            for chapter in chapters:
+                taxonomy_time = TaxonomyTimeSpent.objects.filter(
+                    user_id=user_id,
+                    taxonomy_type='chapter',
+                    content_type=chapter_content_type,
+                    object_id=chapter.id
+                ).first()
+
+                if taxonomy_time:
+                    total_exercise_time += taxonomy_time.exercise_time
+                    total_lesson_time += taxonomy_time.lesson_time
+                    total_exam_time += taxonomy_time.exam_time
+            user_count += 1
+
+        # Calculate averages
+        if user_count > 0:
+            avg_exercise_seconds = int(total_exercise_time.total_seconds() / user_count)
+            avg_lesson_seconds = int(total_lesson_time.total_seconds() / user_count)
+            avg_exam_seconds = int(total_exam_time.total_seconds() / user_count)
+        else:
+            avg_exercise_seconds = avg_lesson_seconds = avg_exam_seconds = 0
+
+        # Get chapter names
+        chapter_names = [chapter.name for chapter in chapters]
+
+        return {
+            'exercises_avg_seconds': avg_exercise_seconds,
+            'lessons_avg_seconds': avg_lesson_seconds,
+            'exams_avg_seconds': avg_exam_seconds,
+            'chapters': chapter_names
+        }
+
     @action(detail=True, methods=['get'])
     def statistics(self, request, pk=None):
         """
@@ -1626,7 +1909,7 @@ class ExamViewSet(VoteMixin, viewsets.ModelViewSet):
         Returns: success rate, average time, best time, user's percentile, etc.
         """
         exam = self.get_object()
-        user_id = request.user.id if request.user.is_authenticated else None
+        user_id = request.user.id if (request.user and request.user.is_authenticated) else None
 
         # Create cache key that includes user_id for user-specific data
         cache_key = f'exam_stats_{exam.id}_user_{user_id}'
@@ -1742,6 +2025,9 @@ class ExamViewSet(VoteMixin, viewsets.ModelViewSet):
             if is_user_authenticated:
                 user_solution_matched = solution_matches.filter(user=request.user).exists()
 
+            # Calculate study time stats for successful users by chapter
+            successful_users_study_stats = self._get_successful_users_study_stats(exam, content_type)
+
             response_data = {
                 'total_participants': total_participants,
                 'success_count': success_count,
@@ -1750,12 +2036,14 @@ class ExamViewSet(VoteMixin, viewsets.ModelViewSet):
                 'average_time_seconds': average_time_seconds,
                 'best_time_seconds': best_time_seconds,
                 'solution_views_before_success': solution_views_before_success,
+                'solution_view_percentage': int((solution_views_before_success / max(success_count, 1)) * 100) if success_count > 0 else 0,
                 'user_time_percentile': user_time_percentile,
                 'user_completed': user_completed,
                 'user_viewed_solution': user_viewed_solution,
                 'user_time_seconds': user_time_seconds,
                 'solution_match_count': solution_match_count,
-                'user_solution_matched': user_solution_matched
+                'user_solution_matched': user_solution_matched,
+                'successful_users_study_stats': successful_users_study_stats
             }
 
             # Cache for 5 minutes (300 seconds)
@@ -1818,5 +2106,54 @@ class ExamViewSet(VoteMixin, viewsets.ModelViewSet):
             logger.error(f"Error managing solution view: {str(e)}")
             return Response(
                 {'error': 'Failed to manage solution view'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+    @action(detail=True, methods=['post', 'delete'], permission_classes=[IsAuthenticated])
+    def mark_solution_match(self, request, pk=None):
+        """Mark or unmark that the current user's solution matches the proposed solution"""
+        exam = self.get_object()
+        try:
+            content_type = ContentType.objects.get_for_model(Exam)
+
+            if request.method == 'POST':
+                solution_match, created = SolutionMatch.objects.get_or_create(
+                    user=request.user,
+                    content_type=content_type,
+                    object_id=exam.id
+                )
+                # Clear statistics cache when solution match is toggled
+                cache.delete(f'exam_stats_{exam.id}_user_{request.user.id}')
+                return Response({
+                    'solution_matched': True,
+                    'message': 'Solution match recorded'
+                })
+
+            elif request.method == 'DELETE':
+                deleted_count, _ = SolutionMatch.objects.filter(
+                    user=request.user,
+                    content_type=content_type,
+                    object_id=exam.id
+                ).delete()
+
+                # Clear statistics cache when solution match is toggled
+                cache.delete(f'exam_stats_{exam.id}_user_{request.user.id}')
+                cache.delete(f'exam_stats_{exam.id}_user_None')
+
+                if deleted_count > 0:
+                    return Response({
+                        'solution_matched': False,
+                        'message': 'Solution match flag removed'
+                    })
+                else:
+                    return Response({
+                        'solution_matched': False,
+                        'message': 'No solution match flag found'
+                    })
+
+        except Exception as e:
+            logger.error(f"Error managing solution match: {str(e)}")
+            return Response(
+                {'error': 'Failed to manage solution match'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )

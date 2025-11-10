@@ -5,7 +5,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.db.models import Sum, Avg, Count, Q
 from django.utils import timezone
 from datetime import timedelta, datetime
-from apps.interactions.models import TimeSession, TimeSpent
+from apps.interactions.models import TimeSession
 from apps.things.models import Exercise, Exam
 
 
@@ -60,10 +60,6 @@ class TimeStatsViewMixin:
         )
         
         # Get total time spent records
-        time_spent_records = TimeSpent.objects.filter(
-            user=user,
-            content_type=content_type
-        )
         
         # Basic session statistics
         total_sessions = sessions.count()

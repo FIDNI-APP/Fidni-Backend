@@ -1,19 +1,9 @@
 """Development settings"""
 from .base import *
-
+import os 
 DEBUG = True
 
 ALLOWED_HOSTS = ['*']
-
-# Development database - SQLite
-if not env('DB_ENGINE', default=None):
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': BASE_DIR.parent / 'db.sqlite3',
-        }
-    }
-
 # CORS for development
 CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOW_CREDENTIALS = True

@@ -16,11 +16,16 @@ from apps.users.dashboard_views import (
     get_recommended_content,
 )
 from apps.users.study_stats_views import get_study_statistics
+from apps.things.recommendation_views import (
+    get_exercise_recommendations,
+    get_lesson_recommendations,
+    get_exam_recommendations
+)
 from apps.caracteristics.views import (
     ClassLevelViewSet, SubjectViewSet, ChapterViewSet, SubfieldViewSet, TheoremViewSet,
 )
 from apps.authentication.views import LogoutView, LoginView, RegisterView
-from apps.interactions.views import RevisionListViewSet, track_study_time
+from apps.interactions.views import RevisionListViewSet, track_study_time, get_taxonomy_time_stats
 from apps.notebooks.views import (
     NotebookViewSet, NotebookChapterViewSet, NotebookLessonEntryAnnotationViewSet
 )
@@ -98,7 +103,13 @@ urlpatterns = [
 
     # Study time tracking
     path('api/study-time/track/', track_study_time, name='track-study-time'),
+    path('api/study-time/taxonomy-stats/', get_taxonomy_time_stats, name='taxonomy-time-stats'),
 
     # Study statistics
     path('api/users/<str:username>/study-stats/', get_study_statistics, name='study-statistics'),
+
+    # Recommendations
+    path('api/exercises/<int:exercise_id>/recommendations/', get_exercise_recommendations, name='exercise-recommendations'),
+    path('api/lessons/<int:lesson_id>/recommendations/', get_lesson_recommendations, name='lesson-recommendations'),
+    path('api/exams/<int:exam_id>/recommendations/', get_exam_recommendations, name='exam-recommendations'),
 ]

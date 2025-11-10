@@ -1,27 +1,20 @@
 """
 Base settings shared across all environments
 """
+from json import load
 from pathlib import Path
 import os
 from datetime import timedelta
-import environ
+from dotenv import load_dotenv 
 
 # Initialize environment variables
-env = environ.Env(
-    DEBUG=(bool, False),
-    SECRET_KEY=(str, 'gr-5s4^9^nz%*1)843r*7)+xrk!zc3==nm#zgroldi0*x#y+8e'),
-    ALLOWED_HOSTS=(list, ['*']),
-)
+BASE_DIR = Path(__file__).resolve().parent.parent.parent.parent
+load_dotenv(BASE_DIR / 'src/config/.env')
+DEBUG = os.getenv('DEBUG', 'False') == 'True'
+SECRET_KEY = os.getenv('SECRET_KEY', 'gr-5s4^9^nz%*1)843r*7)+xrk!zc3==nm#zgroldi0*x#y+8e')
+ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '*').split(',')
+SECRET_KEY = os.getenv('SECRET_KEY', 'your-default-secret-key')
 
-# Build paths - BASE_DIR is backend/ (3 levels up from this file)
-BASE_DIR = Path(__file__).resolve().parent.parent.parent
-
-# Read environment variables
-environ.Env.read_env(os.path.join(BASE_DIR, '.env'))
-
-SECRET_KEY = env('SECRET_KEY')
-DEBUG = env('DEBUG')
-ALLOWED_HOSTS = env.list('ALLOWED_HOSTS')
 
 # Apps
 INSTALLED_APPS = [
@@ -48,7 +41,6 @@ MIDDLEWARE = [
     'django.contrib.sessions.middleware.SessionMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
-    'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
@@ -60,6 +52,19 @@ CORS_ALLOW_HEADERS = [
 ]
 
 CORS_ALLOW_METHODS = ['DELETE', 'GET', 'OPTIONS', 'PATCH', 'POST', 'PUT']
+
+CORS_ALLOWED_ORIGINS = [
+    'https://fidni.fr',
+    'https://api.fidni.fr',
+    'http://localhost:3000',
+    'http://localhost:5173',
+]
+
+CORS_ALLOW_CREDENTIALS = True
+
+# Temporary - allow all origins for debugging
+CORS_ALLOW_ALL_ORIGINS = True
+
 
 ROOT_URLCONF = 'src.config.urls'
 
@@ -81,12 +86,33 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'src.config.wsgi.application'
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+DB_ENGINE = os.getenv('DB_ENGINE', 'sqlite')
+
+if DB_ENGINE == 'postgresql':
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': os.getenv('DB_NAME', 'fidni'),
+            'USER': os.getenv('DB_USER', 'postgres'),
+            'PASSWORD': os.getenv('DB_PASSWORD', ''),
+            'HOST': os.getenv('DB_HOST', 'localhost'),
+            'PORT': os.getenv('DB_PORT', '5432'),
+            'CONN_MAX_AGE': 600,
+            'OPTIONS': {
+                'connect_timeout': 10,
+                'options': '-c statement_timeout=30000 -c idle_in_transaction_session_timeout=60000'
+            }
+        }
     }
-}
+else:
+    # SQLite - use /app/data for Docker volume persistence
+    sqlite_path = os.getenv('SQLITE_PATH', str(BASE_DIR / 'db.sqlite3'))
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': sqlite_path,
+        }
+    }
 
 LANGUAGE_CODE = 'en-us'
 TIME_ZONE = 'UTC'
@@ -103,7 +129,6 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
-        "rest_framework.authentication.SessionAuthentication",
         "rest_framework_simplejwt.authentication.JWTAuthentication",
     ],
     "DEFAULT_PERMISSION_CLASSES": [

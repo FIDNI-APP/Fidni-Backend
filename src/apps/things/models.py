@@ -4,7 +4,7 @@ from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
 from apps.caracteristics.models import Chapter, ClassLevel, Subject, Theorem, Subfield
-from apps.interactions.models import VotableMixin, CompleteableMixin, TimeSpentMixin
+from apps.interactions.models import VotableMixin, CompleteableMixin
 import logging
 
 logger = logging.getLogger('django')
@@ -13,7 +13,7 @@ logger = logging.getLogger('django')
  
 #----------------------------EXERCISE-------------------------------
 
-class Exercise(TimeSpentMixin, models.Model):
+class Exercise(CompleteableMixin, models.Model):
     DIFFICULTY_CHOICES = [
         ('easy', 'easy'),
         ('medium', 'medium'),
@@ -116,7 +116,7 @@ class Lesson(CompleteableMixin):
         return self.title
 #----------------------------EXAM-------------------------------
 #----------------------------EXAM-------------------------------
-class Exam(TimeSpentMixin, models.Model):
+class Exam(CompleteableMixin, models.Model):
     DIFFICULTY_CHOICES = [
         ('easy', 'easy'),
         ('medium', 'medium'),

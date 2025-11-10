@@ -13,12 +13,12 @@ from .serializers import (
 )
 from .models import SubjectGrade
 from .time_stats_views import TimeStatsViewMixin
-from apps.things.models import Exercise
+from apps.things.models import Exercise, Lesson, Exam
 from apps.caracteristics.models import Subject, ClassLevel
 from apps.interactions.models import Complete, Save
 from rest_framework.views import APIView
 from .models import ViewHistory
-from apps.things.serializers import ViewHistorySerializer,ExerciseSerializer
+from apps.things.serializers import ViewHistorySerializer, ExerciseSerializer, LessonSerializer, ExamSerializer
 
 
 import logging
@@ -311,7 +311,60 @@ class UserProfileViewSet(TimeStatsViewMixin, viewsets.ModelViewSet):
         
         serializer = ExerciseSerializer(exercises, many=True, context={'request': request})
         return Response(serializer.data)
-    
+
+    @action(detail=True, methods=['get'])
+    def saved_lessons(self, request, username=None):
+        user = self.get_object()
+
+        # Only allow users to view their own saved lessons
+        if user.id != request.user.id and not request.user.is_superuser:
+            return Response(
+                {'error': 'You cannot view other users\' saved lessons'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        content_type = ContentType.objects.get_for_model(Lesson)
+        saved_ids = Save.objects.filter(
+            user=user,
+            content_type=content_type
+        ).order_by('-saved_at').values_list('object_id', flat=True)
+
+        lessons = Lesson.objects.filter(id__in=saved_ids)
+
+        page = self.paginate_queryset(lessons)
+        if page is not None:
+            serializer = LessonSerializer(page, many=True, context={'request': request})
+            return self.get_paginated_response(serializer.data)
+
+        serializer = LessonSerializer(lessons, many=True, context={'request': request})
+        return Response(serializer.data)
+
+    @action(detail=True, methods=['get'])
+    def saved_exams(self, request, username=None):
+        user = self.get_object()
+
+        # Only allow users to view their own saved exams
+        if user.id != request.user.id and not request.user.is_superuser:
+            return Response(
+                {'error': 'You cannot view other users\' saved exams'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        content_type = ContentType.objects.get_for_model(Exam)
+        saved_ids = Save.objects.filter(
+            user=user,
+            content_type=content_type
+        ).order_by('-saved_at').values_list('object_id', flat=True)
+
+        exams = Exam.objects.filter(id__in=saved_ids)
+
+        page = self.paginate_queryset(exams)
+        if page is not None:
+            serializer = ExamSerializer(page, many=True, context={'request': request})
+            return self.get_paginated_response(serializer.data)
+
+        serializer = ExamSerializer(exams, many=True, context={'request': request})
+        return Response(serializer.data)
 
     @action(detail=True, methods=['get'])
     def history(self, request, username=None):

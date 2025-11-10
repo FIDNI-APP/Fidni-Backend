@@ -6,7 +6,7 @@ from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnl
 from django.contrib.contenttypes.models import ContentType
 
 
-from .models import Vote, RevisionList, RevisionListItem, StudyTimeTracker, Complete, TimeSpent
+from .models import Vote, RevisionList, RevisionListItem, StudyTimeTracker, Complete, TaxonomyTimeSpent
 from .serializers import RevisionListSerializer, RevisionListCreateSerializer, RevisionListItemSerializer
 
 import logging
@@ -18,14 +18,14 @@ logger = logging.getLogger('django')
 
 #----------------------------PAGINATION-------------------------------
 class LargeResultsSetPagination(PageNumberPagination):
-    page_size = 1000
+    page_size = 50
     page_size_query_param = 'page_size'
-    max_page_size = 10000
+    max_page_size = 200
 
 class StandardResultsSetPagination(PageNumberPagination):
-    page_size = 1000
+    page_size = 20
     page_size_query_param = 'page_size'
-    max_page_size = 1000
+    max_page_size = 100
     
 #----------------------------VOTEMIXIN-------------------------------
 
@@ -222,14 +222,6 @@ class RevisionListViewSet(viewsets.ModelViewSet):
                     pending_count += 1
 
                 # Get time spent using GenericForeignKey
-                time_record = TimeSpent.objects.filter(
-                    user=request.user,
-                    content_type=item.content_type,
-                    object_id=item.object_id
-                ).first()
-
-                if time_record and time_record.total_time:
-                    total_time += int(time_record.total_time.total_seconds())
 
         progress_percentage = (completed_count / total_items * 100) if total_items > 0 else 0
 
@@ -331,20 +323,32 @@ def track_study_time(request):
             logger.error(f"Attempted to track study time without valid user: user={user}")
             return Response({'message': 'Skipped - invalid user'}, status=status.HTTP_200_OK)
 
-        # Create study time entry
+        # Get or create study time entry and increment time
         try:
-            StudyTimeTracker.objects.create(
+            from django.db.models import F
+            from django.utils import timezone
+
+            tracker, created = StudyTimeTracker.objects.get_or_create(
                 user=user,
                 content_type=content_type,
                 object_id=content_id,
-                time_spent_seconds=int(time_spent)
+                defaults={'time_spent_seconds': int(time_spent)}
             )
-            logger.info(f"Tracked {time_spent}s of study time for {user.username} on {content_type_name} {content_id}")
+
+            if not created:
+                # Update existing entry: increment time and update timestamp
+                tracker.time_spent_seconds = F('time_spent_seconds') + int(time_spent)
+                tracker.recorded_at = timezone.now()
+                tracker.save(update_fields=['time_spent_seconds', 'recorded_at'])
+                tracker.refresh_from_db()  # Get actual value after F() expression
+
+            logger.info(f"Tracked {time_spent}s of study time for {user.username} on {content_type_name} {content_id} (total: {tracker.time_spent_seconds}s, {'created' if created else 'updated'})")
 
             return Response({
                 'message': 'Study time tracked successfully',
-                'time_spent_seconds': int(time_spent)
-            }, status=status.HTTP_201_CREATED)
+                'time_spent_seconds': int(time_spent),
+                'total_time_seconds': tracker.time_spent_seconds
+            }, status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)
 
         except Exception as db_error:
             # If database insert fails, log it but don't fail the request
@@ -358,4 +362,136 @@ def track_study_time(request):
         logger.error(f"Error tracking study time: {str(e)}", exc_info=True)
         # Return 200 instead of 500 to prevent frontend errors
         return Response({'message': 'Skipped - error occurred'}, status=status.HTTP_200_OK)
+
+
+#----------------------------TAXONOMY TIME STATISTICS-------------------------------
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_taxonomy_time_stats(request):
+    """
+    Get time spent statistics aggregated by taxonomy with content type breakdown
+
+    Query parameters:
+        - taxonomy_type: Optional filter by type (subject, subfield, chapter, theorem)
+        - search: Optional search by name
+        - limit: Optional limit results (default: all)
+    """
+    try:
+        from datetime import timedelta
+        from django.core.cache import cache
+
+        user = request.user
+        taxonomy_type = request.query_params.get('taxonomy_type', None)
+        search = request.query_params.get('search', None)
+        limit = request.query_params.get('limit', None)
+
+        # Build cache key
+        cache_key = f'taxonomy_time_stats_{user.id}_{taxonomy_type or "all"}_{search or ""}_{limit or ""}'
+
+        # Try to get from cache first (cache for 60 seconds)
+        cached_data = cache.get(cache_key)
+        if cached_data:
+            return Response(cached_data)
+
+        # Get base queryset with optimized query
+        queryset = TaxonomyTimeSpent.objects.filter(
+            user=user,
+            total_time__gt=timedelta(0)
+        ).select_related('content_type').only(
+            'id', 'taxonomy_type', 'object_id', 'total_time',
+            'exercise_time', 'lesson_time', 'exam_time', 'content_type'
+        )
+
+        # Filter by taxonomy type if provided
+        if taxonomy_type:
+            queryset = queryset.filter(taxonomy_type=taxonomy_type)
+
+        # Convert to list to avoid multiple DB hits
+        taxonomy_times = list(queryset)
+
+        # Bulk fetch all taxonomy objects by type to avoid N+1 queries
+        from apps.things.models import Subject, Subfield, Chapter, Theorem
+
+        taxonomy_models = {
+            'subject': Subject,
+            'subfield': Subfield,
+            'chapter': Chapter,
+            'theorem': Theorem
+        }
+
+        # Group IDs by taxonomy type
+        ids_by_type = {}
+        for tax_time in taxonomy_times:
+            if tax_time.taxonomy_type not in ids_by_type:
+                ids_by_type[tax_time.taxonomy_type] = []
+            ids_by_type[tax_time.taxonomy_type].append(tax_time.object_id)
+
+        # Bulk fetch all objects at once
+        taxonomy_objects = {}
+        for tax_type, ids in ids_by_type.items():
+            if tax_type in taxonomy_models:
+                model = taxonomy_models[tax_type]
+                objects = model.objects.filter(id__in=ids).only('id', 'name')
+                for obj in objects:
+                    taxonomy_objects[(tax_type, obj.id)] = obj
+
+        # Build results
+        results = []
+        for taxonomy_time in taxonomy_times:
+            # Get the taxonomy object from bulk fetch
+            taxonomy_obj = taxonomy_objects.get((taxonomy_time.taxonomy_type, taxonomy_time.object_id))
+            if not taxonomy_obj:
+                continue
+
+            name = getattr(taxonomy_obj, 'name', str(taxonomy_obj))
+
+            # Apply search filter if provided
+            if search and search.lower() not in name.lower():
+                continue
+
+            # Helper to convert timedelta to seconds
+            def td_to_seconds(td):
+                return int(td.total_seconds()) if td else 0
+
+            results.append({
+                'id': taxonomy_time.id,
+                'taxonomy_type': taxonomy_time.taxonomy_type,
+                'taxonomy_id': taxonomy_time.object_id,
+                'name': name,
+                'total_time_seconds': td_to_seconds(taxonomy_time.total_time),
+                'total_time_formatted': str(taxonomy_time.total_time),
+                # Content type breakdown
+                'exercise_time_seconds': td_to_seconds(taxonomy_time.exercise_time),
+                'lesson_time_seconds': td_to_seconds(taxonomy_time.lesson_time),
+                'exam_time_seconds': td_to_seconds(taxonomy_time.exam_time),
+            })
+
+        # Sort by time spent (descending)
+        results.sort(key=lambda x: x['total_time_seconds'], reverse=True)
+
+        # Apply limit if provided
+        if limit:
+            try:
+                limit = int(limit)
+                results = results[:limit]
+            except ValueError:
+                pass
+
+        response_data = {
+            'count': len(results),
+            'results': results
+        }
+
+        # Cache the results for 60 seconds
+        cache.set(cache_key, response_data, 60)
+
+        return Response(response_data)
+
+    except Exception as e:
+        logger.error(f"Error fetching taxonomy time stats: {str(e)}", exc_info=True)
+        return Response(
+            {'error': 'Failed to fetch taxonomy time statistics'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
 
