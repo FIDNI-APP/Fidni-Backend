@@ -11,7 +11,7 @@ from django.db.models import Sum, Count, Q, Avg
 from django.utils import timezone
 from datetime import timedelta
 
-from apps.things.models import Exercise, Lesson, Exam
+from apps.things.models import Content
 from apps.interactions.models import Complete, Save, StudyTimeTracker
 from apps.learningpath.models import (
     UserLearningPathProgress,
@@ -38,15 +38,19 @@ def get_user_dashboard_stats(request):
     now = timezone.now()
     week_ago = now - timedelta(days=7)
 
-    # Get content types
-    exercise_ct = ContentType.objects.get_for_model(Exercise)
-    lesson_ct = ContentType.objects.get_for_model(Lesson)
-    exam_ct = ContentType.objects.get_for_model(Exam)
+    # Get content type (single for unified Content model)
+    content_ct = ContentType.objects.get_for_model(Content)
+
+    # Scoped content types via subquery for type-based filtering
+    exercise_ids = Content.objects.filter(type='exercise').values_list('id', flat=True)
+    lesson_ids = Content.objects.filter(type='lesson').values_list('id', flat=True)
+    exam_ids = Content.objects.filter(type='exam').values_list('id', flat=True)
 
     # 1. Exercises started this week
     exercises_started = Complete.objects.filter(
         user=user,
-        content_type=exercise_ct,
+        content_type=content_ct,
+        object_id__in=exercise_ids,
         created_at__gte=week_ago
     ).values('object_id').distinct().count()
 
@@ -67,19 +71,22 @@ def get_user_dashboard_stats(request):
     # Calculate time per content type from StudyTimeTracker (automatic tracking)
     exercises_time = StudyTimeTracker.objects.filter(
         user=user,
-        content_type=exercise_ct,
+        content_type=content_ct,
+        object_id__in=exercise_ids,
         recorded_at__gte=week_ago
     ).aggregate(total=Sum('time_spent_seconds'))['total'] or 0
 
     lessons_time = StudyTimeTracker.objects.filter(
         user=user,
-        content_type=lesson_ct,
+        content_type=content_ct,
+        object_id__in=lesson_ids,
         recorded_at__gte=week_ago
     ).aggregate(total=Sum('time_spent_seconds'))['total'] or 0
 
     exams_time = StudyTimeTracker.objects.filter(
         user=user,
-        content_type=exam_ct,
+        content_type=content_ct,
+        object_id__in=exam_ids,
         recorded_at__gte=week_ago
     ).aggregate(total=Sum('time_spent_seconds'))['total'] or 0
 
@@ -94,19 +101,22 @@ def get_user_dashboard_stats(request):
     # Count number of study entries (tracking entries, not sessions)
     exercises_entries = StudyTimeTracker.objects.filter(
         user=user,
-        content_type=exercise_ct,
+        content_type=content_ct,
+        object_id__in=exercise_ids,
         recorded_at__gte=week_ago
     ).count()
 
     lessons_entries = StudyTimeTracker.objects.filter(
         user=user,
-        content_type=lesson_ct,
+        content_type=content_ct,
+        object_id__in=lesson_ids,
         recorded_at__gte=week_ago
     ).count()
 
     exams_entries = StudyTimeTracker.objects.filter(
         user=user,
-        content_type=exam_ct,
+        content_type=content_ct,
+        object_id__in=exam_ids,
         recorded_at__gte=week_ago
     ).count()
 
@@ -116,7 +126,8 @@ def get_user_dashboard_stats(request):
     # 3. Perfect completions (marked as 'success') this week
     perfect_completions = Complete.objects.filter(
         user=user,
-        content_type=exercise_ct,
+        content_type=content_ct,
+        object_id__in=exercise_ids,
         status='success',
         created_at__gte=week_ago
     ).count()
@@ -213,16 +224,13 @@ def get_learning_path_progress(request):
 
     for idx, chapter in enumerate(main_chapters):
         # Check if user has completed exercises in this chapter
-        exercise_ct = ContentType.objects.get_for_model(Exercise)
+        content_ct = ContentType.objects.get_for_model(Content)
 
         chapter_exercises_completed = Complete.objects.filter(
             user=user,
-            content_type=exercise_ct,
-            status='success'
-        ).filter(
-            Q(object_id__in=Exercise.objects.filter(
-                chapters=chapter
-            ).values_list('id', flat=True))
+            content_type=content_ct,
+            status='success',
+            object_id__in=Content.objects.filter(type='exercise', chapters=chapter).values_list('id', flat=True)
         ).exists()
 
         # Determine status based on completion
@@ -297,11 +305,13 @@ def calculate_user_level(user):
     Calculate user level based on total completed exercises.
     Level formula: 1 level per 10 completed exercises
     """
-    exercise_ct = ContentType.objects.get_for_model(Exercise)
+    content_ct = ContentType.objects.get_for_model(Content)
+    exercise_ids = Content.objects.filter(type='exercise').values_list('id', flat=True)
 
     total_completed = Complete.objects.filter(
         user=user,
-        content_type=exercise_ct,
+        content_type=content_ct,
+        object_id__in=exercise_ids,
         status='success'
     ).count()
 
@@ -343,137 +353,48 @@ def get_recommended_content(request):
                 else:
                     target_subjects = []
 
-        # Content types
-        exercise_ct = ContentType.objects.get_for_model(Exercise)
-        lesson_ct = ContentType.objects.get_for_model(Lesson)
-        exam_ct = ContentType.objects.get_for_model(Exam)
+        from django.db.models import Count, Case, When, IntegerField
+        from apps.interactions.models import Vote
+        from apps.things.serializers import ContentListSerializer
 
-        # Get IDs of content user has already completed
-        completed_exercise_ids = Complete.objects.filter(
-            user=user,
-            content_type=exercise_ct
-        ).values_list('object_id', flat=True)
+        content_ct = ContentType.objects.get_for_model(Content)
 
-        completed_lesson_ids = Complete.objects.filter(
-            user=user,
-            content_type=lesson_ct
-        ).values_list('object_id', flat=True)
+        # Get IDs of content user has already completed (per type)
+        completed_ids_by_type = {}
+        for t in ('exercise', 'lesson', 'exam'):
+            type_ids = Content.objects.filter(type=t).values_list('id', flat=True)
+            completed_ids_by_type[t] = Complete.objects.filter(
+                user=user, content_type=content_ct, object_id__in=type_ids
+            ).values_list('object_id', flat=True)
 
-        completed_exam_ids = Complete.objects.filter(
-            user=user,
-            content_type=exam_ct
-        ).values_list('object_id', flat=True)
-
-        # Base query filters
         base_filters = Q()
         if class_level:
             base_filters &= Q(class_levels=class_level)
-            print(f"[Recommendations] Filtering by class_level: {class_level}")
-        if target_subjects and len(target_subjects) > 0:
+        if target_subjects:
             base_filters &= Q(subject_id__in=target_subjects)
-            print(f"[Recommendations] Filtering by target_subjects: {target_subjects}")
 
-        print(f"[Recommendations] Has filters: {bool(base_filters)}")
+        def get_recommended(content_type, completed_ids, extra_filters=Q()):
+            qs = Content.objects.filter(type=content_type).exclude(id__in=completed_ids)
+            if extra_filters:
+                qs = qs.filter(extra_filters)
+            qs = qs.annotate(
+                upvotes=Count(Case(When(votes__value=Vote.UP, then=1), output_field=IntegerField()))
+            ).order_by('-upvotes', '-created_at')[:8]
+            if not qs.exists() and extra_filters:
+                qs = Content.objects.filter(type=content_type).exclude(id__in=completed_ids)\
+                    .annotate(upvotes=Count(Case(When(votes__value=Vote.UP, then=1), output_field=IntegerField())))\
+                    .order_by('-upvotes', '-created_at')[:8]
+            return qs
 
-        # Annotate with vote count for ordering
-        from django.db.models import Count, Case, When, IntegerField
-        from apps.interactions.models import Vote
+        exercises = get_recommended('exercise', completed_ids_by_type['exercise'], base_filters)
+        lessons = get_recommended('lesson', completed_ids_by_type['lesson'], base_filters)
+        exams = get_recommended('exam', completed_ids_by_type['exam'], base_filters)
 
-        # If no filters, just get most upvoted content
-        if not base_filters:
-            print("[Recommendations] No filters, getting most upvoted content")
-            exercises = Exercise.objects.exclude(id__in=completed_exercise_ids)\
-                .annotate(
-                    upvotes=Count(Case(When(votes__value=Vote.UP, then=1), output_field=IntegerField())),
-                    downvotes=Count(Case(When(votes__value=Vote.DOWN, then=1), output_field=IntegerField()))
-                )\
-                .order_by('-upvotes', '-created_at')[:8]
-
-            lessons = Lesson.objects.exclude(id__in=completed_lesson_ids)\
-                .annotate(
-                    upvotes=Count(Case(When(votes__value=Vote.UP, then=1), output_field=IntegerField())),
-                    downvotes=Count(Case(When(votes__value=Vote.DOWN, then=1), output_field=IntegerField()))
-                )\
-                .order_by('-upvotes', '-created_at')[:8]
-
-            exams = Exam.objects.exclude(id__in=completed_exam_ids)\
-                .annotate(
-                    upvotes=Count(Case(When(votes__value=Vote.UP, then=1), output_field=IntegerField())),
-                    downvotes=Count(Case(When(votes__value=Vote.DOWN, then=1), output_field=IntegerField()))
-                )\
-                .order_by('-upvotes', '-created_at')[:8]
-        else:
-            # Recommended Exercises
-            exercises = Exercise.objects.filter(base_filters)\
-                .exclude(id__in=completed_exercise_ids)\
-                .annotate(
-                    upvotes=Count(Case(When(votes__value=Vote.UP, then=1), output_field=IntegerField())),
-                    downvotes=Count(Case(When(votes__value=Vote.DOWN, then=1), output_field=IntegerField()))
-                )\
-                .order_by('-upvotes', '-created_at')[:8]
-
-            # Recommended Lessons
-            lessons = Lesson.objects.filter(base_filters)\
-                .exclude(id__in=completed_lesson_ids)\
-                .annotate(
-                    upvotes=Count(Case(When(votes__value=Vote.UP, then=1), output_field=IntegerField())),
-                    downvotes=Count(Case(When(votes__value=Vote.DOWN, then=1), output_field=IntegerField()))
-                )\
-                .order_by('-upvotes', '-created_at')[:8]
-
-            # Recommended Exams
-            exams = Exam.objects.filter(base_filters)\
-                .exclude(id__in=completed_exam_ids)\
-                .annotate(
-                    upvotes=Count(Case(When(votes__value=Vote.UP, then=1), output_field=IntegerField())),
-                    downvotes=Count(Case(When(votes__value=Vote.DOWN, then=1), output_field=IntegerField()))
-                )\
-                .order_by('-upvotes', '-created_at')[:8]
-
-        # Fallback: If filtered results are empty, get most upvoted content instead
-        exercises_count = exercises.count()
-        print(f"[Recommendations] Initial exercises count: {exercises_count}")
-        if exercises_count == 0:
-            print("[Recommendations] No exercises found, falling back to most upvoted")
-            exercises = Exercise.objects.exclude(id__in=completed_exercise_ids)\
-                .annotate(
-                    upvotes=Count(Case(When(votes__value=Vote.UP, then=1), output_field=IntegerField())),
-                    downvotes=Count(Case(When(votes__value=Vote.DOWN, then=1), output_field=IntegerField()))
-                )\
-                .order_by('-upvotes', '-created_at')[:8]
-            print(f"[Recommendations] Fallback exercises count: {exercises.count()}")
-
-        lessons_count = lessons.count()
-        print(f"[Recommendations] Initial lessons count: {lessons_count}")
-        if lessons_count == 0:
-            print("[Recommendations] No lessons found, falling back to most upvoted")
-            lessons = Lesson.objects.exclude(id__in=completed_lesson_ids)\
-                .annotate(
-                    upvotes=Count(Case(When(votes__value=Vote.UP, then=1), output_field=IntegerField())),
-                    downvotes=Count(Case(When(votes__value=Vote.DOWN, then=1), output_field=IntegerField()))
-                )\
-                .order_by('-upvotes', '-created_at')[:8]
-            print(f"[Recommendations] Fallback lessons count: {lessons.count()}")
-
-        exams_count = exams.count()
-        print(f"[Recommendations] Initial exams count: {exams_count}")
-        if exams_count == 0:
-            print("[Recommendations] No exams found, falling back to most upvoted")
-            exams = Exam.objects.exclude(id__in=completed_exam_ids)\
-                .annotate(
-                    upvotes=Count(Case(When(votes__value=Vote.UP, then=1), output_field=IntegerField())),
-                    downvotes=Count(Case(When(votes__value=Vote.DOWN, then=1), output_field=IntegerField()))
-                )\
-                .order_by('-upvotes', '-created_at')[:8]
-            print(f"[Recommendations] Fallback exams count: {exams.count()}")
-
-        # Serialize the data
-        from apps.things.serializers import ExerciseSerializer, LessonSerializer, ExamSerializer
-
+        ctx = {'request': request}
         return Response({
-            'exercises': ExerciseSerializer(exercises, many=True, context={'request': request}).data,
-            'lessons': LessonSerializer(lessons, many=True, context={'request': request}).data,
-            'exams': ExamSerializer(exams, many=True, context={'request': request}).data
+            'exercises': ContentListSerializer(exercises, many=True, context=ctx).data,
+            'lessons': ContentListSerializer(lessons, many=True, context=ctx).data,
+            'exams': ContentListSerializer(exams, many=True, context=ctx).data,
         })
     except Exception as e:
         # Log the error and return a more helpful response

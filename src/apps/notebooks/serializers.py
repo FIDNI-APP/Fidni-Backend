@@ -4,12 +4,12 @@ from rest_framework import serializers
 from .models import Notebook, NotebookSection, NotebookLessonEntry, NotebookAnnotation
 from apps.caracteristics.serializers import SubjectSerializer, ClassLevelSerializer, ChapterSerializer
 from apps.caracteristics.models import Chapter, Subject, ClassLevel
-from apps.things.models import Lesson
-from apps.things.serializers import LessonSerializer
+from apps.things.models import Content
+from apps.things.serializers import ContentSerializer
 
 class NotebookLessonEntrySerializer(serializers.ModelSerializer):
-    lesson = LessonSerializer(read_only=True)
-    lesson_id = serializers.PrimaryKeyRelatedField(source='lesson', queryset=Lesson.objects.all(), write_only=True)
+    lesson = ContentSerializer(read_only=True)
+    lesson_id = serializers.PrimaryKeyRelatedField(source='lesson', queryset=Content.objects.filter(type='lesson'), write_only=True)
     
     class Meta:
         model = NotebookLessonEntry

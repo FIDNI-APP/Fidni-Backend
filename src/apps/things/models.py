@@ -1,212 +1,211 @@
 from django.db import models
 from django.contrib.auth.models import User
-from django.contrib.contenttypes.fields import GenericForeignKey
-from django.contrib.contenttypes.models import ContentType
-from django.core.exceptions import ValidationError
+from django.contrib.contenttypes.fields import GenericRelation
 from apps.caracteristics.models import Chapter, ClassLevel, Subject, Theorem, Subfield
-from apps.interactions.models import VotableMixin, CompleteableMixin
+from apps.interactions.models import VotableMixin, CompleteableMixin, SaveableMixin
 import logging
 
 logger = logging.getLogger('django')
-    
 
- 
-#----------------------------EXERCISE-------------------------------
 
-class Exercise(CompleteableMixin, models.Model):
+# =====================
+# STRUCTURED CONTENT MIXIN
+# =====================
+
+class StructuredContentMixin(models.Model):
+    """
+    Structure JSON (stored in MongoDB, this field is unused but kept for schema compat):
+    {
+        "version": "2.0",
+        "blocks": [ ... ]
+    }
+    """
+    structure = models.JSONField(default=dict, blank=True)
+    version = models.PositiveIntegerField(default=1)
+
+    class Meta:
+        abstract = True
+
+    def get_all_item_paths(self) -> list:
+        paths = []
+        structure = self.structure or {}
+        for block in structure.get('blocks', []):
+            if block.get('type') == 'question':
+                block_id = block.get('id', '')
+                if block_id:
+                    paths.append(block_id)
+                    for sub in block.get('subQuestions', []):
+                        sub_id = sub.get('id', '')
+                        if sub_id:
+                            sub_path = f"{block_id}.{sub_id}"
+                            paths.append(sub_path)
+                            for part in sub.get('parts', []):
+                                part_id = part.get('id', '')
+                                if part_id:
+                                    paths.append(f"{sub_path}.{part_id}")
+        return paths
+
+    def get_total_points(self) -> int:
+        total = 0
+        structure = self.structure or {}
+        for block in structure.get('blocks', []):
+            if block.get('type') == 'question':
+                block_points = block.get('points', 0) or 0
+                sub_points = sum(
+                    (sub.get('points', 0) or 0) + sum(
+                        (part.get('points', 0) or 0) for part in sub.get('parts', [])
+                    )
+                    for sub in block.get('subQuestions', [])
+                )
+                total += sub_points if sub_points > 0 else block_points
+        return total
+
+    def get_item_count(self) -> int:
+        return len(self.get_all_item_paths())
+
+    def get_preview(self) -> str:
+        structure = self.structure or {}
+        for block in structure.get('blocks', []):
+            if block.get('type') == 'context':
+                html = block.get('content', {}).get('html', '')
+                if html:
+                    return html[:500]
+            elif block.get('type') == 'question':
+                html = block.get('content', {}).get('html', '')
+                if html:
+                    return html[:500]
+        return ''
+
+
+# =====================
+# CONTENT
+# =====================
+
+class Content(StructuredContentMixin, CompleteableMixin, SaveableMixin, models.Model):
+    TYPE_EXERCISE = 'exercise'
+    TYPE_LESSON = 'lesson'
+    TYPE_EXAM = 'exam'
+    TYPE_CHOICES = [
+        (TYPE_EXERCISE, 'Exercise'),
+        (TYPE_LESSON, 'Lesson'),
+        (TYPE_EXAM, 'Exam'),
+    ]
     DIFFICULTY_CHOICES = [
         ('easy', 'easy'),
         ('medium', 'medium'),
         ('hard', 'hard'),
     ]
-    
+
+    type = models.CharField(max_length=10, choices=TYPE_CHOICES, db_index=True)
+    display_id = models.PositiveIntegerField(null=True, blank=True)
+
     title = models.CharField(max_length=200)
-    content = models.TextField()
-    difficulty = models.CharField(max_length=10, choices=DIFFICULTY_CHOICES)
-    chapters = models.ManyToManyField(Chapter, related_name='exercises')
-    class_levels = models.ManyToManyField(ClassLevel, related_name='exercises')
-    author = models.ForeignKey(User, on_delete=models.PROTECT, related_name='exercises')
+    content = models.TextField(blank=True, default='')
+    author = models.ForeignKey(User, on_delete=models.PROTECT, related_name='content_items')
+    subject = models.ForeignKey(Subject, on_delete=models.PROTECT, related_name='content_items', null=True)
+    chapters = models.ManyToManyField(Chapter, related_name='content_items', blank=True)
+    class_levels = models.ManyToManyField(ClassLevel, related_name='content_items')
+    theorems = models.ManyToManyField(Theorem, related_name='content_items', blank=True)
+    subfields = models.ManyToManyField(Subfield, related_name='content_items', blank=True)
+    view_count = models.PositiveIntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    view_count = models.PositiveIntegerField(default=0)
-    subject = models.ForeignKey(Subject, on_delete=models.PROTECT, related_name='exercises', null=True)
-    theorems = models.ManyToManyField(Theorem, related_name='exercises' )
-    subfields = models.ManyToManyField(Subfield, related_name='exercises')
+
+    # exercise / exam only
+    difficulty = models.CharField(max_length=10, choices=DIFFICULTY_CHOICES, null=True, blank=True)
+
+    # exam only
+    is_national_exam = models.BooleanField(default=False)
+    national_year = models.PositiveIntegerField(null=True, blank=True)
+    duration_minutes = models.PositiveIntegerField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        db_table = 'things_content'
+        constraints = [
+            models.UniqueConstraint(fields=['type', 'display_id'], name='unique_display_id_per_type')
+        ]
 
     def __str__(self):
-        return self.title
-    
-    @property
-    def average_perceived_difficulty(self):
-        """Calculate the average perceived difficulty of this exercise based on user ratings.
+        return f"[{self.type}] {self.title}"
 
-        """
-        ratings = self.difficulty_ratings.all()
-        if not ratings:
-            return None
-        return sum(rating.rating for rating in ratings) / ratings.count()
+    def save(self, *args, **kwargs):
+        if self.display_id is None:
+            max_id = Content.objects.filter(type=self.type).aggregate(
+                models.Max('display_id')
+            )['display_id__max']
+            self.display_id = (max_id or 0) + 1
+        super().save(*args, **kwargs)
+
+    @property
+    def total_points(self):
+        return self.get_total_points()
+
+    @property
+    def item_count(self):
+        return self.get_item_count()
+
+    @property
+    def section_count(self):
+        structure = self.structure or {}
+        return len([b for b in structure.get('blocks', []) if b.get('type') == 'section'])
 
     @property
     def success_count(self):
-        """Count the number of users who have successfully completed this exercise.
-
-        """
         return self.progress.filter(status='success').count()
 
     @property
     def review_count(self):
-        """Count the number of users who are currently reviewing this exercise.
-
-        """
         return self.progress.filter(status='review').count()
-    
+
     @property
     def average_time_spent(self):
-        """Calculate the average time spent on this exercise by all users.
-
-        """
         if not self.time_spent.exists():
             return 0
-        
-        total_time = sum([time.time_spent for time in self.time_spent.all()])
+        total_time = sum(t.time_spent for t in self.time_spent.all())
         count = self.time_spent.count()
-        if count == 0:
-            return 0
-        return total_time / count
-    
+        return total_time / count if count else 0
 
-#----------------------------SOLUTION-------------------------------
+    @property
+    def average_perceived_difficulty(self):
+        ratings = self.difficulty_ratings.all()
+        if not ratings:
+            return None
+        return sum(r.rating for r in ratings) / ratings.count()
+
+
+# =====================
+# SOLUTION
+# =====================
 
 class Solution(VotableMixin, models.Model):
-    exercise = models.OneToOneField(Exercise, on_delete=models.PROTECT, related_name='solution')
-    content = models.TextField()
+    content_item = models.OneToOneField(Content, on_delete=models.CASCADE, related_name='solution')
+    solution_text = models.TextField()
     author = models.ForeignKey(User, on_delete=models.PROTECT, related_name='solutions')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
-    def __str__(self):
-        return f"Solution for {self.exercise.title}"
-
-class ExamSolution(VotableMixin, models.Model):
-    exam = models.OneToOneField('Exam', on_delete=models.PROTECT, related_name='solution')
-    content = models.TextField()
-    author = models.ForeignKey(User, on_delete=models.PROTECT, related_name='exam_solutions')
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+    class Meta:
+        db_table = 'things_solution'
 
     def __str__(self):
-        return f"Solution for {self.exam.title}"
-    
-#----------------------------LESSON-------------------------------
+        return f"Solution for {self.content_item.title}"
 
-class Lesson(CompleteableMixin):
-    title = models.CharField(max_length=200)
-    content = models.TextField()
-    subject = models.ForeignKey(Subject, on_delete=models.PROTECT, related_name='lessons')
-    class_levels = models.ManyToManyField(ClassLevel, related_name='lessons')
-    author = models.ForeignKey(User, on_delete=models.PROTECT, related_name='lessons')
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-    view_count = models.PositiveIntegerField(default=0)
-    theorems = models.ManyToManyField(Theorem, related_name='lessons')
-    chapters = models.ManyToManyField(Chapter, related_name='lessons')
-    subfields = models.ManyToManyField(Subfield, related_name='lessons')
 
-    def __str__(self):
-        return self.title
-#----------------------------EXAM-------------------------------
-#----------------------------EXAM-------------------------------
-class Exam(CompleteableMixin, models.Model):
-    DIFFICULTY_CHOICES = [
-        ('easy', 'easy'),
-        ('medium', 'medium'),
-        ('hard', 'hard'),
-    ]
-    
-    title = models.CharField(max_length=200)
-    content = models.TextField()
-    difficulty = models.CharField(max_length=10, choices=DIFFICULTY_CHOICES)
-    chapters = models.ManyToManyField(Chapter, related_name='exams')
-    class_levels = models.ManyToManyField(ClassLevel, related_name='exams')
-    author = models.ForeignKey(User, on_delete=models.PROTECT, related_name='exams')
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-    view_count = models.PositiveIntegerField(default=0)
-    subject = models.ForeignKey(Subject, on_delete=models.PROTECT, related_name='exams', null=True)
-    theorems = models.ManyToManyField(Theorem, related_name='exams' )
-    subfields = models.ManyToManyField(Subfield, related_name='exams')
-    is_national_exam = models.BooleanField(default=False, help_text="Indicates if this exam is a national exam")
-    # Change this field to store year as integer instead of full date
-    national_year = models.PositiveIntegerField(null=True, blank=True, help_text="Year of the exam if it is a national exam (YYYY format)")
-    
-    def __str__(self):
-        return self.title
-    
-    @property
-    def national_date(self):
-        """Backward compatibility property that returns the year as a string"""
-        return str(self.national_year) if self.national_year else None
-    
-    @property
-    def average_perceived_difficulty(self):
-        """Calculate the average perceived difficulty of this exercise based on user ratings."""
-        ratings = self.difficulty_ratings.all()
-        if not ratings:
-            return None
-        return sum(rating.rating for rating in ratings) / ratings.count()
+# =====================
+# COMMENT
+# =====================
 
-    @property
-    def success_count(self):
-        """Count the number of users who have successfully completed this exercise."""
-        return self.progress.filter(status='success').count()
-
-    @property
-    def review_count(self):
-        """Count the number of users who are currently reviewing this exercise."""
-        return self.progress.filter(status='review').count()
-    
-    @property
-    def average_time_spent(self):
-        """Calculate the average time spent on this exercise by all users."""
-        if not self.time_spent.exists():
-            return 0
-        
-        total_time = sum([time.time_spent for time in self.time_spent.all()])
-        count = self.time_spent.count()
-        if count == 0:
-            return 0
-        return total_time / count
-#----------------------------COMMENT-------------------------------
 class Comment(VotableMixin, models.Model):
-    exercise = models.ForeignKey(Exercise, on_delete=models.PROTECT, related_name='comments', null=True, blank=True)
-    lesson = models.ForeignKey(Lesson, on_delete=models.PROTECT, related_name='comments', null=True, blank=True)
-    exam = models.ForeignKey(Exam, on_delete=models.PROTECT, related_name='comments', null=True, blank=True)  # Add this line
+    content_item = models.ForeignKey(Content, on_delete=models.CASCADE, related_name='comments')
     author = models.ForeignKey(User, on_delete=models.PROTECT, related_name='comments')
     content = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
-    parent = models.ForeignKey('self', null=True, blank=True, on_delete=models.PROTECT, related_name='replies')
+    parent = models.ForeignKey('self', null=True, blank=True, on_delete=models.CASCADE, related_name='replies')
+    attachments = GenericRelation('uploads.FileAttachment')
+
+    class Meta:
+        db_table = 'things_comment'
 
     def __str__(self):
-        if self.exercise:
-            return f"Comment by {self.author.username} on exercise {self.exercise.title}"
-        elif self.lesson:
-            return f"Comment by {self.author.username} on lesson {self.lesson.title}"
-        elif self.exam:
-            return f"Comment by {self.author.username} on exam {self.exam.title}"
-        return f"Comment by {self.author.username}"
-    
-    def clean(self):
-        # Ensure that exactly one of exercise, lesson, or exam is set
-        content_objects = [self.exercise, self.lesson, self.exam]
-        non_null_objects = [obj for obj in content_objects if obj is not None]
-        
-        if len(non_null_objects) == 0:
-            raise ValidationError("Comment must be associated with either an exercise, lesson, or exam")
-        if len(non_null_objects) > 1:
-            raise ValidationError("Comment cannot be associated with multiple content types")
-    
-
-
-    
-
-    
+        return f"Comment by {self.author.username} on {self.content_item}"

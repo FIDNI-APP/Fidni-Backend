@@ -9,7 +9,3 @@ class InteractionsConfig(AppConfig):
     name = 'apps.interactions'
     label = 'interactions'
     verbose_name = 'Interactions'
-
-    def ready(self):
-        """Import signals when app is ready"""
-        import apps.interactions.signals  # noqa

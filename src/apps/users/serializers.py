@@ -33,6 +33,10 @@ class UserProfileSerializer(serializers.ModelSerializer):
     subject_grades = SubjectGradeSerializer(many=True, required=False)
     class_level_name = serializers.SerializerMethodField()
     target_subject_names = serializers.SerializerMethodField()
+    avatar = serializers.SerializerMethodField()
+    teaching_subject_names = serializers.SerializerMethodField()
+    teaching_class_level_names = serializers.SerializerMethodField()
+    students_count = serializers.SerializerMethodField()
 
     class Meta:
         model = UserProfile
@@ -42,9 +46,22 @@ class UserProfileSerializer(serializers.ModelSerializer):
             'class_level', 'class_level_name', 'user_type', 'onboarding_completed',
             'display_email', 'display_stats',
             'email_notifications', 'comment_notifications', 'solution_notifications',
-            'contribution_stats', 'learning_stats', 'subject_grades'
+            'contribution_stats', 'learning_stats', 'subject_grades',
+            # Teacher fields
+            'teaching_subjects', 'teaching_subject_names',
+            'teaching_class_levels', 'teaching_class_level_names',
+            'teacher_code', 'students_count',
         )
-        read_only_fields = ('reputation', 'last_activity_date', 'joined_at')
+        read_only_fields = ('reputation', 'last_activity_date', 'joined_at', 'teacher_code')
+
+    def get_avatar(self, obj):
+        """Return full URL for avatar"""
+        if obj.avatar_file:
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(obj.avatar_file.url)
+            return obj.avatar_file.url
+        return obj.avatar_url
     
     def get_contribution_stats(self, obj):
         # Only return stats if public or it's the user's own profile
@@ -64,8 +81,16 @@ class UserProfileSerializer(serializers.ModelSerializer):
         return None
 
     def get_target_subject_names(self, obj):
-        """Return list of target subject names"""
-        return [subject.name for subject in obj.target_subjects.all()]
+        return [s.name for s in obj.target_subjects.all()]
+
+    def get_teaching_subject_names(self, obj):
+        return [s.name for s in obj.teaching_subjects.all()]
+
+    def get_teaching_class_level_names(self, obj):
+        return [cl.name for cl in obj.teaching_class_levels.all()]
+
+    def get_students_count(self, obj):
+        return obj.students.count()
 
 
 class UserSerializer(serializers.ModelSerializer):

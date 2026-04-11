@@ -9,7 +9,7 @@ from django.db import transaction
 from .models import Notebook, NotebookSection, NotebookAnnotation, NotebookLessonEntry
 from .serializers import NotebookSerializer, NotebookSectionSerializer, NotebookAnnotationSerializer
 from apps.caracteristics.models import Subject, Chapter, ClassLevel
-from apps.things.models import Lesson
+from apps.things.models import Content
 import logging
 
 logger = logging.getLogger(__name__)
@@ -54,7 +54,7 @@ class NotebookChapterViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
         
-        lesson = get_object_or_404(Lesson, id=lesson_id)
+        lesson = get_object_or_404(Content, id=lesson_id, type='lesson')
 
         # Get the next page order
         last_entry = chapter.lesson_entries.order_by('-page_order').first()
@@ -293,7 +293,7 @@ class NotebookViewSet(viewsets.ModelViewSet):
         
         # Vérifier que la section appartient au cahier
         section = get_object_or_404(NotebookSection, id=section_id, notebook=notebook)
-        lesson = get_object_or_404(Lesson, id=lesson_id)
+        lesson = get_object_or_404(Content, id=lesson_id, type='lesson')
         
         # Vérifier que la leçon correspond à la matière et au niveau
         if lesson.subject.id != notebook.subject.id:

@@ -1,7 +1,7 @@
 from django.db import models
 from django.contrib.auth.models import User
 from apps.caracteristics.models import Subject, Chapter, ClassLevel
-from apps.things.models import Lesson
+from apps.things.models import Content
 import json
 
 class Notebook(models.Model):
@@ -56,7 +56,7 @@ class NotebookLessonEntry(models.Model):
     Allows multiple lessons per chapter with pagination support.
     """
     section = models.ForeignKey(NotebookSection, on_delete=models.CASCADE, related_name='lesson_entries')
-    lesson = models.ForeignKey(Lesson, on_delete=models.CASCADE, related_name='notebook_entries')
+    lesson = models.ForeignKey(Content, on_delete=models.CASCADE, related_name='notebook_entries')
     page_order = models.PositiveIntegerField(default=0)
     content_start = models.IntegerField(null=True, blank=True)  # Starting position in lesson content
     content_end = models.IntegerField(null=True, blank=True)    # Ending position in lesson content
@@ -83,7 +83,7 @@ class NotebookAnnotation(models.Model):
     ]
 
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notebook_annotations')
-    lesson = models.ForeignKey(Lesson, on_delete=models.CASCADE, related_name='annotations')
+    lesson = models.ForeignKey(Content, on_delete=models.CASCADE, related_name='annotations')
     annotation_id = models.CharField(max_length=100)  # ID unique de l'annotation côté frontend
     annotation_type = models.CharField(max_length=20, choices=ANNOTATION_TYPES)
     position_x = models.FloatField()  # Position X de l'annotation

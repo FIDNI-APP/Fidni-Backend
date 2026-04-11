@@ -1,10 +1,8 @@
 from rest_framework import serializers
-from .models import Vote,Save,Complete, RevisionList, RevisionListItem
-from apps.things.models import Exercise
+from .models import Vote,Save,Complete, RevisionList, RevisionListItem, AICorrection
 from apps.users.serializers import UserSerializer
 from apps.users.models import ViewHistory
-from apps.caracteristics.serializers import ChapterSerializer, ClassLevelSerializer, SubjectSerializer, TheoremSerializer
-from apps.things.serializers import CommentSerializer, SolutionSerializer, ExerciseSerializer
+from apps.things.serializers import CommentSerializer, SolutionSerializer, ContentListSerializer
 import logging 
 
 
@@ -17,79 +15,37 @@ logger = logging.getLogger('django')
 
 class VoteSerializer(serializers.ModelSerializer):
     user = UserSerializer(read_only=True)
-    exercise = ExerciseSerializer(read_only=True)
     comment = CommentSerializer(read_only=True)
     solution = SolutionSerializer(read_only=True)
 
     class Meta:
         model = Vote
-        fields = ['id', 'value', 'created_at', 'updated_at','user','exercise','comment','solution']
+        fields = ['id', 'value', 'created_at', 'updated_at', 'user', 'comment', 'solution']
 
 
 class SaveSerializer(serializers.ModelSerializer):
     user = UserSerializer(read_only=True)
-    exercise = ExerciseSerializer(read_only=True)
 
     class Meta:
         model = Save
-        fields = ['id','created_at','updated_at','user', 'exercise']
-        
+        fields = ['id', 'created_at', 'user']
+
 class CompleteSerializer(serializers.ModelSerializer):
     user = UserSerializer(read_only=True)
-    exercise = ExerciseSerializer(read_only=True)
 
     class Meta:
         model = Complete
-        fields = ['id','created_at','updated_at','user', 'exercise']
+        fields = ['id', 'created_at', 'updated_at', 'user']
 
 
-class LessonSerializer(serializers.ModelSerializer):
-    author = UserSerializer(read_only=True)
-    chapters = ChapterSerializer(many=True, read_only=True)
-    comments = CommentSerializer(many=True, read_only=True)
-    solution = SolutionSerializer(read_only=True)
-    vote_count = serializers.IntegerField(read_only=True)
-    user_vote = serializers.SerializerMethodField()
-    view_count = serializers.IntegerField(read_only=True)
-    class_levels = ClassLevelSerializer(many=True, read_only=True)
-    subject = SubjectSerializer(read_only=True)
-    theorems = TheoremSerializer(many = True)
-
-    class Meta:
-        model = Exercise
-        fields = ['id', 'title', 'content', 'chapters', 'author', 'created_at', 'updated_at', 'view_count', 'comments', 'solution', 'vote_count', 'user_vote', 'class_levels', 'subject']
-
-    def get_user_vote(self, obj):
-        user = self.context['request'].user
-        if user.is_authenticated:
-            vote = obj.votes.filter(user=user).first()
-            return vote.value if vote else None
-        return None
-
-    def update(self, instance, validated_data):
-        chapters = validated_data.pop('chapters', None)
-        class_levels = validated_data.pop('class_levels', None)
-        for attr, value in validated_data.items():
-            setattr(instance, attr, value)
-        if chapters is not None:
-            instance.chapters.set(chapters)
-        if class_levels is not None:
-            instance.class_levels.set(class_levels)
-        instance.save()
-        return instance
-    
 class ViewHistorySerializer(serializers.ModelSerializer):
-    """Serializer for the ViewHistory model"""
-
-    content_type = serializers.ReadOnlyField(source='content.content_type')
-    content = ExerciseSerializer('content', read_only=True)
     viewed_at = serializers.ReadOnlyField()
     time_spent = serializers.ReadOnlyField(source='time_spent_in_seconds')
-    
+
     class Meta:
         model = ViewHistory
-        fields = ('content', 'viewed_at', 'time_spent','content_type', 'content')
-        read_only_fields = ('viewed_at', 'time_spent', 'content_type')
+        fields = ('viewed_at', 'time_spent')
+        read_only_fields = ('viewed_at', 'time_spent')
 
 
 #----------------------------REVISION LISTS-------------------------------
@@ -105,15 +61,9 @@ class RevisionListItemSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'added_at']
 
     def get_content_object(self, obj):
-        """Serialize the actual content (exercise or exam)"""
         if obj.content_object:
-            # Import here to avoid circular imports
-            from apps.things.serializers import ExerciseSerializer, ExamSerializer
-            if hasattr(obj.content_object, 'subject'):  # It's an exercise or exam
-                if obj.content_type.model == 'exercise':
-                    return ExerciseSerializer(obj.content_object, context=self.context).data
-                elif obj.content_type.model == 'exam':
-                    return ExamSerializer(obj.content_object, context=self.context).data
+            from apps.things.serializers import ContentListSerializer
+            return ContentListSerializer(obj.content_object, context=self.context).data
         return None
 
     def get_content_type_name(self, obj):
@@ -140,3 +90,35 @@ class RevisionListCreateSerializer(serializers.ModelSerializer):
         model = RevisionList
         fields = ['id', 'name', 'description']
         read_only_fields = ['id']
+
+
+#----------------------------AI CORRECTION-------------------------------
+
+class AICorrectionSerializer(serializers.ModelSerializer):
+    """Serializer for AI corrections"""
+    image_url = serializers.SerializerMethodField()
+    user = UserSerializer(read_only=True)
+
+    class Meta:
+        model = AICorrection
+        fields = [
+            'id', 'user', 'image', 'image_url', 'submitted_at',
+            'conversation_started_at', 'submission_state', 'language',
+            'ai_provider', 'ai_model', 'score_awarded', 'score_total',
+            'feedback', 'raw_response', 'processing_time_ms', 'chat_history',
+            'pedagogical_context'
+        ]
+        read_only_fields = [
+            'id', 'user', 'submitted_at', 'conversation_started_at',
+            'ai_provider', 'ai_model', 'score_awarded', 'score_total',
+            'feedback', 'raw_response', 'processing_time_ms'
+        ]
+
+    def get_image_url(self, obj):
+        """Get absolute URL for uploaded image"""
+        if obj.image:
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(obj.image.url)
+            return obj.image.url
+        return None

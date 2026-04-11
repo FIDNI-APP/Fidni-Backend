@@ -1,24 +1,25 @@
 from rest_framework import serializers
-from .models import Solution, ExamSolution, Comment, Subfield, Theorem, Exercise, Lesson
-from apps.caracteristics.models import ClassLevel, Chapter, Subfield, Theorem
+from .models import Solution, Comment, Content
+from apps.caracteristics.models import ClassLevel, Chapter, Subfield, Theorem, Subject
 from apps.users.serializers import UserSerializer
 from apps.users.models import ViewHistory
 from apps.caracteristics.serializers import ChapterSerializer, ClassLevelSerializer, SubjectSerializer, SubfieldSerializer, TheoremSerializer
-import logging 
-
-
+from apps.uploads.serializers import FileAttachmentSerializer
+from .content_store import get_structure, upsert_structure, get_structures_batch
+import logging
 
 logger = logging.getLogger('django')
 
 
-#----------------------------SOLUTION-------------------------------
-
+# =====================
+# SOLUTION
+# =====================
 
 class SolutionSerializer(serializers.ModelSerializer):
     author = UserSerializer(read_only=True)
     vote_count = serializers.IntegerField(read_only=True)
     user_vote = serializers.SerializerMethodField()
-    content = serializers.CharField(required=True, allow_blank=False)
+    content = serializers.CharField(source='solution_text', required=True, allow_blank=False)
 
     class Meta:
         model = Solution
@@ -26,44 +27,28 @@ class SolutionSerializer(serializers.ModelSerializer):
 
     def get_user_vote(self, obj):
         user = self.context.get('request').user if self.context.get('request') else None
-        if user and hasattr(user, 'is_authenticated') and user.is_authenticated:
+        if user and user.is_authenticated:
             vote = obj.votes.filter(user=user).first()
             return vote.value if vote else None
         return None
 
-class ExamSolutionSerializer(serializers.ModelSerializer):
-    author = UserSerializer(read_only=True)
-    vote_count = serializers.IntegerField(read_only=True)
-    user_vote = serializers.SerializerMethodField()
-    content = serializers.CharField(required=True, allow_blank=False)
 
-    class Meta:
-        model = ExamSolution
-        fields = ['id', 'content', 'author', 'created_at', 'updated_at', 'vote_count', 'user_vote']
+# =====================
+# COMMENT
+# =====================
 
-    def get_user_vote(self, obj):
-        user = self.context.get('request').user if self.context.get('request') else None
-        if user and hasattr(user, 'is_authenticated') and user.is_authenticated:
-            vote = obj.votes.filter(user=user).first()
-            return vote.value if vote else None
-        return None
-    
-
-#----------------------------COMMENT-------------------------------
 class CommentSerializer(serializers.ModelSerializer):
     author = UserSerializer(read_only=True)
     replies = serializers.SerializerMethodField()
     vote_count = serializers.IntegerField(read_only=True)
     user_vote = serializers.SerializerMethodField()
-    parent_id = serializers.IntegerField(required=False, allow_null=True)
-    exercise_id = serializers.IntegerField(required=False, allow_null=True, write_only=True)
-    lesson_id = serializers.IntegerField(required=False, allow_null=True, write_only=True)
-    exam_id = serializers.IntegerField(required=False, allow_null=True, write_only=True)  # Add this line
-    
+    attachments = FileAttachmentSerializer(many=True, read_only=True)
+    parent_id = serializers.IntegerField(write_only=True, required=False, allow_null=True)
+
     class Meta:
         model = Comment
-        fields = ['id', 'content', 'author', 'created_at', 'replies', 
-                 'vote_count', 'user_vote', 'parent_id', 'exercise_id', 'lesson_id', 'exam_id']  # Add exam_id
+        fields = ['id', 'author', 'content', 'created_at', 'replies',
+                  'vote_count', 'user_vote', 'parent_id', 'attachments']
 
     def get_replies(self, obj):
         if obj.replies.exists():
@@ -72,498 +57,255 @@ class CommentSerializer(serializers.ModelSerializer):
 
     def get_user_vote(self, obj):
         user = self.context.get('request').user if self.context.get('request') else None
-        if user and hasattr(user, 'is_authenticated') and user.is_authenticated:
+        if user and user.is_authenticated:
             vote = obj.votes.filter(user=user).first()
             return vote.value if vote else None
         return None
-        
-    def create(self, validated_data):
-        parent_id = validated_data.pop('parent_id', None)
-        exercise_id = validated_data.pop('exercise_id', None)
-        lesson_id = validated_data.pop('lesson_id', None)
-        exam_id = validated_data.pop('exam_id', None)  # Add this line
-        
-        if exercise_id:
-            validated_data['exercise'] = Exercise.objects.get(pk=exercise_id)
-        elif lesson_id:
-            validated_data['lesson'] = Lesson.objects.get(pk=lesson_id)
-        elif exam_id:  # Add this block
-            validated_data['exam'] = Exam.objects.get(pk=exam_id)
-        
-        if parent_id:
-            validated_data['parent'] = Comment.objects.get(pk=parent_id)
-            
-        return super().create(validated_data)
-    
-#----------------------------EXERCISE-------------------------------
 
 
-class ExerciseSerializer(serializers.ModelSerializer):
+# =====================
+# CONTENT — detail serializer
+# =====================
+
+class ContentSerializer(serializers.ModelSerializer):
     author = UserSerializer(read_only=True)
     chapters = ChapterSerializer(many=True, read_only=True)
-    comments = CommentSerializer(many=True, read_only=True)
+    comments = serializers.SerializerMethodField()
     solution = SolutionSerializer(read_only=True)
     vote_count = serializers.IntegerField(read_only=True)
     user_vote = serializers.SerializerMethodField()
-    difficulty = serializers.CharField(source='get_difficulty_display')
     view_count = serializers.IntegerField(read_only=True)
     class_levels = ClassLevelSerializer(many=True, read_only=True)
     subject = SubjectSerializer(read_only=True)
-    theorems = TheoremSerializer(many= True, read_only = True)
-    subfields= SubfieldSerializer(many= True,read_only = True)
+    theorems = TheoremSerializer(many=True, read_only=True)
+    subfields = SubfieldSerializer(many=True, read_only=True)
     user_save = serializers.SerializerMethodField()
     user_complete = serializers.SerializerMethodField()
     user_timespent = serializers.SerializerMethodField()
-
+    total_points = serializers.IntegerField(read_only=True)
+    item_count = serializers.IntegerField(read_only=True)
+    section_count = serializers.IntegerField(read_only=True)
+    structure = serializers.JSONField(required=False)
 
     class Meta:
-        model = Exercise
-        fields = ['id', 'title', 'content', 'difficulty', 'chapters', 'author', 'created_at', 
-                'updated_at', 'view_count', 'comments', 'solution', 'vote_count', 'user_vote', 
-                'class_levels', 'subject','subfields','theorems','user_save','user_complete', 'user_timespent']
+        model = Content
+        fields = [
+            'id', 'display_id', 'type', 'title', 'content', 'structure',
+            'difficulty', 'chapters', 'author', 'created_at', 'updated_at',
+            'view_count', 'comments', 'solution', 'vote_count', 'user_vote',
+            'class_levels', 'subject', 'subfields', 'theorems',
+            'user_save', 'user_complete', 'user_timespent',
+            'total_points', 'item_count', 'section_count', 'version',
+            # exam fields
+            'is_national_exam', 'national_year', 'duration_minutes',
+        ]
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        data['structure'] = get_structure(instance.type, instance.display_id)
+        return data
+
+    def get_comments(self, obj):
+        return CommentSerializer(
+            obj.comments.filter(parent=None), many=True, context=self.context
+        ).data
 
     def get_user_vote(self, obj):
         user = self.context.get('request').user if self.context.get('request') else None
-        if user and hasattr(user, 'is_authenticated') and user.is_authenticated:
+        if user and user.is_authenticated:
             vote = obj.votes.filter(user=user).first()
             return vote.value if vote else None
         return None
-    def get_user_save(self, obj):
-        user = self.context['request'].user
-        if user and hasattr(user, 'is_authenticated') and user.is_authenticated:
-            saved_exercise = obj.saved.filter(user=user).first()
-            return saved_exercise is not None
-        return False
-    
-    def get_user_complete(self, obj):
-        user = self.context['request'].user
-        if user and hasattr(user, 'is_authenticated') and user.is_authenticated:
-            completed_exercise = obj.completed.filter(user=user).first()
 
-            return completed_exercise.status if completed_exercise else None
+    def get_user_save(self, obj):
+        user = self.context.get('request').user if self.context.get('request') else None
+        if user and user.is_authenticated:
+            return obj.saved.filter(user=user).exists()
         return False
-    
+
+    def get_user_complete(self, obj):
+        user = self.context.get('request').user if self.context.get('request') else None
+        if user and user.is_authenticated:
+            c = obj.completed.filter(user=user).first()
+            return c.status if c else None
+        return None
+
     def get_user_timespent(self, obj):
         user = self.context.get('request').user if self.context.get('request') else None
-        if user and hasattr(user, 'is_authenticated') and user.is_authenticated:
+        if user and user.is_authenticated:
             from django.contrib.contenttypes.models import ContentType
             from apps.interactions.models import StudyTimeTracker
-
-            content_type = ContentType.objects.get_for_model(obj)
+            ct = ContentType.objects.get_for_model(obj)
             tracker = StudyTimeTracker.objects.filter(
-                user=user,
-                content_type=content_type,
-                object_id=obj.id
-            ).first()
-            return tracker.time_spent_seconds if tracker else 0
-        return 0
-
-    def update(self, instance, validated_data):
-        solution_content = validated_data.pop('solution_content', None)
-        chapters = validated_data.pop('chapters', None)
-        class_levels = validated_data.pop('class_levels', None)
-        subfields = validated_data.pop('subfields', None)
-        theorems = validated_data.pop('theorems', None)
-
-        
-        for attr, value in validated_data.items():
-            setattr(instance, attr, value)
-        
-        if chapters is not None:
-            instance.chapters.set(chapters)
-        if class_levels is not None:
-            instance.class_levels.set(class_levels)
-        if subfields is not None:
-            instance.subfields.set(subfields)
-        if theorems is not None:
-            instance.theorems.set(theorems)
-        
-        if solution_content is not None:
-            solution, created = Solution.objects.get_or_create(
-                exercise=instance,
-                defaults={'author': instance.author}
-            )
-            solution.content = solution_content
-            solution.save()
-        
-        instance.save()
-        return instance
-    
-
-    
-class ExerciseCreateSerializer(serializers.ModelSerializer):
-    solution_content = serializers.CharField(required=False, allow_blank=True)
-    chapters = serializers.PrimaryKeyRelatedField(many=True, queryset=Chapter.objects.all(), required=False)
-    class_levels = serializers.PrimaryKeyRelatedField(many=True, queryset=ClassLevel.objects.all(), required=False)
-    subfields = serializers.PrimaryKeyRelatedField(many = True, queryset = Subfield.objects.all(), required= False )
-    theorems = serializers.PrimaryKeyRelatedField(many = True,queryset = Theorem.objects.all(), required= False )
-
-
-    class Meta:
-        model = Exercise
-        fields = [
-            'id',
-            'title',
-            'content',
-            'difficulty',
-            'chapters',
-            'class_levels',
-            'solution_content',
-            'subject',
-            'subfields',
-            'theorems'
-
-        ]
-
-    def create(self, validated_data):
-        solution_content = validated_data.pop('solution_content', None)
-        chapters = validated_data.pop('chapters', [])
-        class_levels = validated_data.pop('class_levels', [])
-        subfields = validated_data.pop('subfields', [])
-        theorems = validated_data.pop('theorems', [])
-
-
-        logger.info(validated_data)
-        
-        exercise = Exercise.objects.create(
-            author=self.context['request'].user,
-            **validated_data
-        )
-
-        if chapters:
-            exercise.chapters.set(chapters)
-        if class_levels:
-            exercise.class_levels.set(class_levels)
-        if subfields:
-            exercise.subfields.set(subfields)
-        if theorems:
-            exercise.theorems.set(theorems)
-        
-        if solution_content:
-            Solution.objects.create(
-                exercise=exercise,
-                content=solution_content,
-                author=exercise.author
-            )
-        
-        return exercise
-
-    def update(self, instance, validated_data):
-        solution_content = validated_data.pop('solution_content', None)
-        chapters = validated_data.pop('chapters', None)
-        class_levels = validated_data.pop('class_levels', None)
-        subfields = validated_data.pop('subfields', None)
-        theorems = validated_data.pop('theorems', None)
-
-        
-        for attr, value in validated_data.items():
-            setattr(instance, attr, value)
-        
-        if chapters is not None:
-            instance.chapters.set(chapters)
-        if class_levels is not None:
-            instance.class_levels.set(class_levels)
-        if subfields is not None:
-            instance.subfields.set(subfields)
-        if theorems is not None:
-            instance.theorems.set(theorems)
-        
-        if solution_content is not None:
-            solution, created = Solution.objects.get_or_create(
-                exercise=instance,
-                defaults={'author': instance.author}
-            )
-            solution.content = solution_content
-            solution.save()
-        
-        instance.save()
-        return instance
-class ViewHistorySerializer(serializers.ModelSerializer):
-    content = ExerciseSerializer()
-
-    class Meta:
-        model = ViewHistory
-        fields = ('content', 'viewed_at', 'completed')
-
-class UserHistorySerializer(serializers.Serializer):
-    recentlyViewed = ExerciseSerializer(many=True)
-    upvoted = ExerciseSerializer(many=True)
-
-
-
-class LessonSerializer(serializers.ModelSerializer):
-    author = UserSerializer(read_only=True)
-    chapters = ChapterSerializer(many=True, read_only=True)
-    comments = CommentSerializer(many=True, read_only=True)
-    vote_count = serializers.IntegerField(read_only=True)
-    user_vote = serializers.SerializerMethodField()
-    view_count = serializers.IntegerField(read_only=True)
-    class_levels = ClassLevelSerializer(many=True, read_only=True)
-    subject = SubjectSerializer(read_only=True)
-    subfields = SubfieldSerializer(many=True, read_only=True)
-    theorems = TheoremSerializer(many=True, read_only=True)
-    user_save = serializers.SerializerMethodField()
-    user_complete = serializers.SerializerMethodField()
-
-    class Meta:
-        model = Lesson
-        fields = ['id', 'title', 'content', 'chapters', 'author', 'created_at',
-                  'updated_at', 'view_count', 'comments', 'vote_count', 'user_vote',
-                  'class_levels', 'subject', 'subfields', 'theorems', 'user_save', 'user_complete']
-
-    def get_user_vote(self, obj):
-        user = self.context.get('request').user if self.context.get('request') else None
-        if user and hasattr(user, 'is_authenticated') and user.is_authenticated:
-            vote = obj.votes.filter(user=user).first()
-            return vote.value if vote else None
-        return None
-
-    def get_user_save(self, obj):
-        user = self.context.get('request').user if self.context.get('request') else None
-        if user and hasattr(user, 'is_authenticated') and user.is_authenticated:
-            saved = obj.saved.filter(user=user).first()
-            return saved is not None
-        return False
-
-    def get_user_complete(self, obj):
-        user = self.context.get('request').user if self.context.get('request') else None
-        if user and hasattr(user, 'is_authenticated') and user.is_authenticated:
-            completed = obj.completed.filter(user=user).first()
-            return completed.status if completed else None
-        return None
-
-    def update(self, instance, validated_data):
-        chapters = validated_data.pop('chapters', None)
-        class_levels = validated_data.pop('class_levels', None)
-        subfields = validated_data.pop('subfields', None)
-        theorems = validated_data.pop('theorems', None)
-        
-        for attr, value in validated_data.items():
-            setattr(instance, attr, value)
-        
-        if chapters is not None:
-            instance.chapters.set(chapters)
-        if class_levels is not None:
-            instance.class_levels.set(class_levels)
-        if subfields is not None:
-            instance.subfields.set(subfields)
-        if theorems is not None:
-            instance.theorems.set(theorems)
-        
-        instance.save()
-        return instance
-
-
-class LessonCreateSerializer(serializers.ModelSerializer):
-    chapters = serializers.PrimaryKeyRelatedField(many=True, queryset=Chapter.objects.all(), required=False)
-    class_levels = serializers.PrimaryKeyRelatedField(many=True, queryset=ClassLevel.objects.all(), required=False)
-    subfields = serializers.PrimaryKeyRelatedField(many=True, queryset=Subfield.objects.all(), required=False)
-    theorems = serializers.PrimaryKeyRelatedField(many=True, queryset=Theorem.objects.all(), required=False)
-
-    class Meta:
-        model = Lesson
-        fields = [
-            'id',
-            'title',
-            'content',
-            'chapters',
-            'class_levels',
-            'subject',
-            'subfields',
-            'theorems'
-        ]
-
-    def create(self, validated_data):
-        chapters = validated_data.pop('chapters', [])
-        class_levels = validated_data.pop('class_levels', [])
-        subfields = validated_data.pop('subfields', [])
-        theorems = validated_data.pop('theorems', [])
-        
-        lesson = Lesson.objects.create(
-            author=self.context['request'].user,
-            **validated_data
-        )
-
-        if chapters:
-            lesson.chapters.set(chapters)
-        if class_levels:
-            lesson.class_levels.set(class_levels)
-        if subfields:
-            lesson.subfields.set(subfields)
-        if theorems:
-            lesson.theorems.set(theorems)
-        
-        return lesson
-
-    
-class ViewHistorySerializer(serializers.ModelSerializer):
-    """Serializer for the ViewHistory model"""
-
-    content_type = serializers.ReadOnlyField(source='content.content_type')
-    content = ExerciseSerializer('content', read_only=True)
-    viewed_at = serializers.ReadOnlyField()
-    time_spent = serializers.ReadOnlyField(source='time_spent_in_seconds')
-    
-    class Meta:
-        model = ViewHistory  
-        fields = ('content', 'viewed_at', 'time_spent','content_type', 'content')
-        read_only_fields = ('viewed_at', 'time_spent', 'content_type')
-
-
-
-# Add these to your things/serializers.py file
-
-from .models import Exam
-from apps.caracteristics.models import ClassLevel, Chapter, Subfield, Theorem
-
-# things/serializers.py (Update the Exam serializer sections)
-
-class ExamSerializer(serializers.ModelSerializer):
-    author = UserSerializer(read_only=True)
-    chapters = ChapterSerializer(many=True, read_only=True)
-    comments = CommentSerializer(many=True, read_only=True)
-    vote_count = serializers.IntegerField(read_only=True)
-    user_vote = serializers.SerializerMethodField()
-    view_count = serializers.IntegerField(read_only=True)
-    class_levels = ClassLevelSerializer(many=True, read_only=True)
-    subject = SubjectSerializer(read_only=True)
-    subfields = SubfieldSerializer(many=True, read_only=True)
-    theorems = TheoremSerializer(many=True, read_only=True)
-    user_save = serializers.SerializerMethodField()
-    user_complete = serializers.SerializerMethodField()
-    user_timespent = serializers.SerializerMethodField()
-    solution = ExamSolutionSerializer(read_only=True)
-    # Add backward compatibility for national_date
-    national_date = serializers.SerializerMethodField()
-
-    class Meta:
-        model = Exam
-        fields = [
-            'id', 'title', 'content', 'difficulty', 'chapters', 'author',
-            'created_at', 'updated_at', 'view_count', 'comments', 'vote_count',
-            'user_vote', 'class_levels', 'subject', 'subfields', 'theorems',
-            'user_save', 'user_complete', 'user_timespent', 'solution', 'is_national_exam',
-            'national_year', 'national_date'  # Include both for compatibility
-        ]
-
-    def get_national_date(self, obj):
-        """Return the year as a string for backward compatibility"""
-        return str(obj.national_year) if obj.national_year else None
-
-    def get_user_vote(self, obj):
-        user = self.context.get('request').user if self.context.get('request') else None
-        if user and hasattr(user, 'is_authenticated') and user.is_authenticated:
-            vote = obj.votes.filter(user=user).first()
-            return vote.value if vote else None
-        return None
-
-    def get_user_save(self, obj):
-        user = self.context.get('request').user if self.context.get('request') else None
-        if user and hasattr(user, 'is_authenticated') and user.is_authenticated:
-            saved_exam = obj.saved.filter(user=user).first()
-            return saved_exam is not None
-        return False
-
-    def get_user_complete(self, obj):
-        user = self.context.get('request').user if self.context.get('request') else None
-        if user and hasattr(user, 'is_authenticated') and user.is_authenticated:
-            completed_exam = obj.completed.filter(user=user).first()
-            return completed_exam.status if completed_exam else None
-        return None
-    
-    def get_user_timespent(self, obj):
-        user = self.context.get('request').user if self.context.get('request') else None
-        if user and hasattr(user, 'is_authenticated') and user.is_authenticated:
-            from django.contrib.contenttypes.models import ContentType
-            from apps.interactions.models import StudyTimeTracker
-
-            content_type = ContentType.objects.get_for_model(obj)
-            tracker = StudyTimeTracker.objects.filter(
-                user=user,
-                content_type=content_type,
-                object_id=obj.id
+                user=user, content_type=ct, object_id=obj.id
             ).first()
             return tracker.time_spent_seconds if tracker else 0
         return 0
 
 
-class ExamCreateSerializer(serializers.ModelSerializer):
-    chapters = serializers.PrimaryKeyRelatedField(many=True, queryset=Chapter.objects.all(), required=False)
-    class_levels = serializers.PrimaryKeyRelatedField(many=True, queryset=ClassLevel.objects.all(), required=False)
-    subfields = serializers.PrimaryKeyRelatedField(many=True, queryset=Subfield.objects.all(), required=False)
-    theorems = serializers.PrimaryKeyRelatedField(many=True, queryset=Theorem.objects.all(), required=False)
-    # Accept both national_date (for backward compatibility) and national_year
-    national_date = serializers.CharField(required=False, allow_null=True, write_only=True)
-    solution = serializers.CharField(required=False, allow_blank=True, write_only=True)
+# =====================
+# CONTENT — list serializer
+# =====================
+
+class ContentListSerializer(serializers.ModelSerializer):
+    author = UserSerializer(read_only=True)
+    subject = SubjectSerializer(read_only=True)
+    class_levels = ClassLevelSerializer(many=True, read_only=True)
+    chapters = serializers.SerializerMethodField()
+    theorems = serializers.SerializerMethodField()
+    comment_count = serializers.SerializerMethodField()
+    vote_count = serializers.IntegerField(read_only=True)
+    user_vote = serializers.SerializerMethodField()
+    user_save = serializers.SerializerMethodField()
+    user_complete = serializers.SerializerMethodField()
+    total_points = serializers.IntegerField(read_only=True)
+    item_count = serializers.IntegerField(read_only=True)
+    structure = serializers.JSONField(required=False)
 
     class Meta:
-        model = Exam
+        model = Content
         fields = [
-            'id', 'title', 'content', 'difficulty', 'chapters', 'class_levels',
-            'subject', 'subfields', 'theorems', 'is_national_exam', 'national_year', 'national_date', 'solution'
+            'id', 'display_id', 'type', 'title', 'structure', 'difficulty',
+            'author', 'subject', 'class_levels', 'chapters', 'theorems',
+            'comment_count', 'created_at', 'view_count', 'vote_count',
+            'user_vote', 'user_save', 'user_complete',
+            'total_points', 'item_count',
+            'is_national_exam', 'national_year', 'duration_minutes',
+        ]
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        mongo_structures = self.context.get('mongo_structures')
+        if mongo_structures is not None:
+            data['structure'] = mongo_structures.get(instance.display_id, {})
+        else:
+            data['structure'] = get_structure(instance.type, instance.display_id)
+        return data
+
+    def get_chapters(self, obj):
+        return [{'id': c.id, 'name': c.name} for c in obj.chapters.all()]
+
+    def get_theorems(self, obj):
+        return [{'id': t.id, 'name': t.name} for t in obj.theorems.all()]
+
+    def get_comment_count(self, obj):
+        return obj.comments.count()
+
+    def get_user_vote(self, obj):
+        user = self.context.get('request').user if self.context.get('request') else None
+        if user and user.is_authenticated:
+            vote = obj.votes.filter(user=user).first()
+            return vote.value if vote else None
+        return None
+
+    def get_user_save(self, obj):
+        user = self.context.get('request').user if self.context.get('request') else None
+        if user and user.is_authenticated:
+            return obj.saved.filter(user=user).exists()
+        return False
+
+    def get_user_complete(self, obj):
+        user = self.context.get('request').user if self.context.get('request') else None
+        if user and user.is_authenticated:
+            c = obj.completed.filter(user=user).first()
+            return c.status if c else None
+        return None
+
+
+# =====================
+# CONTENT — create/update serializer
+# =====================
+
+class ContentCreateSerializer(serializers.ModelSerializer):
+    solution_content = serializers.CharField(
+        write_only=True, required=False, allow_blank=True
+    )
+    chapters = serializers.PrimaryKeyRelatedField(
+        many=True, queryset=Chapter.objects.all(), required=False
+    )
+    class_levels = serializers.PrimaryKeyRelatedField(
+        many=True, queryset=ClassLevel.objects.all(), required=False
+    )
+    subfields = serializers.PrimaryKeyRelatedField(
+        many=True, queryset=Subfield.objects.all(), required=False
+    )
+    theorems = serializers.PrimaryKeyRelatedField(
+        many=True, queryset=Theorem.objects.all(), required=False
+    )
+    national_date = serializers.CharField(
+        write_only=True, required=False, allow_null=True
+    )
+    structure = serializers.JSONField(required=False)
+
+    class Meta:
+        model = Content
+        fields = [
+            'id', 'type', 'title', 'content', 'structure', 'difficulty',
+            'chapters', 'class_levels', 'subject', 'subfields', 'theorems',
+            'solution_content', 'national_date',
+            'is_national_exam', 'national_year', 'duration_minutes',
         ]
 
     def validate(self, data):
-        """Convert national_date to national_year if provided"""
         national_date = data.pop('national_date', None)
         if national_date:
             try:
-                # Try to parse as year first
-                if len(str(national_date)) == 4 and str(national_date).isdigit():
-                    data['national_year'] = int(national_date)
+                s = str(national_date)
+                if len(s) == 4 and s.isdigit():
+                    data['national_year'] = int(s)
                 else:
-                    # Try to parse as date and extract year
                     from datetime import datetime
-                    parsed_date = datetime.strptime(str(national_date), '%Y-%m-%d')
-                    data['national_year'] = parsed_date.year
+                    data['national_year'] = datetime.strptime(s, '%Y-%m-%d').year
             except (ValueError, TypeError):
-                # If all parsing fails, try to extract year from string
                 try:
                     year_str = str(national_date)[:4]
                     if year_str.isdigit():
                         data['national_year'] = int(year_str)
-                except:
-                    pass  # Ignore invalid date formats
-        
+                except Exception:
+                    pass
         return data
 
     def create(self, validated_data):
+        structure = validated_data.pop('structure', None)
+        solution_content = validated_data.pop('solution_content', None)
         chapters = validated_data.pop('chapters', [])
         class_levels = validated_data.pop('class_levels', [])
         subfields = validated_data.pop('subfields', [])
         theorems = validated_data.pop('theorems', [])
-        solution_content = validated_data.pop('solution', None)
 
-        exam = Exam.objects.create(
+        item = Content.objects.create(
             author=self.context['request'].user,
             **validated_data
         )
 
         if chapters:
-            exam.chapters.set(chapters)
+            item.chapters.set(chapters)
         if class_levels:
-            exam.class_levels.set(class_levels)
+            item.class_levels.set(class_levels)
         if subfields:
-            exam.subfields.set(subfields)
+            item.subfields.set(subfields)
         if theorems:
-            exam.theorems.set(theorems)
+            item.theorems.set(theorems)
 
-        # Create solution if provided
+        if structure is not None:
+            upsert_structure(item.type, item.display_id, structure)
+
         if solution_content:
-            ExamSolution.objects.create(
-                exam=exam,
-                content=solution_content,
-                author=self.context['request'].user
+            Solution.objects.create(
+                content_item=item,
+                solution_text=solution_content,
+                author=item.author,
             )
 
-        return exam
+        return item
 
     def update(self, instance, validated_data):
+        structure = validated_data.pop('structure', None)
+        solution_content = validated_data.pop('solution_content', None)
         chapters = validated_data.pop('chapters', None)
         class_levels = validated_data.pop('class_levels', None)
         subfields = validated_data.pop('subfields', None)
         theorems = validated_data.pop('theorems', None)
-        solution_content = validated_data.pop('solution', None)
 
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
@@ -577,22 +319,17 @@ class ExamCreateSerializer(serializers.ModelSerializer):
         if theorems is not None:
             instance.theorems.set(theorems)
 
-        # Update or create solution if provided
-        if solution_content:
-            try:
-                solution = instance.solution
-                solution.content = solution_content
-                solution.save()
-            except ExamSolution.DoesNotExist:
-                ExamSolution.objects.create(
-                    exam=instance,
-                    content=solution_content,
-                    author=self.context['request'].user
-                )
-
         instance.save()
+
+        if structure is not None:
+            upsert_structure(instance.type, instance.display_id, structure)
+
+        if solution_content is not None:
+            sol, _ = Solution.objects.get_or_create(
+                content_item=instance,
+                defaults={'author': instance.author},
+            )
+            sol.solution_text = solution_content
+            sol.save()
+
         return instance
-
-
-# Update the CommentSerializer in things/serializers.py
-

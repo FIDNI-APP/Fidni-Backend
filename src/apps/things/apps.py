@@ -9,3 +9,6 @@ class ThingsConfig(AppConfig):
     name = 'apps.things'
     label = 'things'
     verbose_name = 'Things'
+
+    def ready(self):
+        import apps.things.signals  # noqa: F401

@@ -1,94 +1,124 @@
 from rest_framework import viewsets, status
-from rest_framework.decorators import action
+from rest_framework.decorators import action, api_view, permission_classes as perm_classes
 from rest_framework.response import Response
 from rest_framework.pagination import PageNumberPagination
-import rest_framework
 from datetime import timedelta
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from django.db import transaction
 from django.core.cache import cache
-
+import time
 
 from django.contrib.contenttypes.models import ContentType
-from django.db.models import Count, Q, Avg, F
+from django.db.models import Count, Q, F
 from django.conf import settings
 
-# Check if using PostgreSQL for trigram support
 USE_TRIGRAM = 'postgresql' in settings.DATABASES['default']['ENGINE']
-
-# Import TrigramSimilarity only if using PostgreSQL
 if USE_TRIGRAM:
     try:
         from django.contrib.postgres.search import TrigramSimilarity
     except ImportError:
         USE_TRIGRAM = False
-        TrigramSimilarity = None  # Dummy value
+        TrigramSimilarity = None
 else:
-    TrigramSimilarity = None  # Dummy value for SQLite
+    TrigramSimilarity = None
 
-
-from .models import Exercise, Solution, Comment, Lesson, Exam
-from .serializers import  ExerciseSerializer, SolutionSerializer, CommentSerializer, ExerciseCreateSerializer, LessonSerializer, LessonCreateSerializer
-from apps.interactions.models import Vote, Save, Complete, TimeSession, SolutionView, SolutionMatch
-from apps.interactions.serializers import VoteSerializer, SaveSerializer, CompleteSerializer
+from .models import Content, Solution, Comment
+from .content_store import get_structures_batch
+from .serializers import ContentSerializer, ContentListSerializer, ContentCreateSerializer, SolutionSerializer, CommentSerializer
+from apps.interactions.models import Vote, Save, Complete, TimeSession, SolutionView, SolutionMatch, QuestionProgress, AICorrection
+from apps.interactions.serializers import VoteSerializer, SaveSerializer, CompleteSerializer, AICorrectionSerializer
 from apps.interactions.views import VoteMixin
+from apps.interactions.services import AIVisionService
 from apps.users.models import ViewHistory
-from rest_framework.permissions import IsAuthenticatedOrReadOnly,IsAuthenticated
-
+from rest_framework.permissions import IsAuthenticatedOrReadOnly, IsAuthenticated
 
 import logging
-
-
 logger = logging.getLogger('django')
 
 
+# =====================
+# PAGINATION
+# =====================
 
-#----------------------------PAGINATION-------------------------------
 class LargeResultsSetPagination(PageNumberPagination):
     page_size = 50
     page_size_query_param = 'page_size'
     max_page_size = 200
 
+
 class StandardResultsSetPagination(PageNumberPagination):
     page_size = 20
     page_size_query_param = 'page_size'
     max_page_size = 100
-    
-#----------------------------EXERCISE-------------------------------
 
 
-class ExerciseViewSet(VoteMixin, viewsets.ModelViewSet):
-    queryset = Exercise.objects.all()
+# =====================
+# CONTENT VIEWSET
+# =====================
+
+class ContentViewSet(VoteMixin, viewsets.ModelViewSet):
+    """
+    Single ViewSet for all content types (exercise, lesson, exam).
+    Filter by type: GET /api/contents/?type=exercise
+    """
+    queryset = Content.objects.all()
     permission_classes = [IsAuthenticatedOrReadOnly]
-    pagination_class = StandardResultsSetPagination  
+    pagination_class = StandardResultsSetPagination
+
+    # Subclasses set this to scope automatically
+    content_type_scope = None
 
     def get_serializer_class(self):
         if self.action in ['create', 'update', 'partial_update']:
-            return ExerciseCreateSerializer
-        return ExerciseSerializer
+            return ContentCreateSerializer
+        if self.action == 'list':
+            return ContentListSerializer
+        return ContentSerializer
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.filter_queryset(self.get_queryset())
+        page = self.paginate_queryset(queryset)
+        items = page if page is not None else queryset
+        # batch fetch structures from Mongo
+        type_scope = self.content_type_scope or request.query_params.get('type')
+        if type_scope and items:
+            display_ids = [i.display_id for i in items if i.display_id]
+            structures = get_structures_batch(type_scope, display_ids)
+        else:
+            # mixed types — fetch per type
+            from collections import defaultdict
+            by_type = defaultdict(list)
+            for i in items:
+                if i.display_id:
+                    by_type[i.type].append(i.display_id)
+            structures = {}
+            for t, ids in by_type.items():
+                batch = get_structures_batch(t, ids)
+                structures.update(batch)
+        ctx = {**self.get_serializer_context(), 'mongo_structures': structures}
+        serializer = self.get_serializer(items, many=True, context=ctx)
+        return self.get_paginated_response(serializer.data) if page is not None else Response(serializer.data)
 
     def get_queryset(self):
-        queryset = Exercise.objects.all().select_related(
+        queryset = Content.objects.all().select_related(
             'author', 'solution', 'subject'
         ).prefetch_related(
-            'chapters',
-            'class_levels',
-            'subject',
-            'comments',
-            'votes',
-            'theorems',
-            'subfields'
+            'chapters', 'class_levels', 'comments', 'votes', 'theorems', 'subfields', 'completed'
         ).annotate(
-            vote_count_annotation=Count('votes', filter=Q(votes__value=Vote.UP)) - 
+            vote_count_annotation=Count('votes', filter=Q(votes__value=Vote.UP)) -
                                   Count('votes', filter=Q(votes__value=Vote.DOWN))
         )
 
-        # Search functionality with optional fuzzy matching
-        search_query = self.request.query_params.get('search', None)
+        # Type scope (from subclass or query param)
+        type_scope = self.content_type_scope or self.request.query_params.get('type')
+        if type_scope:
+            queryset = queryset.filter(type=type_scope)
+
+        # Search
+        search_query = self.request.query_params.get('search')
         if search_query:
             if USE_TRIGRAM:
-                # PostgreSQL: Use trigram similarity for fuzzy matching
                 queryset = queryset.annotate(
                     title_similarity=TrigramSimilarity('title', search_query),
                     content_similarity=TrigramSimilarity('content', search_query),
@@ -104,7 +134,6 @@ class ExerciseViewSet(VoteMixin, viewsets.ModelViewSet):
                     Q(content_similarity__gt=0.1)
                 ).order_by('-title_similarity', '-content_similarity')
             else:
-                # SQLite: Use simple case-insensitive search
                 queryset = queryset.filter(
                     Q(title__icontains=search_query) |
                     Q(content__icontains=search_query) |
@@ -115,7 +144,7 @@ class ExerciseViewSet(VoteMixin, viewsets.ModelViewSet):
                     Q(class_levels__name__icontains=search_query)
                 )
 
-        # Filtering
+        # Filters
         class_levels = self.request.query_params.getlist('class_levels[]')
         subjects = self.request.query_params.getlist('subjects[]')
         chapters = self.request.query_params.getlist('chapters[]')
@@ -123,283 +152,280 @@ class ExerciseViewSet(VoteMixin, viewsets.ModelViewSet):
         subfields = self.request.query_params.getlist('subfields[]')
         theorems = self.request.query_params.getlist('theorems[]')
 
-        # New status filters
         show_viewed = self.request.query_params.get('showViewed', '').lower() == 'true'
+        hide_viewed = self.request.query_params.get('hideViewed', '').lower() == 'true'
         show_completed = self.request.query_params.get('showCompleted', '').lower() == 'true'
+        show_failed = self.request.query_params.get('showFailed', '').lower() == 'true'
 
+        # Exam-specific filters
+        is_national = self.request.query_params.get('is_national_exam')
+        national_year = self.request.query_params.get('national_year')
 
-        filters_subject = Q()
-        filters_class_level = Q()
-        filters_subfield = Q()
-        filters_chapter = Q()
-        filters_theorem = Q()
-        filters_difficulty = Q()
-        filters_status = Q()
-
-
+        filters = Q()
         if class_levels:
-            filters_class_level |= Q(class_levels__id__in=class_levels)
+            filters &= Q(class_levels__id__in=class_levels)
         if subjects:
-            filters_subject |= Q(subject__id__in=subjects)
+            filters &= Q(subject__id__in=subjects)
         if subfields:
-            filters_subfield |= Q(subfields__id__in=subfields)
+            filters &= Q(subfields__id__in=subfields)
         if theorems:
-            filters_theorem |= Q(theorems__id__in=theorems)
+            filters &= Q(theorems__id__in=theorems)
         if chapters:
-            filters_chapter |= Q(chapters__id__in=chapters)
+            filters &= Q(chapters__id__in=chapters)
         if difficulties:
-            filters_difficulty |= Q(difficulty__in=difficulties)
+            filters &= Q(difficulty__in=difficulties)
+        if is_national is not None:
+            filters &= Q(is_national_exam=is_national.lower() == 'true')
+        if national_year:
+            filters &= Q(national_year=national_year)
 
-        # Filter by viewed/completed status (only for authenticated users)
         if self.request.user and self.request.user.is_authenticated:
+            content_ct = ContentType.objects.get_for_model(Content)
+            status_filter = Q()
             if show_viewed:
-                # Show exercises with success or review status
-                filters_status |= Q(completes__user=self.request.user)
+                viewed_ids = ViewHistory.objects.filter(
+                    user=self.request.user, content_type=content_ct
+                ).values_list('object_id', flat=True)
+                status_filter |= Q(id__in=viewed_ids)
             if show_completed:
-                # Show only exercises marked as completed
-                filters_status |= Q(completes__user=self.request.user, completes__status='success')
+                status_filter |= Q(completed__user=self.request.user, completed__status='success')
+            if show_failed:
+                status_filter |= Q(completed__user=self.request.user, completed__status='review')
+            if status_filter:
+                filters &= status_filter
 
-        filters = (filters_subject) & (filters_class_level) & (filters_subfield) & (filters_chapter) & (filters_theorem) & (filters_difficulty) & (filters_status)
         queryset = queryset.filter(filters)
 
-        # Sorting
+        if hide_viewed and self.request.user and self.request.user.is_authenticated:
+            content_ct = ContentType.objects.get_for_model(Content)
+            viewed_ids = ViewHistory.objects.filter(
+                user=self.request.user, content_type=content_ct
+            ).values_list('object_id', flat=True)
+            queryset = queryset.exclude(id__in=viewed_ids)
+
         sort_by = self.request.query_params.get('sort', 'newest')
-        if sort_by == 'newest':
-            queryset = queryset.order_by('-created_at')
-        elif sort_by == 'oldest':
+        if sort_by == 'oldest':
             queryset = queryset.order_by('created_at')
         elif sort_by == 'most_upvoted':
             queryset = queryset.order_by('-vote_count_annotation', '-created_at')
         else:
-            queryset = queryset.order_by('-created_at')  # Default to newest
+            queryset = queryset.order_by('-created_at')
 
         return queryset.distinct()
-    
+
+    # ---- vote ----
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
     def vote(self, request, pk=None):
-        return super().vote(request, pk)  # Call the parent class implementation
+        return super().vote(request, pk)
 
-     
+    # ---- comment ----
     @action(detail=True, methods=['post'])
     def comment(self, request, pk=None):
-        exercise = self.get_object()
-        serializer = CommentSerializer(
-            data=request.data,
-            context={'request': request}
-        )
+        from apps.uploads.models import FileAttachment
+        item = self.get_object()
+        serializer = CommentSerializer(data=request.data, context={'request': request})
         if serializer.is_valid():
-            serializer.save(
-                exercise=exercise,
+            comment = serializer.save(
+                content_item=item,
                 author=request.user,
-                parent_id=request.data.get('parent')  # Pass parent_id here
+                parent_id=request.data.get('parent')
             )
+            file_ids = request.data.get('file_ids', [])
+            if file_ids:
+                ct = ContentType.objects.get_for_model(comment)
+                FileAttachment.objects.filter(id__in=file_ids).update(
+                    content_type=ct, object_id=comment.id
+                )
             return Response(
-                serializer.data,
+                CommentSerializer(comment, context={'request': request}).data,
                 status=status.HTTP_201_CREATED
             )
-        return Response(
-            serializer.errors,
-            status=status.HTTP_400_BAD_REQUEST
-        )
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    # ---- solution ----
     @action(detail=True, methods=['post'])
     def solution(self, request, pk=None):
-        exercise = self.get_object()
-        serializer = SolutionSerializer(
-            data=request.data,
-            context={'request': request}
+        item = self.get_object()
+        solution_text = request.data.get('content', '')
+        sol, created = Solution.objects.get_or_create(
+            content_item=item,
+            defaults={'author': request.user, 'solution_text': solution_text}
         )
-        if serializer.is_valid():
-            serializer.save(
-                exercise=exercise,
-                author=request.user,
-                content=request.data.get('content')  
-            )
-            return Response(
-                serializer.data,
-                status=status.HTTP_201_CREATED
-            )
+        if not created:
+            sol.solution_text = solution_text
+            sol.save()
         return Response(
-            serializer.errors,
-            status=status.HTTP_400_BAD_REQUEST
+            SolutionSerializer(sol, context={'request': request}).data,
+            status=status.HTTP_201_CREATED if created else status.HTTP_200_OK
         )
-    
+
+    # ---- progress ----
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
     def mark_progress(self, request, pk=None):
-        """
-        Mark an exercise as completed with status 'success' or 'review'
-        """
-        exercise = self.get_object()
+        item = self.get_object()
         status_value = request.data.get('status')
-
         if status_value not in ['success', 'review']:
-            return Response(
-                {'error': 'Invalid status value. Must be "success" or "review".'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        content_type = ContentType.objects.get_for_model(Exercise)
-        progress, created = Complete.objects.update_or_create(
-            user=request.user,
-            content_type=content_type,
-            object_id=exercise.id,
+            return Response({'error': 'status must be "success" or "review"'}, status=status.HTTP_400_BAD_REQUEST)
+        ct = ContentType.objects.get_for_model(Content)
+        progress, _ = Complete.objects.update_or_create(
+            user=request.user, content_type=ct, object_id=item.id,
             defaults={'status': status_value}
         )
+        cache.delete(f'content_stats_{item.id}_user_{request.user.id}')
+        cache.delete(f'content_stats_{item.id}_user_None')
+        return Response({'id': progress.id, 'status': progress.status,
+                         'created_at': progress.created_at, 'updated_at': progress.updated_at})
 
-        # Clear exercise stats cache when progress is marked
-        cache.delete(f'exercise_stats_{exercise.id}_user_{request.user.id}')
-        cache.delete(f'exercise_stats_{exercise.id}_user_None')
-
-        return Response({
-            'id': progress.id,
-            'status': progress.status,
-            'created_at': progress.created_at,
-            'updated_at': progress.updated_at
-        })
-    
     @action(detail=True, methods=['delete'], permission_classes=[IsAuthenticated])
     def remove_progress(self, request, pk=None):
-        """
-        Remove progress marking from an exercise
-        """
-        exercise = self.get_object()
-        content_type = ContentType.objects.get_for_model(Exercise)
-        
-        try:
-            progress = Complete.objects.get(
-                user=request.user,
-                content_type=content_type,
-                object_id=exercise.id
-            )
-            progress.delete()
-
-            # Clear exercise stats cache when progress is removed
-            cache.delete(f'exercise_stats_{exercise.id}_user_{request.user.id}')
-            cache.delete(f'exercise_stats_{exercise.id}_user_None')
-
+        item = self.get_object()
+        ct = ContentType.objects.get_for_model(Content)
+        deleted, _ = Complete.objects.filter(
+            user=request.user, content_type=ct, object_id=item.id
+        ).delete()
+        if deleted:
+            cache.delete(f'content_stats_{item.id}_user_{request.user.id}')
+            cache.delete(f'content_stats_{item.id}_user_None')
             return Response(status=status.HTTP_204_NO_CONTENT)
-        except Complete.DoesNotExist:
-            return Response(
-                {'error': 'No progress record found for this exercise'},
-                status=status.HTTP_404_NOT_FOUND
-            )
+        return Response({'error': 'No progress record found'}, status=status.HTTP_404_NOT_FOUND)
 
-    @action(detail=True, methods=['get'])
-    def similar(self, request, pk=None):
-        """
-        Get similar exercises based on same chapters
-        """
-        exercise = self.get_object()
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
+    def complete(self, request, pk=None):
+        return self.mark_progress(request, pk)
 
-        # Get chapters from current exercise
-        exercise_chapters = exercise.chapters.all()
+    # ---- question progress ----
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
+    def assess_question(self, request, pk=None):
+        item = self.get_object()
+        question_path = request.data.get('question_path')
+        assessment_status = request.data.get('status')
+        if not question_path:
+            return Response({'error': 'question_path required'}, status=status.HTTP_400_BAD_REQUEST)
+        if assessment_status not in ['success', 'partial', 'review', 'failed']:
+            return Response({'error': 'Invalid status'}, status=status.HTTP_400_BAD_REQUEST)
+        ct = ContentType.objects.get_for_model(Content)
+        progress, _ = QuestionProgress.objects.update_or_create(
+            user=request.user, content_type=ct, object_id=item.id,
+            question_path=question_path, defaults={'status': assessment_status}
+        )
+        return Response({'question_path': progress.question_path, 'status': progress.status,
+                         'assessed_at': progress.assessed_at})
 
-        if not exercise_chapters.exists():
-            return Response({'results': [], 'count': 0})
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
+    def remove_assessment(self, request, pk=None):
+        item = self.get_object()
+        question_path = request.data.get('question_path')
+        if not question_path:
+            return Response({'error': 'question_path required'}, status=status.HTTP_400_BAD_REQUEST)
+        ct = ContentType.objects.get_for_model(Content)
+        deleted, _ = QuestionProgress.objects.filter(
+            user=request.user, content_type=ct, object_id=item.id, question_path=question_path
+        ).delete()
+        return Response({'deleted': deleted > 0})
 
-        # Find exercises with same chapters, excluding current exercise
-        similar_exercises = Exercise.objects.filter(
-            chapters__in=exercise_chapters
-        ).exclude(
-            id=exercise.id
-        ).distinct()[:10]  # Limit to 10 similar exercises
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
+    def validate_solution(self, request, pk=None):
+        item = self.get_object()
+        question_path = request.data.get('question_path')
+        validation = request.data.get('validation')
+        if not question_path:
+            return Response({'error': 'question_path required'}, status=status.HTTP_400_BAD_REQUEST)
+        if validation and validation not in ['compatible', 'different', 'not-understood']:
+            return Response({'error': 'Invalid validation'}, status=status.HTTP_400_BAD_REQUEST)
+        ct = ContentType.objects.get_for_model(Content)
+        progress, _ = QuestionProgress.objects.update_or_create(
+            user=request.user, content_type=ct, object_id=item.id,
+            question_path=question_path, defaults={'solution_validation': validation}
+        )
+        return Response({'question_path': progress.question_path,
+                         'solution_validation': progress.solution_validation,
+                         'assessed_at': progress.assessed_at})
 
-        # Serialize
-        from .serializers import ExerciseSerializer
-        serializer = ExerciseSerializer(similar_exercises, many=True, context={'request': request})
-
+    @action(detail=True, methods=['get'], permission_classes=[IsAuthenticated])
+    def question_progress(self, request, pk=None):
+        item = self.get_object()
+        ct = ContentType.objects.get_for_model(Content)
+        records = QuestionProgress.objects.filter(
+            user=request.user, content_type=ct, object_id=item.id
+        )
         return Response({
-            'results': serializer.data,
-            'count': similar_exercises.count()
+            r.question_path: {
+                'status': r.status,
+                'solution_validation': r.solution_validation,
+                'assessed_at': r.assessed_at
+            }
+            for r in records
         })
 
-    # Update this function in things/views.py
+    # ---- similar ----
+    @action(detail=True, methods=['get'])
+    def similar(self, request, pk=None):
+        item = self.get_object()
+        chapters = item.chapters.all()
+        if not chapters.exists():
+            return Response({'results': [], 'count': 0})
+        similar = Content.objects.filter(
+            type=item.type, chapters__in=chapters
+        ).exclude(id=item.id).distinct()[:10]
+        serializer = ContentSerializer(similar, many=True, context={'request': request})
+        return Response({'results': serializer.data, 'count': similar.count()})
+
+    # ---- save / unsave ----
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
-    def save_exercise(self, request, pk=None):
-        """
-        Save an exercise for later
-        """
-        try:
-            exercise = self.get_object()
-            content_type = ContentType.objects.get_for_model(Exercise)
-            
-            # Check if already saved
-            existing = Save.objects.filter(
-                user=request.user,
-                content_type=content_type,
-                object_id=exercise.id
-            ).first()
-            
-            if existing:
-                # Return a more descriptive response for already saved
-                return Response(
-                    {
-                        'error': 'Exercise already saved',
-                        'message': 'This exercise is already in your saved list',
-                        'already_saved': True
-                    }, 
-                    status=status.HTTP_400_BAD_REQUEST
+    def save(self, request, pk=None):
+        item = self.get_object()
+        ct = ContentType.objects.get_for_model(Content)
+        existing = Save.objects.filter(user=request.user, content_type=ct, object_id=item.id).first()
+        if existing:
+            return Response({'error': 'Already saved', 'already_saved': True},
+                            status=status.HTTP_400_BAD_REQUEST)
+        s = Save.objects.create(user=request.user, content_type=ct, object_id=item.id)
+        return Response({'id': s.id, 'saved_at': s.saved_at}, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=['post', 'delete'], permission_classes=[IsAuthenticated])
+    def unsave(self, request, pk=None):
+        item = self.get_object()
+        ct = ContentType.objects.get_for_model(Content)
+        deleted, _ = Save.objects.filter(
+            user=request.user, content_type=ct, object_id=item.id
+        ).delete()
+        return Response({'saved': False, 'deleted': deleted > 0})
+
+    # ---- view ----
+    @action(detail=True, methods=['post'])
+    def view(self, request, pk=None):
+        item = self.get_object()
+        should_count = True
+        if request.user.is_authenticated:
+            ct = ContentType.objects.get_for_model(Content)
+            one_day_ago = timezone.now() - timedelta(days=1)
+            try:
+                already_viewed = ViewHistory.objects.filter(
+                    user=request.user, content_type=ct,
+                    object_id=item.id, viewed_at__gte=one_day_ago
+                ).exists()
+                if already_viewed:
+                    should_count = False
+                else:
+                    Content.objects.filter(id=item.id).update(view_count=F('view_count') + 1)
+                    item.refresh_from_db()
+                ViewHistory.objects.update_or_create(
+                    user=request.user, content_type=ct, object_id=item.id,
+                    defaults={'status': 'viewed'}
                 )
-            
-            # Create new save record
-            save = Save.objects.create(
-                user=request.user,
-                content_type=content_type,
-                object_id=exercise.id
-            )
-            
-            logger.debug(f"Exercise {exercise.id} saved by user {request.user.id}")
-            
-            return Response({
-                'id': save.id,
-                'saved_at': save.saved_at,
-                'message': 'Exercise saved successfully'
-            }, status=status.HTTP_201_CREATED)
-        except Exception as e:
-            logger.error(f"Error saving exercise: {str(e)}")
-            return Response(
-                {'error': 'Failed to save exercise', 'detail': str(e)},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
-    
-    @action(detail=True, methods=['delete'], permission_classes=[IsAuthenticated])
-    def unsave_exercise(self, request, pk=None):
-        """
-        Remove exercise from saved list
-        """
-        exercise = self.get_object()
-        content_type = ContentType.objects.get_for_model(Exercise)
-        
-        try:
-            save = Save.objects.get(
-                user=request.user,
-                content_type=content_type,
-                object_id=exercise.id
-            )
-            save.delete()
-            logger.debug(f"Exercise {exercise.id} unsaved by user {request.user.id}")
-            return Response(status=status.HTTP_204_NO_CONTENT)
-        except Save.DoesNotExist:
-            return Response(
-                {'error': 'Exercise not found in saved list'}, 
-                status=status.HTTP_404_NOT_FOUND
-            )
-        
+            except Exception as e:
+                logger.error(f"Error recording view: {e}")
+                should_count = False
+        return Response({'view_count': item.view_count, 'counted': should_count})
+
+    # ---- sessions ----
     @action(detail=True, methods=['get'], permission_classes=[IsAuthenticated])
     def session_stats(self, request, pk=None):
-        """
-        Get session statistics and history for comparison
-        """
-        exercise = self.get_object()
-        content_type = ContentType.objects.get_for_model(Exercise)
-        
-        # Get all sessions for this user and exercise
+        item = self.get_object()
+        ct = ContentType.objects.get_for_model(Content)
         sessions = TimeSession.objects.filter(
-            user=request.user,
-            content_type=content_type,
-            object_id=exercise.id
-        ).order_by('-created_at')[:10]  # Last 10 sessions
-        
-        # Calculate statistics
+            user=request.user, content_type=ct, object_id=item.id
+        ).order_by('-created_at')[:10]
         if sessions.exists():
             durations = [s.session_duration_in_seconds for s in sessions]
             stats = {
@@ -415,579 +441,409 @@ class ExerciseViewSet(VoteMixin, viewsets.ModelViewSet):
                     'ended_at': sessions[0].ended_at,
                     'notes': sessions[0].notes,
                     'created_at': sessions[0].created_at
-                } if sessions else None,
+                },
                 'improvement_percentage': None
             }
-            
-            # Calculate improvement between last two sessions
-            if len(sessions) >= 2:
-                last_time = sessions[0].session_duration_in_seconds
-                previous_time = sessions[1].session_duration_in_seconds
-                if previous_time > 0:
-                    improvement = ((previous_time - last_time) / previous_time) * 100
-                    stats['improvement_percentage'] = round(improvement, 1)
+            if len(durations) >= 2:
+                prev = durations[1]
+                if prev > 0:
+                    stats['improvement_percentage'] = round(((prev - durations[0]) / prev) * 100, 1)
         else:
-            stats = {
-                'total_sessions': 0,
-                'best_time': None,
-                'worst_time': None,
-                'average_time': None,
-                'last_session': None,
-                'improvement_percentage': None
-            }
-        
-        # Format sessions for response
-        sessions_data = [
-            {
-                'id': session.id,
-                'duration_seconds': session.session_duration_in_seconds,
-                'session_type': session.session_type,
-                'started_at': session.started_at,
-                'ended_at': session.ended_at,
-                'notes': session.notes,
-                'created_at': session.created_at
-            }
-            for session in sessions
-        ]
-        
-        return Response({
-            'sessions': sessions_data,
-            'stats': stats
-        })
+            stats = {'total_sessions': 0, 'best_time': None, 'worst_time': None,
+                     'average_time': None, 'last_session': None, 'improvement_percentage': None}
+        sessions_data = [{
+            'id': s.id, 'duration_seconds': s.session_duration_in_seconds,
+            'session_type': s.session_type, 'started_at': s.started_at,
+            'ended_at': s.ended_at, 'notes': s.notes, 'created_at': s.created_at
+        } for s in sessions]
+        return Response({'sessions': sessions_data, 'stats': stats})
 
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
     def save_session(self, request, pk=None):
-        """
-        Save a completed timing session
-        """
-        exercise = self.get_object()
-        duration_seconds = request.data.get('duration_seconds', 0)
-        session_type = request.data.get('session_type', 'practice')
-        notes = request.data.get('notes', '')
-        
+        item = self.get_object()
         try:
-            duration_seconds = int(duration_seconds)
+            duration_seconds = int(request.data.get('duration_seconds', 0))
             if duration_seconds <= 0:
-                return Response(
-                    {'error': 'Duration must be greater than 0'}, 
-                    status=status.HTTP_400_BAD_REQUEST
-                )
+                return Response({'error': 'Duration must be > 0'}, status=status.HTTP_400_BAD_REQUEST)
         except (TypeError, ValueError):
-            return Response(
-                {'error': 'Invalid duration value'}, 
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
+            return Response({'error': 'Invalid duration'}, status=status.HTTP_400_BAD_REQUEST)
         try:
-            content_type = ContentType.objects.get_for_model(Exercise)
-            
-            # Create the session record
+            ct = ContentType.objects.get_for_model(Content)
             session = TimeSession.objects.create(
-                user=request.user,
-                content_type=content_type,
-                object_id=exercise.id,
+                user=request.user, content_type=ct, object_id=item.id,
                 session_duration=timedelta(seconds=duration_seconds),
                 started_at=timezone.now() - timedelta(seconds=duration_seconds),
                 ended_at=timezone.now(),
-                session_type=session_type,
-                notes=notes
+                session_type=request.data.get('session_type', 'practice'),
+                notes=request.data.get('notes', '')
             )
-            
-            # Get previous session for comparison
-            previous_sessions = TimeSession.objects.filter(
-                user=request.user,
-                content_type=content_type,
-                object_id=exercise.id
-            ).exclude(id=session.id).order_by('-created_at')
-            
             response_data = {
-                'message': 'Session saved successfully',
-                'session': {
-                    'id': session.id,
-                    'duration_seconds': session.session_duration_in_seconds,
-                    'created_at': session.created_at
-                }
+                'message': 'Session saved',
+                'session': {'id': session.id, 'duration_seconds': session.session_duration_in_seconds,
+                            'created_at': session.created_at}
             }
-            
-            # Add comparison data if there's a previous session
-            if previous_sessions.exists():
-                previous = previous_sessions.first()
-                improvement = None
-                if previous.session_duration_in_seconds > 0:
-                    improvement = ((previous.session_duration_in_seconds - duration_seconds) / previous.session_duration_in_seconds) * 100
-                
+            previous = TimeSession.objects.filter(
+                user=request.user, content_type=ct, object_id=item.id
+            ).exclude(id=session.id).order_by('-created_at').first()
+            if previous and previous.session_duration_in_seconds > 0:
+                improvement = ((previous.session_duration_in_seconds - duration_seconds) /
+                               previous.session_duration_in_seconds) * 100
                 response_data['comparison'] = {
                     'previous_duration': previous.session_duration_in_seconds,
                     'difference': duration_seconds - previous.session_duration_in_seconds,
-                    'improvement_percentage': round(improvement, 1) if improvement is not None else None
+                    'improvement_percentage': round(improvement, 1)
                 }
-            
             return Response(response_data, status=status.HTTP_201_CREATED)
-            
         except Exception as e:
-            logger.error(f"Error saving session: {str(e)}")
-            return Response(
-                {'error': 'Failed to save session'},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
+            logger.error(f"Error saving session: {e}")
+            return Response({'error': 'Failed to save session'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-    @action(detail=True, methods=['delete'], permission_classes=[IsAuthenticated], url_path='delete_session/(?P<session_id>[^/.]+)')
+    @action(detail=True, methods=['delete'], permission_classes=[IsAuthenticated],
+            url_path='delete_session/(?P<session_id>[^/.]+)')
     def delete_session(self, request, pk=None, session_id=None):
-        """
-        Delete a specific session
-        """
-        exercise = self.get_object()
-        
+        item = self.get_object()
+        ct = ContentType.objects.get_for_model(Content)
         try:
-            content_type = ContentType.objects.get_for_model(Exercise)
             session = TimeSession.objects.get(
-                id=session_id,
-                user=request.user,
-                content_type=content_type,
-                object_id=exercise.id
+                id=session_id, user=request.user, content_type=ct, object_id=item.id
             )
             session.delete()
-            
             return Response(status=status.HTTP_204_NO_CONTENT)
         except TimeSession.DoesNotExist:
-            return Response(
-                {'error': 'Session not found'},
-                status=status.HTTP_404_NOT_FOUND
-            )    
+            return Response({'error': 'Session not found'}, status=status.HTTP_404_NOT_FOUND)
+
     @action(detail=True, methods=['get'], permission_classes=[IsAuthenticated])
     def session_history(self, request, pk=None):
-        """
-        Get session history for this exercise
-        """
-        exercise = self.get_object()
-        
+        item = self.get_object()
         try:
-            content_type = ContentType.objects.get_for_model(Exercise)
-            
-            # Get all sessions for this exercise
+            ct = ContentType.objects.get_for_model(Content)
             sessions = TimeSession.objects.filter(
-                user=request.user,
-                content_type=content_type,
-                object_id=exercise.id
-            ).order_by('-created_at')[:20]  # Limit to last 20 sessions
-            
-            # Format the response
-            session_data = [{
-                'id': str(session.id),
-                'session_duration': int(session.session_duration.total_seconds()),
-                'started_at': session.started_at.isoformat(),
-                'ended_at': session.ended_at.isoformat(),
-                'created_at': session.created_at.isoformat(),
-                'session_type': session.session_type,
-                'notes': session.notes
-            } for session in sessions]
-            
-            return Response({
-                'sessions': session_data
-            })
-            
+                user=request.user, content_type=ct, object_id=item.id
+            ).order_by('-created_at')[:20]
+            return Response({'sessions': [{
+                'id': str(s.id),
+                'session_duration': int(s.session_duration.total_seconds()),
+                'started_at': s.started_at.isoformat(),
+                'ended_at': s.ended_at.isoformat(),
+                'created_at': s.created_at.isoformat(),
+                'session_type': s.session_type,
+                'notes': s.notes
+            } for s in sessions]})
         except Exception as e:
-            logger.error(f"Error retrieving session history: {str(e)}")
-            return Response(
-                {'error': 'Failed to retrieve session history'},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
+            logger.error(f"Error retrieving session history: {e}")
+            return Response({'error': 'Failed to retrieve session history'},
+                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-    def _get_successful_users_study_stats(self, exercise, content_type):
-        """
-        Calculate average study time for successful users by chapter
-        Returns study time spent on exercises, lessons, and exams for same chapters with chapter names
-        """
+    # ---- statistics ----
+    def _get_successful_users_study_stats(self, item, ct):
         from apps.interactions.models import TaxonomyTimeSpent
-        from datetime import timedelta
-
-        # Get successful users for this exercise
-        successful_completions = Complete.objects.filter(
-            content_type=content_type,
-            object_id=exercise.id,
-            status='success'
-        ).values_list('user', flat=True)
-
-        if not successful_completions:
-            return {
-                'exercises_avg_seconds': 0,
-                'lessons_avg_seconds': 0,
-                'exams_avg_seconds': 0,
-                'chapters': []
-            }
-
-        # Get all chapters for this exercise
-        chapters = exercise.chapters.all()
-
-        if not chapters:
-            return {
-                'exercises_avg_seconds': 0,
-                'lessons_avg_seconds': 0,
-                'exams_avg_seconds': 0,
-                'chapters': []
-            }
-
-        # Calculate average study time for successful users on these chapters
-        from django.contrib.contenttypes.models import ContentType
         from apps.caracteristics.models import Chapter
-
-        chapter_content_type = ContentType.objects.get_for_model(Chapter)
-        total_exercise_time = timedelta()
-        total_lesson_time = timedelta()
-        total_exam_time = timedelta()
-        user_count = 0
-
-        for user_id in successful_completions:
+        successful_users = Complete.objects.filter(
+            content_type=ct, object_id=item.id, status='success'
+        ).values_list('user', flat=True)
+        if not successful_users:
+            return {'exercises_avg_seconds': 0, 'lessons_avg_seconds': 0,
+                    'exams_avg_seconds': 0, 'chapters': []}
+        chapters = item.chapters.all()
+        if not chapters:
+            return {'exercises_avg_seconds': 0, 'lessons_avg_seconds': 0,
+                    'exams_avg_seconds': 0, 'chapters': []}
+        chapter_ct = ContentType.objects.get_for_model(Chapter)
+        from datetime import timedelta as td
+        total_ex = td(); total_le = td(); total_ex2 = td(); count = 0
+        for user_id in successful_users:
             for chapter in chapters:
-                taxonomy_time = TaxonomyTimeSpent.objects.filter(
-                    user_id=user_id,
-                    taxonomy_type='chapter',
-                    content_type=chapter_content_type,
-                    object_id=chapter.id
+                ts = TaxonomyTimeSpent.objects.filter(
+                    user_id=user_id, taxonomy_type='chapter',
+                    content_type=chapter_ct, object_id=chapter.id
                 ).first()
-
-                if taxonomy_time:
-                    total_exercise_time += taxonomy_time.exercise_time
-                    total_lesson_time += taxonomy_time.lesson_time
-                    total_exam_time += taxonomy_time.exam_time
-            user_count += 1
-
-        # Calculate averages
-        if user_count > 0:
-            avg_exercise_seconds = int(total_exercise_time.total_seconds() / user_count)
-            avg_lesson_seconds = int(total_lesson_time.total_seconds() / user_count)
-            avg_exam_seconds = int(total_exam_time.total_seconds() / user_count)
-        else:
-            avg_exercise_seconds = avg_lesson_seconds = avg_exam_seconds = 0
-
-        # Get chapter names
-        chapter_names = [chapter.name for chapter in chapters]
-
-        return {
-            'exercises_avg_seconds': avg_exercise_seconds,
-            'lessons_avg_seconds': avg_lesson_seconds,
-            'exams_avg_seconds': avg_exam_seconds,
-            'chapters': chapter_names
-        }
+                if ts:
+                    total_ex += ts.exercise_time
+                    total_le += ts.lesson_time
+                    total_ex2 += ts.exam_time
+            count += 1
+        if count > 0:
+            return {
+                'exercises_avg_seconds': int(total_ex.total_seconds() / count),
+                'lessons_avg_seconds': int(total_le.total_seconds() / count),
+                'exams_avg_seconds': int(total_ex2.total_seconds() / count),
+                'chapters': [c.name for c in chapters]
+            }
+        return {'exercises_avg_seconds': 0, 'lessons_avg_seconds': 0,
+                'exams_avg_seconds': 0, 'chapters': [c.name for c in chapters]}
 
     @action(detail=True, methods=['get'])
     def statistics(self, request, pk=None):
-        """
-        Get statistics for this exercise
-        Returns: success rate, average time, best time, user's percentile, etc.
-        """
-        exercise = self.get_object()
+        item = self.get_object()
         user_id = request.user.id if (request.user and request.user.is_authenticated) else None
-
-        # Create cache key that includes user_id for user-specific data
-        cache_key = f'exercise_stats_{exercise.id}_user_{user_id}'
-
-        # Try to get from cache (5 minutes TTL)
-        cached_data = cache.get(cache_key)
-        if cached_data:
-            return Response(cached_data)
-
+        cache_key = f'content_stats_{item.id}_user_{user_id}'
+        cached = cache.get(cache_key)
+        if cached:
+            return Response(cached)
         try:
-            content_type = ContentType.objects.get_for_model(Exercise)
-
-            # Get all completions for this exercise
-            completions = Complete.objects.filter(
-                content_type=content_type,
-                object_id=exercise.id
-            )
-
+            ct = ContentType.objects.get_for_model(Content)
+            completions = Complete.objects.filter(content_type=ct, object_id=item.id)
             success_count = completions.filter(status='success').count()
             review_count = completions.filter(status='review').count()
             total_participants = completions.values('user').distinct().count()
-
-            # Calculate success percentage
-            success_percentage = int((success_count / total_participants * 100)) if total_participants > 0 else 0
-
-            # Get average time
-            sessions = TimeSession.objects.filter(
-                content_type=content_type,
-                object_id=exercise.id
-            ).all()
-
+            success_percentage = int(success_count / total_participants * 100) if total_participants > 0 else 0
+            sessions = TimeSession.objects.filter(content_type=ct, object_id=item.id)
             if sessions.exists():
-                # Calculate average in Python to avoid DurationField issues
-                total_seconds = sum(int(s.session_duration.total_seconds()) for s in sessions)
-                average_time_seconds = int(total_seconds / sessions.count())
-
-                # Get best time
+                total_secs = sum(int(s.session_duration.total_seconds()) for s in sessions)
+                average_time_seconds = int(total_secs / sessions.count())
                 best_time_seconds = min(int(s.session_duration.total_seconds()) for s in sessions)
             else:
-                average_time_seconds = 0
-                best_time_seconds = 0
-
-            # User's stats
-            user_time_seconds = None
-            user_time_percentile = None
-            user_completed = None
-
-            # Check if user is authenticated
-            is_user_authenticated = (hasattr(self.request, 'user') and self.request.user and self.request.user.is_authenticated)
-
-            if is_user_authenticated:
-                # Get user's completion status
-                user_completion = Complete.objects.filter(
-                    user=request.user,
-                    content_type=content_type,
-                    object_id=exercise.id
-                ).first()
-                user_completed = user_completion.status if user_completion else None
-
-                # Get user's time
+                average_time_seconds = best_time_seconds = 0
+            user_time_seconds = user_time_percentile = user_completed = None
+            is_auth = request.user and request.user.is_authenticated
+            if is_auth:
+                uc = Complete.objects.filter(user=request.user, content_type=ct, object_id=item.id).first()
+                user_completed = uc.status if uc else None
                 user_session = sessions.filter(user=request.user).order_by('-created_at').first()
                 if user_session:
                     user_time_seconds = int(user_session.session_duration.total_seconds())
-
-                    # Calculate percentile (how many are slower)
-                    slower_count = sessions.filter(
+                    slower = sessions.filter(
                         session_duration__gt=user_session.session_duration
                     ).values('user').distinct().count()
-                    user_time_percentile = int((slower_count / max(total_participants, 1)) * 100) if total_participants > 0 else 0
-
-            # Get solution view tracking data
-            solution_views = SolutionView.objects.filter(
-                content_type=content_type,
-                object_id=exercise.id
-            )
-
-            # Count users who viewed solution before success
+                    user_time_percentile = int(slower / max(total_participants, 1) * 100)
+            solution_views = SolutionView.objects.filter(content_type=ct, object_id=item.id)
             users_viewed_before_success = 0
-            for user in solution_views.values('user').distinct():
-                user_id = user['user']
-                user_view = solution_views.filter(user=user_id).first()
-                user_completion = Complete.objects.filter(
-                    user=user_id,
-                    content_type=content_type,
-                    object_id=exercise.id,
-                    status='success'
-                ).first()
-
-                # If user viewed solution and either didn't complete or viewed before completing
-                if user_view and user_completion:
-                    if user_view.viewed_at <= user_completion.created_at:
-                        users_viewed_before_success += 1
-
-            solution_views_before_success = users_viewed_before_success
-
-            # Check if current user viewed solution
-            user_viewed_solution = False
-            # Check if user is authenticated
-            is_user_authenticated = (hasattr(self.request, 'user') and self.request.user and self.request.user.is_authenticated)
-
-            if is_user_authenticated:
-                user_viewed_solution = solution_views.filter(user=request.user).exists()
-
-            # Get solution match tracking data
-            solution_matches = SolutionMatch.objects.filter(
-                content_type=content_type,
-                object_id=exercise.id
-            )
-
-            solution_match_count = solution_matches.count()
-            user_solution_matched = False
-
-            if is_user_authenticated:
-                user_solution_matched = solution_matches.filter(user=request.user).exists()
-
-            # Calculate study time stats for successful users by chapter
-            successful_users_study_stats = self._get_successful_users_study_stats(exercise, content_type)
-
-            response_data = {
+            for u in solution_views.values('user').distinct():
+                uid = u['user']
+                uv = solution_views.filter(user=uid).first()
+                uc = Complete.objects.filter(user=uid, content_type=ct, object_id=item.id, status='success').first()
+                if uv and uc and uv.viewed_at <= uc.created_at:
+                    users_viewed_before_success += 1
+            user_viewed_solution = is_auth and solution_views.filter(user=request.user).exists()
+            solution_matches = SolutionMatch.objects.filter(content_type=ct, object_id=item.id)
+            user_solution_matched = is_auth and solution_matches.filter(user=request.user).exists()
+            study_stats = self._get_successful_users_study_stats(item, ct)
+            data = {
                 'total_participants': total_participants,
                 'success_count': success_count,
                 'review_count': review_count,
                 'success_percentage': success_percentage,
                 'average_time_seconds': average_time_seconds,
                 'best_time_seconds': best_time_seconds,
-                'solution_views_before_success': solution_views_before_success,
-                'solution_view_percentage': int((solution_views_before_success / max(success_count, 1)) * 100) if success_count > 0 else 0,
+                'solution_views_before_success': users_viewed_before_success,
+                'solution_view_percentage': int(users_viewed_before_success / max(success_count, 1) * 100) if success_count else 0,
                 'user_time_percentile': user_time_percentile,
                 'user_completed': user_completed,
                 'user_viewed_solution': user_viewed_solution,
                 'user_time_seconds': user_time_seconds,
-                'solution_match_count': solution_match_count,
+                'solution_match_count': solution_matches.count(),
                 'user_solution_matched': user_solution_matched,
-                'successful_users_study_stats': successful_users_study_stats
+                'successful_users_study_stats': study_stats
             }
-
-            # Cache for 5 minutes (300 seconds)
-            cache.set(cache_key, response_data, 300)
-
-            return Response(response_data)
-
+            cache.set(cache_key, data, 300)
+            return Response(data)
         except Exception as e:
-            logger.error(f"Error calculating statistics: {str(e)}")
-            return Response(
-                {'error': 'Failed to calculate statistics'},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
+            logger.error(f"Error calculating statistics: {e}")
+            return Response({'error': 'Failed to calculate statistics'},
+                            status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+    # ---- solution view/match tracking ----
     @action(detail=True, methods=['post', 'delete'], permission_classes=[IsAuthenticated])
     def mark_solution_viewed(self, request, pk=None):
-        """
-        Mark or unmark that the current user viewed the solution for this exercise
-        POST: Mark solution as viewed
-        DELETE: Remove the solution view flag
-        """
-        exercise = self.get_object()
-
+        item = self.get_object()
+        ct = ContentType.objects.get_for_model(Content)
         try:
-            content_type = ContentType.objects.get_for_model(Exercise)
-
             if request.method == 'POST':
-                # Create or get the solution view record
-                solution_view, created = SolutionView.objects.get_or_create(
-                    user=request.user,
-                    content_type=content_type,
-                    object_id=exercise.id
-                )
-                # Clear statistics cache when solution view is toggled
-                cache.delete(f'exercise_stats_{exercise.id}_user_{request.user.id}')
-
-                return Response({
-                    'marked_as_viewed': True,
-                    'message': 'Solution view recorded'
-                })
-
-            elif request.method == 'DELETE':
-                # Delete the solution view record
-                deleted_count, _ = SolutionView.objects.filter(
-                    user=request.user,
-                    content_type=content_type,
-                    object_id=exercise.id
+                SolutionView.objects.get_or_create(user=request.user, content_type=ct, object_id=item.id)
+                cache.delete(f'content_stats_{item.id}_user_{request.user.id}')
+                return Response({'marked_as_viewed': True})
+            else:
+                deleted, _ = SolutionView.objects.filter(
+                    user=request.user, content_type=ct, object_id=item.id
                 ).delete()
-
-                # Clear statistics cache when solution view is toggled
-                cache.delete(f'exercise_stats_{exercise.id}_user_{request.user.id}')
-                cache.delete(f'exercise_stats_{exercise.id}_user_None')
-
-                if deleted_count > 0:
-                    return Response({
-                        'marked_as_viewed': False,
-                        'message': 'Solution view flag removed'
-                    })
-                else:
-                    return Response({
-                        'marked_as_viewed': False,
-                        'message': 'No solution view flag found'
-                    })
-
+                cache.delete(f'content_stats_{item.id}_user_{request.user.id}')
+                cache.delete(f'content_stats_{item.id}_user_None')
+                return Response({'marked_as_viewed': False, 'deleted': deleted > 0})
         except Exception as e:
-            logger.error(f"Error managing solution view: {str(e)}")
-            return Response(
-                {'error': 'Failed to manage solution view'},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
+            logger.error(f"Error managing solution view: {e}")
+            return Response({'error': 'Failed'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     @action(detail=True, methods=['post', 'delete'], permission_classes=[IsAuthenticated])
     def mark_solution_match(self, request, pk=None):
-        """Mark or unmark that the current user's solution matches the proposed solution"""
-        exercise = self.get_object()
+        item = self.get_object()
+        ct = ContentType.objects.get_for_model(Content)
         try:
-            content_type = ContentType.objects.get_for_model(Exercise)
-
             if request.method == 'POST':
-                solution_match, created = SolutionMatch.objects.get_or_create(
-                    user=request.user,
-                    content_type=content_type,
-                    object_id=exercise.id
-                )
-                # Clear statistics cache when solution match is toggled
-                cache.delete(f'exercise_stats_{exercise.id}_user_{request.user.id}')
-                return Response({
-                    'solution_matched': True,
-                    'message': 'Solution match recorded'
-                })
-
-            elif request.method == 'DELETE':
-                deleted_count, _ = SolutionMatch.objects.filter(
-                    user=request.user,
-                    content_type=content_type,
-                    object_id=exercise.id
+                SolutionMatch.objects.get_or_create(user=request.user, content_type=ct, object_id=item.id)
+                cache.delete(f'content_stats_{item.id}_user_{request.user.id}')
+                return Response({'solution_matched': True})
+            else:
+                deleted, _ = SolutionMatch.objects.filter(
+                    user=request.user, content_type=ct, object_id=item.id
                 ).delete()
-
-                # Clear statistics cache when solution match is toggled
-                cache.delete(f'exercise_stats_{exercise.id}_user_{request.user.id}')
-                cache.delete(f'exercise_stats_{exercise.id}_user_None')
-
-                if deleted_count > 0:
-                    return Response({
-                        'solution_matched': False,
-                        'message': 'Solution match flag removed'
-                    })
-                else:
-                    return Response({
-                        'solution_matched': False,
-                        'message': 'No solution match flag found'
-                    })
-
+                return Response({'solution_matched': False, 'deleted': deleted > 0})
         except Exception as e:
-            logger.error(f'Failed to manage solution match: {str(e)}')
-            return Response(
-                {'error': 'Failed to manage solution match'},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            logger.error(f"Failed to manage solution match: {e}")
+            return Response({'error': 'Failed'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    # ---- AI actions ----
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
+    def ai_start_chat(self, request, pk=None):
+        item = self.get_object()
+        try:
+            ct = ContentType.objects.get_for_model(Content)
+            correction = AICorrection.objects.create(
+                user=request.user, content_type=ct, object_id=item.id,
+                conversation_started_at=timezone.now(),
+                submission_state='pre_submission', language='fr'
             )
+            solution_content = item.solution.solution_text if hasattr(item, 'solution') and item.solution else ''
+            structure = item.structure or {}
+            total_points = item.total_points if hasattr(item, 'total_points') else 20
+            exercise_context = {'structure': structure, 'solution': solution_content, 'total_points': total_points}
+            ai_service = AIVisionService()
+            result = ai_service.start_conversation(exercise_context)
+            correction.chat_history = [{'role': 'assistant', 'content': result['greeting_message'],
+                                         'timestamp': int(time.time() * 1000)}]
+            correction.save()
+            return Response({
+                'correction_id': str(correction.id),
+                'greeting_message': result['greeting_message'],
+                'exercise_info': {'total_points': total_points}
+            }, status=status.HTTP_201_CREATED)
+        except Exception as e:
+            logger.error(f"Failed to start chat: {e}", exc_info=True)
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-    @action(detail=True, methods=['post'])
-    def view(self, request, pk=None):
-        """
-        Mark exercise as viewed and increment view count.
-        Only counts as a new view if 1 hour has passed since the last view.
-        """
-        exercise = self.get_object()
-        should_count_view = True
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
+    def ai_chat_pedagogical(self, request, pk=None):
+        item = self.get_object()
+        correction_id = request.data.get('correction_id')
+        user_message = request.data.get('message', '').strip()
+        pedagogical_mode = request.data.get('mode', 'general')
+        if not correction_id or not user_message:
+            return Response({'error': 'correction_id and message required'}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            ct = ContentType.objects.get_for_model(Content)
+            correction = AICorrection.objects.get(
+                id=correction_id, user=request.user, content_type=ct, object_id=item.id
+            )
+            solution_content = item.solution.solution_text if hasattr(item, 'solution') and item.solution else ''
+            exercise_context = {
+                'structure': item.structure or {},
+                'solution': solution_content,
+                'total_points': item.total_points if hasattr(item, 'total_points') else 20
+            }
+            ai_service = AIVisionService()
+            result = ai_service.chat_pedagogical(
+                user_message=user_message, chat_history=correction.chat_history,
+                exercise_context=exercise_context, pedagogical_mode=pedagogical_mode,
+                pedagogical_context=correction.pedagogical_context
+            )
+            if not result.get('response'):
+                return Response({'error': 'Empty AI response'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            correction.chat_history = result['updated_history']
+            correction.pedagogical_context = result['updated_context']
+            correction.submission_state = 'discussed'
+            correction.save()
+            return Response({'response': result['response'], 'chat_history': correction.chat_history,
+                             'pedagogical_context': correction.pedagogical_context})
+        except AICorrection.DoesNotExist:
+            return Response({'error': 'Correction not found'}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            logger.error(f"Pedagogical chat failed: {e}", exc_info=True)
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-        # Check if user is authenticated
-        if request.user.is_authenticated:
-            content_type = ContentType.objects.get_for_model(Exercise)
-            one_hour_ago = timezone.now() - timedelta(hours=1)
-
-            try:
-                # Check if there's a recent view (without locking to avoid SQLite issues)
-                last_view = ViewHistory.objects.filter(
-                    user=request.user,
-                    content_type=content_type,
-                    object_id=exercise.id,
-                    viewed_at__gte=one_hour_ago
-                ).exists()
-
-                if last_view:
-                    # User viewed this exercise within the last hour, don't count it
-                    should_count_view = False
-                else:
-                    # This is a new view after 1 hour, count it
-                    should_count_view = True
-                    # Increment view count
-                    Exercise.objects.filter(id=exercise.id).update(
-                        view_count=F('view_count') + 1
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
+    def ai_correct(self, request, pk=None):
+        item = self.get_object()
+        if 'image' not in request.FILES:
+            return Response({'error': 'No image provided'}, status=status.HTTP_400_BAD_REQUEST)
+        image_file = request.FILES['image']
+        if image_file.size > 10 * 1024 * 1024:
+            return Response({'error': 'Image too large (max 10MB)'}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            ct = ContentType.objects.get_for_model(Content)
+            correction_id = request.data.get('correction_id')
+            if correction_id:
+                try:
+                    correction = AICorrection.objects.get(
+                        id=correction_id, user=request.user, content_type=ct, object_id=item.id
                     )
-                    exercise.refresh_from_db()
-
-                # Always update view history (creates or updates the record)
-                # Do this after the view count update to minimize lock time
-                ViewHistory.objects.update_or_create(
-                    user=request.user,
-                    content_type=content_type,
-                    object_id=exercise.id,
-                    defaults={'status': 'viewed'}
+                    correction.image = image_file
+                    correction.submission_state = 'submitted'
+                    correction.save()
+                except AICorrection.DoesNotExist:
+                    correction = AICorrection.objects.create(
+                        user=request.user, content_type=ct, object_id=item.id,
+                        image=image_file, submission_state='submitted', language='fr'
+                    )
+            else:
+                correction = AICorrection.objects.create(
+                    user=request.user, content_type=ct, object_id=item.id,
+                    image=image_file, submission_state='submitted', language='fr'
                 )
-
+            solution_content = item.solution.solution_text if hasattr(item, 'solution') and item.solution else ''
+            structure = item.structure or {}
+            total_points = item.total_points if hasattr(item, 'total_points') else 20
+            try:
+                ai_service = AIVisionService()
+                result = ai_service.analyze_solution(
+                    image_path=correction.image.path, marked_solution=solution_content,
+                    structure=structure, total_points=total_points
+                )
+                correction.score_awarded = result['score_awarded']
+                correction.score_total = result['score_total']
+                correction.feedback = result['feedback']
+                correction.raw_response = result['raw_response']
+                correction.processing_time_ms = result['processing_time_ms']
+                correction.save()
+                serializer = AICorrectionSerializer(correction, context={'request': request})
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
             except Exception as e:
-                logger.error(f"Error recording view: {str(e)}")
-                # If there's an error, still return a response but don't count it
-                should_count_view = False
+                logger.error(f"AI correction failed: {e}", exc_info=True)
+                correction.delete()
+                return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        except Exception as e:
+            logger.error(f"Error creating AI correction: {e}", exc_info=True)
+            return Response({'error': 'Failed to process correction'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-        return Response({
-            'view_count': exercise.view_count,
-            'counted': should_count_view
-        })
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
+    def ai_chat(self, request, pk=None):
+        item = self.get_object()
+        correction_id = request.data.get('correction_id')
+        message = request.data.get('message')
+        if not correction_id or not message:
+            return Response({'error': 'correction_id and message required'}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            ct = ContentType.objects.get_for_model(Content)
+            correction = AICorrection.objects.get(
+                id=correction_id, user=request.user, content_type=ct, object_id=item.id
+            )
+            ai_service = AIVisionService()
+            result = ai_service.chat_followup(
+                user_message=message, chat_history=correction.chat_history,
+                original_feedback=correction.feedback
+            )
+            correction.chat_history = result['updated_history']
+            correction.save()
+            return Response({'response': result['response'], 'chat_history': correction.chat_history})
+        except AICorrection.DoesNotExist:
+            return Response({'error': 'Correction not found'}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            logger.error(f"AI chat failed: {e}", exc_info=True)
+            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    @action(detail=True, methods=['get'], permission_classes=[IsAuthenticated])
+    def ai_corrections(self, request, pk=None):
+        item = self.get_object()
+        ct = ContentType.objects.get_for_model(Content)
+        corrections = AICorrection.objects.filter(
+            user=request.user, content_type=ct, object_id=item.id
+        ).order_by('-submitted_at')[:10]
+        serializer = AICorrectionSerializer(corrections, many=True, context={'request': request})
+        return Response(serializer.data)
 
 
-#----------------------------SOLUTION-------------------------------
+# =====================
+# SOLUTION VIEWSET
+# =====================
+
 class SolutionViewSet(VoteMixin, viewsets.ModelViewSet):
     queryset = Solution.objects.all()
     serializer_class = SolutionSerializer
@@ -997,7 +853,10 @@ class SolutionViewSet(VoteMixin, viewsets.ModelViewSet):
         serializer.save(author=self.request.user)
 
 
-#----------------------------COMMENT-------------------------------
+# =====================
+# COMMENT VIEWSET
+# =====================
+
 class CommentViewSet(VoteMixin, viewsets.ModelViewSet):
     queryset = Comment.objects.all()
     serializer_class = CommentSerializer
@@ -1007,1153 +866,35 @@ class CommentViewSet(VoteMixin, viewsets.ModelViewSet):
         serializer.save(author=self.request.user)
 
 
-from rest_framework.decorators import api_view, permission_classes
+# ---------------------------------------------------------------------------
+# Recommendations
+# ---------------------------------------------------------------------------
+
+def _taxonomy_qs(source, exclude_id=None):
+    qs = Content.objects.filter(
+        Q(chapters__in=source.chapters.all()) |
+        Q(theorems__in=source.theorems.all()) |
+        Q(subfields__in=source.subfields.all()) |
+        Q(subject=source.subject)
+    )
+    if exclude_id:
+        qs = qs.exclude(id=exclude_id)
+    return qs.distinct().annotate(
+        relevance=Count('chapters') + Count('theorems') + Count('subfields')
+    ).order_by('-relevance', '-view_count')
+
 
 @api_view(['GET'])
-@permission_classes([IsAuthenticated])
-def get_bulk_user_status(request):
-    """
-    Get user's progress and saved status for multiple exercises at once
-    """
-    exercise_ids = request.data.get('exercise_ids', [])
-    if not exercise_ids:
-        return Response({})
-    
-    # Get content type for Exercise model
-    content_type = ContentType.objects.get_for_model(Exercise)
-    
-    # Fetch all saved objects for this user and these exercises
-    saved_objects = Save.objects.filter(
-        user=request.user,
-        content_type=content_type,
-        object_id__in=exercise_ids
-    )
-    
-    # Create a dictionary with exercise_id as key
-    result = {}
-    for exercise_id in exercise_ids:        
-        # Check if exercise is saved
-        saved = any(str(s.object_id) == exercise_id for s in saved_objects)
-        
-        # Construct response
-        result[exercise_id] = {
-            'saved': saved
-        }
-    
-    return Response(result)
-
-class LessonViewSet(VoteMixin, viewsets.ModelViewSet):
-    queryset = Lesson.objects.all()
-    permission_classes = [IsAuthenticatedOrReadOnly]
-    pagination_class = StandardResultsSetPagination
-
-
-    def get_serializer_class(self):
-        if self.action in ['create', 'update', 'partial_update']:
-            return LessonCreateSerializer
-        return LessonSerializer
-
-    def get_queryset(self):
-        queryset = Lesson.objects.all().select_related(
-            'author', 'subject'
-        ).prefetch_related(
-            'chapters',
-            'class_levels',
-            'subject',
-            'comments',
-            'votes',
-            'theorems',
-            'subfields'
-        ).annotate(
-            vote_count_annotation=Count('votes', filter=Q(votes__value=Vote.UP)) -
-                                  Count('votes', filter=Q(votes__value=Vote.DOWN))
-        )
-
-        # Search functionality with optional fuzzy matching
-        search_query = self.request.query_params.get('search', None)
-        if search_query:
-            if USE_TRIGRAM:
-                # PostgreSQL: Use trigram similarity for fuzzy matching
-                queryset = queryset.annotate(
-                    title_similarity=TrigramSimilarity('title', search_query),
-                    content_similarity=TrigramSimilarity('content', search_query),
-                ).filter(
-                    Q(title__icontains=search_query) |
-                    Q(content__icontains=search_query) |
-                    Q(subject__name__icontains=search_query) |
-                    Q(chapters__name__icontains=search_query) |
-                    Q(theorems__name__icontains=search_query) |
-                    Q(subfields__name__icontains=search_query) |
-                    Q(class_levels__name__icontains=search_query) |
-                    Q(title_similarity__gt=0.1) |
-                    Q(content_similarity__gt=0.1)
-                ).order_by('-title_similarity', '-content_similarity')
-            else:
-                # SQLite: Use simple case-insensitive search
-                queryset = queryset.filter(
-                    Q(title__icontains=search_query) |
-                    Q(content__icontains=search_query) |
-                    Q(subject__name__icontains=search_query) |
-                    Q(chapters__name__icontains=search_query) |
-                    Q(theorems__name__icontains=search_query) |
-                    Q(subfields__name__icontains=search_query) |
-                    Q(class_levels__name__icontains=search_query)
-                )
-
-        # Filtering
-        class_levels = self.request.query_params.getlist('class_levels[]')
-        subjects = self.request.query_params.getlist('subjects[]')
-        chapters = self.request.query_params.getlist('chapters[]')
-        subfields = self.request.query_params.getlist('subfields[]')
-        theorems = self.request.query_params.getlist('theorems[]')
-
-
-        filters_subject = Q()
-        filters_class_level = Q()
-        filters_subfield = Q()
-        filters_chapter = Q()
-        filters_theorem = Q()
-
-        if class_levels:
-            filters_class_level |= Q(class_levels__id__in=class_levels)
-        if subjects:
-            filters_subject |= Q(subject__id__in=subjects)
-        if subfields:
-            filters_subfield |= Q(subfields__id__in=subfields)
-        if theorems:
-            filters_theorem |= Q(theorems__id__in=theorems)
-        if chapters:
-            filters_chapter |= Q(chapters__id__in=chapters)
-
-        filters = (filters_subject) & (filters_class_level) & (filters_subfield) & (filters_chapter) & (filters_theorem)
-        queryset = queryset.filter(filters)
-
-        # Sorting
-        sort_by = self.request.query_params.get('sort', 'newest')
-        if sort_by == 'newest':
-            queryset = queryset.order_by('-created_at')
-        elif sort_by == 'oldest':
-            queryset = queryset.order_by('created_at')
-        elif sort_by == 'most_upvoted':
-            queryset = queryset.order_by('-vote_count_annotation', '-created_at')
-        else:
-            queryset = queryset.order_by('-created_at')  # Default to newest
-
-        return queryset.distinct()
-
-    @action(detail=True, methods=['post'])
-    def comment(self, request, pk=None):
-        lesson = self.get_object()
-        
-        # Add the lesson_id to the request data
-        request_data = request.data.copy()
-        request_data['lesson_id'] = pk
-        
-        serializer = CommentSerializer(
-            data=request_data,
-            context={'request': request}
-        )
-        
-        if serializer.is_valid():
-            comment = serializer.save(author=request.user)
-            return Response(
-                CommentSerializer(comment, context={'request': request}).data,
-                status=status.HTTP_201_CREATED
-            )
-        return Response(
-            serializer.errors,
-            status=status.HTTP_400_BAD_REQUEST
-        )
-
-    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
-    def save_lesson(self, request, pk=None):
-        """
-        Save a lesson for later
-        """
-        logger.info(f"[SAVE_LESSON] Request received - pk={pk}, user={request.user.id}")
-        logger.info(f"[SAVE_LESSON] Request body: {request.data}")
-        logger.info(f"[SAVE_LESSON] Request headers: {dict(request.headers)}")
-
-        try:
-            lesson = self.get_object()
-            logger.info(f"[SAVE_LESSON] Lesson retrieved: {lesson.id} - {lesson.title}")
-
-            content_type = ContentType.objects.get_for_model(Lesson)
-            logger.info(f"[SAVE_LESSON] Content type: {content_type}")
-
-            # Check if already saved
-            existing = Save.objects.filter(
-                user=request.user,
-                content_type=content_type,
-                object_id=lesson.id
-            ).first()
-
-            if existing:
-                logger.info(f"[SAVE_LESSON] Lesson {lesson.id} already saved by user {request.user.id}")
-                return Response(
-                    {
-                        'error': 'Lesson already saved',
-                        'message': 'This lesson is already in your saved list',
-                        'already_saved': True
-                    },
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-
-            # Create new save record
-            save = Save.objects.create(
-                user=request.user,
-                content_type=content_type,
-                object_id=lesson.id
-            )
-            logger.info(f"[SAVE_LESSON] Lesson {lesson.id} saved successfully for user {request.user.id}")
-
-            return Response({
-                'id': save.id,
-                'saved_at': save.saved_at,
-                'message': 'Lesson saved successfully'
-            }, status=status.HTTP_201_CREATED)
-
-        except Lesson.DoesNotExist as e:
-            logger.error(f"[SAVE_LESSON] Lesson not found - pk={pk}, error={str(e)}")
-            return Response(
-                {'error': 'Lesson not found'},
-                status=status.HTTP_404_NOT_FOUND
-            )
-        except Exception as e:
-            logger.error(f"[SAVE_LESSON] Unexpected error: {str(e)}", exc_info=True)
-            return Response(
-                {'error': 'Failed to save lesson', 'detail': str(e)},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
-
-    @action(detail=True, methods=['delete'], permission_classes=[IsAuthenticated])
-    def unsave_lesson(self, request, pk=None):
-        """
-        Remove a lesson from saved items
-        """
-        try:
-            lesson = self.get_object()
-            content_type = ContentType.objects.get_for_model(Lesson)
-
-            save = Save.objects.filter(
-                user=request.user,
-                content_type=content_type,
-                object_id=lesson.id
-            ).first()
-
-            if not save:
-                return Response(
-                    {'error': 'Lesson not in saved list'},
-                    status=status.HTTP_404_NOT_FOUND
-                )
-
-            save.delete()
-            logger.debug(f"Lesson {lesson.id} unsaved by user {request.user.id}")
-
-            return Response(
-                {'message': 'Lesson removed from saved'},
-                status=status.HTTP_204_NO_CONTENT
-            )
-
-        except Lesson.DoesNotExist:
-            return Response(
-                {'error': 'Lesson not found'},
-                status=status.HTTP_404_NOT_FOUND
-            )
-        except Exception as e:
-            logger.error(f"Error unsaving lesson: {str(e)}")
-            return Response(
-                {'error': 'Failed to unsave lesson'},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
-
-
-# Add these to your things/views.py file
-
-from .models import Exam
-from .serializers import ExamSerializer, ExamCreateSerializer
-
-# things/views.py (Update the ExamViewSet class)
-
-class ExamViewSet(VoteMixin, viewsets.ModelViewSet):
-    queryset = Exam.objects.all()
-    permission_classes = [IsAuthenticatedOrReadOnly]
-    pagination_class = StandardResultsSetPagination
-
-    def get_serializer_class(self):
-        if self.action in ['create', 'update', 'partial_update']:
-            return ExamCreateSerializer
-        return ExamSerializer
-
-    def get_queryset(self):
-        queryset = Exam.objects.all().select_related(
-            'author', 'subject', 'solution'
-        ).prefetch_related(
-            'chapters',
-            'class_levels',
-            'subject',
-            'comments',
-            'votes',
-            'theorems',
-            'subfields',
-            'solution__author',
-            'solution__votes'
-        ).annotate(
-            vote_count_annotation=Count('votes', filter=Q(votes__value=Vote.UP)) -
-                                  Count('votes', filter=Q(votes__value=Vote.DOWN))
-        )
-
-        # Search functionality with optional fuzzy matching
-        search_query = self.request.query_params.get('search', None)
-        if search_query:
-            if USE_TRIGRAM:
-                # PostgreSQL: Use trigram similarity for fuzzy matching
-                queryset = queryset.annotate(
-                    title_similarity=TrigramSimilarity('title', search_query),
-                    content_similarity=TrigramSimilarity('content', search_query),
-                ).filter(
-                    Q(title__icontains=search_query) |
-                    Q(content__icontains=search_query) |
-                    Q(subject__name__icontains=search_query) |
-                    Q(chapters__name__icontains=search_query) |
-                    Q(theorems__name__icontains=search_query) |
-                    Q(subfields__name__icontains=search_query) |
-                    Q(class_levels__name__icontains=search_query) |
-                    Q(title_similarity__gt=0.1) |
-                    Q(content_similarity__gt=0.1)
-                ).order_by('-title_similarity', '-content_similarity')
-            else:
-                # SQLite: Use simple case-insensitive search
-                queryset = queryset.filter(
-                    Q(title__icontains=search_query) |
-                    Q(content__icontains=search_query) |
-                    Q(subject__name__icontains=search_query) |
-                    Q(chapters__name__icontains=search_query) |
-                    Q(theorems__name__icontains=search_query) |
-                    Q(subfields__name__icontains=search_query) |
-                    Q(class_levels__name__icontains=search_query)
-                )
-
-        # Filtering
-        class_levels = self.request.query_params.getlist('class_levels[]')
-        subjects = self.request.query_params.getlist('subjects[]')
-        chapters = self.request.query_params.getlist('chapters[]')
-        difficulties = self.request.query_params.getlist('difficulties[]')
-        subfields = self.request.query_params.getlist('subfields[]')
-        theorems = self.request.query_params.getlist('theorems[]')
-        is_national_exam = self.request.query_params.get('is_national_exam')
-
-        # Change from date_from/date_to to year_from/year_to
-        year_from = self.request.query_params.get('year_from')
-        year_to = self.request.query_params.get('year_to')
-
-        filters_subject = Q()
-        filters_class_level = Q()
-        filters_subfield = Q()
-        filters_chapter = Q()
-        filters_theorem = Q()
-        filters_difficulty = Q()
-        filters_national = Q()
-        filters_year = Q()
-
-        if class_levels:
-            filters_class_level |= Q(class_levels__id__in=class_levels)
-        if subjects:
-            filters_subject |= Q(subject__id__in=subjects)
-        if subfields:
-            filters_subfield |= Q(subfields__id__in=subfields)
-        if theorems:
-            filters_theorem |= Q(theorems__id__in=theorems)
-        if chapters:
-            filters_chapter |= Q(chapters__id__in=chapters)
-        if difficulties:
-            filters_difficulty |= Q(difficulty__in=difficulties)
-        if is_national_exam is not None:
-            # Convert string to boolean
-            is_national = is_national_exam.lower() in ['true', '1', 'yes']
-            filters_national |= Q(is_national_exam=is_national)
-
-        # Year filtering
-        if year_from:
-            try:
-                year_from_int = int(year_from)
-                filters_year &= Q(national_year__gte=year_from_int)
-            except ValueError:
-                pass  # Invalid year format, ignore
-
-        if year_to:
-            try:
-                year_to_int = int(year_to)
-                filters_year &= Q(national_year__lte=year_to_int)
-            except ValueError:
-                pass  # Invalid year format, ignore
-
-        filters = (filters_subject) & (filters_class_level) & (filters_subfield) & (filters_chapter) & (filters_theorem) & (filters_difficulty) & (filters_national) & (filters_year)
-        queryset = queryset.filter(filters)
-
-        # Sorting
-        sort_by = self.request.query_params.get('sort', 'newest')
-        if sort_by == 'newest':
-            queryset = queryset.order_by('-created_at')
-        elif sort_by == 'oldest':
-            queryset = queryset.order_by('created_at')
-        elif sort_by == 'most_upvoted':
-            queryset = queryset.order_by('-vote_count_annotation', '-created_at')
-        else:
-            queryset = queryset.order_by('-created_at')  # Default to newest
-
-        return queryset.distinct()
-
-    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
-    def vote(self, request, pk=None):
-        return super().vote(request, pk)
-
-    @action(detail=True, methods=['post'])
-    def comment(self, request, pk=None):
-        exam = self.get_object()
-        
-        # Add the exam_id to the request data
-        request_data = request.data.copy()
-        request_data['exam_id'] = pk
-        
-        serializer = CommentSerializer(
-            data=request_data,
-            context={'request': request}
-        )
-        
-        if serializer.is_valid():
-            comment = serializer.save(author=request.user)
-            return Response(
-                CommentSerializer(comment, context={'request': request}).data,
-                status=status.HTTP_201_CREATED
-            )
-        return Response(
-            serializer.errors,
-            status=status.HTTP_400_BAD_REQUEST
-        )
-
-    @action(detail=True, methods=['post'])
-    def view(self, request, pk=None):
-        """
-        Mark exam as viewed and increment view count.
-        Only counts as a new view if 1 hour has passed since the last view.
-        """
-        exam = self.get_object()
-        should_count_view = True
-
-        # Check if user is authenticated
-        if request.user.is_authenticated:
-            content_type = ContentType.objects.get_for_model(Exam)
-            one_hour_ago = timezone.now() - timedelta(hours=1)
-
-            try:
-                # Check if there's a recent view (without locking to avoid SQLite issues)
-                last_view = ViewHistory.objects.filter(
-                    user=request.user,
-                    content_type=content_type,
-                    object_id=exam.id,
-                    viewed_at__gte=one_hour_ago
-                ).exists()
-
-                if last_view:
-                    # User viewed this exam within the last hour, don't count it
-                    should_count_view = False
-                else:
-                    # This is a new view after 1 hour, count it
-                    should_count_view = True
-                    # Increment view count
-                    Exam.objects.filter(id=exam.id).update(
-                        view_count=F('view_count') + 1
-                    )
-                    exam.refresh_from_db()
-
-                # Always update view history (creates or updates the record)
-                # Do this after the view count update to minimize lock time
-                ViewHistory.objects.update_or_create(
-                    user=request.user,
-                    content_type=content_type,
-                    object_id=exam.id,
-                    defaults={'status': 'viewed'}
-                )
-
-            except Exception as e:
-                logger.error(f"Error recording view: {str(e)}")
-                # If there's an error, still return a response but don't count it
-                should_count_view = False
-
-        return Response({
-            'view_count': exam.view_count,
-            'counted': should_count_view
-        })
-
-    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
-    def mark_progress(self, request, pk=None):
-        """
-        Mark an exam as completed with status 'success' or 'review'
-        """
-        exam = self.get_object()
-        status_value = request.data.get('status')
-        
-        if status_value not in ['success', 'review']:
-            return Response(
-                {'error': 'Invalid status value. Must be "success" or "review".'}, 
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
-        content_type = ContentType.objects.get_for_model(Exam)
-        progress, created = Complete.objects.update_or_create(
-            user=request.user,
-            content_type=content_type,
-            object_id=exam.id,
-            defaults={'status': status_value}
-        )
-
-        # Clear exam stats cache when progress is marked
-        cache.delete(f'exam_stats_{exam.id}_user_{request.user.id}')
-        cache.delete(f'exam_stats_{exam.id}_user_None')
-
-        return Response({
-            'id': progress.id,
-            'status': progress.status,
-            'created_at': progress.created_at,
-            'updated_at': progress.updated_at
-        })
-
-    @action(detail=True, methods=['delete'], permission_classes=[IsAuthenticated])
-    def remove_progress(self, request, pk=None):
-        """
-        Remove progress marking from an exam
-        """
-        exam = self.get_object()
-        content_type = ContentType.objects.get_for_model(Exam)
-        
-        try:
-            progress = Complete.objects.get(
-                user=request.user,
-                content_type=content_type,
-                object_id=exam.id
-            )
-            progress.delete()
-
-            # Clear exam stats cache when progress is removed
-            cache.delete(f'exam_stats_{exam.id}_user_{request.user.id}')
-            cache.delete(f'exam_stats_{exam.id}_user_None')
-
-            return Response(status=status.HTTP_204_NO_CONTENT)
-        except Complete.DoesNotExist:
-            return Response(
-                {'error': 'No progress record found for this exam'},
-                status=status.HTTP_404_NOT_FOUND
-            )
-
-    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
-    def save_exam(self, request, pk=None):
-        """
-        Save an exam for later
-        """
-        try:
-            exam = self.get_object()
-            content_type = ContentType.objects.get_for_model(Exam)
-            
-            # Check if already saved
-            existing = Save.objects.filter(
-                user=request.user,
-                content_type=content_type,
-                object_id=exam.id
-            ).first()
-            
-            if existing:
-                return Response(
-                    {
-                        'error': 'Exam already saved',
-                        'message': 'This exam is already in your saved list',
-                        'already_saved': True
-                    }, 
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-            
-            # Create new save record
-            save = Save.objects.create(
-                user=request.user,
-                content_type=content_type,
-                object_id=exam.id
-            )
-            
-            logger.debug(f"Exam {exam.id} saved by user {request.user.id}")
-            
-            return Response({
-                'id': save.id,
-                'saved_at': save.saved_at,
-                'message': 'Exam saved successfully'
-            }, status=status.HTTP_201_CREATED)
-        except Exception as e:
-            logger.error(f"Error saving exam: {str(e)}")
-            return Response(
-                {'error': 'Failed to save exam', 'detail': str(e)},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
-
-    @action(detail=True, methods=['delete'], permission_classes=[IsAuthenticated])
-    def unsave_exam(self, request, pk=None):
-        """
-        Remove exam from saved list
-        """
-        exam = self.get_object()
-        content_type = ContentType.objects.get_for_model(Exam)
-        
-        try:
-            save = Save.objects.get(
-                user=request.user,
-                content_type=content_type,
-                object_id=exam.id
-            )
-            save.delete()
-            logger.debug(f"Exam {exam.id} unsaved by user {request.user.id}")
-            return Response(status=status.HTTP_204_NO_CONTENT)
-        except Save.DoesNotExist:
-            return Response(
-                {'error': 'Exam not found in saved list'}, 
-                status=status.HTTP_404_NOT_FOUND
-            )
-    
-    @action(detail=True, methods=['get'], permission_classes=[IsAuthenticated])
-    def session_stats(self, request, pk=None):
-        """
-        Get session statistics and history for comparison
-        """
-        exam = self.get_object()
-        content_type = ContentType.objects.get_for_model(Exam)
-        
-        # Get all sessions for this user and exam
-        sessions = TimeSession.objects.filter(
-            user=request.user,
-            content_type=content_type,
-            object_id=exam.id
-        ).order_by('-created_at')[:10]  # Last 10 sessions
-        
-        # Calculate statistics
-        if sessions.exists():
-            durations = [s.session_duration_in_seconds for s in sessions]
-            stats = {
-                'total_sessions': sessions.count(),
-                'best_time': min(durations),
-                'worst_time': max(durations),
-                'average_time': sum(durations) / len(durations),
-                'last_session': {
-                    'id': sessions[0].id,
-                    'duration_seconds': sessions[0].session_duration_in_seconds,
-                    'session_type': sessions[0].session_type,
-                    'started_at': sessions[0].started_at,
-                    'ended_at': sessions[0].ended_at,
-                    'notes': sessions[0].notes,
-                    'created_at': sessions[0].created_at
-                } if sessions else None,
-                'improvement_percentage': None
-            }
-            
-            # Calculate improvement between last two sessions
-            if len(sessions) >= 2:
-                last_time = sessions[0].session_duration_in_seconds
-                previous_time = sessions[1].session_duration_in_seconds
-                if previous_time > 0:
-                    improvement = ((previous_time - last_time) / previous_time) * 100
-                    stats['improvement_percentage'] = round(improvement, 1)
-        else:
-            stats = {
-                'total_sessions': 0,
-                'best_time': None,
-                'worst_time': None,
-                'average_time': None,
-                'last_session': None,
-                'improvement_percentage': None
-            }
-        
-        # Format sessions for response
-        sessions_data = [
-            {
-                'id': session.id,
-                'duration_seconds': session.session_duration_in_seconds,
-                'session_type': session.session_type,
-                'started_at': session.started_at,
-                'ended_at': session.ended_at,
-                'notes': session.notes,
-                'created_at': session.created_at
-            }
-            for session in sessions
-        ]
-        
-        return Response({
-            'sessions': sessions_data,
-            'stats': stats
-        })
-
-    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
-    def save_session(self, request, pk=None):
-        """
-        Save a completed timing session
-        """
-        exam = self.get_object()
-        duration_seconds = request.data.get('duration_seconds', 0)
-        session_type = request.data.get('session_type', 'practice')
-        notes = request.data.get('notes', '')
-        
-        try:
-            duration_seconds = int(duration_seconds)
-            if duration_seconds <= 0:
-                return Response(
-                    {'error': 'Duration must be greater than 0'}, 
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-        except (TypeError, ValueError):
-            return Response(
-                {'error': 'Invalid duration value'}, 
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
-        try:
-            content_type = ContentType.objects.get_for_model(Exam)
-            
-            # Create the session record
-            session = TimeSession.objects.create(
-                user=request.user,
-                content_type=content_type,
-                object_id=exam.id,
-                session_duration=timedelta(seconds=duration_seconds),
-                started_at=timezone.now() - timedelta(seconds=duration_seconds),
-                ended_at=timezone.now(),
-                session_type=session_type,
-                notes=notes
-            )
-            
-            # Get previous session for comparison
-            previous_sessions = TimeSession.objects.filter(
-                user=request.user,
-                content_type=content_type,
-                object_id=exam.id
-            ).exclude(id=session.id).order_by('-created_at')
-            
-            response_data = {
-                'message': 'Session saved successfully',
-                'session': {
-                    'id': session.id,
-                    'duration_seconds': session.session_duration_in_seconds,
-                    'created_at': session.created_at
-                }
-            }
-            
-            # Add comparison data if there's a previous session
-            if previous_sessions.exists():
-                previous = previous_sessions.first()
-                improvement = None
-                if previous.session_duration_in_seconds > 0:
-                    improvement = ((previous.session_duration_in_seconds - duration_seconds) / previous.session_duration_in_seconds) * 100
-                
-                response_data['comparison'] = {
-                    'previous_duration': previous.session_duration_in_seconds,
-                    'difference': duration_seconds - previous.session_duration_in_seconds,
-                    'improvement_percentage': round(improvement, 1) if improvement is not None else None
-                }
-            
-            return Response(response_data, status=status.HTTP_201_CREATED)
-            
-        except Exception as e:
-            logger.error(f"Error saving session: {str(e)}")
-            return Response(
-                {'error': 'Failed to save session'},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
-
-    @action(detail=True, methods=['delete'], permission_classes=[IsAuthenticated], url_path='delete_session/(?P<session_id>[^/.]+)')
-    def delete_session(self, request, pk=None, session_id=None):
-        """
-        Delete a specific session
-        """
-        exam = self.get_object()
-        
-        try:
-            content_type = ContentType.objects.get_for_model(Exam)
-            session = TimeSession.objects.get(
-                id=session_id,
-                user=request.user,
-                content_type=content_type,
-                object_id=exam.id
-            )
-            session.delete()
-            
-            return Response(status=status.HTTP_204_NO_CONTENT)
-        except TimeSession.DoesNotExist:
-            return Response(
-                {'error': 'Session not found'},
-                status=status.HTTP_404_NOT_FOUND
-            )    
-    @action(detail=True, methods=['get'], permission_classes=[IsAuthenticated])
-    def session_history(self, request, pk=None):
-        """
-        Get session history for this exam
-        """
-        exam = self.get_object()
-
-        try:
-            content_type = ContentType.objects.get_for_model(Exam)
-
-            # Get all sessions for this exam
-            sessions = TimeSession.objects.filter(
-                user=request.user,
-                content_type=content_type,
-                object_id=exam.id
-            ).order_by('-created_at')[:20]  # Limit to last 20 sessions
-
-            # Format the response
-            session_data = [{
-                'id': str(session.id),
-                'session_duration': int(session.session_duration.total_seconds()),
-                'started_at': session.started_at.isoformat(),
-                'ended_at': session.ended_at.isoformat(),
-                'created_at': session.created_at.isoformat(),
-                'session_type': session.session_type,
-                'notes': session.notes
-            } for session in sessions]
-
-            return Response({
-                'sessions': session_data
-            })
-
-        except Exception as e:
-            logger.error(f"Error retrieving session history: {str(e)}")
-            return Response(
-                {'error': 'Failed to retrieve session history'},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
-
-    def _get_successful_users_study_stats(self, exam, content_type):
-        """
-        Calculate average study time for successful users by chapter
-        Returns study time spent on exercises, lessons, and exams for same chapters with chapter names
-        """
-        from apps.interactions.models import TaxonomyTimeSpent
-        from datetime import timedelta
-
-        # Get successful users for this exam
-        successful_completions = Complete.objects.filter(
-            content_type=content_type,
-            object_id=exam.id,
-            status='success'
-        ).values_list('user', flat=True)
-
-        if not successful_completions:
-            return {
-                'exercises_avg_seconds': 0,
-                'lessons_avg_seconds': 0,
-                'exams_avg_seconds': 0,
-                'chapters': []
-            }
-
-        # Get all chapters for this exam
-        chapters = exam.chapters.all()
-
-        if not chapters:
-            return {
-                'exercises_avg_seconds': 0,
-                'lessons_avg_seconds': 0,
-                'exams_avg_seconds': 0,
-                'chapters': []
-            }
-
-        # Calculate average study time for successful users on these chapters
-        from django.contrib.contenttypes.models import ContentType
-        from apps.caracteristics.models import Chapter
-
-        chapter_content_type = ContentType.objects.get_for_model(Chapter)
-        total_exercise_time = timedelta()
-        total_lesson_time = timedelta()
-        total_exam_time = timedelta()
-        user_count = 0
-
-        for user_id in successful_completions:
-            for chapter in chapters:
-                taxonomy_time = TaxonomyTimeSpent.objects.filter(
-                    user_id=user_id,
-                    taxonomy_type='chapter',
-                    content_type=chapter_content_type,
-                    object_id=chapter.id
-                ).first()
-
-                if taxonomy_time:
-                    total_exercise_time += taxonomy_time.exercise_time
-                    total_lesson_time += taxonomy_time.lesson_time
-                    total_exam_time += taxonomy_time.exam_time
-            user_count += 1
-
-        # Calculate averages
-        if user_count > 0:
-            avg_exercise_seconds = int(total_exercise_time.total_seconds() / user_count)
-            avg_lesson_seconds = int(total_lesson_time.total_seconds() / user_count)
-            avg_exam_seconds = int(total_exam_time.total_seconds() / user_count)
-        else:
-            avg_exercise_seconds = avg_lesson_seconds = avg_exam_seconds = 0
-
-        # Get chapter names
-        chapter_names = [chapter.name for chapter in chapters]
-
-        return {
-            'exercises_avg_seconds': avg_exercise_seconds,
-            'lessons_avg_seconds': avg_lesson_seconds,
-            'exams_avg_seconds': avg_exam_seconds,
-            'chapters': chapter_names
-        }
-
-    @action(detail=True, methods=['get'])
-    def statistics(self, request, pk=None):
-        """
-        Get statistics for this exam
-        Returns: success rate, average time, best time, user's percentile, etc.
-        """
-        exam = self.get_object()
-        user_id = request.user.id if (request.user and request.user.is_authenticated) else None
-
-        # Create cache key that includes user_id for user-specific data
-        cache_key = f'exam_stats_{exam.id}_user_{user_id}'
-
-        # Try to get from cache (5 minutes TTL)
-        cached_data = cache.get(cache_key)
-        if cached_data:
-            return Response(cached_data)
-
-        try:
-            content_type = ContentType.objects.get_for_model(Exam)
-
-            # Get all completions for this exam
-            completions = Complete.objects.filter(
-                content_type=content_type,
-                object_id=exam.id
-            )
-
-            success_count = completions.filter(status='success').count()
-            review_count = completions.filter(status='review').count()
-            total_participants = completions.values('user').distinct().count()
-
-            # Calculate success percentage
-            success_percentage = int((success_count / total_participants * 100)) if total_participants > 0 else 0
-
-            # Get average time
-            sessions = TimeSession.objects.filter(
-                content_type=content_type,
-                object_id=exam.id
-            ).all()
-
-            if sessions.exists():
-                # Calculate average in Python to avoid DurationField issues
-                total_seconds = sum(int(s.session_duration.total_seconds()) for s in sessions)
-                average_time_seconds = int(total_seconds / sessions.count())
-
-                # Get best time
-                best_time_seconds = min(int(s.session_duration.total_seconds()) for s in sessions)
-            else:
-                average_time_seconds = 0
-                best_time_seconds = 0
-
-            # User's stats
-            user_time_seconds = None
-            user_time_percentile = None
-            user_completed = None
-
-            # Check if user is authenticated
-            is_user_authenticated = (hasattr(self.request, 'user') and self.request.user and self.request.user.is_authenticated)
-
-            if is_user_authenticated:
-                # Get user's completion status
-                user_completion = Complete.objects.filter(
-                    user=request.user,
-                    content_type=content_type,
-                    object_id=exam.id
-                ).first()
-                user_completed = user_completion.status if user_completion else None
-
-                # Get user's time
-                user_session = sessions.filter(user=request.user).order_by('-created_at').first()
-                if user_session:
-                    user_time_seconds = int(user_session.session_duration.total_seconds())
-
-                    # Calculate percentile (how many are slower)
-                    slower_count = sessions.filter(
-                        session_duration__gt=user_session.session_duration
-                    ).values('user').distinct().count()
-                    user_time_percentile = int((slower_count / max(total_participants, 1)) * 100) if total_participants > 0 else 0
-
-            # Get solution view tracking data
-            solution_views = SolutionView.objects.filter(
-                content_type=content_type,
-                object_id=exam.id
-            )
-
-            # Count users who viewed solution before success
-            users_viewed_before_success = 0
-            for user in solution_views.values('user').distinct():
-                user_id = user['user']
-                user_view = solution_views.filter(user=user_id).first()
-                user_completion = Complete.objects.filter(
-                    user=user_id,
-                    content_type=content_type,
-                    object_id=exam.id,
-                    status='success'
-                ).first()
-
-                # If user viewed solution and either didn't complete or viewed before completing
-                if user_view and user_completion:
-                    if user_view.viewed_at <= user_completion.created_at:
-                        users_viewed_before_success += 1
-
-            solution_views_before_success = users_viewed_before_success
-
-            # Check if current user viewed solution
-            user_viewed_solution = False
-            # Check if user is authenticated
-            is_user_authenticated = (hasattr(self.request, 'user') and self.request.user and self.request.user.is_authenticated)
-
-            if is_user_authenticated:
-                user_viewed_solution = solution_views.filter(user=request.user).exists()
-
-            # Get solution match tracking data
-            solution_matches = SolutionMatch.objects.filter(
-                content_type=content_type,
-                object_id=exam.id
-            )
-
-            solution_match_count = solution_matches.count()
-            user_solution_matched = False
-
-            if is_user_authenticated:
-                user_solution_matched = solution_matches.filter(user=request.user).exists()
-
-            # Calculate study time stats for successful users by chapter
-            successful_users_study_stats = self._get_successful_users_study_stats(exam, content_type)
-
-            response_data = {
-                'total_participants': total_participants,
-                'success_count': success_count,
-                'review_count': review_count,
-                'success_percentage': success_percentage,
-                'average_time_seconds': average_time_seconds,
-                'best_time_seconds': best_time_seconds,
-                'solution_views_before_success': solution_views_before_success,
-                'solution_view_percentage': int((solution_views_before_success / max(success_count, 1)) * 100) if success_count > 0 else 0,
-                'user_time_percentile': user_time_percentile,
-                'user_completed': user_completed,
-                'user_viewed_solution': user_viewed_solution,
-                'user_time_seconds': user_time_seconds,
-                'solution_match_count': solution_match_count,
-                'user_solution_matched': user_solution_matched,
-                'successful_users_study_stats': successful_users_study_stats
-            }
-
-            # Cache for 5 minutes (300 seconds)
-            cache.set(cache_key, response_data, 300)
-
-            return Response(response_data)
-
-        except Exception as e:
-            logger.error(f"Error calculating statistics: {str(e)}")
-            return Response(
-                {'error': 'Failed to calculate statistics'},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
-
-    @action(detail=True, methods=['post', 'delete'], permission_classes=[IsAuthenticated])
-    def mark_solution_viewed(self, request, pk=None):
-        """
-        Mark or unmark that the current user viewed the solution for this exam
-        POST: Mark solution as viewed
-        DELETE: Remove the solution view flag
-        """
-        exam = self.get_object()
-
-        try:
-            content_type = ContentType.objects.get_for_model(Exam)
-
-            if request.method == 'POST':
-                # Create or get the solution view record
-                solution_view, created = SolutionView.objects.get_or_create(
-                    user=request.user,
-                    content_type=content_type,
-                    object_id=exam.id
-                )
-
-                return Response({
-                    'marked_as_viewed': True,
-                    'message': 'Solution view recorded'
-                })
-
-            elif request.method == 'DELETE':
-                # Delete the solution view record
-                deleted_count, _ = SolutionView.objects.filter(
-                    user=request.user,
-                    content_type=content_type,
-                    object_id=exam.id
-                ).delete()
-
-                if deleted_count > 0:
-                    return Response({
-                        'marked_as_viewed': False,
-                        'message': 'Solution view flag removed'
-                    })
-                else:
-                    return Response({
-                        'marked_as_viewed': False,
-                        'message': 'No solution view flag found'
-                    })
-
-        except Exception as e:
-            logger.error(f"Error managing solution view: {str(e)}")
-            return Response(
-                {'error': 'Failed to manage solution view'},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
-
-    @action(detail=True, methods=['post', 'delete'], permission_classes=[IsAuthenticated])
-    def mark_solution_match(self, request, pk=None):
-        """Mark or unmark that the current user's solution matches the proposed solution"""
-        exam = self.get_object()
-        try:
-            content_type = ContentType.objects.get_for_model(Exam)
-
-            if request.method == 'POST':
-                solution_match, created = SolutionMatch.objects.get_or_create(
-                    user=request.user,
-                    content_type=content_type,
-                    object_id=exam.id
-                )
-                # Clear statistics cache when solution match is toggled
-                cache.delete(f'exam_stats_{exam.id}_user_{request.user.id}')
-                return Response({
-                    'solution_matched': True,
-                    'message': 'Solution match recorded'
-                })
-
-            elif request.method == 'DELETE':
-                deleted_count, _ = SolutionMatch.objects.filter(
-                    user=request.user,
-                    content_type=content_type,
-                    object_id=exam.id
-                ).delete()
-
-                # Clear statistics cache when solution match is toggled
-                cache.delete(f'exam_stats_{exam.id}_user_{request.user.id}')
-                cache.delete(f'exam_stats_{exam.id}_user_None')
-
-                if deleted_count > 0:
-                    return Response({
-                        'solution_matched': False,
-                        'message': 'Solution match flag removed'
-                    })
-                else:
-                    return Response({
-                        'solution_matched': False,
-                        'message': 'No solution match flag found'
-                    })
-
-        except Exception as e:
-            logger.error(f"Error managing solution match: {str(e)}")
-            return Response(
-                {'error': 'Failed to manage solution match'},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
+def get_content_recommendations(request, content_id):
+    try:
+        source = Content.objects.get(id=content_id)
+    except Content.DoesNotExist:
+        return Response({'error': 'Not found'}, status=404)
+
+    qs = _taxonomy_qs(source, exclude_id=content_id)
+    ctx = {'request': request}
+    return Response({
+        'exercises': ContentListSerializer(qs.filter(type='exercise')[:3], many=True, context=ctx).data,
+        'lessons': ContentListSerializer(qs.filter(type='lesson')[:2], many=True, context=ctx).data,
+        'exams': ContentListSerializer(qs.filter(type='exam')[:2], many=True, context=ctx).data,
+    })

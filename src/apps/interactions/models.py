@@ -26,7 +26,7 @@ class Vote(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     content_type = models.ForeignKey(ContentType, on_delete=models.PROTECT)
-    object_id = models.PositiveIntegerField()
+    object_id = models.CharField(max_length=64)
     content_object = GenericForeignKey('content_type', 'object_id')
 
     class Meta:
@@ -55,7 +55,7 @@ class Save(models.Model):
     saved_at = models.DateTimeField(auto_now_add=True)
 
     content_type = models.ForeignKey(ContentType, on_delete=models.PROTECT)
-    object_id = models.PositiveIntegerField()
+    object_id = models.CharField(max_length=64)
     content_object = GenericForeignKey('content_type', 'object_id')
 
     class Meta:
@@ -95,7 +95,7 @@ class Complete(models.Model):
     
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='exercise_progress')
     content_type = models.ForeignKey(ContentType, on_delete=models.PROTECT)
-    object_id = models.PositiveIntegerField()
+    object_id = models.CharField(max_length=64)
     content_object = GenericForeignKey('content_type', 'object_id')
     status = models.CharField(max_length=10, choices=PROGRESS_CHOICES)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -130,7 +130,7 @@ class CompleteableMixin(SaveableMixin,VotableMixin):
 class Report(models.Model):
     user = models.ForeignKey(User, on_delete=models.PROTECT)
     content_type = models.ForeignKey(ContentType, on_delete=models.PROTECT)
-    object_id = models.PositiveIntegerField()
+    object_id = models.CharField(max_length=64)
     content_object = GenericForeignKey('content_type', 'object_id')
     reason = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
@@ -153,7 +153,7 @@ class Evaluate(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     content_type = models.ForeignKey(ContentType, on_delete=models.PROTECT)
-    object_id = models.PositiveIntegerField()
+    object_id = models.CharField(max_length=64)
     content_object = GenericForeignKey('content_type', 'object_id')
     class Meta:
         app_label = 'interactions'
@@ -174,7 +174,7 @@ class TimeSession(models.Model):
     """
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='time_sessions')
     content_type = models.ForeignKey(ContentType, on_delete=models.PROTECT)
-    object_id = models.PositiveIntegerField()
+    object_id = models.CharField(max_length=64)
     content_object = GenericForeignKey('content_type', 'object_id')
     
     # Temps de cette session spécifique
@@ -310,7 +310,7 @@ def update_taxonomy_time(user, content_object, time_delta):
     taxonomies_to_update = []
 
     # Determine content type name for breakdown
-    content_type_name = content_object.__class__.__name__.lower()
+    content_type_name = getattr(content_object, 'type', content_object.__class__.__name__.lower())
 
     # Get content type models
     from django.apps import apps
@@ -488,5 +488,110 @@ class RevisionListItem(models.Model):
 
     def __str__(self):
         return f"{self.content_object} in {self.revision_list.name}"
+
+
+#----------------------------QUESTION-LEVEL PROGRESS-------------------------------
+
+class QuestionProgress(models.Model):
+    """
+    Track assessment status for individual questions within exercises/exams.
+    Each question block in the structure JSON has a unique question_path (e.g., 'q1', 'q1.a', 'q2.b.i').
+    """
+    ASSESSMENT_CHOICES = [
+        ('success', 'Success'),
+        ('partial', 'Partial'),
+        ('review', 'Review'),
+        ('failed', 'Failed'),
+    ]
+
+    VALIDATION_CHOICES = [
+        ('compatible', 'Compatible'),
+        ('different', 'Different'),
+        ('not-understood', 'Not Understood'),
+    ]
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='question_progress')
+    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
+    object_id = models.PositiveIntegerField()
+    content_object = GenericForeignKey('content_type', 'object_id')
+
+    # Path to question in structure JSON (e.g., "q1", "q1.a", "q2.b.i")
+    question_path = models.CharField(max_length=100)
+
+    # Assessment status
+    status = models.CharField(max_length=10, choices=ASSESSMENT_CHOICES)
+
+    # Solution validation (student's comparison of their solution vs official)
+    solution_validation = models.CharField(max_length=20, choices=VALIDATION_CHOICES, null=True, blank=True)
+
+    assessed_at = models.DateTimeField(auto_now=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        app_label = 'interactions'
+        unique_together = ('user', 'content_type', 'object_id', 'question_path')
+        indexes = [
+            models.Index(fields=['user', 'content_type', 'object_id']),
+            models.Index(fields=['content_type', 'object_id']),
+        ]
+
+    def __str__(self):
+        return f"{self.user.username} - {self.content_object} [{self.question_path}]: {self.status}"
+
+
+#----------------------------AI CORRECTION-------------------------------
+class AICorrection(models.Model):
+    """Stores AI correction attempts with VLM feedback"""
+
+    # Relationships
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='ai_corrections')
+    content_type = models.ForeignKey(ContentType, on_delete=models.CASCADE)
+    object_id = models.CharField(max_length=64)
+    content_object = GenericForeignKey('content_type', 'object_id')
+
+    # Submission
+    image = models.ImageField(upload_to='ai_corrections/%Y/%m/', max_length=500, null=True, blank=True)
+    submitted_at = models.DateTimeField(auto_now_add=True)
+
+    # Conversation tracking
+    conversation_started_at = models.DateTimeField(null=True, blank=True)
+    submission_state = models.CharField(
+        max_length=20,
+        choices=[
+            ('pre_submission', 'Pré-soumission'),
+            ('submitted', 'Soumis'),
+            ('discussed', 'Discuté')
+        ],
+        default='pre_submission'
+    )
+    language = models.CharField(max_length=5, default='fr')
+
+    # AI Analysis
+    ai_provider = models.CharField(max_length=20, default='openai')
+    ai_model = models.CharField(max_length=50, default='gpt-4-vision-preview')
+    score_awarded = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+    score_total = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+
+    # Results
+    feedback = models.JSONField(default=dict, blank=True)  # Structured per-question feedback
+    raw_response = models.TextField(blank=True)  # Full AI response
+    processing_time_ms = models.IntegerField(null=True, blank=True)
+
+    # Follow-up chat
+    chat_history = models.JSONField(default=list, blank=True)  # [{role, content, timestamp}]
+    pedagogical_context = models.JSONField(default=dict, blank=True)  # {hints_given: {q1: level}, concepts_explained: []}
+
+    class Meta:
+        app_label = 'interactions'
+        db_table = 'ai_correction'
+        ordering = ['-submitted_at']
+        indexes = [
+            models.Index(fields=['user', 'content_type', 'object_id']),
+            models.Index(fields=['submitted_at']),
+        ]
+
+    def __str__(self):
+        score_str = f"{self.score_awarded}/{self.score_total}" if self.score_awarded is not None else "pending"
+        return f"{self.user.username} - {self.content_object}: {score_str}"
 
 

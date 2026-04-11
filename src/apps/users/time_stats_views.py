@@ -6,7 +6,7 @@ from django.db.models import Sum, Avg, Count, Q
 from django.utils import timezone
 from datetime import timedelta, datetime
 from apps.interactions.models import TimeSession
-from apps.things.models import Exercise, Exam
+from apps.things.models import Content
 
 
 class TimeStatsViewMixin:
@@ -29,15 +29,11 @@ class TimeStatsViewMixin:
                 status=status.HTTP_403_FORBIDDEN
             )
         
-        # Get content types
-        exercise_content_type = ContentType.objects.get_for_model(Exercise)
-        exam_content_type = ContentType.objects.get_for_model(Exam)
-        
-        # Calculate statistics for exercises
-        exercise_stats = self._calculate_content_type_stats(user, exercise_content_type, 'exercise')
-        
-        # Calculate statistics for exams
-        exam_stats = self._calculate_content_type_stats(user, exam_content_type, 'exam')
+        content_ct = ContentType.objects.get_for_model(Content)
+
+        # Calculate statistics per content sub-type
+        exercise_stats = self._calculate_content_type_stats(user, content_ct, 'exercise')
+        exam_stats = self._calculate_content_type_stats(user, content_ct, 'exam')
         
         # Calculate overall statistics
         overall_stats = self._calculate_overall_stats(user)

@@ -12,7 +12,7 @@ from django.utils import timezone
 from datetime import timedelta, datetime
 from apps.interactions.models import StudyTimeTracker
 from django.contrib.contenttypes.models import ContentType
-from apps.things.models import Exercise, Lesson, Exam
+from apps.things.models import Content
 
 
 @api_view(['GET'])
@@ -31,15 +31,13 @@ def get_study_statistics(request, username):
                 status=status.HTTP_403_FORBIDDEN
             )
 
-        # Get content types
-        exercise_ct = ContentType.objects.get_for_model(Exercise)
-        lesson_ct = ContentType.objects.get_for_model(Lesson)
-        exam_ct = ContentType.objects.get_for_model(Exam)
+        # All content uses a single ContentType
+        content_ct = ContentType.objects.get_for_model(Content)
 
         # Calculate statistics for each content type
-        exercise_stats = calculate_content_stats(user, exercise_ct, 'exercise')
-        lesson_stats = calculate_content_stats(user, lesson_ct, 'lesson')
-        exam_stats = calculate_content_stats(user, exam_ct, 'exam')
+        exercise_stats = calculate_content_stats(user, content_ct, 'exercise')
+        lesson_stats = calculate_content_stats(user, content_ct, 'lesson')
+        exam_stats = calculate_content_stats(user, content_ct, 'exam')
 
         # Calculate overall statistics
         overall_stats = calculate_overall_stats(user)
@@ -74,10 +72,14 @@ def get_study_statistics(request, username):
 def calculate_content_stats(user, content_type, content_name):
     """Calculate statistics for a specific content type"""
 
+    # Get IDs for this content sub-type (exercise/lesson/exam)
+    type_ids = Content.objects.filter(type=content_name).values_list('id', flat=True)
+
     # Get all study time entries for this content type
     entries = StudyTimeTracker.objects.filter(
         user=user,
-        content_type=content_type
+        content_type=content_type,
+        object_id__in=type_ids,
     )
 
     total_entries = entries.count()
@@ -295,47 +297,21 @@ def analyze_study_habits(entries):
 
 def get_recent_study_activity(user, limit=20):
     """Get recent study activity (optimized to prevent N+1 queries)"""
-    from django.contrib.contenttypes.models import ContentType
-    from apps.things.models import Exercise, Lesson, Exam
+    recent_entries = list(
+        StudyTimeTracker.objects.filter(user=user).order_by('-recorded_at')[:limit]
+    )
 
-    recent_entries = StudyTimeTracker.objects.filter(
-        user=user
-    ).select_related('content_type').order_by('-recorded_at')[:limit]
+    # Bulk fetch Content titles
+    content_ids = [e.object_id for e in recent_entries]
+    content_map = {c.id: c for c in Content.objects.filter(id__in=content_ids).only('id', 'title', 'type')}
 
-    # Convert to list to avoid multiple DB hits
-    entries_list = list(recent_entries)
-
-    # Get content types
-    exercise_ct = ContentType.objects.get_for_model(Exercise)
-    lesson_ct = ContentType.objects.get_for_model(Lesson)
-    exam_ct = ContentType.objects.get_for_model(Exam)
-
-    # Group entries by content type
-    exercise_ids = [e.object_id for e in entries_list if e.content_type_id == exercise_ct.id]
-    lesson_ids = [e.object_id for e in entries_list if e.content_type_id == lesson_ct.id]
-    exam_ids = [e.object_id for e in entries_list if e.content_type_id == exam_ct.id]
-
-    # Bulk fetch content objects
-    exercises = {e.id: e.title for e in Exercise.objects.filter(id__in=exercise_ids).only('id', 'title')}
-    lessons = {l.id: l.title for l in Lesson.objects.filter(id__in=lesson_ids).only('id', 'title')}
-    exams = {ex.id: ex.title for ex in Exam.objects.filter(id__in=exam_ids).only('id', 'title')}
-
-    # Build activity data
     activity_data = []
-    for entry in entries_list:
-        # Get content title from pre-fetched data
-        content_title = 'Unknown'
-        if entry.content_type_id == exercise_ct.id:
-            content_title = exercises.get(entry.object_id, 'Unknown')
-        elif entry.content_type_id == lesson_ct.id:
-            content_title = lessons.get(entry.object_id, 'Unknown')
-        elif entry.content_type_id == exam_ct.id:
-            content_title = exams.get(entry.object_id, 'Unknown')
-
+    for entry in recent_entries:
+        obj = content_map.get(entry.object_id)
         activity_data.append({
             'id': entry.id,
-            'content_type': entry.content_type.model,
-            'content_title': content_title,
+            'content_type': obj.type if obj else entry.content_type.model,
+            'content_title': obj.title if obj else 'Unknown',
             'time_spent_seconds': entry.time_spent_seconds,
             'time_spent_formatted': format_duration(entry.time_spent_seconds),
             'date': entry.recorded_at.strftime('%Y-%m-%d'),
@@ -347,8 +323,6 @@ def get_recent_study_activity(user, limit=20):
 
 def get_daily_activity(user, days=365):
     """Get daily activity for the last N days (optimized with aggregation)"""
-    from django.contrib.contenttypes.models import ContentType
-    from apps.things.models import Exercise, Lesson, Exam
     from django.db.models.functions import TruncDate
 
     now = timezone.now()
@@ -356,52 +330,38 @@ def get_daily_activity(user, days=365):
     start_date = end_date - timedelta(days=days - 1)
     start_date = start_date.replace(hour=0, minute=0, second=0, microsecond=0)
 
-    # Get content types once
-    exercise_ct = ContentType.objects.get_for_model(Exercise)
-    lesson_ct = ContentType.objects.get_for_model(Lesson)
-    exam_ct = ContentType.objects.get_for_model(Exam)
+    content_ct = ContentType.objects.get_for_model(Content)
+
+    # IDs per type
+    exercise_ids = list(Content.objects.filter(type='exercise').values_list('id', flat=True))
+    lesson_ids = list(Content.objects.filter(type='lesson').values_list('id', flat=True))
+    exam_ids = list(Content.objects.filter(type='exam').values_list('id', flat=True))
+
+    base_qs = StudyTimeTracker.objects.filter(
+        user=user,
+        content_type=content_ct,
+        recorded_at__gte=start_date,
+        recorded_at__lte=end_date,
+    )
 
     # Aggregate all data in one query using TruncDate
-    daily_aggregates = StudyTimeTracker.objects.filter(
-        user=user,
-        recorded_at__gte=start_date,
-        recorded_at__lte=end_date
-    ).annotate(
+    daily_aggregates = base_qs.annotate(
         date=TruncDate('recorded_at')
     ).values('date').annotate(
         total_time=Sum('time_spent_seconds'),
         entry_count=Count('id')
     ).order_by('date')
 
-    # Build lookup dictionary for quick access
     daily_lookup = {item['date']: item for item in daily_aggregates}
 
-    # Count by content type in separate optimized queries
-    exercise_counts = StudyTimeTracker.objects.filter(
-        user=user,
-        recorded_at__gte=start_date,
-        recorded_at__lte=end_date,
-        content_type=exercise_ct
-    ).annotate(date=TruncDate('recorded_at')).values('date').annotate(count=Count('id'))
+    def count_by_type(ids):
+        return base_qs.filter(object_id__in=ids)\
+            .annotate(date=TruncDate('recorded_at'))\
+            .values('date').annotate(count=Count('id'))
 
-    lesson_counts = StudyTimeTracker.objects.filter(
-        user=user,
-        recorded_at__gte=start_date,
-        recorded_at__lte=end_date,
-        content_type=lesson_ct
-    ).annotate(date=TruncDate('recorded_at')).values('date').annotate(count=Count('id'))
-
-    exam_counts = StudyTimeTracker.objects.filter(
-        user=user,
-        recorded_at__gte=start_date,
-        recorded_at__lte=end_date,
-        content_type=exam_ct
-    ).annotate(date=TruncDate('recorded_at')).values('date').annotate(count=Count('id'))
-
-    # Build content type lookups
-    exercise_lookup = {item['date']: item['count'] for item in exercise_counts}
-    lesson_lookup = {item['date']: item['count'] for item in lesson_counts}
-    exam_lookup = {item['date']: item['count'] for item in exam_counts}
+    exercise_lookup = {item['date']: item['count'] for item in count_by_type(exercise_ids)}
+    lesson_lookup = {item['date']: item['count'] for item in count_by_type(lesson_ids)}
+    exam_lookup = {item['date']: item['count'] for item in count_by_type(exam_ids)}
 
     # Build response for all days
     daily_data = []

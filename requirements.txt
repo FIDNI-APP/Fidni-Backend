@@ -79,3 +79,13 @@ argon2-cffi==23.1.0
 gunicorn==21.2.0
 whitenoise==6.6.0
 dotenv==0.9.9
+
+# File uploads with S3 support
+boto3==1.35.94
+django-storages==1.14.4
+
+# OpenAI for AI correction
+openai==1.58.1
+
+# MongoDB
+pymongo==4.10.1

@@ -37,6 +37,11 @@ if env('DB_ENGINE', default=None):
 CORS_ALLOWED_ORIGINS = env.list('CORS_ALLOWED_ORIGINS', default=[])
 CORS_ALLOW_CREDENTIALS = True
 
+# CSRF
+# Add any domains that are allowed in the Origin header for safe POST requests.
+# NOTE: Include the scheme (e.g., https://api.fidni.fr) as required by Django
+CSRF_TRUSTED_ORIGINS = env.list('CSRF_TRUSTED_ORIGINS', default=['https://api.fidni.fr'])
+
 # Logging
 LOGGING = {
     'version': 1,

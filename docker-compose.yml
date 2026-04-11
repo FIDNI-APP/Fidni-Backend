@@ -1,0 +1,37 @@
+services:
+  fidni-mongo:
+    image: mongo:7
+    container_name: fidni-mongo
+    command: ["mongod", "--quiet"]
+    ports:
+      - "27017:27017"
+    volumes:
+      - fidni_mongo_data:/data/db
+    restart: unless-stopped
+
+  fidni-backend:
+    image: fidni-backend
+    container_name: fidni-backend
+    build:
+      context: .
+      dockerfile: docker/dev/Dockerfile
+    ports:
+      - "8080:80"
+    volumes:
+      - ./fidni_sqlite_data:/app/data
+      - ./fidni_media_data:/app/media
+    environment:
+      DEBUG: "True"
+      SECRET_KEY: "gr-5s4^9^nz%*1)843r*7)+xrk!zc3==nm#zgroldi0*x#y+8e"
+      ALLOWED_HOSTS: "*"
+      DB_ENGINE: "sqlite"
+      SQLITE_PATH: "/app/data/db.sqlite3"
+      CSRF_TRUSTED_ORIGINS: "https://api.fidni.fr"
+      MONGODB_URI: "mongodb://fidni-mongo:27017"
+      MONGODB_DB_NAME: "fidni"
+    depends_on:
+      - fidni-mongo
+    restart: unless-stopped
+
+volumes:
+  fidni_mongo_data:

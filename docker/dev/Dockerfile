@@ -18,9 +18,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Install gunicorn
 RUN pip install gunicorn
 
-# Copy project
-COPY . .
-
 # Set environment variables
 ENV DJANGO_SETTINGS_MODULE=config.settings
 ENV PYTHONDONTWRITEBYTECODE=1
@@ -38,10 +35,18 @@ ENV DB_USER=postgres
 ENV DB_PASSWORD=
 ENV DB_HOST=localhost
 ENV DB_PORT=5432
+ENV OPENAI_API_KEY=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
+# settings.py
+ENV OPENAI_MODEL=o4-mini
+ENV OPENAI_MAX_TOKENS=4096
+ENV OPENAI_TEMPERATURE=0.7
 
-# Copy entrypoint script and nginx config
+# Copy entrypoint script and nginx config first
 COPY entrypoint.sh /app/entrypoint.sh
-COPY nginx.conf /etc/nginx/sites-available/default
+COPY nginx/nginx.conf /etc/nginx/sites-available/default
+
+# Copy project files
+COPY . .
 RUN chmod +x /app/entrypoint.sh && \
     rm -f /etc/nginx/sites-enabled/default && \
     ln -s /etc/nginx/sites-available/default /etc/nginx/sites-enabled/default
