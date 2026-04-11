@@ -20,7 +20,7 @@ DEBUG = os.getenv('DEBUG', 'False') == 'True'
 SECRET_KEY = os.getenv('SECRET_KEY', 'gr-5s4^9^nz%*1)843r*7)+xrk!zc3==nm#zgroldi0*x#y+8e')
 ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '*').split(',')
 SECRET_KEY = os.getenv('SECRET_KEY', 'your-default-secret-key')
-OPENAI_API_KEY = os.getenv('OPENAI_API_KEY', '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')
+OPENAI_API_KEY = os.getenv('OPENAI_API_KEY', '')
 # settings.py
 OPENAI_MODEL = os.getenv('OPENAI_MODEL', 'o4-mini')
 OPENAI_MAX_TOKENS = os.getenv('OPENAI_MAX_TOKENS', 4096)
