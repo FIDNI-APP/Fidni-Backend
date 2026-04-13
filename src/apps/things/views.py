@@ -24,7 +24,8 @@ else:
     TrigramSimilarity = None
 
 from .models import Content, Solution, Comment
-from .content_store import get_structures_batch
+from .content_store import get_structures_batch, get_structure
+from .pdf_parser import parse_pdf
 from .serializers import ContentSerializer, ContentListSerializer, ContentCreateSerializer, SolutionSerializer, CommentSerializer
 from apps.interactions.models import Vote, Save, Complete, TimeSession, SolutionView, SolutionMatch, QuestionProgress, AICorrection
 from apps.interactions.serializers import VoteSerializer, SaveSerializer, CompleteSerializer, AICorrectionSerializer
@@ -693,9 +694,10 @@ class ContentViewSet(VoteMixin, viewsets.ModelViewSet):
                 submission_state='pre_submission', language='fr'
             )
             solution_content = item.solution.solution_text if hasattr(item, 'solution') and item.solution else ''
-            structure = item.structure or {}
-            total_points = item.total_points if hasattr(item, 'total_points') else 20
-            exercise_context = {'structure': structure, 'solution': solution_content, 'total_points': total_points}
+            json_content = get_structure(item.type, item.display_id)
+            from .structure_utils import get_total_points
+            total_points = get_total_points(json_content) or 20
+            exercise_context = {'json_content': json_content, 'solution': solution_content, 'total_points': total_points}
             ai_service = AIVisionService()
             result = ai_service.start_conversation(exercise_context)
             correction.chat_history = [{'role': 'assistant', 'content': result['greeting_message'],
@@ -724,10 +726,12 @@ class ContentViewSet(VoteMixin, viewsets.ModelViewSet):
                 id=correction_id, user=request.user, content_type=ct, object_id=item.id
             )
             solution_content = item.solution.solution_text if hasattr(item, 'solution') and item.solution else ''
+            json_content = get_structure(item.type, item.display_id)
+            from .structure_utils import get_total_points
             exercise_context = {
-                'structure': item.structure or {},
+                'json_content': json_content,
                 'solution': solution_content,
-                'total_points': item.total_points if hasattr(item, 'total_points') else 20
+                'total_points': get_total_points(json_content) or 20,
             }
             ai_service = AIVisionService()
             result = ai_service.chat_pedagogical(
@@ -779,13 +783,14 @@ class ContentViewSet(VoteMixin, viewsets.ModelViewSet):
                     image=image_file, submission_state='submitted', language='fr'
                 )
             solution_content = item.solution.solution_text if hasattr(item, 'solution') and item.solution else ''
-            structure = item.structure or {}
-            total_points = item.total_points if hasattr(item, 'total_points') else 20
+            json_content = get_structure(item.type, item.display_id)
+            from .structure_utils import get_total_points
+            total_points = get_total_points(json_content) or 20
             try:
                 ai_service = AIVisionService()
                 result = ai_service.analyze_solution(
                     image_path=correction.image.path, marked_solution=solution_content,
-                    structure=structure, total_points=total_points
+                    structure=json_content, total_points=total_points
                 )
                 correction.score_awarded = result['score_awarded']
                 correction.score_total = result['score_total']
@@ -882,6 +887,35 @@ def _taxonomy_qs(source, exclude_id=None):
     return qs.distinct().annotate(
         relevance=Count('chapters') + Count('theorems') + Count('subfields')
     ).order_by('-relevance', '-view_count')
+
+
+@api_view(['POST'])
+@perm_classes([IsAuthenticated])
+def parse_pdf_view(request):
+    """
+    POST /api/parse-pdf/
+    Multipart: file=<pdf>, content_type=exercise|exam|lesson
+    Returns: simplified JSON ready for JsonImportModal
+    """
+    pdf_file = request.FILES.get('file')
+    if not pdf_file:
+        return Response({'error': 'No file provided'}, status=status.HTTP_400_BAD_REQUEST)
+    if not pdf_file.name.lower().endswith('.pdf'):
+        return Response({'error': 'File must be a PDF'}, status=status.HTTP_400_BAD_REQUEST)
+
+    content_type = request.data.get('content_type', 'exercise')
+    if content_type not in ('exercise', 'exam', 'lesson'):
+        return Response({'error': 'content_type must be exercise, exam, or lesson'}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        pdf_bytes = pdf_file.read()
+        result = parse_pdf(pdf_bytes, content_type, filename=pdf_file.name)
+        return Response(result, status=status.HTTP_200_OK)
+    except RuntimeError as e:
+        return Response({'error': str(e)}, status=status.HTTP_422_UNPROCESSABLE_ENTITY)
+    except Exception as e:
+        logger.exception('PDF parsing failed')
+        return Response({'error': 'Internal error during PDF parsing'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 @api_view(['GET'])

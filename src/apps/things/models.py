@@ -1,87 +1,18 @@
 from django.db import models
 from django.contrib.auth.models import User
 from django.contrib.contenttypes.fields import GenericRelation
-from apps.caracteristics.models import Chapter, ClassLevel, Subject, Theorem, Subfield
 from apps.interactions.models import VotableMixin, CompleteableMixin, SaveableMixin
 import logging
+from apps.caracteristics.models import Chapter, ClassLevel, Subject, Theorem, Subfield
 
 logger = logging.getLogger('django')
-
-
-# =====================
-# STRUCTURED CONTENT MIXIN
-# =====================
-
-class StructuredContentMixin(models.Model):
-    """
-    Structure JSON (stored in MongoDB, this field is unused but kept for schema compat):
-    {
-        "version": "2.0",
-        "blocks": [ ... ]
-    }
-    """
-    structure = models.JSONField(default=dict, blank=True)
-    version = models.PositiveIntegerField(default=1)
-
-    class Meta:
-        abstract = True
-
-    def get_all_item_paths(self) -> list:
-        paths = []
-        structure = self.structure or {}
-        for block in structure.get('blocks', []):
-            if block.get('type') == 'question':
-                block_id = block.get('id', '')
-                if block_id:
-                    paths.append(block_id)
-                    for sub in block.get('subQuestions', []):
-                        sub_id = sub.get('id', '')
-                        if sub_id:
-                            sub_path = f"{block_id}.{sub_id}"
-                            paths.append(sub_path)
-                            for part in sub.get('parts', []):
-                                part_id = part.get('id', '')
-                                if part_id:
-                                    paths.append(f"{sub_path}.{part_id}")
-        return paths
-
-    def get_total_points(self) -> int:
-        total = 0
-        structure = self.structure or {}
-        for block in structure.get('blocks', []):
-            if block.get('type') == 'question':
-                block_points = block.get('points', 0) or 0
-                sub_points = sum(
-                    (sub.get('points', 0) or 0) + sum(
-                        (part.get('points', 0) or 0) for part in sub.get('parts', [])
-                    )
-                    for sub in block.get('subQuestions', [])
-                )
-                total += sub_points if sub_points > 0 else block_points
-        return total
-
-    def get_item_count(self) -> int:
-        return len(self.get_all_item_paths())
-
-    def get_preview(self) -> str:
-        structure = self.structure or {}
-        for block in structure.get('blocks', []):
-            if block.get('type') == 'context':
-                html = block.get('content', {}).get('html', '')
-                if html:
-                    return html[:500]
-            elif block.get('type') == 'question':
-                html = block.get('content', {}).get('html', '')
-                if html:
-                    return html[:500]
-        return ''
 
 
 # =====================
 # CONTENT
 # =====================
 
-class Content(StructuredContentMixin, CompleteableMixin, SaveableMixin, models.Model):
+class Content(CompleteableMixin, SaveableMixin, models.Model):
     TYPE_EXERCISE = 'exercise'
     TYPE_LESSON = 'lesson'
     TYPE_EXAM = 'exam'
@@ -137,18 +68,24 @@ class Content(StructuredContentMixin, CompleteableMixin, SaveableMixin, models.M
             self.display_id = (max_id or 0) + 1
         super().save(*args, **kwargs)
 
-    @property
-    def total_points(self):
-        return self.get_total_points()
+    def _get_structure(self) -> dict:
+        from apps.things.content_store import get_structure
+        return get_structure(self.type, self.display_id)
 
     @property
-    def item_count(self):
-        return self.get_item_count()
+    def total_points(self) -> int:
+        from apps.things.structure_utils import get_total_points
+        return get_total_points(self._get_structure())
 
     @property
-    def section_count(self):
-        structure = self.structure or {}
-        return len([b for b in structure.get('blocks', []) if b.get('type') == 'section'])
+    def item_count(self) -> int:
+        from apps.things.structure_utils import get_item_count
+        return get_item_count(self._get_structure())
+
+    @property
+    def section_count(self) -> int:
+        from apps.things.structure_utils import get_section_count
+        return get_section_count(self._get_structure())
 
     @property
     def success_count(self):

@@ -89,3 +89,8 @@ openai==1.58.1
 
 # MongoDB
 pymongo==4.10.1
+
+# PDF parsing (requires Java 11+)
+opendataloader-pdf
+# Dev tools
+pylint-django

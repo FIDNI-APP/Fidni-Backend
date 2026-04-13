@@ -6,6 +6,7 @@ from apps.users.models import ViewHistory
 from apps.caracteristics.serializers import ChapterSerializer, ClassLevelSerializer, SubjectSerializer, SubfieldSerializer, TheoremSerializer
 from apps.uploads.serializers import FileAttachmentSerializer
 from .content_store import get_structure, upsert_structure, get_structures_batch
+from .structure_utils import get_total_points, get_item_count, get_section_count
 import logging
 
 logger = logging.getLogger('django')
@@ -85,24 +86,28 @@ class ContentSerializer(serializers.ModelSerializer):
     total_points = serializers.IntegerField(read_only=True)
     item_count = serializers.IntegerField(read_only=True)
     section_count = serializers.IntegerField(read_only=True)
-    structure = serializers.JSONField(required=False)
+    json_content = serializers.JSONField(required=False)
 
     class Meta:
         model = Content
         fields = [
-            'id', 'display_id', 'type', 'title', 'content', 'structure',
+            'id', 'display_id', 'type', 'title', 'content', 'json_content',
             'difficulty', 'chapters', 'author', 'created_at', 'updated_at',
             'view_count', 'comments', 'solution', 'vote_count', 'user_vote',
             'class_levels', 'subject', 'subfields', 'theorems',
             'user_save', 'user_complete', 'user_timespent',
-            'total_points', 'item_count', 'section_count', 'version',
+            'total_points', 'item_count', 'section_count',
             # exam fields
             'is_national_exam', 'national_year', 'duration_minutes',
         ]
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
-        data['structure'] = get_structure(instance.type, instance.display_id)
+        json_content = get_structure(instance.type, instance.display_id)
+        data['json_content'] = json_content
+        data['total_points'] = get_total_points(json_content)
+        data['item_count'] = get_item_count(json_content)
+        data['section_count'] = get_section_count(json_content)
         return data
 
     def get_comments(self, obj):
@@ -160,12 +165,12 @@ class ContentListSerializer(serializers.ModelSerializer):
     user_complete = serializers.SerializerMethodField()
     total_points = serializers.IntegerField(read_only=True)
     item_count = serializers.IntegerField(read_only=True)
-    structure = serializers.JSONField(required=False)
+    json_content = serializers.JSONField(required=False)
 
     class Meta:
         model = Content
         fields = [
-            'id', 'display_id', 'type', 'title', 'structure', 'difficulty',
+            'id', 'display_id', 'type', 'title', 'json_content', 'difficulty',
             'author', 'subject', 'class_levels', 'chapters', 'theorems',
             'comment_count', 'created_at', 'view_count', 'vote_count',
             'user_vote', 'user_save', 'user_complete',
@@ -177,9 +182,12 @@ class ContentListSerializer(serializers.ModelSerializer):
         data = super().to_representation(instance)
         mongo_structures = self.context.get('mongo_structures')
         if mongo_structures is not None:
-            data['structure'] = mongo_structures.get(instance.display_id, {})
+            json_content = mongo_structures.get(instance.display_id, {})
         else:
-            data['structure'] = get_structure(instance.type, instance.display_id)
+            json_content = get_structure(instance.type, instance.display_id)
+        data['json_content'] = json_content
+        data['total_points'] = get_total_points(json_content)
+        data['item_count'] = get_item_count(json_content)
         return data
 
     def get_chapters(self, obj):
@@ -235,12 +243,12 @@ class ContentCreateSerializer(serializers.ModelSerializer):
     national_date = serializers.CharField(
         write_only=True, required=False, allow_null=True
     )
-    structure = serializers.JSONField(required=False)
+    json_content = serializers.JSONField(required=False)
 
     class Meta:
         model = Content
         fields = [
-            'id', 'type', 'title', 'content', 'structure', 'difficulty',
+            'id', 'type', 'title', 'content', 'json_content', 'difficulty',
             'chapters', 'class_levels', 'subject', 'subfields', 'theorems',
             'solution_content', 'national_date',
             'is_national_exam', 'national_year', 'duration_minutes',
@@ -266,7 +274,7 @@ class ContentCreateSerializer(serializers.ModelSerializer):
         return data
 
     def create(self, validated_data):
-        structure = validated_data.pop('structure', None)
+        json_content = validated_data.pop('json_content', None)
         solution_content = validated_data.pop('solution_content', None)
         chapters = validated_data.pop('chapters', [])
         class_levels = validated_data.pop('class_levels', [])
@@ -287,8 +295,8 @@ class ContentCreateSerializer(serializers.ModelSerializer):
         if theorems:
             item.theorems.set(theorems)
 
-        if structure is not None:
-            upsert_structure(item.type, item.display_id, structure)
+        if json_content is not None:
+            upsert_structure(item.type, item.display_id, json_content)
 
         if solution_content:
             Solution.objects.create(
@@ -300,7 +308,7 @@ class ContentCreateSerializer(serializers.ModelSerializer):
         return item
 
     def update(self, instance, validated_data):
-        structure = validated_data.pop('structure', None)
+        json_content = validated_data.pop('json_content', None)
         solution_content = validated_data.pop('solution_content', None)
         chapters = validated_data.pop('chapters', None)
         class_levels = validated_data.pop('class_levels', None)
@@ -321,8 +329,8 @@ class ContentCreateSerializer(serializers.ModelSerializer):
 
         instance.save()
 
-        if structure is not None:
-            upsert_structure(instance.type, instance.display_id, structure)
+        if json_content is not None:
+            upsert_structure(instance.type, instance.display_id, json_content)
 
         if solution_content is not None:
             sol, _ = Solution.objects.get_or_create(

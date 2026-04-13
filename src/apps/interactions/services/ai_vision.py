@@ -245,7 +245,7 @@ class AIVisionService:
         """
         try:
             context_text = self._build_exercise_context(
-                exercise_context.get('structure', {}),
+                exercise_context.get('json_content', {}),
                 exercise_context.get('solution', ''),
                 exercise_context.get('total_points', 20)
             )
@@ -325,7 +325,7 @@ class AIVisionService:
             # Otherwise context is already in greeting message
             if exercise_context and len(chat_history) == 0:
                 context_text = self._build_exercise_context(
-                    exercise_context.get('structure', {}),
+                    exercise_context.get('json_content', {}),
                     exercise_context.get('solution', ''),
                     exercise_context.get('total_points', 20)
                 )

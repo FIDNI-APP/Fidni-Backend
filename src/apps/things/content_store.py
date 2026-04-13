@@ -5,7 +5,7 @@ Each document:
 {
     "type":       "exercise" | "lesson" | "exam",
     "display_id": <int>,
-    "structure": {
+    "json_content": {
         "version": "2.0",
         "blocks": [ ... ]
     },
@@ -35,31 +35,31 @@ def _col():
 # ---------------------------------------------------------------------------
 
 def get_structure(content_type: str, display_id: int) -> dict:
-    """Return the structure dict or {} if not found."""
+    """Return the json_content dict or {} if not found."""
     doc = _col().find_one(
         {'type': content_type, 'display_id': display_id},
-        {'_id': 0, 'structure': 1},
+        {'_id': 0, 'json_content': 1},
     )
-    return doc['structure'] if doc else {}
+    return doc['json_content'] if doc else {}
 
 
 def get_structures_batch(content_type: str, display_ids: list) -> dict:
-    """Return {display_id: structure} for all given IDs in one query."""
+    """Return {display_id: json_content} for all given IDs in one query."""
     docs = _col().find(
         {'type': content_type, 'display_id': {'$in': display_ids}},
-        {'_id': 0, 'display_id': 1, 'structure': 1},
+        {'_id': 0, 'display_id': 1, 'json_content': 1},
     )
-    return {doc['display_id']: doc['structure'] for doc in docs}
+    return {doc['display_id']: doc['json_content'] for doc in docs}
 
 
-def upsert_structure(content_type: str, display_id: int, structure: dict) -> None:
-    """Insert or replace the structure for (type, display_id)."""
+def upsert_structure(content_type: str, display_id: int, json_content: dict) -> None:
+    """Insert or replace the json_content for (type, display_id)."""
     now = datetime.now(tz=timezone.utc)
     _col().update_one(
         {'type': content_type, 'display_id': display_id},
         {
             '$set': {
-                'structure': structure,
+                'json_content': json_content,
                 'updated_at': now,
             },
             '$setOnInsert': {

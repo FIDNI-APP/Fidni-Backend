@@ -119,8 +119,9 @@ class RevisionListViewSet(viewsets.ModelViewSet):
             )
 
         try:
-            # Get the content type
-            content_type = ContentType.objects.get(model=content_type_name.lower())
+            # exercise/exam/lesson are all stored in the Content model
+            model_name = 'content' if content_type_name.lower() in ('exercise', 'exam', 'lesson') else content_type_name.lower()
+            content_type = ContentType.objects.get(model=model_name)
 
             # Create or update the item
             item, created = RevisionListItem.objects.get_or_create(

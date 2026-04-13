@@ -2,14 +2,18 @@ FROM python:3.12-slim
 
 WORKDIR /app
 
-# Install system dependencies
+# Install system dependencies + Java 11 (required by opendataloader-pdf)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gcc \
     python3-dev \
     curl \
     postgresql-client \
     nginx \
+    default-jre-headless \
     && rm -rf /var/lib/apt/lists/*
+
+ENV JAVA_HOME=/usr/lib/jvm/default-java
+ENV PATH="$JAVA_HOME/bin:$PATH"
 
 # Copy requirements first to leverage Docker cache
 COPY requirements.txt .
@@ -35,7 +39,6 @@ ENV DB_USER=postgres
 ENV DB_PASSWORD=
 ENV DB_HOST=localhost
 ENV DB_PORT=5432
-ENV OPENAI_API_KEY=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
 # settings.py
 ENV OPENAI_MODEL=o4-mini
 ENV OPENAI_MAX_TOKENS=4096

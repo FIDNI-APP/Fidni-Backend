@@ -19,7 +19,7 @@ from apps.users.dashboard_views import (
     get_recommended_content,
 )
 from apps.users.study_stats_views import get_study_statistics
-from apps.things.views import get_content_recommendations
+from apps.things.views import get_content_recommendations, parse_pdf_view
 from apps.caracteristics.views import (
     ClassLevelViewSet, SubjectViewSet, ChapterViewSet, SubfieldViewSet, TheoremViewSet,
     difficulty_counts,
@@ -129,6 +129,9 @@ urlpatterns = [
 
     # Recommendations
     path('api/contents/<int:content_id>/recommendations/', get_content_recommendations, name='content-recommendations'),
+
+    # PDF parsing
+    path('api/parse-pdf/', parse_pdf_view, name='parse-pdf'),
 
     # Logging admin
     path('api/logs/', include('apps.logging.urls')),
