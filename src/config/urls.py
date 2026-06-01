@@ -12,7 +12,7 @@ from apps.users.views import (
     TeacherInvitationView, TeacherInvitationRespondView,
     TeacherInvitationDeleteView, StudentInvitationsView,
 )
-from apps.users.views import PasswordChangeView, UpdateUserInfoView
+from apps.users.views import PasswordChangeView, UpdateUserInfoView, UpdateMeView
 from apps.users.dashboard_views import (
     get_user_dashboard_stats,
     get_learning_path_progress,
@@ -59,6 +59,8 @@ urlpatterns = [
 
     # Avatar upload - MUST be before router to avoid conflict with /api/users/<username>/
     path('api/users/avatar/', AvatarUploadView.as_view(), name='avatar-upload'),
+    # Update own profile (no username in URL)
+    path('api/users/me/', UpdateMeView.as_view(), name='update-me'),
 
     path('api/', include(router.urls)),
 
@@ -138,6 +140,12 @@ urlpatterns = [
 
     # Skill IQ assessments
     path('api/skill-assessments/', include('apps.skilliq.urls')),
+
+    # Classrooms
+    path('api/classrooms/', include('apps.classrooms.urls')),
+
+    # Concours (ENSA / ENSAM / Médecine + tips + simulations)
+    path('api/concours/', include('apps.concours.urls')),
 ]
 
 # Serve media files in development

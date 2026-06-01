@@ -55,6 +55,8 @@ INSTALLED_APPS = [
     'apps.logging.apps.LoggingConfig',
     'apps.skilliq.apps.SkilliqConfig',
     'apps.uploads.apps.UploadsConfig',
+    'apps.classrooms.apps.ClassroomsConfig',
+    'apps.concours.apps.ConcoursConfig',
 ]
 
 MIDDLEWARE = [

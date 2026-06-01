@@ -761,3 +761,38 @@ class UpdateUserInfoView(APIView):
             'id': user.id, 'username': user.username,
             'email': user.email, 'first_name': user.first_name, 'last_name': user.last_name,
         }})
+
+
+class UpdateMeView(APIView):
+    """PATCH /api/users/me/ — update own profile without username in URL"""
+    permission_classes = [IsAuthenticated]
+
+    def patch(self, request):
+        user = request.user
+        user_updated_fields = []
+
+        # Username change
+        if (new_username := request.data.get('username')) is not None:
+            new_username = new_username.strip()
+            if not new_username:
+                return Response({'error': "Le nom d'utilisateur ne peut pas être vide"}, status=status.HTTP_400_BAD_REQUEST)
+            if new_username != user.username:
+                if User.objects.filter(username=new_username).exclude(id=user.id).exists():
+                    return Response({'error': "Ce nom d'utilisateur est déjà pris"}, status=status.HTTP_400_BAD_REQUEST)
+                user.username = new_username
+                user_updated_fields.append('username')
+
+        # Profile data
+        profile_data = request.data.get('profile', None)
+
+        if user_updated_fields:
+            user.save(update_fields=user_updated_fields)
+
+        if profile_data:
+            serializer = UserSerializer(user, data={'profile': profile_data}, partial=True, context={'request': request})
+            if serializer.is_valid():
+                serializer.save()
+            else:
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response(UserSerializer(user, context={'request': request, 'is_owner': True}).data)

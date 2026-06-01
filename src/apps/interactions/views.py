@@ -307,7 +307,12 @@ def track_study_time(request):
         if time_spent < 5:
             return Response({'message': 'Skipped - time too short'}, status=status.HTTP_200_OK)
 
-        content_type = ContentType.objects.get(model=content_type_name.lower())
+        # Frontend sends 'exercise' | 'lesson' | 'exam' but they all share the
+        # unified Content model, registered as ContentType(model='content').
+        normalized = content_type_name.lower()
+        if normalized in ('exercise', 'lesson', 'exam'):
+            normalized = 'content'
+        content_type = ContentType.objects.get(model=normalized)
 
         if not user or not user.id:
             logger.error(f"Attempted to track study time without valid user: user={user}")
