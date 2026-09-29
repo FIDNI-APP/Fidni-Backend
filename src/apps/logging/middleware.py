@@ -5,12 +5,42 @@ import time
 import traceback as tb
 import json
 from django.utils.deprecation import MiddlewareMixin
-from django.db import connection
 from .models import ErrorLog, APILog
+import logging
+
+logger = logging.getLogger("django")
+
+
+# Jamais écrits en base : mots de passe, jetons, liens de réinitialisation.
+SENSITIVE_KEYS = {
+    'password', 'password1', 'password2', 'confirmpassword', 'confirm_password',
+    'current_password', 'new_password', 'old_password',
+    'token', 'access', 'refresh', 'uid', 'secret', 'api_key',
+}
+
+
+def redact(value):
+    """Copie de `value` (dict/list) où les champs sensibles sont masqués."""
+    if isinstance(value, dict):
+        return {k: ('[masqué]' if str(k).lower() in SENSITIVE_KEYS else redact(v)) for k, v in value.items()}
+    if isinstance(value, list):
+        return [redact(v) for v in value]
+    return value
+
+
+def redact_body(raw: str):
+    """Corps de requête/réponse masqué ; un corps illisible (formulaire, fichier) n'est pas gardé."""
+    try:
+        return json.dumps(redact(json.loads(raw)), ensure_ascii=False)[:5000]
+    except (ValueError, TypeError):
+        return '[corps non JSON non conservé]'
 
 
 def get_client_ip(request):
     """Extract client IP from request"""
+    cf_ip = request.META.get('HTTP_CF_CONNECTING_IP')
+    if cf_ip:
+        return cf_ip.strip()
     x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
     if x_forwarded_for:
         ip = x_forwarded_for.split(',')[0]
@@ -26,7 +56,8 @@ class ErrorTrackingMiddleware(MiddlewareMixin):
         """Called when view raises exception"""
         try:
             # Get user if authenticated
-            user = request.user if request.user.is_authenticated else None
+            # DRF met request.user à None pour un visiteur (UNAUTHENTICATED_USER = None).
+            user = request.user if getattr(request.user, "is_authenticated", False) else None
 
             # Get request data
             request_data = {}
@@ -40,6 +71,7 @@ class ErrorTrackingMiddleware(MiddlewareMixin):
                         request_data = dict(request.POST)
                 except:
                     request_data = {'error': 'Could not parse request body'}
+            request_data = redact(request_data)
 
             # Determine severity based on exception type
             severity = 'error'
@@ -49,7 +81,6 @@ class ErrorTrackingMiddleware(MiddlewareMixin):
                 severity = 'warning'
 
             # Create or update error log
-            error_signature = f"{type(exception).__name__}:{request.path}"
 
             # Try to find existing error with same signature
             existing_error = ErrorLog.objects.filter(
@@ -97,7 +128,18 @@ class APILoggingMiddleware(MiddlewareMixin):
         """Check if this path should be logged"""
         return not any(path.startswith(exclude) for exclude in self.EXCLUDE_PATHS)
 
+    def _purge_old_logs_daily(self):
+        # Durée de conservation des journaux (RGPD) : purge au plus une fois par jour.
+        from django.core.cache import cache
+        if cache.add('fidni:logs-purged', True, timeout=24 * 3600):
+            try:
+                from apps.users.legal import purge_old_logs
+                purge_old_logs()
+            except Exception:  # la purge ne doit jamais faire échouer une requête
+                logger.exception('Purge des journaux impossible')
+
     def process_request(self, request):
+        self._purge_old_logs_daily()
         """Mark request start time"""
         if not hasattr(request, '_start_time'):
             request._start_time = time.time()
@@ -124,26 +166,25 @@ class APILoggingMiddleware(MiddlewareMixin):
             if request.method in ['POST', 'PUT', 'PATCH']:
                 try:
                     if hasattr(request, 'body'):
-                        request_body = request.body.decode('utf-8')[:5000]  # Limit size
+                        request_body = redact_body(request.body.decode('utf-8'))
                 except:
                     pass
 
             # Get query params
-            query_params = dict(request.GET) if request.GET else None
+            query_params = redact(dict(request.GET)) if request.GET else None
 
             # Get response body (only for errors or if explicitly enabled)
             response_body = None
             if response.status_code >= 400:
                 try:
                     if hasattr(response, 'content'):
-                        response_body = response.content.decode('utf-8')[:5000]  # Limit size
+                        response_body = redact_body(response.content.decode('utf-8'))
                 except:
                     pass
 
             # Only log if response time is significant or status is error
             if response_time > 1000 or response.status_code >= 400:
-                print(f"[DEBUG] Logging API call: {request.method} {request.path} - {response.status_code}")
-                log_entry = APILog.objects.create(
+                APILog.objects.create(
                     method=request.method,
                     endpoint=request.path,
                     user=user,
@@ -154,7 +195,6 @@ class APILoggingMiddleware(MiddlewareMixin):
                     response_body=response_body,
                     query_params=query_params,
                 )
-                print(f"[DEBUG] Created log entry ID: {log_entry.id}")
 
         except Exception as e:
             import traceback

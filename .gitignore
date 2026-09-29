@@ -21,7 +21,7 @@ var/
 *.egg-info/
 .installed.cfg
 *.egg
-*/migrations/
+# (Les migrations DOIVENT être versionnées : ne pas les ignorer.)
 *.pyo
 *.pyd
 # Django
@@ -32,7 +32,8 @@ media
 cloudflared-config.yml
 .env
 
-
+.env.*
+!.env.example
 
 .env
 # IDE
@@ -40,3 +41,6 @@ cloudflared-config.yml
 .vscode/
 *.swp
 *.swo
+
+# Outils
+.ruff_cache/

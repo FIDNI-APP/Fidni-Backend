@@ -8,17 +8,25 @@ from rest_framework.parsers import MultiPartParser, FormParser
 from django.contrib.auth.models import User
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.auth import update_session_auth_hash
+from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError as DjangoValidationError
+from django.core.validators import validate_email
 from django.db import transaction
 
-from .serializers import UserSerializer, UserSettingsSerializer, SubjectGradeSerializer
-from .models import SubjectGrade, ViewHistory, UserProfile, get_random_avatar
-from .time_stats_views import TimeStatsViewMixin
+from .serializers import UserSerializer, UserSettingsSerializer
+from .models import SubjectGrade, ViewHistory, get_random_avatar
 from apps.things.models import Content
 from apps.caracteristics.models import Subject, ClassLevel
 from apps.interactions.models import Complete, Save
-from apps.things.serializers import ContentListSerializer
+from apps.things.listing import in_order, serialize_content_list, with_list_relations
 from apps.interactions.serializers import ViewHistorySerializer
 
+from apps.authentication.views import USERNAME_RE
+from .identity import apply_identity
+from .account_deletion import DELETED_USERNAME, delete_account, is_deleted_account
+from .legal import accept_terms, export_user_data
+from rest_framework.permissions import IsAdminUser
+from config.throttling import AuthRateThrottle
 import logging
 
 logger = logging.getLogger('django')
@@ -28,7 +36,7 @@ logger = logging.getLogger('django')
 
 @api_view(['GET'])
 def get_current_user(request):
-    if request.user.is_authenticated:
+    if request.user and request.user.is_authenticated:
         serializer = UserSerializer(request.user, context={'request': request, 'is_owner': True})
         return Response(serializer.data)
     return Response(status=status.HTTP_401_UNAUTHORIZED)
@@ -136,7 +144,6 @@ class AvatarUploadView(APIView):
             profile.avatar_file = None
         
         # Set a default avatar URL
-        from .models import get_random_avatar
         if hasattr(profile, 'avatar_url'):
             profile.avatar_url = get_random_avatar()
         profile.save()
@@ -237,6 +244,13 @@ class OnboardingView(APIView):
         profile = request.user.profile
         data = request.data
 
+        # Prénom, nom et établissement sont obligatoires (feuilles d'exercices, classes).
+        error = apply_identity(request.user, data, required=True)
+        if error:
+            return Response({'error': error, 'code': 'identity'}, status=status.HTTP_400_BAD_REQUEST)
+        request.user.save(update_fields=['first_name', 'last_name'])
+        profile.save(update_fields=['school', 'school_name', 'gender', 'birth_date'])
+
         try:
             user_type = data.get('user_type', profile.user_type)
             profile.user_type = user_type
@@ -298,8 +312,9 @@ class OnboardingView(APIView):
                             SubjectGrade.objects.create(
                                 user=profile,
                                 subject=subject,
-                                min_grade=current,
-                                max_grade=target,
+                                # current/target font foi : save() recopie dans min/max.
+                                current_grade=current,
+                                target_grade=target,
                             )
                         except Subject.DoesNotExist:
                             continue
@@ -328,14 +343,22 @@ class OnboardingView(APIView):
 # ============ USER PROFILE VIEWSET ============
 
 class UserProfileViewSet(viewsets.ModelViewSet):
-    queryset = User.objects.all()
+    # « Compte supprimé » n'a pas de page de profil.
+    queryset = User.objects.exclude(username=DELETED_USERNAME)
     serializer_class = UserSerializer
     lookup_field = 'username'
-    
+    # Pas de liste, de création ni de suppression par cette route : elles étaient ouvertes
+    # à tous (n'importe qui pouvait lister les comptes ou en supprimer un). Un profil se
+    # consulte par son nom et ne se modifie que par son propriétaire.
+    http_method_names = ['get', 'put', 'patch', 'head', 'options']
+
     def get_permissions(self):
         if self.action in ['update', 'partial_update']:
             return [IsAuthenticated()]
         return [AllowAny()]
+
+    def list(self, request, *args, **kwargs):
+        return Response({'detail': 'Non disponible.'}, status=status.HTTP_404_NOT_FOUND)
     
     def get_serializer_context(self):
         context = super().get_serializer_context()
@@ -403,11 +426,11 @@ class UserProfileViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['get'])
     def contributions(self, request, username=None):
         user = self.get_object()
-        items = Content.objects.filter(author=user).order_by('-created_at')
+        items = with_list_relations(Content.objects.filter(author=user), request.user).order_by('-created_at')
         page = self.paginate_queryset(items)
         if page is not None:
-            return self.get_paginated_response(ContentListSerializer(page, many=True, context={'request': request}).data)
-        return Response(ContentListSerializer(items, many=True, context={'request': request}).data)
+            return self.get_paginated_response(serialize_content_list(page, request))
+        return Response(serialize_content_list(items, request))
 
     @action(detail=True, methods=['get'])
     def saved_exercises(self, request, username=None):
@@ -431,13 +454,16 @@ class UserProfileViewSet(viewsets.ModelViewSet):
         return self._saved_by_type(user, 'exam', request)
 
     def _saved_by_type(self, user, content_type_str, request):
+        # Les enregistrements de l'élève d'abord (avant : les ids de TOUS les contenus du type
+        # étaient chargés pour filtrer), puis les contenus, dans l'ordre d'enregistrement.
         ct = ContentType.objects.get_for_model(Content)
-        type_ids = Content.objects.filter(type=content_type_str).values_list('id', flat=True)
-        saved_ids = Save.objects.filter(
-            user=user, content_type=ct, object_id__in=type_ids
-        ).order_by('-saved_at').values_list('object_id', flat=True)
-        items = Content.objects.filter(id__in=saved_ids)
-        return Response(ContentListSerializer(items, many=True, context={'request': request}).data)
+        saved_ids = [
+            int(oid) for oid in Save.objects.filter(user=user, content_type=ct)
+            .order_by('-saved_at').values_list('object_id', flat=True)
+            if str(oid).isdigit()
+        ]
+        qs = with_list_relations(Content.objects.filter(type=content_type_str), request.user)
+        return Response(serialize_content_list(in_order(qs, saved_ids), request))
 
     @action(detail=True, methods=['get'])
     def history(self, request, username=None):
@@ -451,38 +477,28 @@ class UserProfileViewSet(viewsets.ModelViewSet):
     def success_thing(self, request, username=None):
         user = self.get_object()
         if user.id != request.user.id and not request.user.is_superuser:
-            return Response({'error': "You cannot view other users' progress"})
+            return Response({'error': "You cannot view other users' progress"}, status=status.HTTP_403_FORBIDDEN)
         return self._completed_by_status(user, 'success', request)
 
     @action(detail=True, methods=['get'])
     def review_thing(self, request, username=None):
         user = self.get_object()
         if user.id != request.user.id and not request.user.is_superuser:
-            return Response({'error': "You cannot view other users' progress"})
+            return Response({'error': "You cannot view other users' progress"}, status=status.HTTP_403_FORBIDDEN)
         return self._completed_by_status(user, 'review', request)
 
     def _completed_by_status(self, user, status_val, request):
         ct = ContentType.objects.get_for_model(Content)
-        exercise_ids = Content.objects.filter(type='exercise').values_list('id', flat=True)
-        complete_ids = Complete.objects.filter(
-            user=user, status=status_val, content_type=ct, object_id__in=exercise_ids
-        ).order_by('-updated_at').values_list('object_id', flat=True)
-        items = Content.objects.filter(id__in=complete_ids)
-        return Response(ContentListSerializer(items, many=True, context={'request': request}).data)
+        complete_ids = [
+            int(oid) for oid in Complete.objects.filter(user=user, status=status_val, content_type=ct)
+            .order_by('-updated_at').values_list('object_id', flat=True)
+            if str(oid).isdigit()
+        ]
+        qs = with_list_relations(Content.objects.filter(type='exercise'), request.user)
+        return Response(serialize_content_list(in_order(qs, complete_ids), request))
 
 
 # ============ SUBJECT GRADE VIEWSET ============
-
-class SubjectGradeViewSet(viewsets.ModelViewSet):
-    serializer_class = SubjectGradeSerializer
-    permission_classes = [IsAuthenticated]
-    
-    def get_queryset(self):
-        return SubjectGrade.objects.filter(user=self.request.user.profile)
-    
-    def perform_create(self, serializer):
-        serializer.save(user=self.request.user.profile)
-
 
 # ============ USER SETTINGS ============
 
@@ -727,13 +743,18 @@ class PasswordChangeView(APIView):
             return Response({'error': 'Mot de passe actuel et nouveau mot de passe requis'}, status=status.HTTP_400_BAD_REQUEST)
         if not request.user.check_password(current_password):
             return Response({'error': 'Mot de passe actuel incorrect'}, status=status.HTTP_400_BAD_REQUEST)
-        if len(new_password) < 8:
-            return Response({'error': 'Le nouveau mot de passe doit contenir au moins 8 caractères'}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            validate_password(new_password, user=request.user)
+        except DjangoValidationError as e:
+            return Response({'error': ' '.join(e.messages)}, status=status.HTTP_400_BAD_REQUEST)
 
         request.user.set_password(new_password)
         request.user.save()
         update_session_auth_hash(request, request.user)
-        return Response({'message': 'Mot de passe changé avec succès'})
+        # Les autres appareils sont déconnectés ; celui-ci reçoit de nouveaux jetons.
+        from apps.authentication.jwt_revocation import fresh_tokens, revoke_all_sessions
+        revoke_all_sessions(request.user)
+        return Response({'message': 'Mot de passe changé avec succès', **fresh_tokens(request.user)})
 
 
 class UpdateUserInfoView(APIView):
@@ -743,13 +764,36 @@ class UpdateUserInfoView(APIView):
         user = request.user
         updated_fields = []
 
-        for field in ('first_name', 'last_name'):
-            if (val := request.data.get(field)) is not None:
-                setattr(user, field, val)
-                updated_fields.append(field)
+        # Prénom, nom, établissement : modifiables, mais jamais vidés (ils sont obligatoires).
+        error = apply_identity(user, request.data, required=False)
+        if error:
+            return Response({'error': error, 'code': 'identity'}, status=status.HTTP_400_BAD_REQUEST)
+        updated_fields += [f for f in ('first_name', 'last_name') if f in request.data]
+        if request.data.get('accept_terms') is True:
+            accept_terms(user.profile)
 
-        if (email := request.data.get('email')) is not None:
-            if User.objects.filter(email=email).exclude(id=user.id).exists():
+        profile_fields = []
+        if 'school_id' in request.data or 'school_name' in request.data:
+            profile_fields += ['school', 'school_name']
+        if 'gender' in request.data:
+            profile_fields.append('gender')
+        if 'birth_date' in request.data:
+            profile_fields.append('birth_date')
+        if profile_fields:
+            user.profile.save(update_fields=profile_fields)
+
+        if (email := request.data.get('email')) is not None and str(email).strip().lower() != (user.email or '').lower():
+            # Changer l'e-mail permet ensuite de réinitialiser le mot de passe : sans cette
+            # vérification, une session laissée ouverte suffisait pour s'approprier le compte.
+            if not user.check_password(request.data.get('current_password') or ''):
+                return Response({'error': 'Mot de passe actuel requis pour changer d’adresse e-mail.',
+                                 'code': 'password_required'}, status=status.HTTP_400_BAD_REQUEST)
+            email = str(email).strip().lower()
+            try:
+                validate_email(email)
+            except DjangoValidationError:
+                return Response({'error': 'Adresse e-mail invalide'}, status=status.HTTP_400_BAD_REQUEST)
+            if User.objects.filter(email__iexact=email).exclude(id=user.id).exists():
                 return Response({'error': 'Cet email est déjà utilisé'}, status=status.HTTP_400_BAD_REQUEST)
             user.email = email
             updated_fields.append('email')
@@ -760,6 +804,8 @@ class UpdateUserInfoView(APIView):
         return Response({'message': 'Informations mises à jour', 'user': {
             'id': user.id, 'username': user.username,
             'email': user.email, 'first_name': user.first_name, 'last_name': user.last_name,
+            'school_name': user.profile.school_name, 'gender': user.profile.gender,
+            'birth_date': user.profile.birth_date.isoformat() if user.profile.birth_date else None,
         }})
 
 
@@ -777,7 +823,9 @@ class UpdateMeView(APIView):
             if not new_username:
                 return Response({'error': "Le nom d'utilisateur ne peut pas être vide"}, status=status.HTTP_400_BAD_REQUEST)
             if new_username != user.username:
-                if User.objects.filter(username=new_username).exclude(id=user.id).exists():
+                if not USERNAME_RE.match(new_username):
+                    return Response({'error': "3 à 30 caractères : lettres, chiffres, « . », « _ » ou « - »"}, status=status.HTTP_400_BAD_REQUEST)
+                if User.objects.filter(username__iexact=new_username).exclude(id=user.id).exists():
                     return Response({'error': "Ce nom d'utilisateur est déjà pris"}, status=status.HTTP_400_BAD_REQUEST)
                 user.username = new_username
                 user_updated_fields.append('username')
@@ -796,3 +844,64 @@ class UpdateMeView(APIView):
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
         return Response(UserSerializer(user, context={'request': request, 'is_owner': True}).data)
+
+# ---------------------------------------------------------------------------
+# Suppression de compte
+# ---------------------------------------------------------------------------
+
+class DeleteAccountView(APIView):
+    """L'utilisateur supprime son propre compte (mot de passe exigé).
+
+    Ses contributions publiques restent en ligne sous « Compte supprimé » ;
+    tout le reste (profil, progression, favoris, cahiers, fichiers…) est effacé.
+    """
+    permission_classes = [IsAuthenticated]
+    throttle_classes = [AuthRateThrottle]
+
+    def post(self, request):
+        user = request.user
+        if not user.check_password(request.data.get('password') or ''):
+            return Response({'error': 'Mot de passe incorrect.', 'code': 'password'},
+                            status=status.HTTP_400_BAD_REQUEST)
+        if user.is_superuser:
+            # Garde-fou : le dernier accès d'administration ne doit pas disparaître par mégarde.
+            return Response({'error': 'Un compte administrateur ne se supprime pas depuis le site.'},
+                            status=status.HTTP_403_FORBIDDEN)
+        delete_account(user, keep_contributions=True)
+        return Response({'detail': 'account_deleted'})
+
+
+class ModerationDeleteAccountView(APIView):
+    """Modération : un administrateur supprime un compte ET son contenu (contenu inapproprié)."""
+    permission_classes = [IsAdminUser]
+
+    def post(self, request, username):
+        target = User.objects.filter(username=username).first()
+        if target is None or is_deleted_account(target):
+            return Response({'error': 'Compte introuvable.'}, status=status.HTTP_404_NOT_FOUND)
+        if (request.data.get('confirm') or '') != target.username:
+            return Response({'error': 'Recopie exactement le nom du compte pour confirmer.', 'code': 'confirm'},
+                            status=status.HTTP_400_BAD_REQUEST)
+        from apps.things.importing import EDITORIAL_USERNAME
+        if target.is_staff or target.is_superuser or target.pk == request.user.pk or target.username == EDITORIAL_USERNAME:
+            return Response({'error': 'Un compte administrateur ne se supprime pas ainsi.'},
+                            status=status.HTTP_403_FORBIDDEN)
+        summary = delete_account(target, keep_contributions=False)
+        logger.warning('Modération : %s a supprimé le compte %s et son contenu (%s)',
+                       request.user.username, username, summary)
+        return Response({'detail': 'account_deleted', 'removed': summary})
+
+
+class ExportMyDataView(APIView):
+    """Télécharger toutes ses données (RGPD, droits d'accès et de portabilité)."""
+    permission_classes = [IsAuthenticated]
+    throttle_classes = [AuthRateThrottle]
+
+    def get(self, request):
+        import json
+        from django.core.serializers.json import DjangoJSONEncoder
+        from django.http import HttpResponse
+        body = json.dumps(export_user_data(request.user), cls=DjangoJSONEncoder, ensure_ascii=False, indent=2)
+        response = HttpResponse(body, content_type='application/json; charset=utf-8')
+        response['Content-Disposition'] = f'attachment; filename="fidni-mes-donnees-{request.user.username}.json"'
+        return response

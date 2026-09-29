@@ -46,7 +46,6 @@ QCM question structure (Mongo, one document per ConcoursExam):
 import uuid
 
 from django.contrib.auth.models import User
-from django.contrib.contenttypes.fields import GenericRelation
 from django.db import models
 
 from apps.interactions.models import SaveableMixin, VotableMixin
@@ -78,8 +77,11 @@ class ConcoursExam(SaveableMixin, models.Model):
     duration_minutes = models.PositiveIntegerField(default=180)
 
     # Auto-incremented per-type display id (1, 2, 3, ...) — used as the public
-    # URL slug and the Mongo lookup key. Same idea as Content.display_id.
+    # URL slug. Same idea as Content.display_id.
     display_id = models.PositiveIntegerField(null=True, blank=True)
+
+    # Exam questions structure — JSONB on PostgreSQL.
+    json_content = models.JSONField(default=dict, blank=True)
 
     created_by = models.ForeignKey(User, on_delete=models.PROTECT, related_name='concours_exams')
     created_at = models.DateTimeField(auto_now_add=True)
@@ -119,12 +121,11 @@ class ConcoursExam(SaveableMixin, models.Model):
     # JSON structure helpers ------------------------------------------------
 
     def get_structure(self) -> dict:
-        from .content_store import get_concours_structure
-        return get_concours_structure(self.concours_type, self.display_id)
+        return self.json_content or {}
 
     def set_structure(self, structure: dict) -> None:
-        from .content_store import set_concours_structure
-        set_concours_structure(self.concours_type, self.display_id, structure)
+        self.json_content = structure or {}
+        self.save(update_fields=['json_content'])
 
     @property
     def question_count(self) -> int:

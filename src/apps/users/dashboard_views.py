@@ -7,17 +7,12 @@ from rest_framework.response import Response
 from rest_framework import status
 
 from django.contrib.contenttypes.models import ContentType
-from django.db.models import Sum, Count, Q, Avg
+from django.db.models import Sum, Q
 from django.utils import timezone
 from datetime import timedelta
 
 from apps.things.models import Content
-from apps.interactions.models import Complete, Save, StudyTimeTracker
-from apps.learningpath.models import (
-    UserLearningPathProgress,
-    UserChapterProgress,
-    PathChapter
-)
+from apps.interactions.models import Complete, StudyTimeTracker
 from apps.caracteristics.models import Chapter
 
 
@@ -45,12 +40,14 @@ def get_user_dashboard_stats(request):
     exercise_ids = Content.objects.filter(type='exercise').values_list('id', flat=True)
     lesson_ids = Content.objects.filter(type='lesson').values_list('id', flat=True)
     exam_ids = Content.objects.filter(type='exam').values_list('id', flat=True)
+    # Complete.object_id is a CharField (StudyTimeTracker's is int) — string ids for PostgreSQL
+    exercise_id_strs = [str(i) for i in exercise_ids]
 
     # 1. Exercises started this week
     exercises_started = Complete.objects.filter(
         user=user,
         content_type=content_ct,
-        object_id__in=exercise_ids,
+        object_id__in=exercise_id_strs,
         created_at__gte=week_ago
     ).values('object_id').distinct().count()
 
@@ -127,7 +124,7 @@ def get_user_dashboard_stats(request):
     perfect_completions = Complete.objects.filter(
         user=user,
         content_type=content_ct,
-        object_id__in=exercise_ids,
+        object_id__in=exercise_id_strs,
         status='success',
         created_at__gte=week_ago
     ).count()
@@ -230,7 +227,7 @@ def get_learning_path_progress(request):
             user=user,
             content_type=content_ct,
             status='success',
-            object_id__in=Content.objects.filter(type='exercise', chapters=chapter).values_list('id', flat=True)
+            object_id__in=[str(i) for i in Content.objects.filter(type='exercise', chapters=chapter).values_list('id', flat=True)]
         ).exists()
 
         # Determine status based on completion
@@ -306,7 +303,7 @@ def calculate_user_level(user):
     Level formula: 1 level per 10 completed exercises
     """
     content_ct = ContentType.objects.get_for_model(Content)
-    exercise_ids = Content.objects.filter(type='exercise').values_list('id', flat=True)
+    exercise_ids = [str(i) for i in Content.objects.filter(type='exercise').values_list('id', flat=True)]
 
     total_completed = Complete.objects.filter(
         user=user,
@@ -359,13 +356,18 @@ def get_recommended_content(request):
 
         content_ct = ContentType.objects.get_for_model(Content)
 
-        # Get IDs of content user has already completed (per type)
+        # Get IDs of content user has already completed (per type).
+        # object_id is a CharField: materialize as ints so the later
+        # .exclude(id__in=...) compares bigint to bigint (Postgres refuses varchar=bigint).
         completed_ids_by_type = {}
         for t in ('exercise', 'lesson', 'exam'):
-            type_ids = Content.objects.filter(type=t).values_list('id', flat=True)
-            completed_ids_by_type[t] = Complete.objects.filter(
-                user=user, content_type=content_ct, object_id__in=type_ids
-            ).values_list('object_id', flat=True)
+            type_ids = [str(i) for i in Content.objects.filter(type=t).values_list('id', flat=True)]
+            completed_ids_by_type[t] = [
+                int(oid) for oid in Complete.objects.filter(
+                    user=user, content_type=content_ct, object_id__in=type_ids
+                ).values_list('object_id', flat=True)
+                if str(oid).isdigit()
+            ]
 
         base_filters = Q()
         if class_level:

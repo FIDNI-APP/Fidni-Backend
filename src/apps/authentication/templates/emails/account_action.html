@@ -1,0 +1,91 @@
+{% autoescape on %}<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<meta name="supported-color-schemes" content="light dark">
+<title>{{ subject }}</title>
+<style>
+  body { margin: 0; padding: 0; -webkit-text-size-adjust: 100%; }
+  a { color: #1a7a4a; }
+  @media (max-width: 600px) {
+    .card-pad { padding: 28px 22px !important; }
+    .h1 { font-size: 20px !important; }
+  }
+  @media (prefers-color-scheme: dark) {
+    .bg { background: #141414 !important; }
+    .card { background: #1f1e1c !important; border-color: #33302b !important; }
+    .ink { color: #f2f1ee !important; }
+    .soft { color: #cfcdc8 !important; }
+    .muted { color: #9a958c !important; }
+    .box { background: #141414 !important; border-color: #33302b !important; }
+    .rule { border-color: #33302b !important; }
+  }
+</style>
+</head>
+<body class="bg" style="margin:0;padding:0;background:#faf9f7;">
+{# Aperçu affiché par la boîte mail à côté de l'objet, invisible dans le message #}
+<div style="display:none;max-height:0;overflow:hidden;opacity:0;mso-hide:all;">{{ preheader }}&#8199;&#847;&#8199;&#847;&#8199;&#847;&#8199;&#847;&#8199;&#847;&#8199;&#847;</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" class="bg" style="background:#faf9f7;">
+  <tr>
+    <td align="center" style="padding:32px 16px 40px;">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:520px;">
+
+        <tr>
+          <td style="padding:0 4px 18px;">
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+              <tr>
+                <td style="vertical-align:middle;padding-right:10px;">
+                  <img src="{{ site_url }}/android-chrome-192x192.png" width="32" height="32" alt="" style="display:block;border:0;border-radius:8px;">
+                </td>
+                <td class="ink" style="vertical-align:middle;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:19px;font-weight:700;letter-spacing:-0.01em;color:#1a1a1a;">Fidni</td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+
+        <tr>
+          <td class="card card-pad" style="background:#ffffff;border:1px solid #e7e3dc;border-radius:16px;padding:36px 36px 30px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+            <h1 class="ink h1" style="margin:0 0 18px;font-size:22px;line-height:1.3;font-weight:700;color:#1a1a1a;">{{ heading }}</h1>
+            <p class="soft" style="margin:0 0 12px;font-size:15px;line-height:1.6;color:#33302b;">Bonjour {{ username }},</p>
+            {% for paragraph in paragraphs %}
+            <p class="soft" style="margin:0 0 12px;font-size:15px;line-height:1.6;color:#33302b;">{{ paragraph }}</p>
+            {% endfor %}
+
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:26px 0 14px;">
+              <tr>
+                <td align="center" bgcolor="#1a7a4a" style="border-radius:10px;background:#1a7a4a;">
+                  <a href="{{ link }}" target="_blank" style="display:inline-block;padding:13px 28px;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;font-size:15px;font-weight:600;line-height:1.2;color:#ffffff;text-decoration:none;border-radius:10px;">{{ cta_label }}</a>
+                </td>
+              </tr>
+            </table>
+            <p class="muted" style="margin:0 0 26px;font-size:13px;line-height:1.5;color:#6b6862;">{{ expiry }}</p>
+
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+              <tr>
+                <td class="box" style="background:#faf9f7;border:1px solid #e7e3dc;border-radius:10px;padding:14px 16px;">
+                  <p class="muted" style="margin:0 0 6px;font-size:12px;line-height:1.5;color:#6b6862;">Le bouton ne fonctionne pas ? Copie ce lien dans ton navigateur :</p>
+                  <p style="margin:0;font-size:12px;line-height:1.5;word-break:break-all;"><a href="{{ link }}" target="_blank" style="color:#1a7a4a;text-decoration:underline;">{{ link }}</a></p>
+                </td>
+              </tr>
+            </table>
+
+            <p class="muted rule" style="margin:24px 0 0;padding-top:18px;border-top:1px solid #e7e3dc;font-size:13px;line-height:1.55;color:#6b6862;">{{ safety_note }}</p>
+          </td>
+        </tr>
+
+        <tr>
+          <td align="center" style="padding:22px 12px 0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;">
+            <p class="muted" style="margin:0 0 4px;font-size:12px;line-height:1.5;color:#9a958c;">Message automatique, merci de ne pas y répondre.</p>
+            <p class="muted" style="margin:0;font-size:12px;line-height:1.5;color:#9a958c;">Une question ? <a href="mailto:contact@fidni.fr" style="color:#6b6862;">contact@fidni.fr</a> · <a href="{{ site_url }}" target="_blank" style="color:#6b6862;">fidni.fr</a></p>
+          </td>
+        </tr>
+
+      </table>
+    </td>
+  </tr>
+</table>
+</body>
+</html>
+{% endautoescape %}

@@ -2,7 +2,7 @@
 Serializers for logging models
 """
 from rest_framework import serializers
-from .models import ErrorLog, APILog, SystemEvent, PageView, UserInteraction, ABTestVariant
+from .models import ErrorLog, APILog, SystemEvent
 
 
 class ErrorLogSerializer(serializers.ModelSerializer):

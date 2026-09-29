@@ -3,12 +3,10 @@ from django.contrib.auth.models import User
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 import uuid
-import os
 
 
 def upload_to(instance, filename):
     """Generate upload path: uploads/{content_type}/{year}/{month}/{uuid}_{filename}"""
-    ext = filename.split('.')[-1]
     filename = f"{uuid.uuid4().hex[:12]}_{filename}"
 
     content_type = instance.content_type.model if instance.content_type else 'general'

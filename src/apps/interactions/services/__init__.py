@@ -1,3 +1,3 @@
-from .ai_vision import AIVisionService
+from .ai_vision import AICorrector
 
-__all__ = ['AIVisionService']
+__all__ = ["AICorrector"]

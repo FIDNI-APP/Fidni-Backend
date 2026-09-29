@@ -33,17 +33,17 @@ Superuser/admin endpoints:
 """
 
 import random
-import uuid as _uuid
 
-from django.contrib.auth.models import User
 from django.contrib.contenttypes.models import ContentType
 from django.db import transaction
 from django.shortcuts import get_object_or_404
+from datetime import timedelta
+
 from django.utils import timezone
 
-from rest_framework import status, viewsets, mixins, permissions
+from rest_framework import status, viewsets, permissions
 from rest_framework.decorators import action, api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly, IsAdminUser
+from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly
 from rest_framework.response import Response
 
 from apps.interactions.models import Save, Vote
@@ -58,9 +58,6 @@ from .serializers import (
     ConcoursTipSerializer,
     ConcoursCommentSerializer,
     SimulationSessionListSerializer, SimulationSessionDetailSerializer,
-)
-from .content_store import (
-    get_concours_structure, set_concours_structure, delete_concours_structure,
 )
 
 
@@ -122,13 +119,7 @@ class ConcoursExamViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         exam = serializer.save(created_by=self.request.user)
-        # Initialise an empty Mongo doc.
-        set_concours_structure(exam.concours_type, exam.display_id,
-                               {'version': '1.0', 'questions': []})
-
-    def perform_destroy(self, instance):
-        delete_concours_structure(instance.concours_type, instance.display_id)
-        super().perform_destroy(instance)
+        exam.set_structure({'version': '1.0', 'questions': []})
 
     # ----- Custom actions -----
 
@@ -140,7 +131,7 @@ class ConcoursExamViewSet(viewsets.ModelViewSet):
         exam = self.get_object()
 
         if request.method == 'GET':
-            s = get_concours_structure(exam.concours_type, exam.display_id) or {}
+            s = exam.get_structure()
             if not request.user.is_staff and request.query_params.get('hide_solutions'):
                 qs = [{k: v for k, v in q.items()
                        if k not in ('correct_key', 'explanation')}
@@ -175,7 +166,7 @@ class ConcoursExamViewSet(viewsets.ModelViewSet):
                                 status=status.HTTP_400_BAD_REQUEST)
         payload.setdefault('version', '1.0')
 
-        set_concours_structure(exam.concours_type, exam.display_id, payload)
+        exam.set_structure(payload)
         return Response({'ok': True, 'question_count': len(questions)})
 
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
@@ -475,12 +466,21 @@ def get_session(request, session_id):
     })
 
 
+# Marge après la fin officielle : absorbe la latence réseau de la dernière réponse.
+ANSWER_GRACE = timedelta(seconds=30)
+
+
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def answer_question(request, session_id):
     sess = get_object_or_404(SimulationSession, pk=session_id, user=request.user)
     if sess.status != SimulationSession.STATUS_IN_PROGRESS:
         return Response({'detail': 'Session not in progress.'},
+                        status=status.HTTP_400_BAD_REQUEST)
+    # Conditions réelles : plus de réponse une fois le temps écoulé (avant, rien ne l'empêchait).
+    deadline = sess.started_at + timedelta(minutes=sess.duration_minutes)
+    if timezone.now() > deadline + ANSWER_GRACE:
+        return Response({'detail': 'Le temps est écoulé.', 'code': 'time_over'},
                         status=status.HTTP_400_BAD_REQUEST)
     try:
         position = int(request.data.get('position'))

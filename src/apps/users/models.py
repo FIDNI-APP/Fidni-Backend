@@ -93,6 +93,23 @@ class UserProfile(models.Model):
     # Attributs de base
     bio = models.TextField(max_length=500, blank=True)
     location = models.CharField(max_length=100, blank=True)
+    # Établissement : choisi dans la liste du ministère (school), ou saisi librement s'il n'y
+    # figure pas. school_name porte toujours le nom affiché (feuilles PDF, profil).
+    school = models.ForeignKey(
+        'caracteristics.School', on_delete=models.SET_NULL, null=True, blank=True, related_name='members'
+    )
+    school_name = models.CharField(max_length=255, blank=True)
+    # Sexe : obligatoire avec l'identité ; privé (visible du seul propriétaire).
+    # Sert aussi à la civilité des enseignants sur les feuilles PDF (M. / Mme).
+    # « N » = préfère ne pas le dire : la question est posée mais la réponse n'est pas imposée
+    # (RGPD, minimisation ; CJUE 9 janvier 2025, Mousse, C-394/23).
+    GENDER_CHOICES = [('M', 'Masculin'), ('F', 'Féminin'), ('N', 'Non précisé')]
+    gender = models.CharField(max_length=1, choices=GENDER_CHOICES, blank=True)
+    # Date de naissance : obligatoire avec l'identité, privée (jamais sur le profil public).
+    birth_date = models.DateField(null=True, blank=True)
+    # Preuve de l'acceptation des CGU et de la politique de confidentialité (RGPD, art. 7 et 24).
+    terms_accepted_at = models.DateTimeField(null=True, blank=True)
+    terms_version = models.CharField(max_length=20, blank=True)
     user_type = models.CharField(max_length=10, choices=USER_TYPE_CHOICES, default=_defaults['user_type'])
     
     # Avatar - Support both URL (legacy) and File upload
@@ -135,6 +152,12 @@ class UserProfile(models.Model):
     # Onboarding
     onboarding_completed = models.BooleanField(default=_defaults['onboarding_completed'])
     onboarding_step = models.PositiveIntegerField(default=0)
+
+    # Email verification. default=True so existing rows backfill as verified on
+    # migration; RegisterView explicitly sets False for NEW signups (which are
+    # also created with User.is_active=False until they confirm).
+    email_verified = models.BooleanField(default=True)
+    email_verified_at = models.DateTimeField(null=True, blank=True)
 
     # Target Subjects (favorite subjects — students)
     target_subjects = models.ManyToManyField(
@@ -206,9 +229,10 @@ class UserProfile(models.Model):
 
         content_items = Content.objects.filter(author=self.user)
         content_ct = ContentType.objects.get_for_model(Content)
+        # Vote.object_id is a CharField — PostgreSQL needs string ids (SQLite coerced silently)
         upvotes_received = Vote.objects.filter(
             content_type=content_ct,
-            object_id__in=content_items.values_list('id', flat=True),
+            object_id__in=[str(i) for i in content_items.values_list('id', flat=True)],
             value=1
         ).count()
 
@@ -231,7 +255,8 @@ class UserProfile(models.Model):
         from apps.interactions.models import Complete, Save
 
         content_ct = ContentType.objects.get_for_model(Content)
-        exercise_ids = Content.objects.filter(type='exercise').values_list('id', flat=True)
+        # Complete/Save.object_id are CharFields — compare with string ids on PostgreSQL
+        exercise_ids = [str(i) for i in Content.objects.filter(type='exercise').values_list('id', flat=True)]
 
         # Completion stats
         exercises_completed = Complete.objects.filter(
@@ -261,10 +286,14 @@ class UserProfile(models.Model):
             content_type=content_ct
         ).count()
 
-        viewed_ids = ViewHistory.objects.filter(
-            user=self.user,
-            content_type=content_ct
-        ).values_list('object_id', flat=True)
+        # object_id is a CharField — materialize as ints for the bigint id__in below
+        viewed_ids = [
+            int(oid) for oid in ViewHistory.objects.filter(
+                user=self.user,
+                content_type=content_ct
+            ).values_list('object_id', flat=True)
+            if str(oid).isdigit()
+        ]
 
         subjects = Content.objects.filter(
             id__in=viewed_ids

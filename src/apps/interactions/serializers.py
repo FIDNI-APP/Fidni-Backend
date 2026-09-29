@@ -1,8 +1,7 @@
 from rest_framework import serializers
-from .models import Vote,Save,Complete, RevisionList, RevisionListItem, AICorrection
+from .models import RevisionList, RevisionListItem, AICorrection
 from apps.users.serializers import UserSerializer
 from apps.users.models import ViewHistory
-from apps.things.serializers import CommentSerializer, SolutionSerializer, ContentListSerializer
 import logging 
 
 
@@ -11,31 +10,6 @@ logger = logging.getLogger('django')
 
 
 #----------------------------COMMENT-------------------------------
-
-
-class VoteSerializer(serializers.ModelSerializer):
-    user = UserSerializer(read_only=True)
-    comment = CommentSerializer(read_only=True)
-    solution = SolutionSerializer(read_only=True)
-
-    class Meta:
-        model = Vote
-        fields = ['id', 'value', 'created_at', 'updated_at', 'user', 'comment', 'solution']
-
-
-class SaveSerializer(serializers.ModelSerializer):
-    user = UserSerializer(read_only=True)
-
-    class Meta:
-        model = Save
-        fields = ['id', 'created_at', 'user']
-
-class CompleteSerializer(serializers.ModelSerializer):
-    user = UserSerializer(read_only=True)
-
-    class Meta:
-        model = Complete
-        fields = ['id', 'created_at', 'updated_at', 'user']
 
 
 class ViewHistorySerializer(serializers.ModelSerializer):

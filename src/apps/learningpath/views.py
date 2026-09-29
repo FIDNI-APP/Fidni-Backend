@@ -22,7 +22,22 @@ from .serializers import (
 )
 
 
-class LearningPathViewSet(viewsets.ModelViewSet):
+from django.conf import settings as _settings
+from rest_framework.exceptions import NotFound as _NotFound
+
+
+class ParcoursVisibilityMixin:
+    """Parcours n'est pas encore publié : pour tout autre que le staff, ces routes n'existent pas.
+    Publication : PARCOURS_PUBLIC=True dans le .env (et PARCOURS_PUBLIC dans le front, lib/features.ts)."""
+
+    def initial(self, request, *args, **kwargs):
+        super().initial(request, *args, **kwargs)
+        user = getattr(request, 'user', None)
+        if not getattr(_settings, 'PARCOURS_PUBLIC', False) and not (user and user.is_authenticated and user.is_staff):
+            raise _NotFound()
+
+
+class LearningPathViewSet(ParcoursVisibilityMixin, viewsets.ModelViewSet):
     """ViewSet for learning paths"""
     queryset = LearningPath.objects.filter(is_active=True)
     permission_classes = [IsAuthenticatedOrReadOnly]
@@ -136,7 +151,7 @@ class LearningPathViewSet(viewsets.ModelViewSet):
         })
 
 
-class PathChapterViewSet(viewsets.ModelViewSet):
+class PathChapterViewSet(ParcoursVisibilityMixin, viewsets.ModelViewSet):
     """ViewSet for path chapters"""
     queryset = PathChapter.objects.all()
     permission_classes = [IsAuthenticatedOrReadOnly]
@@ -246,7 +261,7 @@ class PathChapterViewSet(viewsets.ModelViewSet):
             }, status=status.HTTP_400_BAD_REQUEST)
 
 
-class VideoViewSet(viewsets.ModelViewSet):
+class VideoViewSet(ParcoursVisibilityMixin, viewsets.ModelViewSet):
     """ViewSet for videos"""
     queryset = Video.objects.all()
     serializer_class = VideoSerializer
@@ -286,16 +301,21 @@ class VideoViewSet(viewsets.ModelViewSet):
                 path_progress=path_progress
             )
             
-            # Update video progress
-            video_progress, created = UserVideoProgress.objects.update_or_create(
+            # Update video progress. Deux règles pour ne rien perdre :
+            # - la progression ne recule jamais (enregistrer une note renvoie une position ancienne) ;
+            # - les notes ne changent que si la requête en contient (avant, la sauvegarde
+            #   automatique toutes les 10 s les effaçait).
+            video_progress, created = UserVideoProgress.objects.get_or_create(
                 user=request.user,
                 video=video,
                 chapter_progress=chapter_progress,
-                defaults={
-                    'watched_seconds': serializer.validated_data['watched_seconds'],
-                    'notes': serializer.validated_data.get('notes', '')
-                }
             )
+            video_progress.watched_seconds = max(
+                video_progress.watched_seconds or 0, serializer.validated_data['watched_seconds']
+            )
+            if 'notes' in serializer.validated_data:
+                video_progress.notes = serializer.validated_data['notes']
+            video_progress.save()
             
             # Check if video is completed (90% watched or user marked as complete)
             completion_threshold = int(video.duration_seconds * 0.9)
@@ -359,7 +379,7 @@ class VideoViewSet(viewsets.ModelViewSet):
         })
 
 
-class ChapterQuizViewSet(viewsets.ModelViewSet):
+class ChapterQuizViewSet(ParcoursVisibilityMixin, viewsets.ModelViewSet):
     """ViewSet for chapter quizzes"""
     queryset = ChapterQuiz.objects.all()
     serializer_class = ChapterQuizSerializer
@@ -387,7 +407,7 @@ class ChapterQuizViewSet(viewsets.ModelViewSet):
         
         # Check if user has started the chapter
         try:
-            chapter_progress = UserChapterProgress.objects.get(
+            UserChapterProgress.objects.get(  # existence : lève DoesNotExist sinon
                 user=request.user,
                 path_chapter=quiz.path_chapter
             )

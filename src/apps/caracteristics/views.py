@@ -1,4 +1,4 @@
-from rest_framework import viewsets, permissions
+from rest_framework import viewsets
 from rest_framework.decorators import api_view, permission_classes as perm_classes
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
@@ -8,7 +8,7 @@ from rest_framework.pagination import PageNumberPagination
 from django.db.models import Q, Count
 
 
-from .models import ClassLevel, Subject, Chapter,Theorem, Subfield
+from .models import ClassLevel, Subject, Chapter,Theorem, Subfield, School, school_search_key
 from .serializers import (
     ClassLevelSerializer, SubjectSerializer, ChapterSerializer,
     TheoremSerializer, SubfieldSerializer, ClassLevelWithTaxonomySerializer
@@ -30,11 +30,6 @@ CONTENT_TYPE_RELATED = {
 
 #----------------------------PAGINATION-------------------------------
 
-
-class LargeResultsSetPagination(PageNumberPagination):
-    page_size = 1000
-    page_size_query_param = 'page_size'
-    max_page_size = 10000
 
 class StandardResultsSetPagination(PageNumberPagination):
     page_size = 1000
@@ -64,7 +59,8 @@ class ClassLevelViewSet(viewsets.ReadOnlyModelViewSet):
             queryset = queryset.annotate(content_count=Count(
                 related, filter=Q(**{f'{related}__type': content_type_param}), distinct=True
             ))
-        return queryset
+        # Ordre du programme (TC → 1ère → 2ème) : annotate() fait perdre le Meta.ordering (GROUP BY).
+        return queryset.order_by("order")
 
     def list(self, request, *args, **kwargs):
         queryset = self.get_queryset().prefetch_related('subjects', 'subjects__chapters')
@@ -86,7 +82,7 @@ class SubjectViewSet(viewsets.ReadOnlyModelViewSet):
 
 
     def get_queryset(self):
-        queryset = Subject.objects.all()
+        queryset = Subject.objects.prefetch_related('class_levels')
         class_level_id = self.request.query_params.getlist('class_level[]')
 
         filters = Q()
@@ -111,7 +107,7 @@ class SubfieldViewSet(viewsets.ReadOnlyModelViewSet):
     authentication_classes = []
 
     def get_queryset(self):
-        queryset = Subfield.objects.all()
+        queryset = Subfield.objects.select_related('subject').prefetch_related('class_levels', 'subject__class_levels')
         class_level_id = self.request.query_params.getlist('class_level[]')
         subject_id = self.request.query_params.getlist('subject')
 
@@ -149,7 +145,8 @@ class TheoremViewSet(viewsets.ReadOnlyModelViewSet):
 
 
     def get_queryset(self):
-        queryset = Theorem.objects.all()
+        queryset = Theorem.objects.select_related('subject', 'subfield__subject').prefetch_related(
+            'chapters', 'class_levels', 'subject__class_levels', 'subfield__class_levels', 'subfield__subject__class_levels')
         subject_id = self.request.query_params.getlist('subject')
         class_level_id = self.request.query_params.getlist('class_level[]')
         subfield_id = self.request.query_params.getlist('subfields[]')
@@ -201,7 +198,10 @@ class ChapterViewSet(viewsets.ReadOnlyModelViewSet):
 
 
     def get_queryset(self):
-        queryset = Chapter.objects.all()
+        # Relations chargées en lot : sans ça, chaque chapitre coûtait ~7 requêtes (N+1),
+        # soit ~1,8 s pour la liste avec la base sur AWS.
+        queryset = Chapter.objects.select_related('subject', 'subfield__subject').prefetch_related(
+            'class_levels', 'subject__class_levels', 'subfield__class_levels', 'subfield__subject__class_levels')
         subject_id = self.request.query_params.getlist('subject[]')
         class_level_id = self.request.query_params.getlist('class_level[]')
         subfield_id = self.request.query_params.getlist('subfields[]')
@@ -270,3 +270,37 @@ def difficulty_counts(request):
     counts = qs.values('difficulty').annotate(count=Count('id', distinct=True))
     result = {item['difficulty']: item['count'] for item in counts if item['difficulty']}
     return Response(result)
+
+
+#----------------------------SCHOOLS-------------------------------
+
+_KIND_RANK = {'lycee': 0, 'cpge': 1, 'college': 2, 'prive': 3}
+_KIND_LABEL = dict(School.KIND_CHOICES)
+
+
+@api_view(['GET'])
+@perm_classes([AllowAny])
+def school_search(request):
+    """Autocomplétion des établissements : ?q=moutanabi agadir → 12 résultats au plus.
+
+    Chaque mot doit apparaître dans le nom (français ou arabe) ou la ville ; les noms qui
+    commencent par la recherche passent devant, puis les lycées, CPGE, collèges, privés.
+    """
+    query = school_search_key(request.query_params.get('q', ''))[:80]
+    tokens = [t for t in query.split() if t][:6]
+    if len(query) < 2 or not tokens:
+        return Response([])
+    qs = School.objects.all()
+    for token in tokens:
+        qs = qs.filter(search__contains=token)
+    candidates = list(qs.only('id', 'name', 'name_ar', 'city', 'region', 'kind', 'search')[:300])
+    candidates.sort(key=lambda s: (
+        not s.search.startswith(query),
+        _KIND_RANK.get(s.kind, 9),
+        s.name,
+    ))
+    return Response([
+        {'id': s.id, 'name': s.name, 'name_ar': s.name_ar, 'city': s.city, 'region': s.region,
+         'kind': s.kind, 'kind_label': _KIND_LABEL.get(s.kind, '')}
+        for s in candidates[:12]
+    ])

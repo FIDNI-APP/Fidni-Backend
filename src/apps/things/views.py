@@ -1,52 +1,102 @@
 from rest_framework import viewsets, status
-from rest_framework.decorators import action, api_view, permission_classes as perm_classes
+from rest_framework.decorators import action, api_view, permission_classes as perm_classes, throttle_classes
 from rest_framework.response import Response
 from rest_framework.pagination import PageNumberPagination
 from datetime import timedelta
-from django.shortcuts import get_object_or_404
 from django.utils import timezone
-from django.db import transaction
 from django.core.cache import cache
-import time
 
 from django.contrib.contenttypes.models import ContentType
 from django.db.models import Count, Q, F
-from django.conf import settings
 
-USE_TRIGRAM = 'postgresql' in settings.DATABASES['default']['ENGINE']
-if USE_TRIGRAM:
-    try:
-        from django.contrib.postgres.search import TrigramSimilarity
-    except ImportError:
-        USE_TRIGRAM = False
-        TrigramSimilarity = None
-else:
-    TrigramSimilarity = None
+from django.db.models import Case, IntegerField, TextField, When
+from django.db.models.functions import Cast
 
-from .models import Content, Solution, Comment
-from .content_store import get_structures_batch, get_structure
+from .models import Content, Solution, Comment, ProposedSolution
 from .pdf_parser import parse_pdf
-from .serializers import ContentSerializer, ContentListSerializer, ContentCreateSerializer, SolutionSerializer, CommentSerializer
-from apps.interactions.models import Vote, Save, Complete, TimeSession, SolutionView, SolutionMatch, QuestionProgress, AICorrection
-from apps.interactions.serializers import VoteSerializer, SaveSerializer, CompleteSerializer, AICorrectionSerializer
+from .serializers import ContentSerializer, ContentListSerializer, ContentCreateSerializer, SolutionSerializer, CommentSerializer, ProposedSolutionSerializer
+from .listing import in_order, serialize_content_list, with_list_relations
+from apps.interactions.models import Save, Complete, TimeSession, SolutionView, SolutionMatch, QuestionProgress, AICorrection
+from apps.interactions.serializers import AICorrectionSerializer
 from apps.interactions.views import VoteMixin
-from apps.interactions.services import AIVisionService
 from apps.users.models import ViewHistory
-from rest_framework.permissions import IsAuthenticatedOrReadOnly, IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, IsAdminUser, AllowAny
+from config.permissions import IsAuthorOrStaffOrReadOnly
+from config.throttling import PdfParseThrottle, ProposedSolutionThrottle
 
 import logging
 logger = logging.getLogger('django')
 
 
+def _walk_questions_meta(structure):
+    """Yield (path, label, meta) pour chaque question/sous-question.
+
+    `path` est aligné sur QuestionProgress.question_path tel que produit par le
+    renderer front : l'id du bloc, et `<block_id>.<sub_id>` pour les sous-questions.
+    `label` est lisible (Q1, Q2a…). `meta` = block.meta (schéma v2.1), {} si absent.
+    """
+    qnum = 0
+    for block in (structure or {}).get('blocks', []):
+        if block.get('type') != 'question':
+            continue
+        qnum += 1
+        bid = block.get('id')
+        subs = block.get('subQuestions') or []
+        if subs:
+            for i, sub in enumerate(subs):
+                yield (f"{bid}.{sub.get('id')}", f"Q{qnum}{chr(ord('a') + i)}", sub.get('meta') or {})
+        else:
+            yield (str(bid), f"Q{qnum}", block.get('meta') or {})
+
+
+@api_view(['GET'])
+@perm_classes([AllowAny])
+def skill_suggestions(request):
+    """Référentiel des notions (liste fermée, apps/caracteristics/notions.py) pour l'éditeur.
+
+    GET /api/skills/?chapter=<id>&q=<recherche>
+    Renvoie {slug, label, chapter, count} : d'abord les notions du chapitre demandé, puis les
+    transversales, puis les autres ; « count » = nombre de questions qui l'emploient déjà.
+    """
+    import unicodedata
+    from collections import Counter
+    from apps.caracteristics.models import Chapter
+    from apps.caracteristics.notions import NOTION_INDEX
+
+    def fold(text):
+        return unicodedata.normalize('NFKD', text).encode('ascii', 'ignore').decode().lower()
+
+    chapter_id = request.query_params.get('chapter')
+    query = fold((request.query_params.get('q') or '').strip())
+    chapter_name = Chapter.objects.filter(pk=chapter_id).values_list('name', flat=True).first() if chapter_id and chapter_id.isdigit() else None
+
+    counts = cache.get('skill_usage_counts')
+    if counts is None:
+        counter = Counter()
+        for jc in Content.objects.exclude(json_content={}).values_list('json_content', flat=True).iterator():
+            for _, _, meta in _walk_questions_meta(jc):
+                for slug in (meta.get('skills') or []):
+                    counter[slug] += 1
+        counts = dict(counter)
+        cache.set('skill_usage_counts', counts, 300)
+
+    def rank(item):
+        slug, entry = item
+        group = 0 if chapter_name and entry['chapter'] == chapter_name else 1 if entry['chapter'] is None else 2
+        return (group, -counts.get(slug, 0), entry['label'])
+
+    results = [
+        {'slug': slug, 'label': entry['label'], 'chapter': entry['chapter'], 'count': counts.get(slug, 0)}
+        for slug, entry in sorted(NOTION_INDEX.items(), key=rank)
+        if not query or query in slug or query in fold(entry['label'])
+    ]
+    # Liste complète (~160 notions) : l'éditeur la garde en cache et filtre lui-même.
+    return Response(results)
+
+
 # =====================
 # PAGINATION
 # =====================
-
-class LargeResultsSetPagination(PageNumberPagination):
-    page_size = 50
-    page_size_query_param = 'page_size'
-    max_page_size = 200
-
 
 class StandardResultsSetPagination(PageNumberPagination):
     page_size = 20
@@ -64,7 +114,10 @@ class ContentViewSet(VoteMixin, viewsets.ModelViewSet):
     Filter by type: GET /api/contents/?type=exercise
     """
     queryset = Content.objects.all()
-    permission_classes = [IsAuthenticatedOrReadOnly]
+    # Tout utilisateur connecté peut publier ; seul l'auteur (ou le staff) modifie, supprime
+    # ou réécrit la solution. Les autres actions (voter, commenter…) restent ouvertes.
+    permission_classes = [IsAuthorOrStaffOrReadOnly]
+    author_only_actions = ('update', 'partial_update', 'destroy', 'solution')
     pagination_class = StandardResultsSetPagination
 
     # Subclasses set this to scope automatically
@@ -81,69 +134,75 @@ class ContentViewSet(VoteMixin, viewsets.ModelViewSet):
         queryset = self.filter_queryset(self.get_queryset())
         page = self.paginate_queryset(queryset)
         items = page if page is not None else queryset
-        # batch fetch structures from Mongo
-        type_scope = self.content_type_scope or request.query_params.get('type')
-        if type_scope and items:
-            display_ids = [i.display_id for i in items if i.display_id]
-            structures = get_structures_batch(type_scope, display_ids)
-        else:
-            # mixed types — fetch per type
-            from collections import defaultdict
-            by_type = defaultdict(list)
-            for i in items:
-                if i.display_id:
-                    by_type[i.type].append(i.display_id)
-            structures = {}
-            for t, ids in by_type.items():
-                batch = get_structures_batch(t, ids)
-                structures.update(batch)
-        ctx = {**self.get_serializer_context(), 'mongo_structures': structures}
-        serializer = self.get_serializer(items, many=True, context=ctx)
+        # La structure (json_content) est une colonne de chaque ligne, déjà chargée.
+        serializer = self.get_serializer(items, many=True)
         return self.get_paginated_response(serializer.data) if page is not None else Response(serializer.data)
 
+    def finalize_response(self, request, response, *args, **kwargs):
+        response = super().finalize_response(request, response, *args, **kwargs)
+        # Toute action d'un élève sur ce contenu (auto-évaluation, réussite, temps, solution vue)
+        # change SES statistiques : on vide son cache (5 min) pour que l'onglet Activité soit à
+        # jour tout de suite — sinon il restait sur « Évalue tes réponses » après l'évaluation.
+        pk = kwargs.get('pk')
+        user = getattr(request, 'user', None)
+        if (pk and request.method not in ('GET', 'HEAD', 'OPTIONS') and response.status_code < 400
+                and user is not None and user.is_authenticated):
+            cache.delete(f'content_stats_{pk}_user_{user.id}')
+        return response
+
+    def perform_destroy(self, instance):
+        # Supprimé par son auteur ou par l'administration : les fichiers qui en dépendent partent
+        # avec lui (figures de l'énoncé, photos des commentaires et des solutions proposées),
+        # sinon ils resteraient sur S3 sans plus être rattachés à rien.
+        from apps.uploads.models import FileAttachment
+        owners = [
+            (Content, [instance.pk]),
+            (Comment, list(Comment.objects.filter(content_item=instance).values_list('id', flat=True))),
+            (ProposedSolution, list(ProposedSolution.objects.filter(content_item=instance).values_list('id', flat=True))),
+        ]
+        for model, ids in owners:
+            if not ids:
+                continue
+            for att in FileAttachment.objects.filter(content_type=ContentType.objects.get_for_model(model), object_id__in=ids):
+                att.file.delete(save=False)
+                att.delete()
+        instance.delete()
+
     def get_queryset(self):
-        queryset = Content.objects.all().select_related(
-            'author', 'solution', 'subject'
-        ).prefetch_related(
-            'chapters', 'class_levels', 'comments', 'votes', 'theorems', 'subfields', 'completed'
-        ).annotate(
-            vote_count_annotation=Count('votes', filter=Q(votes__value=Vote.UP)) -
-                                  Count('votes', filter=Q(votes__value=Vote.DOWN))
-        )
+        # Préchargements partagés avec les autres listes de cartes (things/listing.py).
+        queryset = with_list_relations(Content.objects.all(), getattr(self.request, 'user', None))
 
         # Type scope (from subclass or query param)
         type_scope = self.content_type_scope or self.request.query_params.get('type')
         if type_scope:
             queryset = queryset.filter(type=type_scope)
 
-        # Search
-        search_query = self.request.query_params.get('search')
+        # Recherche : chaque mot doit apparaître dans le titre, l'énoncé (json_content), la
+        # matière, un chapitre, un théorème… Avant, la recherche appelait similarity() de
+        # l'extension pg_trgm, absente de la base : toute recherche renvoyait une erreur 500.
+        # (L'ancien champ texte `content`, hérité de l'époque MongoDB, a été supprimé.)
+        search_query = (self.request.query_params.get('search') or '').strip()[:100]
         if search_query:
-            if USE_TRIGRAM:
-                queryset = queryset.annotate(
-                    title_similarity=TrigramSimilarity('title', search_query),
-                    content_similarity=TrigramSimilarity('content', search_query),
-                ).filter(
-                    Q(title__icontains=search_query) |
-                    Q(content__icontains=search_query) |
-                    Q(subject__name__icontains=search_query) |
-                    Q(chapters__name__icontains=search_query) |
-                    Q(theorems__name__icontains=search_query) |
-                    Q(subfields__name__icontains=search_query) |
-                    Q(class_levels__name__icontains=search_query) |
-                    Q(title_similarity__gt=0.1) |
-                    Q(content_similarity__gt=0.1)
-                ).order_by('-title_similarity', '-content_similarity')
-            else:
-                queryset = queryset.filter(
-                    Q(title__icontains=search_query) |
-                    Q(content__icontains=search_query) |
-                    Q(subject__name__icontains=search_query) |
-                    Q(chapters__name__icontains=search_query) |
-                    Q(theorems__name__icontains=search_query) |
-                    Q(subfields__name__icontains=search_query) |
-                    Q(class_levels__name__icontains=search_query)
+            matching = Content.objects.annotate(_body=Cast('json_content', TextField()))
+            for term in search_query.split()[:6]:
+                matching = matching.filter(
+                    Q(title__icontains=term) |
+                    Q(_body__icontains=term) |
+                    Q(subject__name__icontains=term) |
+                    Q(chapters__name__icontains=term) |
+                    Q(theorems__name__icontains=term) |
+                    Q(subfields__name__icontains=term) |
+                    Q(class_levels__name__icontains=term)
                 )
+            # Sous-requête sur les identifiants : les jointures (chapitres, théorèmes…) ne
+            # dupliquent pas les résultats et ne faussent pas les compteurs de votes.
+            queryset = queryset.filter(pk__in=matching.values('pk')).annotate(
+                _search_rank=Case(
+                    When(title__icontains=search_query, then=0),
+                    default=1,
+                    output_field=IntegerField(),
+                ),
+            )
 
         # Filters
         class_levels = self.request.query_params.getlist('class_levels[]')
@@ -184,9 +243,13 @@ class ContentViewSet(VoteMixin, viewsets.ModelViewSet):
             content_ct = ContentType.objects.get_for_model(Content)
             status_filter = Q()
             if show_viewed:
-                viewed_ids = ViewHistory.objects.filter(
-                    user=self.request.user, content_type=content_ct
-                ).values_list('object_id', flat=True)
+                # object_id is a CharField — materialize as ints for the bigint id__in
+                viewed_ids = [
+                    int(oid) for oid in ViewHistory.objects.filter(
+                        user=self.request.user, content_type=content_ct
+                    ).values_list('object_id', flat=True)
+                    if str(oid).isdigit()
+                ]
                 status_filter |= Q(id__in=viewed_ids)
             if show_completed:
                 status_filter |= Q(completed__user=self.request.user, completed__status='success')
@@ -199,13 +262,19 @@ class ContentViewSet(VoteMixin, viewsets.ModelViewSet):
 
         if hide_viewed and self.request.user and self.request.user.is_authenticated:
             content_ct = ContentType.objects.get_for_model(Content)
-            viewed_ids = ViewHistory.objects.filter(
-                user=self.request.user, content_type=content_ct
-            ).values_list('object_id', flat=True)
+            viewed_ids = [
+                int(oid) for oid in ViewHistory.objects.filter(
+                    user=self.request.user, content_type=content_ct
+                ).values_list('object_id', flat=True)
+                if str(oid).isdigit()
+            ]
             queryset = queryset.exclude(id__in=viewed_ids)
 
-        sort_by = self.request.query_params.get('sort', 'newest')
-        if sort_by == 'oldest':
+        sort_by = self.request.query_params.get('sort')
+        if search_query and not sort_by:
+            # Recherche sans tri choisi : les titres qui contiennent la recherche d'abord.
+            queryset = queryset.order_by('_search_rank', '-created_at')
+        elif sort_by == 'oldest':
             queryset = queryset.order_by('created_at')
         elif sort_by == 'most_upvoted':
             queryset = queryset.order_by('-vote_count_annotation', '-created_at')
@@ -222,7 +291,6 @@ class ContentViewSet(VoteMixin, viewsets.ModelViewSet):
     # ---- comment ----
     @action(detail=True, methods=['post'])
     def comment(self, request, pk=None):
-        from apps.uploads.models import FileAttachment
         item = self.get_object()
         serializer = CommentSerializer(data=request.data, context={'request': request})
         if serializer.is_valid():
@@ -231,12 +299,10 @@ class ContentViewSet(VoteMixin, viewsets.ModelViewSet):
                 author=request.user,
                 parent_id=request.data.get('parent')
             )
-            file_ids = request.data.get('file_ids', [])
-            if file_ids:
-                ct = ContentType.objects.get_for_model(comment)
-                FileAttachment.objects.filter(id__in=file_ids).update(
-                    content_type=ct, object_id=comment.id
-                )
+            # Uniquement ses propres fichiers, encore libres (voir attach_own_files).
+            file_ids = request.data.get('file_ids') or []
+            if isinstance(file_ids, list):
+                attach_own_files(comment, file_ids[:6], request.user)
             return Response(
                 CommentSerializer(comment, context={'request': request}).data,
                 status=status.HTTP_201_CREATED
@@ -536,7 +602,7 @@ class ContentViewSet(VoteMixin, viewsets.ModelViewSet):
                             status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     # ---- statistics ----
-    def _get_successful_users_study_stats(self, item, ct):
+    def _get_successful_users_study_stats(self, item, ct):  # noqa: C901
         from apps.interactions.models import TaxonomyTimeSpent
         from apps.caracteristics.models import Chapter
         successful_users = Complete.objects.filter(
@@ -619,6 +685,81 @@ class ContentViewSet(VoteMixin, viewsets.ModelViewSet):
             solution_matches = SolutionMatch.objects.filter(content_type=ct, object_id=item.id)
             user_solution_matched = is_auth and solution_matches.filter(user=request.user).exists()
             study_stats = self._get_successful_users_study_stats(item, ct)
+
+            # ── Histogramme des temps (8 classes, bornées au p95 pour lisser les outliers)
+            durations = sorted(int(s.session_duration.total_seconds()) for s in sessions)
+            time_histogram = None
+            if durations:
+                p95 = durations[min(len(durations) - 1, int(len(durations) * 0.95))]
+                upper = max(p95, durations[0] + 1)
+                width = max(1, upper // 8)
+                buckets = [0] * 8
+                for d in durations:
+                    buckets[min(d // width, 7)] += 1
+                user_bucket = min(user_time_seconds // width, 7) if user_time_seconds is not None else None
+                time_histogram = {
+                    'buckets': buckets,
+                    'bucket_width_seconds': width,
+                    'user_bucket': user_bucket,
+                }
+
+            # ── Réussite par question (auto-évaluations QuestionProgress)
+            # Ordre + libellés lisibles depuis la structure ; agrégats depuis QuestionProgress.
+            from apps.interactions.models import QuestionProgress
+            qp = QuestionProgress.objects.filter(content_type=ct, object_id=item.id)
+            questions_meta = list(_walk_questions_meta(item.json_content or {}))
+            path_label = {path: label for path, label, _ in questions_meta}
+            path_skills = {path: (meta.get('skills') or []) for path, _, meta in questions_meta}
+
+            by_path = {}
+            for row in qp.values('question_path', 'status'):
+                b = by_path.setdefault(row['question_path'], {'total': 0, 'success': 0})
+                b['total'] += 1
+                if row['status'] == 'success':
+                    b['success'] += 1
+            user_statuses = {}
+            if is_auth:
+                user_statuses = dict(qp.filter(user=request.user).values_list('question_path', 'status'))
+
+            # Suivre l'ordre de la structure ; garder les orphelins (paths sans structure) à la fin.
+            ordered_paths = [p for p, _, _ in questions_meta] + [p for p in by_path if p not in path_label]
+            per_question = []
+            for path in ordered_paths:
+                b = by_path.get(path)
+                if not b:
+                    continue
+                per_question.append({
+                    'path': path,
+                    'label': path_label.get(path, path[:6]),
+                    'total': b['total'],
+                    'success_pct': int(b['success'] / b['total'] * 100),
+                    'user_status': user_statuses.get(path),
+                })
+            candidates = [q for q in per_question if q['total'] >= 3]
+            trap_question = min(candidates, key=lambda q: q['success_pct']) if candidates else None
+
+            # ── Maîtrise par notion (schéma v2.1 : meta.skills par question)
+            from apps.caracteristics.notions import notion_label
+            per_skill = []
+            if is_auth and user_statuses:
+                skill_agg = {}  # slug -> {done, success}
+                for path, st in user_statuses.items():
+                    for skill in path_skills.get(path, []):
+                        a = skill_agg.setdefault(skill, {'done': 0, 'success': 0})
+                        a['done'] += 1
+                        if st == 'success':
+                            a['success'] += 1
+                for slug, a in sorted(skill_agg.items()):
+                    per_skill.append({
+                        'skill': slug,
+                        'label': notion_label(slug),
+                        'assessed': a['done'],
+                        'mastery_pct': int(a['success'] / a['done'] * 100) if a['done'] else 0,
+                    })
+
+            # Gate de réciprocité : l'utilisateur a-t-il évalué quelque chose ici ?
+            user_assessed = bool(user_statuses) or user_completed is not None
+
             data = {
                 'total_participants': total_participants,
                 'success_count': success_count,
@@ -634,7 +775,12 @@ class ContentViewSet(VoteMixin, viewsets.ModelViewSet):
                 'user_time_seconds': user_time_seconds,
                 'solution_match_count': solution_matches.count(),
                 'user_solution_matched': user_solution_matched,
-                'successful_users_study_stats': study_stats
+                'successful_users_study_stats': study_stats,
+                'time_histogram': time_histogram,
+                'per_question': per_question,
+                'trap_question': trap_question,
+                'per_skill': per_skill,
+                'user_assessed': user_assessed,
             }
             cache.set(cache_key, data, 300)
             return Response(data)
@@ -682,78 +828,9 @@ class ContentViewSet(VoteMixin, viewsets.ModelViewSet):
             logger.error(f"Failed to manage solution match: {e}")
             return Response({'error': 'Failed'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-    # ---- AI actions ----
-    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
-    def ai_start_chat(self, request, pk=None):
-        item = self.get_object()
-        try:
-            ct = ContentType.objects.get_for_model(Content)
-            correction = AICorrection.objects.create(
-                user=request.user, content_type=ct, object_id=item.id,
-                conversation_started_at=timezone.now(),
-                submission_state='pre_submission', language='fr'
-            )
-            solution_content = item.solution.solution_text if hasattr(item, 'solution') and item.solution else ''
-            json_content = get_structure(item.type, item.display_id)
-            from .structure_utils import get_total_points
-            total_points = get_total_points(json_content) or 20
-            exercise_context = {'json_content': json_content, 'solution': solution_content, 'total_points': total_points}
-            ai_service = AIVisionService()
-            result = ai_service.start_conversation(exercise_context)
-            correction.chat_history = [{'role': 'assistant', 'content': result['greeting_message'],
-                                         'timestamp': int(time.time() * 1000)}]
-            correction.save()
-            return Response({
-                'correction_id': str(correction.id),
-                'greeting_message': result['greeting_message'],
-                'exercise_info': {'total_points': total_points}
-            }, status=status.HTTP_201_CREATED)
-        except Exception as e:
-            logger.error(f"Failed to start chat: {e}", exc_info=True)
-            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
-    def ai_chat_pedagogical(self, request, pk=None):
-        item = self.get_object()
-        correction_id = request.data.get('correction_id')
-        user_message = request.data.get('message', '').strip()
-        pedagogical_mode = request.data.get('mode', 'general')
-        if not correction_id or not user_message:
-            return Response({'error': 'correction_id and message required'}, status=status.HTTP_400_BAD_REQUEST)
-        try:
-            ct = ContentType.objects.get_for_model(Content)
-            correction = AICorrection.objects.get(
-                id=correction_id, user=request.user, content_type=ct, object_id=item.id
-            )
-            solution_content = item.solution.solution_text if hasattr(item, 'solution') and item.solution else ''
-            json_content = get_structure(item.type, item.display_id)
-            from .structure_utils import get_total_points
-            exercise_context = {
-                'json_content': json_content,
-                'solution': solution_content,
-                'total_points': get_total_points(json_content) or 20,
-            }
-            ai_service = AIVisionService()
-            result = ai_service.chat_pedagogical(
-                user_message=user_message, chat_history=correction.chat_history,
-                exercise_context=exercise_context, pedagogical_mode=pedagogical_mode,
-                pedagogical_context=correction.pedagogical_context
-            )
-            if not result.get('response'):
-                return Response({'error': 'Empty AI response'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-            correction.chat_history = result['updated_history']
-            correction.pedagogical_context = result['updated_context']
-            correction.submission_state = 'discussed'
-            correction.save()
-            return Response({'response': result['response'], 'chat_history': correction.chat_history,
-                             'pedagogical_context': correction.pedagogical_context})
-        except AICorrection.DoesNotExist:
-            return Response({'error': 'Correction not found'}, status=status.HTTP_404_NOT_FOUND)
-        except Exception as e:
-            logger.error(f"Pedagogical chat failed: {e}", exc_info=True)
-            return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
+    # ---- Correction IA (réservée au superuser) ----
+    # Pipeline minimal : photo de copie → verdict par question (voir services/ai_vision.py).
+    @action(detail=True, methods=['post'], permission_classes=[IsAdminUser])
     def ai_correct(self, request, pk=None):
         item = self.get_object()
         if 'image' not in request.FILES:
@@ -761,80 +838,47 @@ class ContentViewSet(VoteMixin, viewsets.ModelViewSet):
         image_file = request.FILES['image']
         if image_file.size > 10 * 1024 * 1024:
             return Response({'error': 'Image too large (max 10MB)'}, status=status.HTTP_400_BAD_REQUEST)
-        try:
-            ct = ContentType.objects.get_for_model(Content)
-            correction_id = request.data.get('correction_id')
-            if correction_id:
-                try:
-                    correction = AICorrection.objects.get(
-                        id=correction_id, user=request.user, content_type=ct, object_id=item.id
-                    )
-                    correction.image = image_file
-                    correction.submission_state = 'submitted'
-                    correction.save()
-                except AICorrection.DoesNotExist:
-                    correction = AICorrection.objects.create(
-                        user=request.user, content_type=ct, object_id=item.id,
-                        image=image_file, submission_state='submitted', language='fr'
-                    )
-            else:
-                correction = AICorrection.objects.create(
-                    user=request.user, content_type=ct, object_id=item.id,
-                    image=image_file, submission_state='submitted', language='fr'
-                )
-            solution_content = item.solution.solution_text if hasattr(item, 'solution') and item.solution else ''
-            json_content = get_structure(item.type, item.display_id)
-            from .structure_utils import get_total_points
-            total_points = get_total_points(json_content) or 20
-            try:
-                ai_service = AIVisionService()
-                result = ai_service.analyze_solution(
-                    image_path=correction.image.path, marked_solution=solution_content,
-                    structure=json_content, total_points=total_points
-                )
-                correction.score_awarded = result['score_awarded']
-                correction.score_total = result['score_total']
-                correction.feedback = result['feedback']
-                correction.raw_response = result['raw_response']
-                correction.processing_time_ms = result['processing_time_ms']
-                correction.save()
-                serializer = AICorrectionSerializer(correction, context={'request': request})
-                return Response(serializer.data, status=status.HTTP_201_CREATED)
-            except Exception as e:
-                logger.error(f"AI correction failed: {e}", exc_info=True)
-                correction.delete()
-                return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        except Exception as e:
-            logger.error(f"Error creating AI correction: {e}", exc_info=True)
-            return Response({'error': 'Failed to process correction'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
-    def ai_chat(self, request, pk=None):
-        item = self.get_object()
-        correction_id = request.data.get('correction_id')
-        message = request.data.get('message')
-        if not correction_id or not message:
-            return Response({'error': 'correction_id and message required'}, status=status.HTTP_400_BAD_REQUEST)
+        ct = ContentType.objects.get_for_model(Content)
+        correction = AICorrection.objects.create(
+            user=request.user, content_type=ct, object_id=item.id,
+            image=image_file, submission_state='submitted', language='fr'
+        )
         try:
-            ct = ContentType.objects.get_for_model(Content)
-            correction = AICorrection.objects.get(
-                id=correction_id, user=request.user, content_type=ct, object_id=item.id
+            from apps.interactions.services import AICorrector
+            result = AICorrector().correct(
+                image_path=correction.image.path,
+                structure=item.json_content or {},
             )
-            ai_service = AIVisionService()
-            result = ai_service.chat_followup(
-                user_message=message, chat_history=correction.chat_history,
-                original_feedback=correction.feedback
-            )
-            correction.chat_history = result['updated_history']
-            correction.save()
-            return Response({'response': result['response'], 'chat_history': correction.chat_history})
-        except AICorrection.DoesNotExist:
-            return Response({'error': 'Correction not found'}, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
-            logger.error(f"AI chat failed: {e}", exc_info=True)
+            logger.error(f"AI correction failed: {e}", exc_info=True)
+            correction.delete()
             return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-    @action(detail=True, methods=['get'], permission_classes=[IsAuthenticated])
+        # Enrichit chaque verdict avec le libellé lisible (Q1, Q2a…) à partir de la structure.
+        labels = {p: lbl for p, lbl, _ in _walk_questions_meta(item.json_content or {})}
+        for v in result['per_question']:
+            v['label'] = labels.get(v.get('path'), v.get('path', ''))
+
+        correction.score_awarded = result['score_awarded']
+        correction.score_total = result['score_total']
+        correction.feedback = {
+            'per_question': result['per_question'],
+            'global_feedback': result['global_feedback'],
+        }
+        correction.raw_response = result['raw_response']
+        correction.processing_time_ms = result['processing_time_ms']
+        correction.save()
+        return Response({
+            'correction_id': str(correction.id),
+            'score_awarded': result['score_awarded'],
+            'score_total': result['score_total'],
+            'per_question': result['per_question'],
+            'global_feedback': result['global_feedback'],
+            'processing_time_ms': result['processing_time_ms'],
+        }, status=status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=['get'], permission_classes=[IsAdminUser])
     def ai_corrections(self, request, pk=None):
         item = self.get_object()
         ct = ContentType.objects.get_for_model(Content)
@@ -852,7 +896,7 @@ class ContentViewSet(VoteMixin, viewsets.ModelViewSet):
 class SolutionViewSet(VoteMixin, viewsets.ModelViewSet):
     queryset = Solution.objects.all()
     serializer_class = SolutionSerializer
-    permission_classes = [IsAuthenticatedOrReadOnly]
+    permission_classes = [IsAuthorOrStaffOrReadOnly]
 
     def perform_create(self, serializer):
         serializer.save(author=self.request.user)
@@ -865,10 +909,26 @@ class SolutionViewSet(VoteMixin, viewsets.ModelViewSet):
 class CommentViewSet(VoteMixin, viewsets.ModelViewSet):
     queryset = Comment.objects.all()
     serializer_class = CommentSerializer
-    permission_classes = [IsAuthenticatedOrReadOnly]
+    permission_classes = [IsAuthorOrStaffOrReadOnly]
 
     def perform_create(self, serializer):
         serializer.save(author=self.request.user)
+
+    def perform_destroy(self, instance):
+        # Les images du commentaire (et de ses réponses) partent avec lui : sinon elles
+        # restaient sur S3 sans plus être rattachées à rien.
+        from apps.uploads.models import FileAttachment
+        ct = ContentType.objects.get_for_model(Comment)
+        ids = [instance.id]
+        frontier = [instance.id]
+        while frontier:
+            frontier = list(Comment.objects.filter(parent_id__in=frontier).values_list('id', flat=True))
+            ids += frontier
+        for attachment in FileAttachment.objects.filter(content_type=ct, object_id__in=ids):
+            if attachment.file:
+                attachment.file.delete(save=False)
+            attachment.delete()
+        instance.delete()
 
 
 # ---------------------------------------------------------------------------
@@ -891,6 +951,7 @@ def _taxonomy_qs(source, exclude_id=None):
 
 @api_view(['POST'])
 @perm_classes([IsAuthenticated])
+@throttle_classes([PdfParseThrottle])
 def parse_pdf_view(request):
     """
     POST /api/parse-pdf/
@@ -913,7 +974,7 @@ def parse_pdf_view(request):
         return Response(result, status=status.HTTP_200_OK)
     except RuntimeError as e:
         return Response({'error': str(e)}, status=status.HTTP_422_UNPROCESSABLE_ENTITY)
-    except Exception as e:
+    except Exception:
         logger.exception('PDF parsing failed')
         return Response({'error': 'Internal error during PDF parsing'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
@@ -926,9 +987,82 @@ def get_content_recommendations(request, content_id):
         return Response({'error': 'Not found'}, status=404)
 
     qs = _taxonomy_qs(source, exclude_id=content_id)
-    ctx = {'request': request}
-    return Response({
-        'exercises': ContentListSerializer(qs.filter(type='exercise')[:3], many=True, context=ctx).data,
-        'lessons': ContentListSerializer(qs.filter(type='lesson')[:2], many=True, context=ctx).data,
-        'exams': ContentListSerializer(qs.filter(type='exam')[:2], many=True, context=ctx).data,
-    })
+    ids = {t: list(qs.filter(type=t).values_list('id', flat=True)[:n]) for t, n in (('exercise', 3), ('lesson', 2), ('exam', 2))}
+    # Un seul chargement (avec préchargements) pour les trois groupes, puis répartition.
+    loaded = with_list_relations(Content.objects.all(), getattr(request, 'user', None))
+    cards = serialize_content_list(in_order(loaded, ids['exercise'] + ids['lesson'] + ids['exam']), request)
+    by_type = {'exercise': [], 'lesson': [], 'exam': []}
+    for card in cards:
+        by_type.get(card['type'], []).append(card)
+    return Response({'exercises': by_type['exercise'], 'lessons': by_type['lesson'], 'exams': by_type['exam']})
+
+
+# =====================
+# PROPOSED SOLUTIONS (élèves)
+# =====================
+
+def attach_own_files(obj, file_ids, user, allowed_types=None):
+    """Rattache à `obj` les fichiers envoyés par `user` et encore libres.
+
+    Jamais les fichiers d'un autre, ni un fichier déjà rattaché ailleurs (sinon on
+    pourrait déplacer la pièce jointe d'un autre commentaire ou d'une autre solution).
+    """
+    from apps.uploads.models import FileAttachment
+    if not file_ids:
+        return 0
+    qs = FileAttachment.objects.filter(id__in=file_ids, uploaded_by=user, object_id__isnull=True)
+    if allowed_types:
+        qs = qs.filter(file_type__in=allowed_types)
+    return qs.update(content_type=ContentType.objects.get_for_model(obj), object_id=obj.id)
+
+
+class ProposedSolutionViewSet(VoteMixin, viewsets.ModelViewSet):
+    """Solutions proposées par les élèves.
+
+    GET  /api/proposed-solutions/?content=<id>   liste (la plus votée d'abord)
+    POST /api/proposed-solutions/                {content, body, file_ids}
+    PATCH/DELETE /api/proposed-solutions/<id>/   auteur (ou staff) uniquement
+    POST /api/proposed-solutions/<id>/vote/      {value: 1 | -1}
+    """
+    serializer_class = ProposedSolutionSerializer
+    permission_classes = [IsAuthorOrStaffOrReadOnly]
+    pagination_class = None
+
+    def get_throttles(self):
+        if self.action == 'create':
+            return [ProposedSolutionThrottle()]
+        return super().get_throttles()
+
+    def get_queryset(self):
+        qs = ProposedSolution.objects.select_related('author', 'author__profile').prefetch_related('votes', 'attachments')
+        if self.action == 'list':
+            content_id = self.request.query_params.get('content')
+            if not str(content_id or '').isdigit():
+                return qs.none()
+            qs = qs.filter(content_item_id=int(content_id))
+        return qs
+
+    def list(self, request, *args, **kwargs):
+        items = list(self.get_queryset()[:200])
+        data = self.get_serializer(items, many=True).data
+        # La plus utile d'abord ; à égalité, la plus récente (deux tris stables).
+        data = sorted(data, key=lambda d: d['created_at'], reverse=True)
+        data.sort(key=lambda d: -(d['vote_count'] or 0))
+        return Response(data)
+
+    def perform_create(self, serializer):
+        file_ids = serializer.validated_data.pop('file_ids', [])
+        solution = serializer.save(author=self.request.user)
+        attach_own_files(solution, file_ids, self.request.user, allowed_types=['image', 'document'])
+
+    def perform_update(self, serializer):
+        file_ids = serializer.validated_data.pop('file_ids', [])
+        solution = serializer.save()
+        attach_own_files(solution, file_ids, self.request.user, allowed_types=['image', 'document'])
+
+    def perform_destroy(self, instance):
+        for attachment in instance.attachments.all():
+            if attachment.file:
+                attachment.file.delete(save=False)
+            attachment.delete()
+        instance.delete()

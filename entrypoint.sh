@@ -33,5 +33,6 @@ python manage.py collectstatic --noinput
 nginx
 
 # Start gunicorn (bind to localhost only, nginx will proxy)
-# Workers: 2*CPU+1 (adjust based on your server CPUs)
-exec gunicorn --bind 127.0.0.1:8000 --workers 9 --worker-class sync --timeout 120 --max-requests 1000 --max-requests-jitter 50 --access-logfile - --error-logfile - config.wsgi:application
+# Workers default to 3 (fine for a laptop / small VPS). Override with
+# GUNICORN_WORKERS in the environment; rule of thumb on a real server: 2*CPU+1.
+exec gunicorn --bind 127.0.0.1:8000 --workers "${GUNICORN_WORKERS:-3}" --worker-class sync --timeout 120 --max-requests 1000 --max-requests-jitter 50 --access-logfile - --error-logfile - config.wsgi:application

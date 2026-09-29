@@ -11,7 +11,6 @@ Environment variables for S3:
 - AWS_S3_CUSTOM_DOMAIN=your_cdn_domain (optional, for CloudFront)
 """
 
-from django.conf import settings
 from storages.backends.s3boto3 import S3Boto3Storage
 
 
@@ -20,12 +19,3 @@ class MediaStorage(S3Boto3Storage):
     location = 'media'
     file_overwrite = False  # Don't overwrite files with same name
 
-
-def get_storage_backend():
-    """
-    Get the appropriate storage backend based on configuration
-    Returns S3 storage if enabled, otherwise default Django storage
-    """
-    if getattr(settings, 'AWS_STORAGE_ENABLED', False):
-        return 'apps.uploads.storage.MediaStorage'
-    return 'django.core.files.storage.FileSystemStorage'

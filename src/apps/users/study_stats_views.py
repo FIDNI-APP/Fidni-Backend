@@ -7,9 +7,9 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
 from django.contrib.auth.models import User
-from django.db.models import Sum, Count, Avg, Q
+from django.db.models import Sum, Count
 from django.utils import timezone
-from datetime import timedelta, datetime
+from datetime import timedelta
 from apps.interactions.models import StudyTimeTracker
 from django.contrib.contenttypes.models import ContentType
 from apps.things.models import Content

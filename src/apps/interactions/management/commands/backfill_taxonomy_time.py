@@ -3,7 +3,6 @@ Management command to backfill TaxonomyTimeSpent from existing StudyTimeTracker 
 Run with: python manage.py backfill_taxonomy_time
 """
 from django.core.management.base import BaseCommand
-from django.contrib.contenttypes.models import ContentType
 from apps.interactions.models import StudyTimeTracker, TaxonomyTimeSpent, update_taxonomy_time
 from datetime import timedelta
 

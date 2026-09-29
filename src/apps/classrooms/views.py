@@ -24,19 +24,18 @@ from django.db.models import Count, Q, Sum
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 
-from rest_framework import status, viewsets, mixins
-from rest_framework.decorators import action, api_view, permission_classes
+from rest_framework import status, viewsets
+from rest_framework.decorators import action, api_view, permission_classes, throttle_classes
+from config.throttling import ClassroomJoinThrottle
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from apps.interactions.models import Complete, StudyTimeTracker
 from apps.things.models import Content
 from apps.caracteristics.models import Subject
-from apps.users.models import UserProfile
 
 from .models import (
-    Classroom, ClassroomSubject, ClassroomMembership,
-    TDList, TDListItem,
+    Classroom, ClassroomMembership,
 )
 from .serializers import (
     ClassroomSerializer,
@@ -190,6 +189,7 @@ class ClassroomViewSet(viewsets.ModelViewSet):
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
+@throttle_classes([ClassroomJoinThrottle])
 def join_classroom(request):
     """Body: { code: 'ABCDEF' }"""
     code = (request.data.get('code') or '').strip().upper()
@@ -289,7 +289,8 @@ def weekly_progress(request):
         weeks.append((start, end, f"S-{i}" if i > 0 else "S0"))
 
     content_ct = ContentType.objects.get_for_model(Content)
-    exercise_ids = Content.objects.filter(type='exercise').values_list('id', flat=True)
+    # Complete.object_id is a CharField — pass string ids (PostgreSQL is strict about types)
+    exercise_ids = [str(i) for i in Content.objects.filter(type='exercise').values_list('id', flat=True)]
 
     def success_rate(user_ids, start, end):
         qs = Complete.objects.filter(

@@ -2,11 +2,11 @@ from rest_framework import status, viewsets
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.pagination import PageNumberPagination
-from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly, AllowAny
+from rest_framework.permissions import IsAuthenticated
 from django.contrib.contenttypes.models import ContentType
 
 
-from .models import Vote, RevisionList, RevisionListItem, StudyTimeTracker, Complete, TaxonomyTimeSpent
+from .models import Vote, RevisionList, RevisionListItem, StudyTimeTracker, Complete
 from .serializers import RevisionListSerializer, RevisionListCreateSerializer, RevisionListItemSerializer
 
 import logging
@@ -15,12 +15,6 @@ import logging
 logger = logging.getLogger('django')
 
 
-
-#----------------------------PAGINATION-------------------------------
-class LargeResultsSetPagination(PageNumberPagination):
-    page_size = 50
-    page_size_query_param = 'page_size'
-    max_page_size = 200
 
 class StandardResultsSetPagination(PageNumberPagination):
     page_size = 20
@@ -285,7 +279,7 @@ def track_study_time(request):
             logger.info(f"Authenticated via session: user={user.username}")
 
         if not user:
-            logger.warning(f"Study time tracking called without authentication")
+            logger.warning("Study time tracking called without authentication")
             return Response({'message': 'Skipped - not authenticated'}, status=status.HTTP_200_OK)
 
         if isinstance(time_spent, str):
@@ -362,7 +356,7 @@ def track_study_time(request):
 
     except ContentType.DoesNotExist:
         logger.warning(f"Invalid content_type requested: {content_type_name}")
-        return Response({'message': f'Skipped - invalid content_type'}, status=status.HTTP_200_OK)
+        return Response({'message': 'Skipped - invalid content_type'}, status=status.HTTP_200_OK)
     except Exception as e:
         logger.error(f"Error tracking study time: {str(e)}", exc_info=True)
         return Response({'message': 'Skipped - error occurred'}, status=status.HTTP_200_OK)
@@ -377,8 +371,6 @@ def get_taxonomy_time_stats(request):
     """
     Get time spent statistics aggregated by taxonomy - REAL-TIME with SQL aggregation
     """
-    from django.db.models import Sum, F, Value, CharField
-    from django.db.models.functions import Coalesce
     from apps.things.models import Content
 
     user = request.user

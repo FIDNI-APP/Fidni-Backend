@@ -30,8 +30,10 @@ class Content(CompleteableMixin, SaveableMixin, models.Model):
     type = models.CharField(max_length=10, choices=TYPE_CHOICES, db_index=True)
     display_id = models.PositiveIntegerField(null=True, blank=True)
 
+    # Structured blocks (exercise/lesson/exam) — JSONB on PostgreSQL.
+    json_content = models.JSONField(default=dict, blank=True)
+
     title = models.CharField(max_length=200)
-    content = models.TextField(blank=True, default='')
     author = models.ForeignKey(User, on_delete=models.PROTECT, related_name='content_items')
     subject = models.ForeignKey(Subject, on_delete=models.PROTECT, related_name='content_items', null=True)
     chapters = models.ManyToManyField(Chapter, related_name='content_items', blank=True)
@@ -69,8 +71,7 @@ class Content(CompleteableMixin, SaveableMixin, models.Model):
         super().save(*args, **kwargs)
 
     def _get_structure(self) -> dict:
-        from apps.things.content_store import get_structure
-        return get_structure(self.type, self.display_id)
+        return self.json_content or {}
 
     @property
     def total_points(self) -> int:
@@ -146,3 +147,30 @@ class Comment(VotableMixin, models.Model):
 
     def __str__(self):
         return f"Comment by {self.author.username} on {self.content_item}"
+
+
+# =====================
+# PROPOSED SOLUTION
+# =====================
+
+class ProposedSolution(VotableMixin, models.Model):
+    """Solution proposée par un élève sous un exercice ou un examen.
+
+    Rédigée avec l'éditeur (HTML, maths en $…$) et/ou envoyée en photos de sa copie
+    (pièces jointes). Plusieurs par exercice ; les autres élèves votent. Distincte de
+    `Solution`, la correction officielle de l'auteur de l'exercice.
+    """
+    content_item = models.ForeignKey(Content, on_delete=models.CASCADE, related_name='proposed_solutions')
+    author = models.ForeignKey(User, on_delete=models.CASCADE, related_name='proposed_solutions')
+    body = models.TextField(blank=True, default='')
+    attachments = GenericRelation('uploads.FileAttachment')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'things_proposedsolution'
+        ordering = ['-created_at']
+        indexes = [models.Index(fields=['content_item', '-created_at'])]
+
+    def __str__(self):
+        return f"Solution de {self.author.username} pour {self.content_item}"

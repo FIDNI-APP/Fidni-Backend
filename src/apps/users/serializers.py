@@ -14,6 +14,12 @@ class SubjectGradeSerializer(serializers.ModelSerializer):
         fields = ('id', 'subject', 'subject_name', 'min_grade', 'max_grade', 'current_grade', 'target_grade')
         read_only_fields = ('id',)
 
+    def validate(self, attrs):
+        for field in ('min_grade', 'max_grade'):
+            if field in attrs and not 0 <= attrs[field] <= 20:
+                raise serializers.ValidationError({field: 'Les notes vont de 0 à 20.'})
+        return attrs
+
     def get_subject_name(self, obj):
         return obj.subject.name
 
@@ -37,6 +43,13 @@ class UserProfileSerializer(serializers.ModelSerializer):
     teaching_subject_names = serializers.SerializerMethodField()
     teaching_class_level_names = serializers.SerializerMethodField()
     students_count = serializers.SerializerMethodField()
+    # Modifiés uniquement via /auth/user/update/ et l'onboarding (validation d'identité).
+    school = serializers.SerializerMethodField()
+    school_name = serializers.CharField(read_only=True)
+    gender = serializers.CharField(read_only=True)
+    birth_date = serializers.DateField(read_only=True)
+    # Faux si le compte n'a pas accepté la version en vigueur des CGU / de la confidentialité.
+    terms_up_to_date = serializers.SerializerMethodField()
 
     class Meta:
         model = UserProfile
@@ -51,8 +64,17 @@ class UserProfileSerializer(serializers.ModelSerializer):
             'teaching_subjects', 'teaching_subject_names',
             'teaching_class_levels', 'teaching_class_level_names',
             'teacher_code', 'students_count',
+            'school', 'school_name', 'gender', 'birth_date', 'terms_up_to_date',
         )
         read_only_fields = ('reputation', 'last_activity_date', 'joined_at', 'teacher_code')
+
+    def get_terms_up_to_date(self, obj):
+        from .legal import TERMS_VERSION
+        return obj.terms_version == TERMS_VERSION
+
+    def get_school(self, obj):
+        s = obj.school
+        return {'id': s.id, 'name': s.name, 'city': s.city, 'kind': s.kind} if s else None
 
     def get_avatar(self, obj):
         """Return full URL for avatar"""
@@ -93,6 +115,37 @@ class UserProfileSerializer(serializers.ModelSerializer):
         return obj.students.count()
 
 
+class AuthorSerializer(serializers.ModelSerializer):
+    """Auteur affiché sur un contenu, une solution ou un commentaire : juste de quoi l'afficher.
+
+    Le UserSerializer complet recalculait les statistiques de contribution de l'auteur
+    (plusieurs COUNT) pour chaque carte d'une liste. Le front ne lit que id, username, avatar.
+    """
+    avatar = serializers.SerializerMethodField()
+    # Contribution d'un compte supprimé : le front l'affiche sans lien de profil.
+    is_deleted = serializers.SerializerMethodField()
+
+    class Meta:
+        model = User
+        fields = ('id', 'username', 'avatar', 'is_deleted')
+
+    def get_is_deleted(self, obj):
+        from .account_deletion import is_deleted_account
+        return is_deleted_account(obj)
+
+    def get_avatar(self, obj):
+        from .account_deletion import is_deleted_account
+        if is_deleted_account(obj):
+            return None
+        profile = getattr(obj, 'profile', None)
+        if profile is None:
+            return None
+        if profile.avatar_file:
+            request = self.context.get('request')
+            return request.build_absolute_uri(profile.avatar_file.url) if request else profile.avatar_file.url
+        return profile.avatar_url
+
+
 class UserSerializer(serializers.ModelSerializer):
     profile = UserProfileSerializer(read_only=False)
     is_self = serializers.SerializerMethodField()
@@ -101,10 +154,37 @@ class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = (
-            'id', 'username', 'email', 'date_joined', 'profile', 'is_self', 'is_superuser'
+            'id', 'username', 'email', 'first_name', 'last_name', 'date_joined', 'profile', 'is_self', 'is_superuser'
         )
-        read_only_fields = ('date_joined', 'is_self', 'is_superuser')
-    
+        # L'e-mail se change par /api/auth/user/update/ (contrôle d'unicité), pas ici.
+        read_only_fields = ('email', 'first_name', 'last_name', 'date_joined', 'is_self', 'is_superuser')
+
+    # Réservés au propriétaire du compte : ce sérialiseur sert aussi pour l'auteur de
+    # chaque contenu et commentaire, visibles de tous.
+    PRIVATE_PROFILE_FIELDS = (
+        'teacher_code', 'email_notifications', 'comment_notifications', 'solution_notifications',
+        'subject_grades', 'onboarding_completed',
+        # Élèves souvent mineurs : l'établissement ne se montre pas aux autres.
+        'school', 'school_name', 'gender', 'birth_date', 'terms_up_to_date',
+    )
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        request = self.context.get('request')
+        viewer = getattr(request, 'user', None) if request else None
+        is_self = bool(viewer and getattr(viewer, 'is_authenticated', False) and viewer.id == instance.id)
+        if is_self or (viewer and getattr(viewer, 'is_staff', False)):
+            return data
+        profile = getattr(instance, 'profile', None)
+        if not (profile and profile.display_email):
+            data.pop('email', None)
+        data.pop('first_name', None)
+        data.pop('last_name', None)
+        if isinstance(data.get('profile'), dict):
+            for field in self.PRIVATE_PROFILE_FIELDS:
+                data['profile'].pop(field, None)
+        return data
+
     def get_is_self(self, obj):
         request = self.context.get('request')
         if request and hasattr(request, 'user') and request.user and hasattr(request.user, 'is_authenticated') and request.user.is_authenticated:
@@ -127,14 +207,6 @@ class UserSerializer(serializers.ModelSerializer):
             subject_grades_data = profile_data.pop('subject_grades', None)
             target_subjects_data = profile_data.pop('target_subjects', None)
             class_level_data = profile_data.pop('class_level', None)
-
-            # Debug logging
-            print("=" * 50)
-            print(f"Updating profile for {instance.username}")
-            print(f"Subject grades data: {subject_grades_data}")
-            print(f"Target subjects data: {target_subjects_data}")
-            print(f"Class level data: {class_level_data}")
-            print("=" * 50)
 
             # Update simple profile fields
             for attr, value in profile_data.items():
@@ -165,95 +237,24 @@ class UserSerializer(serializers.ModelSerializer):
                         profile.target_subjects.set(target_subjects_data)
                 else:
                     profile.target_subjects.clear()
-            
-            # Process subject grades if provided
-            if subject_grades_data:
-                print(f"Processing {len(subject_grades_data)} subject grades...")
-                # Clear existing grades and create new ones
-                deleted_count = profile.subject_grades.all().delete()
-                print(f"Deleted {deleted_count} existing grades")
 
-                for i, grade_data in enumerate(subject_grades_data):
+            # Objectifs de notes : la liste envoyée remplace l'ancienne (liste vide = tout retirer).
+            if subject_grades_data is not None:
+                profile.subject_grades.all().delete()
+                for grade_data in subject_grades_data:
                     subject_or_id = grade_data.get('subject')
-                    min_grade = grade_data.get('min_grade', 0)
-                    max_grade = grade_data.get('max_grade', 20)
-                    print(f"Grade {i}: subject={subject_or_id}, min={min_grade}, max={max_grade}")
-
-                    try:
-                        # Handle both Subject object and ID
-                        if isinstance(subject_or_id, Subject):
-                            subject = subject_or_id
-                        else:
-                            subject = Subject.objects.get(id=subject_or_id)
-
-                        new_grade = SubjectGrade.objects.create(
-                            user=profile,
-                            subject=subject,
-                            min_grade=min_grade,
-                            max_grade=max_grade
-                        )
-                        print(f"✓ Created grade: {new_grade.id} for {subject.name}")
-                    except Subject.DoesNotExist:
-                        print(f"ERROR: Subject {subject_or_id} does not exist!")
-                    except Exception as e:
-                        print(f"ERROR creating grade: {e}")
-
-                final_count = profile.subject_grades.count()
-                print(f"Final subject_grades count: {final_count}")
-            else:
-                print("No subject_grades_data provided!")
-        
-        return instance
-
-
-# Serializer spécifique pour l'onboarding
-class OnboardingSerializer(serializers.Serializer):
-    class_level = serializers.PrimaryKeyRelatedField(queryset=ClassLevel.objects.all())
-    user_type = serializers.ChoiceField(choices=UserProfile.USER_TYPE_CHOICES)
-    bio = serializers.CharField(required=False, allow_blank=True)
-    target_subjects = serializers.ListField(
-        child=serializers.PrimaryKeyRelatedField(queryset=Subject.objects.all())
-    )
-    subject_grades = serializers.ListField(
-        child=SubjectGradeSerializer(),
-        required=False
-    )
-    
-    def update(self, instance, validated_data):
-        # Extract and process subject_grades
-        subject_grades_data = validated_data.pop('subject_grades', None)
-        target_subjects = validated_data.pop('target_subjects', [])
-        
-        # Update profile fields
-        profile = instance.profile
-        profile.class_level = validated_data.get('class_level')
-        profile.user_type = validated_data.get('user_type')
-        profile.bio = validated_data.get('bio', profile.bio)
-
-        # Mark onboarding as completed
-        profile.onboarding_completed = True
-
-        profile.save()
-
-        # Update target_subjects (ManyToManyField - must be set after save())
-        if target_subjects is not None:
-            profile.target_subjects.set(target_subjects)
-        
-        # Process subject grades if provided
-        if subject_grades_data:
-            # Clear existing grades and create new ones
-            profile.subject_grades.all().delete()
-            
-            for grade_data in subject_grades_data:
-                subject = grade_data.get('subject')
-                if subject:
+                    if isinstance(subject_or_id, Subject):
+                        subject = subject_or_id
+                    else:
+                        subject = Subject.objects.filter(id=subject_or_id).first()
+                    if subject is None:
+                        continue
                     SubjectGrade.objects.create(
-                        user=profile,
-                        subject=subject,
-                        min_grade=grade_data.get('min_grade', 0),
-                        max_grade=grade_data.get('max_grade', 20)
+                        user=profile, subject=subject,
+                        # current/target font foi : SubjectGrade.save() les recopie dans min/max.
+                        current_grade=grade_data.get('min_grade', 10), target_grade=grade_data.get('max_grade', 15),
                     )
-        
+
         return instance
 
 

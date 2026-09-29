@@ -1,7 +1,6 @@
 # management/commands/recalculate_taxonomy_time.py
 
 from django.core.management.base import BaseCommand
-from django.contrib.contenttypes.models import ContentType
 from django.db import connection, transaction
 from datetime import timedelta
 from apps.interactions.models import StudyTimeTracker, TaxonomyTimeSpent, update_taxonomy_time

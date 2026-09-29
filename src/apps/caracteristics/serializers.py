@@ -59,13 +59,18 @@ class ChapterSerializer(serializers.ModelSerializer):
 class TheoremSerializer(serializers.ModelSerializer):
     subject = SubjectSerializer(read_only=True)
     class_levels = ClassLevelSerializer(many=True, read_only=True)
-    chapters = ChapterSerializer(read_only = True)
+    # Relation plusieurs-à-plusieurs : l'ancien ChapterSerializer (un seul objet) renvoyait
+    # {"name": null}. Liste légère des chapitres, lue depuis le prefetch de la vue.
+    chapters = serializers.SerializerMethodField()
     subfield = SubfieldSerializer(read_only=  True)
     content_count = serializers.SerializerMethodField()
 
     class Meta:
         model = Theorem
         fields = ['id', 'name', 'subject', 'class_levels','chapters','subfield', 'content_count']
+
+    def get_chapters(self, obj):
+        return [{'id': c.id, 'name': c.name} for c in obj.chapters.all()]
 
     def get_content_count(self, obj):
         return getattr(obj, 'content_count', None)

@@ -61,11 +61,3 @@ def get_section_count(structure: dict) -> int:
         if b.get('type') == 'section'
     )
 
-
-def get_preview(structure: dict) -> str:
-    for block in (structure or {}).get('blocks', []):
-        if block.get('type') in ('context', 'question'):
-            html = block.get('content', {}).get('html', '')
-            if html:
-                return html[:500]
-    return ''

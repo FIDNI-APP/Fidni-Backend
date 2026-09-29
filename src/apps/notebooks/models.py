@@ -2,7 +2,6 @@ from django.db import models
 from django.contrib.auth.models import User
 from apps.caracteristics.models import Subject, Chapter, ClassLevel
 from apps.things.models import Content
-import json
 
 class Notebook(models.Model):
     """

@@ -11,14 +11,6 @@ class SkillQuestionSerializer(serializers.ModelSerializer):
         fields = ['id', 'question', 'options', 'difficulty']
 
 
-class SkillQuestionAdminSerializer(serializers.ModelSerializer):
-    """Serializer for admin - includes correct answer"""
-
-    class Meta:
-        model = SkillQuestion
-        fields = ['id', 'chapter', 'question', 'options', 'correct_answer', 'difficulty', 'explanation', 'is_active']
-
-
 class SkillAssessmentSerializer(serializers.ModelSerializer):
     """Serializer for skill assessment results"""
     chapter_name = serializers.CharField(source='chapter.name', read_only=True)

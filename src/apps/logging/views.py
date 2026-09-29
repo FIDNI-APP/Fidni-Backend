@@ -3,7 +3,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.decorators import action
-from django.db.models import Count, Q, Avg, F
+from django.db.models import Count, Avg, F
 from django.utils import timezone
 from django.http import Http404
 from datetime import timedelta
@@ -239,7 +239,7 @@ def track_abtest_conversion(request):
 
 
 @api_view(['GET'])
-@permission_classes([AllowAny])
+@permission_classes([IsAdminUser])  # réservé aux admins (était ouvert à tous)
 def get_analytics_stats(request):
     now = timezone.now()
     last_24h = now - timedelta(hours=24)
@@ -276,7 +276,7 @@ def get_analytics_stats(request):
 # ---------------------------------------------------------------------------
 
 @api_view(['GET'])
-@permission_classes([AllowAny])
+@permission_classes([IsAdminUser])  # réservé aux admins (était ouvert à tous)
 def test_errors(request):
     error_type = request.GET.get('type', 'none')
     if error_type == 'none':
@@ -304,7 +304,7 @@ def test_errors(request):
 
 
 @api_view(['POST'])
-@permission_classes([AllowAny])
+@permission_classes([IsAdminUser])  # réservé aux admins (était ouvert à tous)
 def test_post_error(request):
     action_type = request.data.get('action')
     if action_type == 'fail':

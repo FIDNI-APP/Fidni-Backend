@@ -77,3 +77,40 @@ class Theorem(models.Model):
     
 
 
+#----------------------------SCHOOL-------------------------------
+
+def school_search_key(*parts):
+    """Texte de recherche : minuscules, sans accents ni ponctuation (arabe conservé)."""
+    import re
+    import unicodedata
+    s = unicodedata.normalize('NFKD', ' '.join(p for p in parts if p))
+    s = ''.join(c for c in s if not unicodedata.combining(c)).lower()
+    return re.sub(r'[^\w؀-ۿ]+', ' ', s).strip()
+
+
+class School(models.Model):
+    """Établissement scolaire marocain (listes officielles du ministère, data.gov.ma)."""
+    KIND_CHOICES = [
+        ('lycee', 'Lycée public'),
+        ('college', 'Collège public'),
+        ('cpge', 'CPGE'),
+        ('prive', 'Établissement privé'),
+    ]
+
+    name = models.CharField(max_length=255)
+    name_ar = models.CharField(max_length=255, blank=True)
+    city = models.CharField(max_length=120, blank=True)
+    region = models.CharField(max_length=120, blank=True)
+    kind = models.CharField(max_length=10, choices=KIND_CHOICES)
+    search = models.CharField(max_length=700, editable=False)
+
+    class Meta:
+        app_label = 'caracteristics'
+        ordering = ['name']
+
+    def save(self, *args, **kwargs):
+        self.search = school_search_key(self.name, self.name_ar, self.city)
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.name} ({self.city})" if self.city else self.name

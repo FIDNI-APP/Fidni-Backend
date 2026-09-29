@@ -1,9 +1,11 @@
 from rest_framework import viewsets, status
-from rest_framework.decorators import action, api_view, permission_classes
+from rest_framework.decorators import action
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.parsers import MultiPartParser, FormParser
 from django.contrib.contenttypes.models import ContentType
+from django.http import HttpResponseRedirect
+from django.shortcuts import get_object_or_404
 
 from .models import FileAttachment
 from .serializers import FileAttachmentSerializer, FileUploadSerializer
@@ -26,6 +28,16 @@ class FileAttachmentViewSet(viewsets.ModelViewSet):
         """Filter by user's own files or public files"""
         return FileAttachment.objects.filter(uploaded_by=self.request.user)
 
+    @action(detail=True, methods=['get'], permission_classes=[AllowAny])
+    def download(self, request, pk=None):
+        """
+        Stable, shareable URL for a file: redirects to a fresh presigned S3 URL.
+        Embed THIS url in content HTML — presigned URLs expire, this one doesn't.
+        GET /api/files/<uuid>/download/
+        """
+        attachment = get_object_or_404(FileAttachment.objects.all(), pk=pk)
+        return HttpResponseRedirect(attachment.file.url)
+
     @action(detail=False, methods=['post'], parser_classes=[MultiPartParser, FormParser])
     def upload(self, request):
         """
@@ -42,7 +54,10 @@ class FileAttachmentViewSet(viewsets.ModelViewSet):
 
         file = serializer.validated_data['file']
         content_type_name = serializer.validated_data.get('content_type')
-        object_id = serializer.validated_data.get('object_id')
+        # Le fichier reste libre : il n'est rattaché qu'à la publication (commentaire, solution),
+        # par une vue qui vérifie que l'objet appartient bien à l'utilisateur. Avant, n'importe
+        # qui pouvait accrocher un fichier au commentaire de quelqu'un d'autre via object_id.
+        object_id = None
 
         # Get content type if provided
         content_type = None

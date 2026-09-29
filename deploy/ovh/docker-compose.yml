@@ -1,0 +1,87 @@
+# ── Fidni sur un VPS OVHcloud : tout le site sur une seule machine ─────────────────────────────
+# Arborescence attendue sur le serveur :
+#   /opt/fidni/backend    (clone de Fidni-Backend, contient ce fichier)
+#   /opt/fidni/frontend   (clone de Fidni-Frontend)
+#   /opt/fidni/secrets    (hors dépôt : .env du backend, identifiants du tunnel Cloudflare)
+#
+# Lancer :   cd /opt/fidni/backend/deploy/ovh && docker compose up -d --build
+# Journaux : docker compose logs -f backend
+#
+# Aucun port n'est ouvert sur Internet : le tunnel Cloudflare (conteneur « tunnel ») sort vers
+# Cloudflare et renvoie fidni.fr → 127.0.0.1:3001 et api.fidni.fr → 127.0.0.1:8080.
+# Rien de secret ici (dépôt public) : les secrets sont dans /opt/fidni/secrets.
+
+name: fidni
+
+services:
+  db:
+    image: postgres:18
+    container_name: fidni-db
+    environment:
+      POSTGRES_DB: fidni
+      POSTGRES_USER: fidni
+      POSTGRES_PASSWORD_FILE: /run/secrets/db_password
+    volumes:
+      # Image 18 : les données vivent sous /var/lib/postgresql/18/docker (on monte le parent).
+      - pgdata:/var/lib/postgresql
+      - /opt/fidni/secrets/db_password:/run/secrets/db_password:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fidni -d fidni"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+    # Pas de « ports » : la base n'est joignable que par le backend, sur le réseau interne.
+
+  backend:
+    image: fidni-backend
+    container_name: fidni-backend
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+    env_file: /opt/fidni/secrets/backend.env
+    environment:
+      DB_ENGINE: postgresql
+      DB_HOST: db
+      DB_PORT: "5432"
+      DB_NAME: fidni
+      DB_USER: fidni
+      DB_SSLMODE: disable          # réseau interne Docker, pas de TLS nécessaire
+      AWS_STORAGE_ENABLED: "false" # fichiers envoyés sur le disque du serveur (volume « media »)
+    volumes:
+      - media:/app/media
+    ports:
+      - "127.0.0.1:8080:80"
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  frontend:
+    image: fidni-frontend
+    container_name: fidni-frontend
+    build:
+      context: ../../../frontend
+    ports:
+      - "127.0.0.1:3001:8080"
+    restart: unless-stopped
+
+  tunnel:
+    # Profil « enligne » : le tunnel ne démarre QUE sur demande (docker compose --profile enligne
+    # up -d tunnel). Tant que le PC sert encore le site, deux connecteurs sur le même tunnel
+    # partageraient les visiteurs entre deux bases différentes. Voir README.md, étape « Bascule ».
+    profiles: ["enligne"]
+    image: cloudflare/cloudflared:latest
+    container_name: fidni-tunnel
+    command: tunnel --no-autoupdate --config /etc/cloudflared/config.yml run
+    network_mode: host   # pour joindre 127.0.0.1:3001 et 127.0.0.1:8080
+    volumes:
+      - /opt/fidni/secrets/cloudflared:/etc/cloudflared:ro
+    depends_on:
+      - backend
+      - frontend
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  media:

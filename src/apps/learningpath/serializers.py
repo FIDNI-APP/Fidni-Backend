@@ -303,6 +303,7 @@ class PathChapterSerializer(serializers.ModelSerializer):
                     'progress_percentage': progress.progress_percentage,
                     'quiz_score': progress.quiz_score,
                     'quiz_passed': progress.quiz_passed,
+                    'quiz_attempts': progress.quiz_attempts,
                     'started_at': progress.started_at
                 }
         return None

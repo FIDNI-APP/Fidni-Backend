@@ -3,7 +3,6 @@ from django.contrib.auth.models import User
 from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
 from django.contrib.contenttypes.models import ContentType
 from datetime import timedelta
-from django.utils import timezone
 import logging
 
 logger = logging.getLogger('django')
@@ -127,45 +126,6 @@ class CompleteableMixin(SaveableMixin,VotableMixin):
 
 #----------------------------REPORT-------------------------------
 
-class Report(models.Model):
-    user = models.ForeignKey(User, on_delete=models.PROTECT)
-    content_type = models.ForeignKey(ContentType, on_delete=models.PROTECT)
-    object_id = models.CharField(max_length=64)
-    content_object = GenericForeignKey('content_type', 'object_id')
-    reason = models.TextField()
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    class Meta:
-        app_label = 'interactions'
-        unique_together = ('user', 'content_type', 'object_id')
-        indexes = [
-            models.Index(fields=['content_type', 'object_id']),
-        ]
-
-    def __str__(self):
-        return f"Report by {self.user.username} on {self.content_object}"
-    
-
-#----------------------------PERCEIVED DIFFICULTY-------------------------------
-class Evaluate(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='difficulty_ratings')
-    rating = models.PositiveSmallIntegerField(choices=[(i, i) for i in range(1, 6)])  # Échelle de 1 à 5
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-    content_type = models.ForeignKey(ContentType, on_delete=models.PROTECT)
-    object_id = models.CharField(max_length=64)
-    content_object = GenericForeignKey('content_type', 'object_id')
-    class Meta:
-        app_label = 'interactions'
-        unique_together = ('user', 'content_type', 'object_id')
-        indexes = [
-            models.Index(fields=['user']),
-            models.Index(fields=['content_type', 'object_id']),
-        ]
-
-    def __str__(self):
-        return f"{self.user.username} rated {self.content_object.title} as {self.rating}/5"
-    
 #----------------------------TIME SPENT-------------------------------
 
 class TimeSession(models.Model):

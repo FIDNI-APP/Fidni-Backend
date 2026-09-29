@@ -94,8 +94,24 @@ def submit_quiz(request, chapter_id):
         }
     )
 
-    result_serializer = SkillAssessmentSerializer(assessment)
-    return Response(result_serializer.data)
+    result = SkillAssessmentSerializer(assessment).data
+    # Correction question par question, envoyée seulement APRÈS la soumission (la bonne réponse
+    # n'est jamais dans le quiz lui-même) : l'élève voit ses erreurs et l'explication.
+    result['correction'] = [
+        {'id': q.id, 'your_answer': answers.get(str(q.id)), 'correct_answer': q.correct_answer,
+         'is_correct': answers.get(str(q.id)) == q.correct_answer, 'explanation': q.explanation}
+        for q in questions
+    ]
+    return Response(result)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_available(request):
+    """Nombre de questions actives par chapitre : quels quiz existent vraiment ({chapitre: n})."""
+    from django.db.models import Count
+    rows = SkillQuestion.objects.filter(is_active=True).values('chapter_id').annotate(n=Count('id'))
+    return Response({str(r['chapter_id']): r['n'] for r in rows})
 
 
 @api_view(['GET'])

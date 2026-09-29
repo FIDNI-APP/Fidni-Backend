@@ -2,7 +2,6 @@ from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
-from django.db.models import Q
 from django.shortcuts import get_object_or_404
 from django.db import transaction
 
@@ -62,7 +61,7 @@ class NotebookChapterViewSet(viewsets.ModelViewSet):
 
         try:
             # Create new lesson entry
-            lesson_entry = NotebookLessonEntry.objects.create(
+            NotebookLessonEntry.objects.create(
                 section=chapter,
                 lesson=lesson,
                 page_order=next_page_order,
@@ -159,7 +158,7 @@ class NotebookLessonEntryAnnotationViewSet(viewsets.ModelViewSet):
 
     def list(self, request, *args, **kwargs):
         """List all annotations for a lesson entry (page)"""
-        lesson_entry = self.get_lesson_entry()
+        self.get_lesson_entry()  # vérifie l'accès (404 sinon)
 
         # Get annotations
         annotations = self.get_queryset()

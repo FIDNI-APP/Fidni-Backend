@@ -9,7 +9,6 @@ from apps.interactions.models import Save
 from .models import (
     ConcoursExam, ConcoursTip, ConcoursComment,
     SimulationSession, SimulationAnswer,
-    CONCOURS_TYPE_CHOICES,
 )
 
 
