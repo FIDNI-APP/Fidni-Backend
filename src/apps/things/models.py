@@ -174,3 +174,58 @@ class ProposedSolution(VotableMixin, models.Model):
 
     def __str__(self):
         return f"Solution de {self.author.username} pour {self.content_item}"
+
+
+# =====================
+# CONTENT REPORT
+# =====================
+
+class ContentReport(models.Model):
+    """Erreur signalée par un élève sur un contenu, traitée par les administrateurs (Pilotage).
+
+    `item_path` désigne la question (même chemin que la progression : « q2 », « q2.sq1 ») ou la
+    partie d'une leçon ; vide = tout le contenu. `item_label` garde le libellé vu par l'élève
+    (« Exercice 2 · Question 1.3 »), lisible même si le contenu est réorganisé ensuite.
+    """
+    REASON_STATEMENT = 'statement'
+    REASON_SOLUTION = 'solution'
+    REASON_SCALE = 'scale'
+    REASON_TYPO = 'typo'
+    REASON_DISPLAY = 'display'
+    REASON_OTHER = 'other'
+    REASON_CHOICES = [
+        (REASON_STATEMENT, "Erreur dans l'énoncé"),
+        (REASON_SOLUTION, 'Erreur dans la solution'),
+        (REASON_SCALE, 'Barème incorrect'),
+        (REASON_TYPO, "Faute de frappe ou d'orthographe"),
+        (REASON_DISPLAY, 'Formule ou figure mal affichée'),
+        (REASON_OTHER, 'Autre'),
+    ]
+    STATUS_OPEN = 'open'
+    STATUS_RESOLVED = 'resolved'
+    STATUS_DISMISSED = 'dismissed'
+    STATUS_CHOICES = [
+        (STATUS_OPEN, 'À traiter'),
+        (STATUS_RESOLVED, 'Corrigé'),
+        (STATUS_DISMISSED, 'Sans suite'),
+    ]
+
+    content = models.ForeignKey(Content, on_delete=models.CASCADE, related_name='reports')
+    # Compte supprimé : ses signalements partent avec lui (« tout le reste est effacé »).
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='content_reports')
+    reason = models.CharField(max_length=20, choices=REASON_CHOICES)
+    item_path = models.CharField(max_length=120, blank=True, default='')
+    item_label = models.CharField(max_length=160, blank=True, default='')
+    description = models.TextField(blank=True, default='')
+    status = models.CharField(max_length=12, choices=STATUS_CHOICES, default=STATUS_OPEN, db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    handled_at = models.DateTimeField(null=True, blank=True)
+    handled_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
+
+    class Meta:
+        db_table = 'things_contentreport'
+        ordering = ['-created_at']
+        indexes = [models.Index(fields=['status', '-created_at'], name='contentreport_status_date')]
+
+    def __str__(self):
+        return f"Signalement {self.get_reason_display()} sur {self.content}"

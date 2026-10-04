@@ -72,6 +72,9 @@ DEFAULT_FROM_EMAIL = env('DEFAULT_FROM_EMAIL', default='Fidni <no-reply@fidni.fr
 # Public URL of the SPA — used to build links inside verification emails.
 FRONTEND_URL = env('FRONTEND_URL', default='https://fidni.fr')
 
+# Prévenir Bing / IndexNow à chaque contenu publié ou modifié (config/indexnow.py).
+INDEXNOW_ENABLED = env.bool('INDEXNOW_ENABLED', default=True)
+
 # Logging — console only; docker captures stdout (`docker compose logs`)
 LOGGING = {
     'version': 1,

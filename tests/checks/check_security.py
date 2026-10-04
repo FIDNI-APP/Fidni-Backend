@@ -129,6 +129,9 @@ check('compte non confirmé + bon mdp → email_not_verified', r.status_code == 
 token = re.search(r'token=([^\s]+)', mail.outbox[-1].body).group(1)
 r = anon.post('/api/auth/verify-email/', {'token': token}, format='json')
 check('confirmation d’e-mail', r.status_code == 200, r.status_code)
+check('confirmation : connecté directement (jetons + profil)', bool(r.data.get('access')) and bool(r.data.get('refresh')) and bool(r.data.get('user')), list(r.data))
+r = anon.post('/api/auth/verify-email/', {'token': token}, format='json')
+check('lien déjà utilisé : plus de connexion', r.status_code == 200 and 'access' not in r.data and r.data.get('detail') == 'already_verified', r.data)
 
 # 4. Mot de passe oublié
 cache.clear()

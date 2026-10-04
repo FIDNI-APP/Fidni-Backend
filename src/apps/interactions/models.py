@@ -404,6 +404,10 @@ class RevisionList(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='revision_lists')
     name = models.CharField(max_length=200, help_text="Name of the revision list")
     description = models.TextField(blank=True, help_text="Optional description")
+    # Étiquettes facultatives choisies par l'élève (filtres de la page Révisions).
+    class_levels = models.ManyToManyField('caracteristics.ClassLevel', blank=True, related_name='revision_lists')
+    subjects = models.ManyToManyField('caracteristics.Subject', blank=True, related_name='revision_lists')
+    chapters = models.ManyToManyField('caracteristics.Chapter', blank=True, related_name='revision_lists')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -555,3 +559,24 @@ class AICorrection(models.Model):
         return f"{self.user.username} - {self.content_object}: {score_str}"
 
 
+
+
+class StudyTimeDay(models.Model):
+    """
+    Temps d'étude automatique, jour par jour et par contenu (exercice, leçon, examen).
+    StudyTimeTracker ne garde qu'un cumul par contenu : ce journal permet les statistiques par
+    période (« 30 derniers jours »…). Le temps enregistré avant sa création (1er octobre 2026) a été
+    rattaché au jour de la dernière activité sur le contenu.
+    """
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='study_time_days')
+    object_id = models.PositiveIntegerField()  # identifiant du Content
+    date = models.DateField()
+    seconds = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        app_label = 'interactions'
+        unique_together = ('user', 'object_id', 'date')
+        indexes = [models.Index(fields=['user', 'date'], name='studytimeday_user_date')]
+
+    def __str__(self):
+        return f"{self.user.username} - {self.object_id} - {self.date}: {self.seconds}s"

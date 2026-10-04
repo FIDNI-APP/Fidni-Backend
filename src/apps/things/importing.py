@@ -200,6 +200,8 @@ def validate(fiche: dict) -> tuple[list[str], list[str], set[str]]:
         errors.append('niveaux : liste obligatoire, ex. ["2ème Bac SM"]')
     if not isinstance(fiche.get('chapitres', []), list) or not fiche.get('chapitres'):
         errors.append('chapitres : au moins un chapitre')
+    if not isinstance(fiche.get('a_verifier', False), bool):
+        errors.append('a_verifier : true ou false')
     credit = fiche.get('credit')
     if credit is not None and not (isinstance(credit, str) and 0 < len(credit.strip()) <= 120):
         errors.append('credit : texte de 120 caractères au plus, ex. « M. Haddar, professeur de mathématiques »')
@@ -434,6 +436,10 @@ def _with_credit(structure: dict, fiche: dict) -> dict:
     # Mention visible de l'auteur du document (« Proposé par … » dans l'en-tête du contenu).
     if (fiche.get('credit') or '').strip():
         structure['credit'] = fiche['credit'].strip()
+    # Correction rédigée par Fidni, pas encore relue par M. Haddar : bandeau « en cours de
+    # vérification » sur le site (retiré par contenus/outils/valider.sh après son feu vert).
+    if fiche.get('a_verifier'):
+        structure['a_verifier'] = True
     return structure
 
 

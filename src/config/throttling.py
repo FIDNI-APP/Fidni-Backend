@@ -55,6 +55,11 @@ class ClassroomJoinThrottle(UserRateThrottle):
     scope = 'classroom_join'
 
 
+class ContentReportThrottle(UserRateThrottle):
+    """Signalements d'erreurs : largement assez pour un élève, pas pour inonder la file."""
+    scope = 'content_report'
+
+
 class ProposedSolutionThrottle(UserRateThrottle):
     """Publication de solutions d'élèves (texte + photos) : freine le spam."""
     scope = 'proposed_solution'

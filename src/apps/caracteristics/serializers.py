@@ -1,3 +1,4 @@
+from django.utils.text import slugify
 from rest_framework import serializers
 from .models import ClassLevel, Subject, Chapter, Subfield, Theorem
 import logging 
@@ -12,10 +13,15 @@ logger = logging.getLogger('django')
 
 class ClassLevelSerializer(serializers.ModelSerializer):
     content_count = serializers.SerializerMethodField()
+    # Adresse des pages par niveau : /exercises/niveau/<slug> (apps/caracteristics/hubs.py).
+    slug = serializers.SerializerMethodField()
 
     class Meta:
         model = ClassLevel
-        fields = ['id', 'name', 'order', 'content_count']
+        fields = ['id', 'name', 'slug', 'order', 'content_count']
+
+    def get_slug(self, obj):
+        return slugify(obj.name)
 
     def get_content_count(self, obj):
         return getattr(obj, 'content_count', None)
@@ -48,10 +54,14 @@ class ChapterSerializer(serializers.ModelSerializer):
     class_levels = ClassLevelSerializer(many=True, read_only=True)
     subfield = SubfieldSerializer(read_only = True)
     content_count = serializers.SerializerMethodField()
+    slug = serializers.SerializerMethodField()
 
     class Meta:
         model = Chapter
-        fields = ['id', 'name', 'subject', 'class_levels', 'subfield', 'content_count']
+        fields = ['id', 'name', 'slug', 'subject', 'class_levels', 'subfield', 'content_count']
+
+    def get_slug(self, obj):
+        return slugify(obj.name)
 
     def get_content_count(self, obj):
         return getattr(obj, 'content_count', None)

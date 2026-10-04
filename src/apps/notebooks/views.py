@@ -251,12 +251,18 @@ class NotebookViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
         
-        # Créer le cahier
+        # Créer le cahier, sous le nom choisi par l'élève (sinon « Matière - Niveau »)
+        title = str(request.data.get('title') or '').strip()[:200] or f"{subject.name} - {class_level.name}"
+        if Notebook.objects.filter(user=request.user, title=title).exists():
+            return Response(
+                {"error": "Tu as déjà un cahier qui porte ce nom. Choisis-en un autre."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
         notebook = Notebook.objects.create(
             user=request.user,
             subject=subject,
             class_level=class_level,
-            title=f"{subject.name} - {class_level.name}"
+            title=title
         )
         
         # Récupérer les chapitres correspondant à cette matière et ce niveau

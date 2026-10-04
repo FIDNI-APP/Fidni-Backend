@@ -249,6 +249,13 @@ NOTIONS: dict[str, dict[str, str]] = {
         'variable-aleatoire': 'Variable aléatoire',
         'loi-binomiale': 'Loi binomiale',
     },
+    # ─────────────────────────────── 2ème Bac PC (chapitres propres ; les autres sont communs avec le SM)
+    'Fonctions primitives': {
+        'primitives-usuelles': 'Primitives des fonctions usuelles',
+    },
+    'Produit vectoriel': {
+        'produit-vectoriel': 'Produit vectoriel',
+    },
 }
 
 

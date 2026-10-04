@@ -72,3 +72,6 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS(
             f'✓ {"Créé" if created else "Mis à jour"} : #{content.display_id} « {content.title} » '
             f'→ https://fidni.fr/{route}/{content.pk}'))
+        # La commande se termine avant l'envoi groupé d'IndexNow : on l'envoie tout de suite.
+        from config import indexnow
+        indexnow.flush()

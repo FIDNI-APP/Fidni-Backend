@@ -5,6 +5,8 @@ from django.conf.urls.static import static
 from rest_framework.routers import DefaultRouter
 
 from config.sitemap import sitemap as sitemap_view
+from config.seo import content_page as seo_content_page, listing_page as seo_listing_page, hub_page as seo_hub_page
+from apps.caracteristics.hubs import hub_view
 
 from apps.things.views import ContentViewSet, SolutionViewSet, CommentViewSet, ProposedSolutionViewSet
 from apps.users.views import (
@@ -22,6 +24,10 @@ from apps.users.dashboard_views import (
 )
 from apps.users.study_stats_views import get_study_statistics
 from apps.users.overview_views import dashboard_overview
+from apps.users import admin_dashboard
+from apps.users.my_stats import my_stats
+from apps.things import reports as content_reports
+from apps.things.verification import set_verification
 from apps.things.views import get_content_recommendations, parse_pdf_view, skill_suggestions
 from apps.caracteristics.views import (
     ClassLevelViewSet, SubjectViewSet, ChapterViewSet, SubfieldViewSet, TheoremViewSet,
@@ -66,6 +72,14 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     # Plan du site (SEO), annoncé dans le robots.txt de fidni.fr
     path('sitemap.xml', sitemap_view, name='sitemap'),
+    # Pages de contenu pré-remplies pour les moteurs de recherche (appelées par le nginx du frontend).
+    path('seo/<str:section>/<int:pk>/', seo_content_page, name='seo-content'),
+    # Accueil et listes (exercices, leçons, examens) pré-remplis pour les moteurs de recherche.
+    path('seo/page/<str:name>/', seo_listing_page, name='seo-listing'),
+    # Pages par niveau et par chapitre (exercices, cours, examens).
+    path('seo/hub/<str:section>/<slug:level>/', seo_hub_page, name='seo-hub-level'),
+    path('seo/hub/<str:section>/<slug:level>/<slug:chapter>/', seo_hub_page, name='seo-hub-chapter'),
+    path('api/hubs/', hub_view, name='hubs'),
 
     # Avatar upload - MUST be before router to avoid conflict with /api/users/<username>/
     path('api/users/avatar/', AvatarUploadView.as_view(), name='avatar-upload'),
@@ -134,6 +148,17 @@ urlpatterns = [
     # Dashboard endpoints
     path('api/dashboard/stats/', get_user_dashboard_stats, name='dashboard-stats'),
     path('api/dashboard/overview/', dashboard_overview, name='dashboard-overview'),
+    # Pilotage (administrateurs) : inscrits, activité, statistiques d'usage.
+    path('api/pilotage/', admin_dashboard.overview, name='pilotage'),
+    path('api/pilotage/utilisateurs/', admin_dashboard.users_list, name='pilotage-utilisateurs'),
+    # Signalements d'erreurs sur les contenus : envoi (élèves connectés), suivi (administrateurs).
+    path('api/contents/<int:content_id>/report/', content_reports.report_content, name='content-report'),
+    # Correction « à vérifier » : validée (ou remise) par un administrateur depuis le site.
+    path('api/contents/<int:content_id>/verification/', set_verification, name='content-verification'),
+    path('api/pilotage/signalements/', content_reports.reports_list, name='pilotage-signalements'),
+    path('api/pilotage/signalements/<int:pk>/', content_reports.report_update, name='pilotage-signalement'),
+    # Statistiques de l'élève (page Statistiques) : période, matière, niveau.
+    path('api/stats/me/', my_stats, name='my-stats'),
     path('api/dashboard/learning-path/', get_learning_path_progress, name='learning-path-progress'),
     path('api/dashboard/recommended/', get_recommended_content, name='recommended-content'),
 

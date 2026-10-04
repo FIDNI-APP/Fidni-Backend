@@ -136,6 +136,9 @@ check('identifiants stables (clé + position)', [b['id'] for b in st['blocks']] 
 check('points d’une question = somme des sous-questions', st['blocks'][2]['points'] == 2.5, st['blocks'][2].get('points'))
 check('mention de l’auteur conservée', importing.to_structure({**EXO, 'credit': 'M. Haddar'}).get('credit') == 'M. Haddar')
 check('mention de l’auteur trop longue refusée', 'credit' in errs(lambda f: f.update(credit='x' * 200)))
+check('correction « à vérifier » conservée', importing.to_structure({**EXO, 'a_verifier': True}).get('a_verifier') is True
+      and 'a_verifier' not in importing.to_structure(EXO))
+check('a_verifier : booléen exigé', 'a_verifier' in errs(lambda f: f.update(a_verifier='oui')))
 check('notions converties en identifiants', st['blocks'][1]['meta']['skills'] == ['derivee'], st['blocks'][1].get('meta'))
 check('notion hors référentiel refusée, avec la plus proche',
       'derivee' in errs(lambda f: f['blocs'][1].update(notions=['derivation'])),

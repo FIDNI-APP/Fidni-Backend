@@ -83,7 +83,87 @@ class RevisionListViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         """Only return revision lists belonging to the current user"""
-        return RevisionList.objects.filter(user=self.request.user).prefetch_related('items')
+        return (RevisionList.objects.filter(user=self.request.user)
+                .prefetch_related('items', 'class_levels', 'subjects', 'chapters'))
+
+    # Liste proposée en un clic depuis un exercice raté (« Ajouter à À revoir »).
+    QUICK_LIST_NAME = 'À revoir'
+    QUICK_LIST_DESCRIPTION = 'Les exercices que tu as ratés ou marqués à revoir, pour les retravailler.'
+
+    @staticmethod
+    def _label_from_content(revision_list, content):
+        """Étiquette la liste avec le niveau, la matière et les chapitres du contenu ajouté."""
+        revision_list.class_levels.add(*content.class_levels.all())
+        if content.subject_id:
+            revision_list.subjects.add(content.subject_id)
+        revision_list.chapters.add(*content.chapters.all())
+
+    @action(detail=False, methods=['post'])
+    def quick_add(self, request):
+        """
+        Ajoute un exercice ou un examen à la liste « À revoir » (créée au besoin, étiquetée
+        d'après le contenu). Attend : object_id. Renvoie la liste et si l'élément était nouveau.
+        """
+        from apps.things.models import Content
+        content = Content.objects.filter(pk=request.data.get('object_id'), type__in=('exercise', 'exam')).first()
+        if content is None:
+            return Response({'error': 'Contenu introuvable.'}, status=status.HTTP_404_NOT_FOUND)
+        revision_list, created_list = RevisionList.objects.get_or_create(
+            user=request.user, name=self.QUICK_LIST_NAME,
+            defaults={'description': self.QUICK_LIST_DESCRIPTION})
+        _, added = RevisionListItem.objects.get_or_create(
+            revision_list=revision_list,
+            content_type=ContentType.objects.get_for_model(Content),
+            object_id=content.pk)
+        self._label_from_content(revision_list, content)
+        revision_list.save(update_fields=['updated_at'])
+        return Response({'list_id': revision_list.id, 'list_name': revision_list.name,
+                         'created_list': created_list, 'added': added},
+                        status=status.HTTP_201_CREATED if added else status.HTTP_200_OK)
+
+    @action(detail=False, methods=['get'])
+    def suggestions(self, request):
+        """
+        Exercices et examens à retravailler : marqués « Échoué », ou avec des questions
+        auto-évaluées ratées / à revoir / partielles, et qui ne sont encore dans aucune liste.
+        """
+        from apps.things.models import Content
+        from .models import QuestionProgress
+        user = request.user
+        ct = ContentType.objects.get_for_model(Content)
+        in_lists = set(RevisionListItem.objects.filter(revision_list__user=user, content_type=ct)
+                       .values_list('object_id', flat=True))
+        validated = set()
+        found = {}  # id -> {'failed': bool, 'weak': int, 'at': datetime}
+        for c in Complete.objects.filter(user=user, content_type=ct):
+            try:
+                oid = int(c.object_id)
+            except (TypeError, ValueError):
+                continue
+            if c.status == 'review':
+                found[oid] = {'failed': True, 'weak': 0, 'at': c.updated_at}
+            elif c.status == 'success':
+                validated.add(oid)
+        for qp in QuestionProgress.objects.filter(user=user, content_type=ct,
+                                                  status__in=('failed', 'review', 'partial')):
+            entry = found.setdefault(qp.object_id, {'failed': False, 'weak': 0, 'at': qp.assessed_at})
+            entry['weak'] += 1
+            if qp.assessed_at and qp.assessed_at > entry['at']:
+                entry['at'] = qp.assessed_at
+        ids = [oid for oid, e in found.items() if oid not in in_lists and (e['failed'] or oid not in validated)]
+        contents = {c.id: c for c in Content.objects.filter(id__in=ids, type__in=('exercise', 'exam'))
+                    .prefetch_related('chapters', 'class_levels')}
+        rows = []
+        for oid in sorted(contents, key=lambda i: found[i]['at'], reverse=True)[:12]:
+            c, e = contents[oid], found[oid]
+            rows.append({
+                'id': c.id, 'type': c.type, 'title': c.title,
+                'failed': e['failed'], 'weak_questions': e['weak'],
+                'chapters': [ch.name for ch in c.chapters.all()],
+                'class_level': next((lv.name for lv in c.class_levels.all()), None),
+                'at': e['at'],
+            })
+        return Response({'count': len(ids), 'results': rows})
 
     def get_serializer_class(self):
         """Use different serializers for different actions"""
@@ -129,6 +209,7 @@ class RevisionListViewSet(viewsets.ModelViewSet):
                 # Update notes if item already exists
                 item.notes = notes
                 item.save()
+            revision_list.save(update_fields=['updated_at'])
 
             serializer = RevisionListItemSerializer(item, context={'request': request})
             return Response(serializer.data, status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)
@@ -328,6 +409,15 @@ def track_study_time(request):
                 tracker.recorded_at = timezone.now()
                 tracker.save(update_fields=['time_spent_seconds', 'recorded_at'])
                 tracker.refresh_from_db()
+
+            # Journal jour par jour (statistiques par période).
+            if normalized == 'content':
+                from .models import StudyTimeDay
+                day, day_created = StudyTimeDay.objects.get_or_create(
+                    user=user, object_id=int(content_id), date=timezone.localdate(),
+                    defaults={'seconds': int(time_spent)})
+                if not day_created:
+                    StudyTimeDay.objects.filter(pk=day.pk).update(seconds=F('seconds') + int(time_spent))
 
             # ========== NOUVEAU CODE : Mettre à jour les taxonomies ==========
             # Récupérer l'objet content pour accéder aux taxonomies

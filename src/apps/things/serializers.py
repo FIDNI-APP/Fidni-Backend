@@ -1,3 +1,4 @@
+from django.utils.text import slugify
 from rest_framework import serializers
 from .models import ProposedSolution, Solution, Comment, Content
 from apps.interactions.models import Vote
@@ -205,7 +206,7 @@ class ContentListSerializer(serializers.ModelSerializer):
         return data
 
     def get_chapters(self, obj):
-        return [{'id': c.id, 'name': c.name} for c in obj.chapters.all()]
+        return [{'id': c.id, 'name': c.name, 'slug': slugify(c.name)} for c in obj.chapters.all()]
 
     def get_theorems(self, obj):
         return [{'id': t.id, 'name': t.name} for t in obj.theorems.all()]

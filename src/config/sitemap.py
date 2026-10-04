@@ -21,6 +21,9 @@ def sitemap(request):
     site = settings.FRONTEND_URL.rstrip('/')
     urls = [(f'{site}{path}', None) for path in STATIC_PAGES]
     rows = Content.objects.order_by('-updated_at').values_list('id', 'type', 'updated_at')[:45000]
+    # Pages par niveau et par chapitre (seulement celles qui ont du contenu).
+    from apps.caracteristics.hubs import all_hubs
+    urls.extend((f'{site}{path}', updated) for path, updated in all_hubs())
     for pk, kind, updated in rows:
         section = PAGES_BY_TYPE.get(kind)
         if section:

@@ -217,6 +217,10 @@ BREVO_TIMEOUT = int(os.getenv('BREVO_TIMEOUT', '10'))
 # Public URL of the SPA — used to build links inside verification emails.
 FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:5173')
 
+# IndexNow (config/indexnow.py) : clé publique, dont le fichier est frontend/public/<clé>.txt. Actif en production.
+INDEXNOW_KEY = os.getenv('INDEXNOW_KEY', '93ee34525bd85504f81a723d63fca280')
+INDEXNOW_ENABLED = False
+
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
@@ -264,6 +268,7 @@ REST_FRAMEWORK = {
         "pdf_parse": "20/hour",     # analyse de PDF (coûteuse, par utilisateur)
         "classroom_join": "30/hour",  # essais de code de classe (par utilisateur)
         "proposed_solution": "20/hour",  # solutions d'élèves publiées (par utilisateur)
+        "content_report": "20/hour",  # signalements d'erreurs sur les contenus (par utilisateur)
     },
     "UNAUTHENTICATED_USER": None
 }

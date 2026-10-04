@@ -382,11 +382,103 @@ mappings["1bacsm"] = {
     },
 }
 
+# 2ème Bac Sciences Physiques (option française / BIOF), ajouté le 03/10/2026 d'après le programme
+# (12 chapitres, mêmes leçons qu'en 2ème Bac SVT). Les chapitres communs avec le 2ème Bac SM portent le
+# même nom (donc partagés) ; seuls les théorèmes au programme de PC y sont rattachés : pas d'arc
+# tangente, de suites adjacentes, de racines n-ièmes complexes ni de sommes de Riemann, propres au SM.
+mappings["2bacpc"] = {
+    "Mathématiques": {
+        "Analyse": {
+            "Limites et continuité": [
+                "Théorème des gendarmes",
+                "Théorème des valeurs intermédiaires (TVI)",
+                "Théorème de la bijection",
+                "Image d'un intervalle par une fonction continue",
+                "Continuité de la fonction réciproque",
+                "Prolongement par continuité",
+                "Limite et continuité d'une fonction composée",
+                "Fonction racine n-ième et puissance rationnelle",
+            ],
+            "Dérivation et étude des fonctions": [
+                "Dérivée d'une fonction composée",
+                "Dérivée de la fonction réciproque",
+                "Concavité et point d'inflexion",
+                "Branches infinies et asymptotes",
+            ],
+            "Suites numériques": [
+                "Convergence et divergence",
+                "Suites arithmétiques et géométriques",
+                "Suite monotone et bornée : convergence",
+                "Suites récurrentes u(n+1) = f(u(n))",
+                "Théorème des gendarmes",
+            ],
+            "Fonctions primitives": [
+                "Primitives des fonctions usuelles",
+                "Primitive d'une fonction continue sur un intervalle",
+            ],
+            "Fonctions logarithmiques": [
+                "Dérivée et propriétés du logarithme",
+                "Limites usuelles du logarithme",
+                "Fonction logarithme de base a",
+            ],
+            "Fonctions exponentielles": [
+                "Dérivée et propriétés de l'exponentielle",
+                "Limites usuelles de l'exponentielle",
+                "Fonction exponentielle de base a",
+            ],
+            "Calcul intégral": [
+                "Théorème fondamental de l'analyse",
+                "Primitives et techniques d'intégration",
+                "Intégration par parties",
+                "Valeur moyenne d'une fonction",
+                "Calcul d'aires et de volumes",
+            ],
+            "Équations différentielles": [
+                "Équation y' = ay + b",
+                "Équation y'' + ay' + by = 0",
+            ],
+        },
+        "Algèbre": {
+            "Nombres complexes": [
+                "Forme trigonométrique et exponentielle",
+                "Théorème de Moivre",
+                "Formules d'Euler",
+                "Équations du second degré dans ℂ",
+                "Transformations du plan : translation, homothétie, rotation",
+            ],
+        },
+        "Géométrie": {
+            "Produit scalaire dans l'espace": [
+                "Vecteur normal et équation d'un plan",
+                "Équation d'une sphère",
+                "Distance d'un point à un plan",
+            ],
+            "Produit vectoriel": [
+                "Expression analytique du produit vectoriel",
+                "Distance d'un point à une droite dans l'espace",
+            ],
+        },
+        "Probabilités": {
+            "Dénombrement": [
+                "Principe multiplicatif",
+                "Arrangements et combinaisons",
+            ],
+            "Probabilités": [
+                "Probabilité conditionnelle",
+                "Formule des probabilités totales",
+                "Indépendance d'événements",
+                "Variable aléatoire : espérance et variance",
+                "Loi binomiale",
+            ],
+        },
+    },
+}
+
 TAXONOMIE = {
     "Tronc commun Sciences": mappings["tcs"],
     "1ère Bac SM": mappings["1bacsm"],
     "2ème Bac SM": mappings["2bacsm"],
-    "2ème Bac PC": {},
+    "2ème Bac PC": mappings["2bacpc"],
 }
 
 # « order » est unique : un nouveau niveau naît en fin de liste, puis on remet tout dans l'ordre de

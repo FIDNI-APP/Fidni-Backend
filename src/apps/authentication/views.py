@@ -226,17 +226,31 @@ class VerifyEmailView(views.APIView):
             return Response({'error': 'Lien invalide', 'code': 'token_invalid'},
                             status=status.HTTP_400_BAD_REQUEST)
 
+        profile = getattr(user, 'profile', None)
+        # Première confirmation : l'élève est connecté directement (il vient de créer son compte et
+        # enchaîne sur la complétude du profil). Un lien déjà utilisé ne connecte plus personne.
+        first_time = not user.is_active or (profile is not None and not profile.email_verified)
+
         if not user.is_active:
             user.is_active = True
             user.save(update_fields=['is_active'])
 
-        profile = getattr(user, 'profile', None)
         if profile is not None and not profile.email_verified:
             profile.email_verified = True
             profile.email_verified_at = timezone.now()
             profile.save(update_fields=['email_verified', 'email_verified_at'])
 
-        return Response({'detail': 'email_verified'}, status=status.HTTP_200_OK)
+        if not first_time:
+            return Response({'detail': 'already_verified'}, status=status.HTTP_200_OK)
+
+        refresh = RefreshToken.for_user(user)
+        update_last_login(None, user)
+        return Response({
+            'detail': 'email_verified',
+            'access': str(refresh.access_token),
+            'refresh': str(refresh),
+            'user': UserSerializer(user, context={'request': request, 'is_owner': True}).data,
+        }, status=status.HTTP_200_OK)
 
 
 #----------------------------RESEND VERIFICATION-------------------------------

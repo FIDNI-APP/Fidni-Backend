@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from .models import RevisionList, RevisionListItem, AICorrection
+from apps.caracteristics.models import ClassLevel, Subject, Chapter
 from apps.users.serializers import UserSerializer
 from apps.users.models import ViewHistory
 import logging 
@@ -45,25 +46,57 @@ class RevisionListItemSerializer(serializers.ModelSerializer):
         return obj.content_type.model if obj.content_type else None
 
 
+class _NamedSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    name = serializers.CharField()
+
+
 class RevisionListSerializer(serializers.ModelSerializer):
     """Serializer for revision lists"""
     user = UserSerializer(read_only=True)
     items = RevisionListItemSerializer(many=True, read_only=True)
     item_count = serializers.ReadOnlyField()
+    class_levels = _NamedSerializer(many=True, read_only=True)
+    subjects = _NamedSerializer(many=True, read_only=True)
+    chapters = _NamedSerializer(many=True, read_only=True)
 
     class Meta:
         model = RevisionList
-        fields = ['id', 'name', 'description', 'user', 'items', 'item_count', 'created_at', 'updated_at']
+        fields = ['id', 'name', 'description', 'user', 'items', 'item_count',
+                  'class_levels', 'subjects', 'chapters', 'created_at', 'updated_at']
         read_only_fields = ['id', 'user', 'created_at', 'updated_at']
 
 
 class RevisionListCreateSerializer(serializers.ModelSerializer):
-    """Simplified serializer for creating/updating revision lists"""
+    """Création / modification d'une liste : nom, description et étiquettes facultatives."""
+    class_level_ids = serializers.PrimaryKeyRelatedField(
+        source='class_levels', many=True, required=False, queryset=ClassLevel.objects.all())
+    subject_ids = serializers.PrimaryKeyRelatedField(
+        source='subjects', many=True, required=False, queryset=Subject.objects.all())
+    chapter_ids = serializers.PrimaryKeyRelatedField(
+        source='chapters', many=True, required=False, queryset=Chapter.objects.all())
+    class_levels = _NamedSerializer(many=True, read_only=True)
+    subjects = _NamedSerializer(many=True, read_only=True)
+    chapters = _NamedSerializer(many=True, read_only=True)
+    item_count = serializers.ReadOnlyField()
 
     class Meta:
         model = RevisionList
-        fields = ['id', 'name', 'description']
-        read_only_fields = ['id']
+        fields = ['id', 'name', 'description', 'class_level_ids', 'subject_ids', 'chapter_ids',
+                  'class_levels', 'subjects', 'chapters', 'item_count', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'created_at', 'updated_at']
+
+    def validate_name(self, value):
+        value = (value or '').strip()
+        if not value:
+            raise serializers.ValidationError('Donne un nom à ta liste.')
+        request = self.context.get('request')
+        qs = RevisionList.objects.filter(user=request.user, name=value) if request else RevisionList.objects.none()
+        if self.instance:
+            qs = qs.exclude(pk=self.instance.pk)
+        if qs.exists():
+            raise serializers.ValidationError('Tu as déjà une liste qui porte ce nom.')
+        return value
 
 
 #----------------------------AI CORRECTION-------------------------------
