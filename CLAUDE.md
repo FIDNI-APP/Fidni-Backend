@@ -33,10 +33,10 @@ backend/
 ├── tests/base_tables.py     ← seeder de taxonomie (pas des tests), lancé par entrypoint
 └── src/
     ├── config/              ← urls.py racine, wsgi.py, settings/
-    └── apps/                ← 12 apps Django (voir ci-dessous)
+    └── apps/                ← 13 apps Django (voir ci-dessous)
 ```
 
-## Les 12 apps — qui fait quoi
+## Les 13 apps — qui fait quoi
 
 | App | Rôle | Modèles clés |
 |---|---|---|
@@ -52,6 +52,7 @@ backend/
 | `concours` | Examens concours (QCM) | `ConcoursExam` (avec `json_content` JSONB) |
 | `learningpath` | Parcours vidéo | — |
 | `logging` | Logs API/erreurs en base | — |
+| `notifications` | Cloche : nouveau commentaire sur un contenu avec lequel on a interagi, réponse à son commentaire (regroupées par contenu) | `Notification` |
 
 ## Conventions & pièges connus
 

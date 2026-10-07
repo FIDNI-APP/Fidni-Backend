@@ -50,6 +50,7 @@ from apps.learningpath.views import (
     VideoViewSet, ChapterQuizViewSet
 )
 from apps.uploads.views import FileAttachmentViewSet
+from apps.notifications import views as notification_views
 
 router = DefaultRouter()
 router.register(r'contents', ContentViewSet, basename='content')
@@ -124,6 +125,11 @@ urlpatterns = [
     path("api/token/", ThrottledTokenObtainPairView.as_view(), name="get_token"),
     path("api/token/refresh/", ThrottledTokenRefreshView.as_view(), name="refresh"),
     path('api/content/<str:content_id>/view/', mark_content_viewed, name='mark-content-viewed'),
+
+    # Notifications (cloche de la barre du haut)
+    path('api/notifications/', notification_views.notification_list, name='notifications'),
+    path('api/notifications/non-lues/', notification_views.unread_count, name='notifications-unread'),
+    path('api/notifications/lues/', notification_views.mark_read, name='notifications-read'),
 
     # Onboarding
     path('api/onboarding/', OnboardingView.as_view(), name='onboarding'),
