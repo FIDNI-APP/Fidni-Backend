@@ -59,6 +59,8 @@ backend/
 - **Structures de contenu** : vivent dans `Content.json_content` (JSONB). Accès via `apps/things/content_store.py` (même API que l'ancien store MongoDB, supprimé). Idem concours.
 - **Generic relations** (`Vote`/`Save`/`Complete`…) : `object_id` est un **CharField** — toujours passer des ids **string** (`[str(i) for i in ...]`), PostgreSQL refuse les comparaisons varchar/bigint (bug classique hérité de SQLite).
 - **Tri « Pour toi »** (`sort=recommended`, défaut des listes côté front) : `apps/things/for_you.py` — score par élève (chapitres travaillés, nouveautés, à retravailler, réussis en dernier, variété), calculé en Python puis paginé dans `ContentViewSet.list`. Vérifié par `tests/checks/check_for_you.py`.
+- **Ma progression** (`GET /api/stats/progression/`, page `/progression` du front) : `apps/users/progression.py` — carte du programme (maîtrise par chapitre = auto-évaluations 60 % + Skill IQ 40 %), points forts/faibles, évolution, temps d'étude. L'ancien `/api/stats/me/` (`my_stats.py`) sert encore au résumé du profil.
+- **Bandeau « à évaluer »** de la liste « Pour toi » : `GET /api/contents/a-evaluer/` (`apps/things/catch_up.py`).
 - **Images dans les contenus** : uploadées via `POST /api/files/upload/` (S3 : `media/uploads/content/YYYY/MM/uuid_nom`), et le HTML embarque l'URL **stable** `download_url` (les URLs S3 présignées expirent en 1 h).
 - **S3** : bucket privé `fidni-media-512768499268` (eu-west-3), endpoint régional forcé (le global 307-redirect casse les signatures).
 - Le front (fidni.fr) appelle `https://api.fidni.fr` = tunnel Cloudflare → ce conteneur (port local 8080).
