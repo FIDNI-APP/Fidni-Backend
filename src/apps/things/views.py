@@ -17,6 +17,7 @@ from django.db.models.functions import Cast
 from .models import Content, ContentDailyView, Solution, Comment, ProposedSolution
 from .pdf_parser import parse_pdf
 from .serializers import ContentSerializer, ContentListSerializer, ContentCreateSerializer, SolutionSerializer, CommentSerializer, ProposedSolutionSerializer
+from . import for_you
 from .listing import in_order, serialize_content_list, with_list_relations
 from apps.interactions.models import Save, Complete, TimeSession, SolutionView, SolutionMatch, QuestionProgress, AICorrection
 from apps.interactions.serializers import AICorrectionSerializer
@@ -157,11 +158,35 @@ class ContentViewSet(VoteMixin, viewsets.ModelViewSet):
 
     def list(self, request, *args, **kwargs):
         queryset = self.filter_queryset(self.get_queryset())
+        # Avec une recherche, la pertinence prime : « Pour toi » ne s'applique qu'à la liste parcourue.
+        if request.query_params.get('sort') == 'recommended' and not (request.query_params.get('search') or '').strip():
+            return self._list_recommended(request, queryset)
         page = self.paginate_queryset(queryset)
         items = page if page is not None else queryset
         # La structure (json_content) est une colonne de chaque ligne, déjà chargée.
         serializer = self.get_serializer(items, many=True)
         return self.get_paginated_response(serializer.data) if page is not None else Response(serializer.data)
+
+    def _list_recommended(self, request, queryset):
+        """Tri « Pour toi » (things/for_you.py) : l'ordre est calculé en Python, page par page.
+
+        La première page recalcule toujours (ce qu'il vient de réussir descend aussitôt) et garde
+        l'ordre 10 min pour les pages suivantes : le défilement ne montre ni doublon ni trou.
+        """
+        params = sorted((k, v) for k, v in request.query_params.lists() if k not in ('page', 'page_size'))
+        user = request.user if getattr(request.user, 'is_authenticated', False) else None
+        key = 'for_you_' + hashlib.md5(repr((user and user.id, params)).encode()).hexdigest()
+        ranked = cache.get(key) if request.query_params.get('page', '1') != '1' else None
+        if ranked is None:
+            ranked = for_you.rank(queryset, user)
+            cache.set(key, ranked, 600)
+        page = self.paginate_queryset(ranked)
+        reasons = {str(cid): why for cid, why in page}
+        items = in_order(with_list_relations(Content.objects.all(), user), [cid for cid, _ in page])
+        data = self.get_serializer(items, many=True).data
+        for row in data:
+            row['recommendation_reason'] = reasons.get(str(row['id']))
+        return self.get_paginated_response(data)
 
     def finalize_response(self, request, response, *args, **kwargs):
         response = super().finalize_response(request, response, *args, **kwargs)
@@ -302,13 +327,15 @@ class ContentViewSet(VoteMixin, viewsets.ModelViewSet):
             queryset = queryset.exclude(id__in=viewed_ids)
 
         sort_by = self.request.query_params.get('sort')
-        if search_query and not sort_by:
-            # Recherche sans tri choisi : les titres qui contiennent la recherche d'abord.
+        if search_query and sort_by in (None, '', 'recommended'):
+            # Recherche sans tri choisi (ou « Pour toi », qui ne vaut que sans recherche) : les titres qui contiennent la recherche d'abord.
             queryset = queryset.order_by('_search_rank', '-created_at')
         elif sort_by == 'oldest':
             queryset = queryset.order_by('created_at')
+        elif sort_by == 'recommended':
+            pass  # ordre calculé dans list() (things/for_you.py)
         elif sort_by == 'most_upvoted':
-            # « Plus aimés » (tri par défaut des listes) : le plus de j'aime, puis le moins de je n'aime pas.
+            # « Plus aimés » : le plus de j'aime, puis le moins de je n'aime pas.
             queryset = queryset.order_by('-like_count_annotation', 'dislike_count_annotation', '-created_at')
         else:
             queryset = queryset.order_by('-created_at')
