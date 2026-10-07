@@ -230,6 +230,7 @@ TRACKED_ACTIONS = [
     ('toutes-solutions', 'Voir toutes les solutions'),
     ('tout-reussi', '« Tout réussi »'),
     ('trouve-apres-solution', '« Tu avais trouvé ? » (sous une solution)'),
+    ('rattrapage-liste', 'Évalué depuis le bandeau « Tu as ouvert… » de la liste'),
     ('onglet-activite', 'Onglet « Activité » ouvert'),
     ('onglet-solutions', 'Onglet « Solutions des élèves » ouvert'),
     ('imprimer', 'Impression / PDF'),

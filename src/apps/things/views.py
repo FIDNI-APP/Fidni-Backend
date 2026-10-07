@@ -419,6 +419,18 @@ class ContentViewSet(VoteMixin, viewsets.ModelViewSet):
     def complete(self, request, pk=None):
         return self.mark_progress(request, pk)
 
+    # ---- à évaluer (bandeau de rattrapage de la liste « Pour toi ») ----
+    @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated], url_path='a-evaluer')
+    def a_evaluer(self, request):
+        """Contenus ouverts et travaillés sans « Réussi » ni « À revoir » (things/catch_up.py)."""
+        from .catch_up import pending
+        kind = self.content_type_scope or request.query_params.get('type') or 'exercise'
+        if kind not in (Content.TYPE_EXERCISE, Content.TYPE_EXAM):
+            return Response({'count': 0, 'items': []})
+        exclude = [int(x) for x in (request.query_params.get('exclude') or '').split(',')[:300] if x.isdigit()]
+        count, items = pending(request.user, kind, exclude)
+        return Response({'count': count, 'items': items})
+
     # ---- question progress ----
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
     def assess_question(self, request, pk=None):
