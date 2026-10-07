@@ -1,0 +1,77 @@
+# Tests à chaque push et pull request ; mise en ligne sur OVH à chaque push sur master, si les
+# tests sont verts. Côté serveur : deploy/ovh/deployer-ci.sh (installé par « deployer.sh ci »).
+# Secrets du dépôt : OVH_HOST, OVH_KNOWN_HOSTS, OVH_SSH_KEY (voir deploy/ovh/README.md).
+name: CI/CD
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    name: Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      # Même arborescence que sur le PC (backend/ et frontend/ côte à côte) : check_seo.py vérifie
+      # la clé IndexNow publiée par le frontend.
+      - uses: actions/checkout@v4
+        with:
+          path: backend
+      - uses: actions/checkout@v4
+        with:
+          repository: FIDNI-APP/Fidni-Frontend
+          path: frontend
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Dépendances
+        run: pip install -r backend/requirements.txt
+
+      - name: Vérifications (base SQLite jetable)
+        working-directory: backend
+        run: bash tests/checks/run_all.sh
+        env:
+          PYTHON: python
+
+  deploiement:
+    name: Mise en ligne (OVH)
+    needs: tests
+    if: github.ref == 'refs/heads/master' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment:
+      name: production
+      url: https://api.fidni.fr
+    concurrency:
+      group: deploiement-backend
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Clé SSH
+        env:
+          OVH_SSH_KEY: ${{ secrets.OVH_SSH_KEY }}
+          OVH_KNOWN_HOSTS: ${{ secrets.OVH_KNOWN_HOSTS }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$OVH_SSH_KEY" > ~/.ssh/fidni
+          chmod 600 ~/.ssh/fidni
+          printf '%s\n' "$OVH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+
+      - name: Envoi du code et reconstruction
+        env:
+          OVH_HOST: ${{ secrets.OVH_HOST }}
+        run: |
+          git archive --format=tar.gz HEAD \
+            | ssh -i ~/.ssh/fidni -o BatchMode=yes -o StrictHostKeyChecking=yes \
+                deploiement@"$OVH_HOST" backend
