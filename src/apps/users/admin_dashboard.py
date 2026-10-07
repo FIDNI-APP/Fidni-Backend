@@ -1,34 +1,40 @@
 """Tableau de bord d'administration (« Pilotage ») : réservé aux administrateurs (superuser).
 
-GET /api/pilotage/                 vue d'ensemble : chiffres clés, courbes sur 30 jours, fil d'activité…
-GET /api/pilotage/utilisateurs/    liste des inscrits (recherche, tri, pages) avec leur activité
+GET /api/pilotage/?jours=7|30|90        aperçu : à traiter, 4 chiffres comparés à la période d'avant,
+                                        leur courbe jour par jour, contenus les plus vus
+GET /api/pilotage/utilisateurs/         membres (recherche, filtres actifs/nouveaux/jamais actifs/enseignants, tri, pages)
+GET /api/pilotage/utilisateurs/<id>/    dernières actions d'un membre
 
 Uniquement des faits enregistrés. « Actif » = au moins une action enregistrée sur la période :
 connexion, consultation d'un contenu, contenu terminé, question auto-évaluée, session de chrono, temps
-d'étude, commentaire, solution proposée, test Skill IQ. Les visiteurs non connectés ne laissent aucune
-trace côté serveur (voir Search Console pour eux).
-Les comptes « maison » (administrateurs, compte éditorial, compte supprimé) sont exclus des statistiques.
+d'étude, commentaire, solution proposée, test Skill IQ. Les visiteurs non connectés n'apparaissent que
+dans les vues des contenus (ContentDailyView, depuis le 05/10/2026).
+Les comptes « maison » (administrateurs, compte éditorial, compte supprimé, compte de test) sont exclus des chiffres.
 """
 from collections import Counter, defaultdict
-from datetime import datetime, timedelta, timezone as dt_timezone
+from datetime import date, datetime, time, timedelta, timezone as dt_timezone
 
 from django.contrib.auth.models import User
 from django.contrib.contenttypes.models import ContentType
 from django.db.models import Count, Max, Q, Sum
+from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import BasePermission
 from rest_framework.response import Response
 
-from apps.interactions.models import AICorrection, Complete, QuestionProgress, RevisionList, StudyTimeTracker, TimeSession
-from apps.notebooks.models import Notebook
+from apps.interactions.models import Complete, QuestionProgress, StudyTimeTracker, TimeSession
 from apps.skilliq.models import SkillAssessment
-from apps.things.models import Comment, Content, ProposedSolution
+from apps.things.models import Comment, Content, ContentDailyView, ContentReport, ProposedSolution
 from apps.users.account_deletion import DELETED_USERNAME
-from apps.users.legal import TERMS_VERSION
-from apps.users.models import ViewHistory
+from apps.users.models import UsageDaily, ViewHistory
 
-SERIES_DAYS = 30
+PERIODS = (7, 30, 90)
+# Vues jour par jour (visiteurs compris) enregistrées à partir de cette date : avant, la courbe est vide.
+VIEWS_SINCE = date(2026, 10, 5)
+# Pages vues et actions mesurées par le navigateur (UsageDaily) : à partir de cette date.
+USAGE_SINCE = date(2026, 10, 6)
+TOP_CONTENTS = 8
 # Comptes de vérification automatique (captures, tests en production) : pas de vrais membres.
 TEST_ACCOUNTS = ['fidni_test_claude']
 TYPE_PATH = {'exercise': 'exercises', 'exam': 'exams', 'lesson': 'lessons'}
@@ -102,118 +108,180 @@ def _content_ref(content):
             'url': f'/{TYPE_PATH.get(content.type, "exercises")}/{content.id}'}
 
 
-def _age(birth, today):
-    return today.year - birth.year - ((today.month, today.day) < (birth.month, birth.day))
+def _period(request):
+    try:
+        n = int(request.query_params.get('jours') or 30)
+    except ValueError:
+        n = 30
+    return n if n in PERIODS else 30
+
+
+def _period_start(n):
+    """Minuit du premier des n derniers jours (aujourd'hui compris)."""
+    return timezone.make_aware(datetime.combine(timezone.localdate() - timedelta(days=n - 1), time.min))
 
 
 @api_view(['GET'])
 @permission_classes([IsSuperuser])
 def overview(request):
-    now = timezone.now()
-    today = timezone.localdate()
-    real = _real_users().select_related('profile', 'profile__class_level')
+    """Aperçu des n derniers jours (aujourd'hui compris), comparés aux n jours d'avant."""
+    n = _period(request)
+    first = timezone.localdate() - timedelta(days=n - 1)
+    prev_first = first - timedelta(days=n)
+    since = timezone.make_aware(datetime.combine(prev_first, time.min))
+    days = [prev_first + timedelta(days=i) for i in range(2 * n)]
+    current, previous = days[n:], days[:n]
+    real = _real_users()
     real_ids = set(real.values_list('id', flat=True))
-    since = {d: now - timedelta(days=d) for d in (1, 7, 30)}
 
-    # ── Inscrits
-    profiles = [u.profile for u in real if hasattr(u, 'profile')]
-    users = {
-        'total': len(real_ids),
-        'students': sum(1 for p in profiles if p.user_type != 'teacher'),
-        'teachers': sum(1 for p in profiles if p.user_type == 'teacher'),
-        'new_7d': real.filter(date_joined__gte=since[7]).count(),
-        'new_30d': real.filter(date_joined__gte=since[30]).count(),
-        'active_1d': len(_active_user_ids(since[1], real_ids)),
-        'active_7d': len(_active_user_ids(since[7], real_ids)),
-        'active_30d': len(_active_user_ids(since[30], real_ids)),
-        'onboarding_done': sum(1 for p in profiles if p.onboarding_completed),
-        'email_verified': sum(1 for p in profiles if getattr(p, 'email_verified_at', None)),
-        'terms_outdated': sum(1 for p in profiles if p.terms_version != TERMS_VERSION),
-        'under_15': sum(1 for p in profiles if p.birth_date and _age(p.birth_date, today) < 15),
-        'birth_date_missing': sum(1 for p in profiles if not p.birth_date),
-        'never_active': 0,
-    }
-    last = _last_activity(real_ids)
-    users['never_active'] = sum(1 for uid in real_ids if uid not in last)
-
-    # ── Répartitions
-    levels = Counter(p.class_level.name if p.class_level_id else 'Non renseigné'
-                     for p in real_profiles(real))
-    schools = Counter((p.school_name or '').strip() for p in profiles if (p.school_name or '').strip())
-    genders = Counter({'M': 'Monsieur', 'F': 'Madame', 'N': 'Non précisé'}.get(p.gender, 'Non renseigné') for p in profiles)
-
-    # ── Contenus
-    content_counts = dict(Content.objects.values_list('type').annotate(n=Count('id')))
-    content = {
-        'exercises': content_counts.get('exercise', 0), 'lessons': content_counts.get('lesson', 0),
-        'exams': content_counts.get('exam', 0),
-        'new_30d': Content.objects.filter(created_at__gte=since[30]).count(),
-        'total_views': Content.objects.aggregate(v=Sum('view_count'))['v'] or 0,
-        'by_level': [{'name': n, 'count': c} for n, c in Content.objects.values_list('class_levels__name')
-                     .annotate(c=Count('id', distinct=True)).order_by('-c') if n],
-    }
-
-    # ── Engagement sur 30 jours (comptes réels)
     def real_only(qs, ufield='user_id'):
         return qs.filter(**{f'{ufield}__in': real_ids})
-    study = real_only(StudyTimeTracker.objects.filter(recorded_at__gte=since[30])).aggregate(s=Sum('time_spent_seconds'))['s'] or 0
-    engagement = {
-        'views': real_only(ViewHistory.objects.filter(viewed_at__gte=since[30])).count(),
-        'completions': real_only(Complete.objects.filter(updated_at__gte=since[30])).count(),
-        'completions_success': real_only(Complete.objects.filter(updated_at__gte=since[30], status='success')).count(),
-        'questions_assessed': real_only(QuestionProgress.objects.filter(assessed_at__gte=since[30])).count(),
-        'study_minutes': round(study / 60),
-        'comments': real_only(Comment.objects.filter(created_at__gte=since[30]), 'author_id').count(),
-        'proposed_solutions': real_only(ProposedSolution.objects.filter(created_at__gte=since[30]), 'author_id').count(),
-        'skill_assessments': real_only(SkillAssessment.objects.filter(completed_at__gte=since[30])).count(),
-        'revision_lists': real_only(RevisionList.objects.filter(created_at__gte=since[30])).count(),
-        'notebooks': real_only(Notebook.objects.filter(created_at__gte=since[30])).count(),
-        'ai_corrections': real_only(AICorrection.objects.filter(submitted_at__gte=since[30])).count(),
-    }
 
-    # ── Courbes jour par jour (30 jours)
-    days = [today - timedelta(days=i) for i in range(SERIES_DAYS - 1, -1, -1)]
-    start = since[30]
-    signups = Counter(_day(d) for d in real.filter(date_joined__gte=start).values_list('date_joined', flat=True))
+    # ── Jour par jour, sur les deux périodes
+    signups = Counter(_day(d) for d in real.filter(date_joined__gte=since).values_list('date_joined', flat=True))
     active_by_day = defaultdict(set)
     for qs, field, ufield in _activity_sources():
-        for uid, when in qs.filter(**{f'{field}__gte': start}).values_list(ufield, field):
+        for uid, when in qs.filter(**{f'{field}__gte': since}).values_list(ufield, field):
             if uid in real_ids and when:
                 active_by_day[_day(when)].add(uid)
-    work = Counter(_day(d) for d in real_only(Complete.objects.filter(updated_at__gte=start)).values_list('updated_at', flat=True))
-    work.update(_day(d) for d in real_only(QuestionProgress.objects.filter(assessed_at__gte=start)).values_list('assessed_at', flat=True))
-    series = [{'date': d.isoformat(), 'signups': signups.get(d, 0), 'active': len(active_by_day.get(d, ())),
-               'work': work.get(d, 0)} for d in days]
+    work = Counter(_day(d) for d in real_only(Complete.objects.filter(updated_at__gte=since)).values_list('updated_at', flat=True))
+    work.update(_day(d) for d in real_only(QuestionProgress.objects.filter(assessed_at__gte=since)).values_list('assessed_at', flat=True))
+    views = dict(ContentDailyView.objects.filter(date__gte=prev_first).values_list('date').annotate(s=Sum('count')))
 
-    # ── Contenus les plus consultés (30 jours, élèves distincts)
-    ct_content = ContentType.objects.get_for_model(Content)
-    top_rows = (real_only(ViewHistory.objects.filter(viewed_at__gte=since[30], content_type=ct_content))
-                .values('object_id').annotate(readers=Count('user_id', distinct=True)).order_by('-readers')[:8])
-    by_id = {c.id: c for c in Content.objects.filter(id__in=[r['object_id'] for r in top_rows]).only('id', 'type', 'title')}
-    done = dict(real_only(Complete.objects.filter(content_type=ct_content, object_id__in=[str(r['object_id']) for r in top_rows]))
-                .values_list('object_id').annotate(n=Count('id')))
-    top_contents = [{**_content_ref(by_id[r['object_id']]), 'readers': r['readers'], 'completions': done.get(str(r['object_id']), 0)}
-                    for r in top_rows if r['object_id'] in by_id]
+    def total(per_day, ds):
+        return sum(per_day.get(d, 0) for d in ds)
+
+    def distinct_active(ds):
+        return len(set().union(*(active_by_day.get(d, set()) for d in ds)))
+
+    metrics = {
+        'views': {'value': total(views, current),
+                  'previous': total(views, previous) if previous[0] >= VIEWS_SINCE else None},
+        'active': {'value': distinct_active(current), 'previous': distinct_active(previous)},
+        'signups': {'value': total(signups, current), 'previous': total(signups, previous)},
+        'work': {'value': total(work, current), 'previous': total(work, previous)},
+    }
+    series = [{'date': d.isoformat(), 'views': views.get(d, 0) if d >= VIEWS_SINCE else None,
+               'active': len(active_by_day.get(d, ())), 'signups': signups.get(d, 0), 'work': work.get(d, 0)}
+              for d in current]
+
+    # ── Contenus les plus vus : vues de la période (visiteurs compris), puis membres distincts
+    ct = ContentType.objects.get_for_model(Content)
+    start = timezone.make_aware(datetime.combine(first, time.min))
+    member_views = real_only(ViewHistory.objects.filter(viewed_at__gte=start, content_type=ct))
+    ids = set(ContentDailyView.objects.filter(date__gte=first).values('content_id').annotate(v=Sum('count'))
+              .order_by('-v').values_list('content_id', flat=True)[:TOP_CONTENTS])
+    ids |= set(member_views.values('object_id').annotate(r=Count('user_id', distinct=True))
+               .order_by('-r').values_list('object_id', flat=True)[:TOP_CONTENTS])
+    period_views = dict(ContentDailyView.objects.filter(date__gte=first, content_id__in=ids)
+                        .values_list('content_id').annotate(v=Sum('count')))
+    readers = dict(member_views.filter(object_id__in=ids).values_list('object_id').annotate(r=Count('user_id', distinct=True)))
+    contents = {c.id: c for c in Content.objects.filter(id__in=ids).only('id', 'type', 'title')}
+    ranked = sorted(contents, key=lambda i: (period_views.get(i, 0), readers.get(i, 0)), reverse=True)[:TOP_CONTENTS]
+    top_contents = [{**_content_ref(contents[i]), 'views': period_views.get(i, 0), 'readers': readers.get(i, 0)}
+                    for i in ranked]
+
+    features, pages = _usage(first, prev_first, real_ids)
 
     return Response({
-        'generated_at': now.isoformat(),
-        'users': users,
-        'content': content,
-        'engagement_30d': engagement,
+        'generated_at': timezone.now().isoformat(),
+        'days': n,
+        'views_since': VIEWS_SINCE.isoformat(),
+        'usage_since': USAGE_SINCE.isoformat(),
+        'features': features,
+        'pages': pages,
+        'members_total': len(real_ids),
+        'todo': {
+            'reports_open': ContentReport.objects.filter(status=ContentReport.STATUS_OPEN).count(),
+            'a_verifier': [_content_ref(c) for c in Content.objects.filter(json_content__a_verifier=True)
+                           .only('id', 'type', 'title').order_by('-created_at')],
+        },
+        'metrics': metrics,
         'series': series,
         'top_contents': top_contents,
-        'levels': [{'name': n, 'count': c} for n, c in levels.most_common()],
-        'schools': [{'name': n, 'count': c} for n, c in schools.most_common(8)],
-        'genders': [{'name': n, 'count': c} for n, c in genders.most_common()],
-        'recent_activity': recent_activity(real_ids, limit=40),
     })
 
 
-def real_profiles(real):
-    for u in real:
-        p = getattr(u, 'profile', None)
-        if p:
-            yield p
+def _features():
+    """(clé, libellé, queryset, champ de date, champ utilisateur) : fonctionnalités dont chaque usage est en base."""
+    from apps.classrooms.models import ClassroomMembership
+    from apps.interactions.models import RevisionListItem, Save, Vote
+    from apps.notebooks.models import NotebookLessonEntry
+    return [
+        ('auto_evaluation', 'Auto-évaluation des questions', QuestionProgress.objects.all(), 'assessed_at', 'user_id'),
+        ('termine', 'Contenu terminé (réussi ou à revoir)', Complete.objects.all(), 'updated_at', 'user_id'),
+        ('jaime', 'J’aime / je n’aime pas', Vote.objects.exclude(value=0), 'updated_at', 'user_id'),
+        ('chrono', 'Chrono et épreuves', TimeSession.objects.all(), 'created_at', 'user_id'),
+        ('favoris', 'Enregistrer (favoris)', Save.objects.all(), 'saved_at', 'user_id'),
+        ('liste', 'Listes de révision', RevisionListItem.objects.all(), 'added_at', 'revision_list__user_id'),
+        ('cahier', 'Leçons ajoutées au cahier', NotebookLessonEntry.objects.all(), 'added_at', 'section__notebook__user_id'),
+        ('skilliq', 'Tests Skill IQ', SkillAssessment.objects.all(), 'completed_at', 'user_id'),
+        ('commentaire', 'Commentaires', Comment.objects.all(), 'created_at', 'author_id'),
+        ('solution', 'Solutions proposées', ProposedSolution.objects.all(), 'created_at', 'author_id'),
+        ('signalement', 'Erreurs signalées', ContentReport.objects.all(), 'created_at', 'user_id'),
+        ('classe', 'Classe rejointe', ClassroomMembership.objects.all(), 'joined_at', 'student_id'),
+    ]
+
+
+# Actions mesurées par le navigateur (apps/users/usage.py) : pas de membres distincts sur la période,
+# seulement le nombre de fois et les personnes distinctes jour par jour, additionnées.
+TRACKED_ACTIONS = [
+    ('voir-solution', 'Voir la solution d’une question'),
+    ('toutes-solutions', 'Voir toutes les solutions'),
+    ('tout-reussi', '« Tout réussi »'),
+    ('onglet-activite', 'Onglet « Activité » ouvert'),
+    ('onglet-solutions', 'Onglet « Solutions des élèves » ouvert'),
+    ('imprimer', 'Impression / PDF'),
+    ('recherche', 'Recherche'),
+    ('visite-guidee', 'Visite guidée'),
+]
+# Filtres des listes (07/10/2026) : un filtre compté quand on l'ajoute.
+TRACKED_FILTERS = [
+    ('filtre-niveau', 'Niveau'),
+    ('filtre-chapitre', 'Chapitre'),
+    ('filtre-difficulte', 'Difficulté'),
+    ('filtre-theoreme', 'Théorème'),
+    ('filtre-sous-domaine', 'Sous-domaine'),
+    ('filtre-matiere', 'Matière'),
+    ('filtre-statut', 'Statut (vus, réussis, à revoir)'),
+    ('filtre-national', 'Examen national'),
+    ('filtre-date', 'Date'),
+    ('tri', 'Tri de la liste'),
+    ('filtre-effacer', '« Tout effacer »'),
+]
+TOP_PAGES = 15
+
+
+def _usage(first, prev_first, real_ids):
+    """Fonctionnalités (membres, période et période d'avant) et pages les plus vues (période)."""
+    start = timezone.make_aware(datetime.combine(first, time.min))
+    prev_start = timezone.make_aware(datetime.combine(prev_first, time.min))
+    features = []
+    for key, label, qs, field, ufield in _features():
+        qs = qs.filter(**{f'{ufield}__in': real_ids})
+        cur = qs.filter(**{f'{field}__gte': start})
+        features.append({
+            'key': key, 'label': label, 'source': 'base',
+            'actions': cur.count(),
+            'users': cur.values(ufield).distinct().count(),
+            'previous': qs.filter(**{f'{field}__gte': prev_start, f'{field}__lt': start}).count(),
+        })
+    tracked = UsageDaily.objects.filter(kind=UsageDaily.KIND_ACTION, date__gte=prev_first)
+    cur_t = dict(tracked.filter(date__gte=first).values_list('name').annotate(c=Sum('count')))
+    vis_t = dict(tracked.filter(date__gte=first).values_list('name').annotate(v=Sum('visitors')))
+    prev_t = dict(tracked.filter(date__lt=first).values_list('name').annotate(c=Sum('count')))
+    for source, tracked in (('navigateur', TRACKED_ACTIONS), ('filtre', TRACKED_FILTERS)):
+        for key, label in tracked:
+            features.append({
+                'key': key, 'label': label, 'source': source,
+                'actions': cur_t.get(key, 0), 'users': None, 'visits': vis_t.get(key, 0),
+                'previous': prev_t.get(key, 0) if prev_first >= USAGE_SINCE else None,
+            })
+
+    page_rows = (UsageDaily.objects.filter(kind=UsageDaily.KIND_PAGE, date__gte=first)
+                 .values('name').annotate(views=Sum('count'), visits=Sum('visitors')).order_by('-views', 'name'))
+    pages = [{'page': r['name'], 'views': r['views'], 'visits': r['visits']} for r in page_rows[:TOP_PAGES]]
+    return features, pages
 
 
 def recent_activity(real_ids, limit=40):
@@ -261,29 +329,48 @@ SORTS = {'recent': '-date_joined', 'ancien': 'date_joined', 'nom': 'username'}
 @api_view(['GET'])
 @permission_classes([IsSuperuser])
 def users_list(request):
-    """Liste paginée des inscrits (comptes maison inclus mais signalés), avec leur activité."""
+    """Liste paginée des membres (comptes maison inclus mais signalés dans « Tous »), avec leur activité.
+
+    filtre : actifs / nouveaux (sur les `jours` derniers jours) / jamais (aucune action) / enseignants ;
+    les trois premiers excluent les comptes maison, comme les chiffres de l'aperçu.
+    `counts` donne l'effectif de chaque filtre (recherche comprise) pour les pastilles.
+    """
     q = (request.query_params.get('q') or '').strip()
     kind = request.query_params.get('type') or ''
+    filtre = request.query_params.get('filtre') or ''
     sort = request.query_params.get('tri') or 'recent'
+    since = _period_start(_period(request))
     try:
         page = max(1, int(request.query_params.get('page') or 1))
     except ValueError:
         page = 1
     size = 25
 
-    qs = User.objects.select_related('profile', 'profile__class_level').exclude(username=DELETED_USERNAME)
+    base = User.objects.select_related('profile', 'profile__class_level').exclude(username=DELETED_USERNAME)
     if q:
-        qs = qs.filter(Q(username__icontains=q) | Q(email__icontains=q) | Q(first_name__icontains=q)
-                       | Q(last_name__icontains=q) | Q(profile__school_name__icontains=q))
+        base = base.filter(Q(username__icontains=q) | Q(email__icontains=q) | Q(first_name__icontains=q)
+                           | Q(last_name__icontains=q) | Q(profile__school_name__icontains=q))
     if kind in ('student', 'teacher'):
-        qs = qs.filter(profile__user_type=kind)
+        base = base.filter(profile__user_type=kind)
     elif kind == 'admin':
-        qs = qs.filter(Q(is_staff=True) | Q(is_superuser=True))
+        base = base.filter(Q(is_staff=True) | Q(is_superuser=True))
+
+    all_ids = list(base.values_list('id', flat=True))
+    house_all = set(base.filter(_house_filter()).values_list('id', flat=True))
+    last_all = _last_activity(all_ids)
+    real_all = [i for i in all_ids if i not in house_all]
+    groups = {
+        'tous': all_ids,
+        'actifs': [i for i in real_all if i in last_all and last_all[i] >= since],
+        'nouveaux': list(base.filter(date_joined__gte=since).exclude(_house_filter()).values_list('id', flat=True)),
+        'jamais': [i for i in real_all if i not in last_all],
+        'enseignants': list(base.filter(profile__user_type='teacher').values_list('id', flat=True)),
+    }
+    qs = base.filter(id__in=groups[filtre]) if filtre in groups and filtre != 'tous' else base
 
     total = qs.count()
-    ids_all = list(qs.values_list('id', flat=True))
     if sort == 'activite':
-        last_all = _last_activity(ids_all)
+        ids_all = list(qs.values_list('id', flat=True))
         ordered = sorted(ids_all, key=lambda i: last_all.get(i) or datetime(1970, 1, 1, tzinfo=dt_timezone.utc), reverse=True)
         page_ids = ordered[(page - 1) * size: page * size]
         rows = {u.id: u for u in qs.filter(id__in=page_ids)}
@@ -291,14 +378,12 @@ def users_list(request):
     else:
         page_users = list(qs.order_by(SORTS.get(sort, '-date_joined'))[(page - 1) * size: page * size])
     ids = [u.id for u in page_users]
-    last = _last_activity(ids)
 
     def counts(qs_, ufield='user_id'):
         return dict(qs_.filter(**{f'{ufield}__in': ids}).values_list(ufield).annotate(n=Count('id')))
     views, completes = counts(ViewHistory.objects), counts(Complete.objects)
     assessed, comments = counts(QuestionProgress.objects), counts(Comment.objects, 'author_id')
     study = dict(StudyTimeTracker.objects.filter(user_id__in=ids).values_list('user_id').annotate(s=Sum('time_spent_seconds')))
-    house = set(User.objects.filter(id__in=ids).filter(_house_filter()).values_list('id', flat=True))
 
     results = []
     for u in page_users:
@@ -311,12 +396,21 @@ def users_list(request):
             'school': (p.school_name or None) if p else None,
             'date_joined': u.date_joined.isoformat(),
             'last_login': u.last_login.isoformat() if u.last_login else None,
-            'last_activity': last[u.id].isoformat() if u.id in last else None,
+            'last_activity': last_all[u.id].isoformat() if u.id in last_all else None,
             'onboarding_completed': bool(p and p.onboarding_completed),
             'email_verified': bool(p and getattr(p, 'email_verified_at', None)),
-            'is_admin': u.is_staff or u.is_superuser, 'is_house': u.id in house,
+            'is_admin': u.is_staff or u.is_superuser, 'is_house': u.id in house_all,
             'stats': {'views': views.get(u.id, 0), 'completions': completes.get(u.id, 0),
                       'questions': assessed.get(u.id, 0), 'comments': comments.get(u.id, 0),
                       'study_minutes': round((study.get(u.id) or 0) / 60)},
         })
-    return Response({'count': total, 'page': page, 'pages': max(1, -(-total // size)), 'results': results})
+    return Response({'count': total, 'page': page, 'pages': max(1, -(-total // size)), 'results': results,
+                     'counts': {k: len(v) for k, v in groups.items()}})
+
+
+@api_view(['GET'])
+@permission_classes([IsSuperuser])
+def user_detail(request, pk):
+    """Dernières actions d'un membre (fiche dépliée dans Pilotage › Membres)."""
+    user = get_object_or_404(User, pk=pk)
+    return Response({'id': user.id, 'activity': recent_activity({user.id}, limit=15)})

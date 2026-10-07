@@ -5,14 +5,16 @@ from rest_framework.pagination import PageNumberPagination
 from datetime import timedelta
 from django.utils import timezone
 from django.core.cache import cache
+from django.contrib.auth.models import User
 
 from django.contrib.contenttypes.models import ContentType
+from django.db import IntegrityError, transaction
 from django.db.models import Count, Q, F
 
 from django.db.models import Case, IntegerField, TextField, When
 from django.db.models.functions import Cast
 
-from .models import Content, Solution, Comment, ProposedSolution
+from .models import Content, ContentDailyView, Solution, Comment, ProposedSolution
 from .pdf_parser import parse_pdf
 from .serializers import ContentSerializer, ContentListSerializer, ContentCreateSerializer, SolutionSerializer, CommentSerializer, ProposedSolutionSerializer
 from .listing import in_order, serialize_content_list, with_list_relations
@@ -24,8 +26,31 @@ from rest_framework.permissions import IsAuthenticated, IsAdminUser, AllowAny
 from config.permissions import IsAuthorOrStaffOrReadOnly
 from config.throttling import PdfParseThrottle, ProposedSolutionThrottle
 
+import hashlib
 import logging
+import re
 logger = logging.getLogger('django')
+
+# Robots (moteurs de recherche, aperçus de liens, navigateurs automatisés) : leurs passages ne sont pas des vues.
+BOT_UA = re.compile(r'bot|crawl|spider|slurp|headless|lighthouse|preview|facebookexternalhit|whatsapp|python-requests|curl|wget', re.I)
+
+
+def _count_daily_view(content_id):
+    """+1 sur la ligne du jour (créée à la première vue ; deux créations simultanées → une seule ligne)."""
+    day = timezone.localdate()
+    if ContentDailyView.objects.filter(content_id=content_id, date=day).update(count=F('count') + 1):
+        return
+    try:
+        with transaction.atomic():
+            ContentDailyView.objects.create(content_id=content_id, date=day, count=1)
+    except IntegrityError:
+        ContentDailyView.objects.filter(content_id=content_id, date=day).update(count=F('count') + 1)
+
+
+def _forget_stats(content_id, user_id):
+    """Onglet « Activité » : les statistiques sont en cache 5 min ; une auto-évaluation doit s'y voir tout de suite."""
+    cache.delete(f'content_stats_{content_id}_user_{user_id}')
+    cache.delete(f'content_stats_{content_id}_user_None')
 
 
 def _walk_questions_meta(structure):
@@ -220,6 +245,8 @@ class ContentViewSet(VoteMixin, viewsets.ModelViewSet):
         # Exam-specific filters
         is_national = self.request.query_params.get('is_national_exam')
         national_year = self.request.query_params.get('national_year')
+        year_min = self.request.query_params.get('national_year_min')
+        year_max = self.request.query_params.get('national_year_max')
 
         filters = Q()
         if class_levels:
@@ -238,6 +265,10 @@ class ContentViewSet(VoteMixin, viewsets.ModelViewSet):
             filters &= Q(is_national_exam=is_national.lower() == 'true')
         if national_year:
             filters &= Q(national_year=national_year)
+        if year_min and year_min.isdigit():
+            filters &= Q(national_year__gte=int(year_min))
+        if year_max and year_max.isdigit():
+            filters &= Q(national_year__lte=int(year_max))
 
         if self.request.user and self.request.user.is_authenticated:
             content_ct = ContentType.objects.get_for_model(Content)
@@ -277,7 +308,8 @@ class ContentViewSet(VoteMixin, viewsets.ModelViewSet):
         elif sort_by == 'oldest':
             queryset = queryset.order_by('created_at')
         elif sort_by == 'most_upvoted':
-            queryset = queryset.order_by('-vote_count_annotation', '-created_at')
+            # « Plus aimés » (tri par défaut des listes) : le plus de j'aime, puis le moins de je n'aime pas.
+            queryset = queryset.order_by('-like_count_annotation', 'dislike_count_annotation', '-created_at')
         else:
             queryset = queryset.order_by('-created_at')
 
@@ -375,8 +407,42 @@ class ContentViewSet(VoteMixin, viewsets.ModelViewSet):
             user=request.user, content_type=ct, object_id=item.id,
             question_path=question_path, defaults={'status': assessment_status}
         )
+        _forget_stats(item.id, request.user.id)
         return Response({'question_path': progress.question_path, 'status': progress.status,
                          'assessed_at': progress.assessed_at})
+
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
+    def assess_many(self, request, pk=None):
+        """Plusieurs questions d'un coup (« Tout réussi ») : {assessments: {chemin: statut | null}},
+        et, si `completion` est donné, le résultat du contenu (« success », « review » ou null pour l'effacer)."""
+        item = self.get_object()
+        assessments = request.data.get('assessments')
+        if not isinstance(assessments, dict) or not assessments or len(assessments) > 300:
+            return Response({'error': 'assessments required'}, status=status.HTTP_400_BAD_REQUEST)
+        for path, st in assessments.items():
+            if not isinstance(path, str) or not path or len(path) > 255 or st not in (None, 'success', 'partial', 'review', 'failed'):
+                return Response({'error': 'Invalid assessment'}, status=status.HTTP_400_BAD_REQUEST)
+        completion = request.data.get('completion', 'unchanged')
+        if completion not in ('unchanged', None, 'success', 'review'):
+            return Response({'error': 'Invalid completion'}, status=status.HTTP_400_BAD_REQUEST)
+        ct = ContentType.objects.get_for_model(Content)
+        mine = dict(user=request.user, content_type=ct, object_id=item.id)
+        with transaction.atomic():
+            for path, st in assessments.items():
+                if st is None:
+                    QuestionProgress.objects.filter(question_path=path, **mine).delete()
+                else:
+                    QuestionProgress.objects.update_or_create(question_path=path, defaults={'status': st}, **mine)
+            if completion is None:
+                Complete.objects.filter(**mine).delete()
+            elif completion != 'unchanged':
+                Complete.objects.update_or_create(defaults={'status': completion}, **mine)
+        _forget_stats(item.id, request.user.id)
+        progress = {r.question_path: {'status': r.status, 'solution_validation': r.solution_validation,
+                                      'assessed_at': r.assessed_at}
+                    for r in QuestionProgress.objects.filter(**mine)}
+        done = Complete.objects.filter(**mine).first()
+        return Response({'item_progress': progress, 'completion': done.status if done else None})
 
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
     def remove_assessment(self, request, pk=None):
@@ -388,6 +454,7 @@ class ContentViewSet(VoteMixin, viewsets.ModelViewSet):
         deleted, _ = QuestionProgress.objects.filter(
             user=request.user, content_type=ct, object_id=item.id, question_path=question_path
         ).delete()
+        _forget_stats(item.id, request.user.id)
         return Response({'deleted': deleted > 0})
 
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
@@ -459,30 +526,44 @@ class ContentViewSet(VoteMixin, viewsets.ModelViewSet):
         return Response({'saved': False, 'deleted': deleted > 0})
 
     # ---- view ----
-    @action(detail=True, methods=['post'])
+    # Compteur de vues : une vue par personne et par contenu sur 24 h. Avant le 05/10/2026, les
+    # visiteurs non connectés (l'essentiel du trafic) recevaient une erreur 401 et n'étaient jamais
+    # comptés, et les vues des administrateurs / du compte de test l'étaient.
+    @action(detail=True, methods=['post'], permission_classes=[AllowAny])
     def view(self, request, pk=None):
+        from apps.users.admin_dashboard import _house_filter
+
         item = self.get_object()
-        should_count = True
-        if request.user.is_authenticated:
-            ct = ContentType.objects.get_for_model(Content)
-            one_day_ago = timezone.now() - timedelta(days=1)
-            try:
+        ua = request.META.get('HTTP_USER_AGENT', '')
+        if not ua or BOT_UA.search(ua):
+            return Response({'view_count': item.view_count, 'counted': False})
+
+        user = request.user if (request.user and request.user.is_authenticated) else None  # visiteur : None (UNAUTHENTICATED_USER)
+        should_count = False
+        try:
+            if user is not None:
+                ct = ContentType.objects.get_for_model(Content)
+                one_day_ago = timezone.now() - timedelta(days=1)
                 already_viewed = ViewHistory.objects.filter(
-                    user=request.user, content_type=ct,
-                    object_id=item.id, viewed_at__gte=one_day_ago
+                    user=user, content_type=ct, object_id=item.id, viewed_at__gte=one_day_ago
                 ).exists()
-                if already_viewed:
-                    should_count = False
-                else:
-                    Content.objects.filter(id=item.id).update(view_count=F('view_count') + 1)
-                    item.refresh_from_db()
+                house = User.objects.filter(pk=user.pk).filter(_house_filter()).exists()
+                should_count = not already_viewed and not house
                 ViewHistory.objects.update_or_create(
-                    user=request.user, content_type=ct, object_id=item.id,
-                    defaults={'status': 'viewed'}
+                    user=user, content_type=ct, object_id=item.id, defaults={'status': 'viewed'}
                 )
-            except Exception as e:
-                logger.error(f"Error recording view: {e}")
-                should_count = False
+            else:
+                # Visiteur : même adresse IP + même navigateur = une vue par 24 h (cache partagé).
+                ip = request.META.get('HTTP_CF_CONNECTING_IP', '').strip() or request.META.get('REMOTE_ADDR', '')
+                key = 'vue:%s:%s' % (item.id, hashlib.sha256(f'{ip}|{ua}'.encode()).hexdigest()[:32])
+                should_count = cache.add(key, 1, 24 * 3600)
+            if should_count:
+                Content.objects.filter(id=item.id).update(view_count=F('view_count') + 1)
+                item.refresh_from_db(fields=['view_count'])
+                _count_daily_view(item.id)
+        except Exception as e:
+            logger.error(f"Error recording view: {e}")
+            should_count = False
         return Response({'view_count': item.view_count, 'counted': should_count})
 
     # ---- sessions ----
@@ -931,24 +1012,6 @@ class CommentViewSet(VoteMixin, viewsets.ModelViewSet):
         instance.delete()
 
 
-# ---------------------------------------------------------------------------
-# Recommendations
-# ---------------------------------------------------------------------------
-
-def _taxonomy_qs(source, exclude_id=None):
-    qs = Content.objects.filter(
-        Q(chapters__in=source.chapters.all()) |
-        Q(theorems__in=source.theorems.all()) |
-        Q(subfields__in=source.subfields.all()) |
-        Q(subject=source.subject)
-    )
-    if exclude_id:
-        qs = qs.exclude(id=exclude_id)
-    return qs.distinct().annotate(
-        relevance=Count('chapters') + Count('theorems') + Count('subfields')
-    ).order_by('-relevance', '-view_count')
-
-
 @api_view(['POST'])
 @perm_classes([IsAuthenticated])
 @throttle_classes([PdfParseThrottle])
@@ -981,20 +1044,19 @@ def parse_pdf_view(request):
 
 @api_view(['GET'])
 def get_content_recommendations(request, content_id):
-    try:
-        source = Content.objects.get(id=content_id)
-    except Content.DoesNotExist:
+    """« Pour continuer » sous un contenu : les plus semblables (apps/things/similar.py), avec la raison."""
+    from apps.things.similar import similar
+    if not Content.objects.filter(id=content_id).exists():
         return Response({'error': 'Not found'}, status=404)
-
-    qs = _taxonomy_qs(source, exclude_id=content_id)
-    ids = {t: list(qs.filter(type=t).values_list('id', flat=True)[:n]) for t, n in (('exercise', 3), ('lesson', 2), ('exam', 2))}
-    # Un seul chargement (avec préchargements) pour les trois groupes, puis répartition.
+    picks = similar(int(content_id), getattr(request, 'user', None))
     loaded = with_list_relations(Content.objects.all(), getattr(request, 'user', None))
-    cards = serialize_content_list(in_order(loaded, ids['exercise'] + ids['lesson'] + ids['exam']), request)
-    by_type = {'exercise': [], 'lesson': [], 'exam': []}
+    cards = serialize_content_list(in_order(loaded, [cid for cid, _, _ in picks]), request)
+    reasons = {cid: reason for cid, _, reason in picks}
     for card in cards:
-        by_type.get(card['type'], []).append(card)
-    return Response({'exercises': by_type['exercise'], 'lessons': by_type['lesson'], 'exams': by_type['exam']})
+        card['reason'] = reasons.get(card['id'], '')
+        card.pop('json_content', None)  # la carte n'affiche pas l'énoncé : réponse 20 fois plus légère
+        card.pop('structure', None)
+    return Response({'items': cards})
 
 
 # =====================

@@ -45,6 +45,15 @@ class VotableMixin(models.Model):
     @property
     def vote_count(self):
         return self.votes.filter(value=Vote.UP).count() - self.votes.filter(value=Vote.DOWN).count()
+
+    # Affichés séparément (bouton « j'aime / je n'aime pas ») : le score seul ne dit pas combien ont aimé.
+    @property
+    def like_count(self):
+        return self.votes.filter(value=Vote.UP).count()
+
+    @property
+    def dislike_count(self):
+        return self.votes.filter(value=Vote.DOWN).count()
     
 
 #----------------------------SAVE-------------------------------

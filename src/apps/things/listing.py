@@ -25,9 +25,12 @@ def with_list_relations(queryset, user=None):
             Prefetch('saved', queryset=Save.objects.filter(user=user), to_attr='my_saves'),
             Prefetch('completed', queryset=Complete.objects.filter(user=user), to_attr='my_completes'),
         )
+    likes = Count('votes', filter=Q(votes__value=Vote.UP), distinct=True)
+    dislikes = Count('votes', filter=Q(votes__value=Vote.DOWN), distinct=True)
     return queryset.annotate(
-        vote_count_annotation=Count('votes', filter=Q(votes__value=Vote.UP), distinct=True)
-        - Count('votes', filter=Q(votes__value=Vote.DOWN), distinct=True)
+        vote_count_annotation=likes - dislikes,
+        like_count_annotation=likes,
+        dislike_count_annotation=dislikes,
     )
 
 

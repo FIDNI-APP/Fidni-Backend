@@ -458,3 +458,26 @@ def save_user_profile(sender, instance, **kwargs):
         )
     else:
         instance.profile.save()
+
+class UsageDaily(models.Model):
+    """Pages vues et actions sans autre trace en base, jour par jour (Pilotage › Usage), depuis le 06/10/2026.
+
+    kind = « page » (motif de route : « /exercises/:id ») ou « action » (liste fermée, voir apps/users/usage.py).
+    count = nombre de fois ; visitors = personnes distinctes ce jour-là (membre ou visiteur, robots et comptes
+    maison exclus).
+    """
+    KIND_PAGE = 'page'
+    KIND_ACTION = 'action'
+
+    date = models.DateField()
+    kind = models.CharField(max_length=10)
+    name = models.CharField(max_length=80)
+    count = models.PositiveIntegerField(default=0)
+    visitors = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=['date', 'kind', 'name'], name='unique_usage_day')]
+        indexes = [models.Index(fields=['date'], name='usage_date')]
+
+    def __str__(self):
+        return f"{self.date} · {self.kind} {self.name} : {self.count}"

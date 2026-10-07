@@ -66,6 +66,8 @@ class VoteMixin:
         
         return Response({
             'vote_count': obj.vote_count,
+            'like_count': obj.like_count,
+            'dislike_count': obj.dislike_count,
             'user_vote': current_vote.value if current_vote else 0,  # Return 0 if vote was deleted
             'item': self.get_serializer(obj).data
         })

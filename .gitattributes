@@ -1,0 +1,3 @@
+# Fins de ligne LF partout (le code tourne sous Linux : serveur OVH, Docker, GitHub Actions),
+# quel que soit l'outil qui écrit le fichier (Windows, WSL, VS Code).
+* text=auto eol=lf

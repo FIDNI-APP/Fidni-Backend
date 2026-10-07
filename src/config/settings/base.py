@@ -52,6 +52,7 @@ INSTALLED_APPS = [
     'apps.uploads.apps.UploadsConfig',
     'apps.classrooms.apps.ClassroomsConfig',
     'apps.concours.apps.ConcoursConfig',
+    'apps.ia.apps.IaConfig',
 ]
 
 MIDDLEWARE = [
@@ -239,6 +240,15 @@ OPENAI_API_KEY = os.getenv('OPENAI_API_KEY')
 OPENAI_MODEL = os.getenv('OPENAI_MODEL', 'gpt-4-vision-preview')
 OPENAI_MAX_TOKENS = int(os.getenv('OPENAI_MAX_TOKENS', '4096'))
 OPENAI_TEMPERATURE = float(os.getenv('OPENAI_TEMPERATURE', '0.7'))
+
+# IA des administrateurs (Pilotage › IA) : import de documents, correction des signalements.
+# La clé vit dans le fichier d'environnement du serveur (/opt/fidni/secrets), jamais dans le dépôt.
+ANTHROPIC_API_KEY = os.getenv('ANTHROPIC_API_KEY', '')
+ANTHROPIC_WORKSPACE_ID = os.getenv('ANTHROPIC_WORKSPACE_ID', '')
+ANTHROPIC_MODEL = os.getenv('ANTHROPIC_MODEL', 'claude-opus-5-5')
+ANTHROPIC_MAX_TOKENS = int(os.getenv('ANTHROPIC_MAX_TOKENS', '64000'))
+ANTHROPIC_THINKING = int(os.getenv('ANTHROPIC_THINKING', '16000'))
+IA_LANCEMENT = os.getenv('IA_LANCEMENT', 'processus')  # « aucun » : tests (traitement appelé directement)
 
 # Lien « mot de passe oublié » : valable 2 h, et une seule fois (voir authentication/emails.py).
 PASSWORD_RESET_TIMEOUT = 2 * 60 * 60

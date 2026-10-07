@@ -42,6 +42,8 @@ class CommentSerializer(serializers.ModelSerializer):
     author = AuthorSerializer(read_only=True)
     replies = serializers.SerializerMethodField()
     vote_count = serializers.SerializerMethodField()
+    like_count = serializers.SerializerMethodField()
+    dislike_count = serializers.SerializerMethodField()
     user_vote = serializers.SerializerMethodField()
     attachments = FileAttachmentSerializer(many=True, read_only=True)
     parent_id = serializers.IntegerField(write_only=True, required=False, allow_null=True)
@@ -49,7 +51,7 @@ class CommentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Comment
         fields = ['id', 'author', 'content', 'created_at', 'replies',
-                  'vote_count', 'user_vote', 'parent_id', 'attachments']
+                  'vote_count', 'like_count', 'dislike_count', 'user_vote', 'parent_id', 'attachments']
 
     # Sur la page d'un contenu, tous les commentaires arrivent préchargés (ContentSerializer
     # .get_comments) : réponses, votes et auteur sont lus en mémoire. Avant, chaque commentaire
@@ -62,6 +64,12 @@ class CommentSerializer(serializers.ModelSerializer):
     def get_vote_count(self, obj):
         values = [v.value for v in obj.votes.all()]
         return values.count(Vote.UP) - values.count(Vote.DOWN)
+
+    def get_like_count(self, obj):
+        return sum(1 for v in obj.votes.all() if v.value == Vote.UP)
+
+    def get_dislike_count(self, obj):
+        return sum(1 for v in obj.votes.all() if v.value == Vote.DOWN)
 
     def get_user_vote(self, obj):
         user = self.context.get('request').user if self.context.get('request') else None
@@ -80,6 +88,8 @@ class ContentSerializer(serializers.ModelSerializer):
     comments = serializers.SerializerMethodField()
     solution = SolutionSerializer(read_only=True)
     vote_count = serializers.IntegerField(read_only=True)
+    like_count = serializers.IntegerField(read_only=True)
+    dislike_count = serializers.IntegerField(read_only=True)
     user_vote = serializers.SerializerMethodField()
     view_count = serializers.IntegerField(read_only=True)
     class_levels = ClassLevelSerializer(many=True, read_only=True)
@@ -99,7 +109,7 @@ class ContentSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'display_id', 'type', 'title', 'json_content',
             'difficulty', 'chapters', 'author', 'created_at', 'updated_at',
-            'view_count', 'comments', 'solution', 'vote_count', 'user_vote',
+            'view_count', 'comments', 'solution', 'vote_count', 'like_count', 'dislike_count', 'user_vote',
             'class_levels', 'subject', 'subfields', 'theorems',
             'user_save', 'user_complete', 'user_timespent',
             'total_points', 'item_count', 'section_count',
@@ -178,6 +188,8 @@ class ContentListSerializer(serializers.ModelSerializer):
     theorems = serializers.SerializerMethodField()
     comment_count = serializers.SerializerMethodField()
     vote_count = serializers.SerializerMethodField()
+    like_count = serializers.SerializerMethodField()
+    dislike_count = serializers.SerializerMethodField()
     user_vote = serializers.SerializerMethodField()
     user_save = serializers.SerializerMethodField()
     user_complete = serializers.SerializerMethodField()
@@ -190,7 +202,7 @@ class ContentListSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'display_id', 'type', 'title', 'json_content', 'difficulty',
             'author', 'subject', 'class_levels', 'chapters', 'theorems',
-            'comment_count', 'created_at', 'view_count', 'vote_count',
+            'comment_count', 'created_at', 'view_count', 'vote_count', 'like_count', 'dislike_count',
             'user_vote', 'user_save', 'user_complete',
             'total_points', 'item_count',
             'is_national_exam', 'national_year', 'duration_minutes',
@@ -216,6 +228,14 @@ class ContentListSerializer(serializers.ModelSerializer):
     def get_vote_count(self, obj):
         annotated = getattr(obj, 'vote_count_annotation', None)
         return annotated if annotated is not None else obj.vote_count
+
+    def get_like_count(self, obj):
+        annotated = getattr(obj, 'like_count_annotation', None)
+        return annotated if annotated is not None else obj.like_count
+
+    def get_dislike_count(self, obj):
+        annotated = getattr(obj, 'dislike_count_annotation', None)
+        return annotated if annotated is not None else obj.dislike_count
 
     def get_comment_count(self, obj):
         return len(obj.comments.all())
@@ -381,6 +401,8 @@ class ProposedSolutionSerializer(serializers.ModelSerializer):
     author = AuthorSerializer(read_only=True)
     attachments = FileAttachmentSerializer(many=True, read_only=True)
     vote_count = serializers.SerializerMethodField()
+    like_count = serializers.SerializerMethodField()
+    dislike_count = serializers.SerializerMethodField()
     user_vote = serializers.SerializerMethodField()
     is_mine = serializers.SerializerMethodField()
     content = serializers.PrimaryKeyRelatedField(source='content_item', queryset=Content.objects.all())
@@ -389,7 +411,7 @@ class ProposedSolutionSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = ProposedSolution
-        fields = ['id', 'content', 'author', 'body', 'attachments', 'vote_count', 'user_vote',
+        fields = ['id', 'content', 'author', 'body', 'attachments', 'vote_count', 'like_count', 'dislike_count', 'user_vote',
                   'is_mine', 'created_at', 'updated_at', 'file_ids']
         read_only_fields = ['id', 'author', 'created_at', 'updated_at']
 
@@ -416,6 +438,12 @@ class ProposedSolutionSerializer(serializers.ModelSerializer):
     def get_vote_count(self, obj):
         values = [v.value for v in obj.votes.all()]
         return values.count(Vote.UP) - values.count(Vote.DOWN)
+
+    def get_like_count(self, obj):
+        return sum(1 for v in obj.votes.all() if v.value == Vote.UP)
+
+    def get_dislike_count(self, obj):
+        return sum(1 for v in obj.votes.all() if v.value == Vote.DOWN)
 
     def get_user_vote(self, obj):
         request = self.context.get('request')

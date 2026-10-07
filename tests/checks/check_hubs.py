@@ -120,6 +120,51 @@ xml = cl.get('/sitemap.xml').content.decode()
 check('sitemap : hubs avec contenu', 'https://fidni.fr/exercises/niveau/2eme-bac-sm/limites-et-continuite</loc>' in xml
       and 'https://fidni.fr/lessons/niveau/2eme-bac-sm</loc>' in xml and '2eme-bac-pc' not in xml)
 
+# ── Examens : section devoirs / section nationaux (le filtre était ignoré : paramètre mal nommé)
+ds = make('exam', 'Devoir surveillé n° 1', lim)
+bac = make('exam', 'Examen national 2019', lim)
+bac.is_national_exam, bac.national_year = True, 2019
+bac.save()
+ids = lambda r: {x['id'] for x in r.json().get('results', [])}  # noqa: E731
+r = cl.get('/api/contents/', {'type': 'exam', 'is_national_exam': 'true'})
+check('examens nationaux seulement', ids(r) == {bac.id}, ids(r))
+r = cl.get('/api/contents/', {'type': 'exam', 'is_national_exam': 'false'})
+check('section Examens : devoirs seulement', ids(r) == {ds.id}, ids(r))
+r = cl.get('/api/contents/', {'type': 'exam', 'is_national_exam': 'true', 'national_year_min': 2020})
+check('année du Bac : filtre', ids(r) == set(), ids(r))
+r = cl.get('/api/contents/', {'type': 'exam', 'is_national_exam': 'true', 'national_year_min': 2015, 'national_year_max': 2019})
+check('année du Bac : intervalle', ids(r) == {bac.id}, ids(r))
+
+# ── Compteur de vues (visiteurs comptés, une fois par 24 h ; robots et comptes maison exclus)
+from django.core.cache import cache  # noqa: E402
+from rest_framework.test import APIClient  # noqa: E402
+cache.clear()
+NAV = {'HTTP_USER_AGENT': 'Mozilla/5.0 (Linux; Android 14) Chrome/128 Mobile', 'HTTP_CF_CONNECTING_IP': '41.1.2.3'}
+vc = lambda: Content.objects.get(pk=e1.pk).view_count  # noqa: E731
+v0 = vc()
+r = cl.post(f'/api/contents/{e1.id}/view/', **NAV)
+check('vue : visiteur non connecté compté', r.status_code == 200 and r.json()['counted'] and vc() == v0 + 1, (r.status_code, r.content[:120]))
+r = cl.post(f'/api/contents/{e1.id}/view/', **NAV)
+check('vue : même visiteur le même jour, pas recompté', not r.json()['counted'] and vc() == v0 + 1)
+r = cl.post(f'/api/contents/{e1.id}/view/', **{**NAV, 'HTTP_CF_CONNECTING_IP': '41.9.9.9'})
+check('vue : autre visiteur compté', r.json()['counted'] and vc() == v0 + 2)
+r = cl.post(f'/api/contents/{e1.id}/view/', HTTP_USER_AGENT='Mozilla/5.0 (compatible; Googlebot/2.1)')
+check('vue : robot non compté', not r.json()['counted'] and vc() == v0 + 2)
+eleve = User.objects.create_user('eleve_vues', 'ev@x.fr', 'x')
+ac = APIClient(); ac.force_authenticate(eleve)
+r = ac.post(f'/api/contents/{e1.id}/view/', **NAV)
+check('vue : élève connecté compté', r.json()['counted'] and vc() == v0 + 3)
+r = ac.post(f'/api/contents/{e1.id}/view/', **NAV)
+check('vue : élève, une fois par 24 h', not r.json()['counted'] and vc() == v0 + 3)
+adm = User.objects.create_superuser('admin_vues', 'av@x.fr', 'x')
+aa = APIClient(); aa.force_authenticate(adm)
+r = aa.post(f'/api/contents/{e1.id}/view/', **NAV)
+check('vue : administrateur non compté', not r.json()['counted'] and vc() == v0 + 3)
+from django.utils import timezone as _tz  # noqa: E402
+from apps.things.models import ContentDailyView  # noqa: E402
+dv = ContentDailyView.objects.filter(content=e1, date=_tz.localdate()).first()
+check('vue : comptée aussi dans le jour (courbe du Pilotage)', dv is not None and dv.count == 3, dv and dv.count)
+
 # ── Slugs exposés par l'API (liens de l'application)
 r = cl.get(f'/api/class-levels/{sm2.id}/')
 check('API niveaux : slug', r.status_code == 200 and r.json().get('slug') == '2eme-bac-sm', r.status_code)

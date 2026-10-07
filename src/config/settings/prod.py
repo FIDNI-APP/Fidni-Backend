@@ -43,6 +43,18 @@ CSRF_TRUSTED_ORIGINS = env.list('CSRF_TRUSTED_ORIGINS', default=['https://api.fi
 # Django recognises requests as secure — otherwise SECURE_SSL_REDIRECT loops
 # forever and Secure cookies are never set.
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
+# Cache partagé par les processus gunicorn (3) du conteneur : sans lui, chacun avait sa propre
+# mémoire — limites anti-abus et dédoublonnage des vues comptés par processus. Fichiers dans /tmp
+# (vidés au redémarrage, ce qui ne gêne pas : tout y expire en moins de 24 h).
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.filebased.FileBasedCache',
+        'LOCATION': '/tmp/fidni-cache',
+        'TIMEOUT': 3600,
+        'OPTIONS': {'MAX_ENTRIES': 50000},
+    }
+}
 USE_X_FORWARDED_HOST = True
 
 # ── Email (SMTP) ───────────────────────────────────────────────────────────

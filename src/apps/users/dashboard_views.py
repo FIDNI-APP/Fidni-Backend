@@ -350,9 +350,8 @@ def get_recommended_content(request):
                 else:
                     target_subjects = []
 
-        from django.db.models import Count, Case, When, IntegerField
-        from apps.interactions.models import Vote
         from apps.things.serializers import ContentListSerializer
+        from apps.things.listing import with_list_relations
 
         content_ct = ContentType.objects.get_for_model(Content)
 
@@ -379,13 +378,10 @@ def get_recommended_content(request):
             qs = Content.objects.filter(type=content_type).exclude(id__in=completed_ids)
             if extra_filters:
                 qs = qs.filter(extra_filters)
-            qs = qs.annotate(
-                upvotes=Count(Case(When(votes__value=Vote.UP, then=1), output_field=IntegerField()))
-            ).order_by('-upvotes', '-created_at')[:8]
+            qs = with_list_relations(qs, user).order_by('-like_count_annotation', 'dislike_count_annotation', '-created_at')[:8]
             if not qs.exists() and extra_filters:
-                qs = Content.objects.filter(type=content_type).exclude(id__in=completed_ids)\
-                    .annotate(upvotes=Count(Case(When(votes__value=Vote.UP, then=1), output_field=IntegerField())))\
-                    .order_by('-upvotes', '-created_at')[:8]
+                qs = with_list_relations(Content.objects.filter(type=content_type).exclude(id__in=completed_ids), user)\
+                    .order_by('-like_count_annotation', 'dislike_count_annotation', '-created_at')[:8]
             return qs
 
         exercises = get_recommended('exercise', completed_ids_by_type['exercise'], base_filters)
@@ -397,6 +393,7 @@ def get_recommended_content(request):
             'exercises': ContentListSerializer(exercises, many=True, context=ctx).data,
             'lessons': ContentListSerializer(lessons, many=True, context=ctx).data,
             'exams': ContentListSerializer(exams, many=True, context=ctx).data,
+            'level': class_level.name if class_level else None,
         })
     except Exception as e:
         # Log the error and return a more helpful response

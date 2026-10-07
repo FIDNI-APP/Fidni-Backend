@@ -25,8 +25,10 @@ from apps.users.dashboard_views import (
 from apps.users.study_stats_views import get_study_statistics
 from apps.users.overview_views import dashboard_overview
 from apps.users import admin_dashboard
+from apps.users import usage as usage_views
 from apps.users.my_stats import my_stats
 from apps.things import reports as content_reports
+from apps.ia import views as ia_views
 from apps.things.verification import set_verification
 from apps.things.views import get_content_recommendations, parse_pdf_view, skill_suggestions
 from apps.caracteristics.views import (
@@ -149,14 +151,28 @@ urlpatterns = [
     path('api/dashboard/stats/', get_user_dashboard_stats, name='dashboard-stats'),
     path('api/dashboard/overview/', dashboard_overview, name='dashboard-overview'),
     # Pilotage (administrateurs) : inscrits, activité, statistiques d'usage.
+    path('api/usage/', usage_views.record, name='usage'),
     path('api/pilotage/', admin_dashboard.overview, name='pilotage'),
     path('api/pilotage/utilisateurs/', admin_dashboard.users_list, name='pilotage-utilisateurs'),
+    path('api/pilotage/utilisateurs/<int:pk>/', admin_dashboard.user_detail, name='pilotage-utilisateur'),
     # Signalements d'erreurs sur les contenus : envoi (élèves connectés), suivi (administrateurs).
     path('api/contents/<int:content_id>/report/', content_reports.report_content, name='content-report'),
     # Correction « à vérifier » : validée (ou remise) par un administrateur depuis le site.
     path('api/contents/<int:content_id>/verification/', set_verification, name='content-verification'),
     path('api/pilotage/signalements/', content_reports.reports_list, name='pilotage-signalements'),
     path('api/pilotage/signalements/<int:pk>/', content_reports.report_update, name='pilotage-signalement'),
+    # IA des administrateurs : import d'un document, correction d'un signalement (rien sans validation).
+    path('api/pilotage/ia/', ia_views.jobs, name='pilotage-ia'),
+    path('api/pilotage/ia/import/', ia_views.nouvel_import, name='pilotage-ia-import'),
+    path('api/pilotage/ia/<int:pk>/', ia_views.job_detail, name='pilotage-ia-detail'),
+    path('api/pilotage/ia/<int:pk>/corriger/', ia_views.job_corriger, name='pilotage-ia-corriger'),
+    path('api/pilotage/ia/<int:pk>/relancer/', ia_views.job_relancer, name='pilotage-ia-relancer'),
+    path('api/pilotage/ia/<int:pk>/publier/', ia_views.job_publier, name='pilotage-ia-publier'),
+    path('api/pilotage/ia/<int:pk>/appliquer/', ia_views.job_appliquer, name='pilotage-ia-appliquer'),
+    path('api/pilotage/ia/<int:pk>/rejeter/', ia_views.job_rejeter, name='pilotage-ia-rejeter'),
+    path('api/pilotage/signalements/<int:pk>/ia/', ia_views.corriger_signalement, name='pilotage-signalement-ia'),
+    path('api/pilotage/signalements/<int:pk>/ia/derniere/', ia_views.signalement_jobs,
+         name='pilotage-signalement-ia-derniere'),
     # Statistiques de l'élève (page Statistiques) : période, matière, niveau.
     path('api/stats/me/', my_stats, name='my-stats'),
     path('api/dashboard/learning-path/', get_learning_path_progress, name='learning-path-progress'),

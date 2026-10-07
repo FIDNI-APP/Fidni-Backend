@@ -5,7 +5,12 @@
 #   bash deployer.sh migrer       copie la base et les fichiers d'AWS vers le VPS (répétition,
 #                                 le site reste servi par le PC)
 #   bash deployer.sh basculer     coupe le PC, recopie les données fraîches, met le VPS en ligne
-#   bash deployer.sh              mise à jour du code (tests, envoi, reconstruction)
+#   bash deployer.sh              mise à jour du code (tests, envoi, reconstruction) — en secours :
+#                                 d'habitude, c'est GitHub Actions qui déploie à chaque push sur master
+#   bash deployer.sh front        modification du site seul (frontend) : sans les tests du backend,
+#                                 vérification TypeScript, envoi, reconstruction du seul conteneur frontend
+#   bash deployer.sh ci           autorise GitHub Actions à déployer (clé dédiée, à refaire si
+#                                 deployer-ci.sh change)
 #   bash deployer.sh sauvegardes  rapatrie les sauvegardes du VPS sur le PC
 #   bash deployer.sh retour       secours : remet le site sur le PC (après une bascule ratée)
 #
@@ -135,10 +140,54 @@ mettre_a_jour() {
   controler_vps
 }
 
+ci() {
+  local cle="$HOME/.ssh/fidni-github-actions" ip
+  [ -f "$cle" ] || ssh-keygen -q -t ed25519 -N '' -C fidni-github-actions -f "$cle"
+  echo "→ Installation sur $HOTE (utilisateur « deploiement », commande forcée)"
+  ssh "$HOTE" 'rm -rf /tmp/fidni-ci && mkdir -m 700 /tmp/fidni-ci'
+  scp -q "$ROOT/backend/deploy/ovh/deployer-ci.sh" "$ROOT/backend/deploy/ovh/installer-ci.sh" "$HOTE:/tmp/fidni-ci/"
+  ssh "$HOTE" "sudo bash /tmp/fidni-ci/installer-ci.sh '$(cat "$cle.pub")'; rm -rf /tmp/fidni-ci"
+
+  local refus
+  ip=$(ssh -G "$HOTE" | awk '/^hostname /{print $2}')
+  echo "→ Contrôle : la clé ne doit rien pouvoir faire d'autre que déployer"
+  # Le refus attendu sort en code 2 : on lit le message, pas le code (pipefail).
+  refus=$(ssh -i "$cle" -o IdentitiesOnly=yes -o BatchMode=yes "deploiement@$ip" 'id' </dev/null 2>&1 || true)
+  if [[ "$refus" == *'usage : fidni-deployer-ci'* ]]; then
+    echo "  OK (commande refusée)"
+  else
+    echo "✗ La clé n'est pas restreinte comme prévu : ne pas la mettre dans GitHub."; exit 1
+  fi
+
+  cat <<EOF
+
+À créer dans les DEUX dépôts GitHub (Fidni-Backend et Fidni-Frontend) :
+Settings › Secrets and variables › Actions › New repository secret
+
+  OVH_HOST         $ip
+  OVH_KNOWN_HOSTS  $(ssh-keyscan -t ed25519 "$ip" 2>/dev/null | grep -v '^#')
+  OVH_SSH_KEY      le contenu de $cle (la clé PRIVÉE, lignes BEGIN/END comprises)
+EOF
+  if command -v clip.exe >/dev/null; then
+    clip.exe < "$cle" && echo "                   → déjà copiée dans le presse-papiers Windows"
+  fi
+}
+
 sauvegardes() {
   mkdir -p "$HOME/fidni-sauvegardes" && chmod 700 "$HOME/fidni-sauvegardes"
   rsync -az "$HOTE:/var/backups/fidni/" "$HOME/fidni-sauvegardes/"
   echo "✓ Sauvegardes copiées dans ~/fidni-sauvegardes :"; ls -t "$HOME/fidni-sauvegardes" | head -4
+}
+
+# Site seul : les tests du backend (~6 min) ne disent rien d'un changement d'interface.
+mettre_a_jour_front() {
+  echo "→ Vérification TypeScript"
+  (cd "$ROOT/frontend" && node_modules/.bin/tsc -p tsconfig.app.json --noEmit)
+  envoyer_code
+  echo "→ Reconstruction du site sur le VPS"
+  ssh "$HOTE" "cd $DISTANT && sudo docker compose up -d --build frontend"
+  sleep 10
+  controler_vps
 }
 
 case "${1:-maj}" in
@@ -147,6 +196,8 @@ case "${1:-maj}" in
   basculer) basculer ;;
   retour) retour ;;
   sauvegardes) sauvegardes ;;
+  ci) ci ;;
   maj) mettre_a_jour ;;
-  *) sed -n '2,12p' "$0"; exit 1 ;;
+  front) mettre_a_jour_front ;;
+  *) sed -n '2,15p' "$0"; exit 1 ;;
 esac

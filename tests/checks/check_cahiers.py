@@ -53,5 +53,10 @@ check('nom déjà pris : refus clair (400, pas 500)', r.status_code == 400 and '
 r = c.post('/api/notebooks/create_notebook/', {'subject_id': subject.id, 'class_level_id': level2.id}, format='json')
 check('sans nom : « Matière - Niveau »', r.status_code == 201 and r.data.get('title') == 'Mathématiques - 1ère Bac SM', r.data)
 
+r = c.post('/api/notebooks/create_notebook/', {'subject_id': subject.id, 'class_level_id': level.id,
+                                                'title': 'Révisions du bac'}, format='json')
+check('deuxième cahier de même matière et même niveau, autre nom : accepté', r.status_code == 201
+      and Notebook.objects.filter(user=alice, class_level=level).count() == 2, (r.status_code, getattr(r, 'data', None)))
+
 print(f'\n{sum(results)}/{len(results)} vérifications réussies')
 sys.exit(0 if all(results) else 1)

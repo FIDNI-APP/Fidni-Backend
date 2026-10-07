@@ -229,3 +229,22 @@ class ContentReport(models.Model):
 
     def __str__(self):
         return f"Signalement {self.get_reason_display()} sur {self.content}"
+
+
+class ContentDailyView(models.Model):
+    """Vues d'un contenu jour par jour, visiteurs compris : courbe et classement du Pilotage.
+
+    Même règle que `Content.view_count` (une vue par personne et par contenu sur 24 h, robots et comptes
+    maison exclus). Enregistré depuis le 05/10/2026 ; avant, seul le total `view_count` existe.
+    """
+    content = models.ForeignKey(Content, on_delete=models.CASCADE, related_name='daily_views')
+    date = models.DateField()
+    count = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        db_table = 'things_contentdailyview'
+        constraints = [models.UniqueConstraint(fields=['content', 'date'], name='unique_daily_view')]
+        indexes = [models.Index(fields=['date'], name='dailyview_date')]
+
+    def __str__(self):
+        return f"{self.content_id} · {self.date} : {self.count}"

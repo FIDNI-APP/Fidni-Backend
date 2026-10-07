@@ -238,19 +238,7 @@ class NotebookViewSet(viewsets.ModelViewSet):
         subject = get_object_or_404(Subject, id=subject_id)
         class_level = get_object_or_404(ClassLevel, id=class_level_id)
         
-        # Vérifier si un cahier existe déjà pour cette combinaison
-        existing = Notebook.objects.filter(
-            user=request.user,
-            subject=subject,
-            class_level=class_level
-        ).first()
-        
-        if existing:
-            return Response(
-                {"error": "Un cahier existe déjà pour cette matière et ce niveau", "notebook_id": existing.id},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-        
+        # Plusieurs cahiers par matière et niveau sont permis (06/10/2026) : seul le nom doit être unique.
         # Créer le cahier, sous le nom choisi par l'élève (sinon « Matière - Niveau »)
         title = str(request.data.get('title') or '').strip()[:200] or f"{subject.name} - {class_level.name}"
         if Notebook.objects.filter(user=request.user, title=title).exists():

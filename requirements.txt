@@ -27,6 +27,8 @@ django-storages==1.14.6
 # ── Features ────────────────────────────────────────────────────────────────
 openai==1.58.1          # AI correction
 Pillow==12.3.0          # image handling (uploads)
+pymupdf==1.28.2         # IA (Pilotage) : nombre de pages, découpe des figures d'un PDF
+pypandoc_binary==1.17   # IA (Pilotage) : lecture des documents Word (formules → LaTeX)
 opendataloader-pdf      # PDF parsing (requires Java 11+)
 
 # ── Dev tools ───────────────────────────────────────────────────────────────

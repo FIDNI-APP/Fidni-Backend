@@ -116,9 +116,28 @@ locale avant de supprimer RDS.
 
 ## Au quotidien
 
+**Mettre en ligne = commit + push sur `master`.** GitHub Actions (`.github/workflows/ci-cd.yml`
+dans chaque dépôt) lance les tests, puis, s'ils sont verts, envoie le code au VPS et reconstruit
+le conteneur concerné. Ce qui est en ligne est donc ce qui est commité : une modification non
+commitée n'y est pas. Suivi : onglet **Actions** du dépôt (GitHub envoie un e-mail en cas d'échec).
+
+- Backend : tests `tests/checks/run_all.sh`. Frontend : `npm run build` (TypeScript + Vite).
+- Si le conteneur reconstruit ne répond pas, l'image précédente est remise automatiquement et
+  le job est rouge (les fichiers sur le VPS restent ceux du nouveau commit).
+- Les deux dépôts peuvent déployer en même temps : le serveur les fait passer l'un après l'autre.
+- Une modification du front qui dépend d'un nouveau backend : pousser le backend d'abord.
+- Les journaux des Actions sont publics (dépôts publics) : rien de secret n'y est affiché.
+
+Mise en place (une fois, déjà faite le 2026-10-05) : `bash deployer.sh ci`, puis créer dans les
+deux dépôts les secrets `OVH_HOST`, `OVH_KNOWN_HOSTS` et `OVH_SSH_KEY` qu'il affiche. La clé de
+GitHub (utilisateur `deploiement` du VPS) ne peut rien faire d'autre que lancer
+`deployer-ci.sh`. Si `deployer-ci.sh` change, relancer `bash deployer.sh ci` : le serveur en
+garde une copie à part (`/usr/local/sbin/fidni-deployer-ci`), que le push ne modifie pas.
+Retirer l'accès : `ssh fidni-ovh sudo rm /home/deploiement/.ssh/authorized_keys`.
+
 | Besoin | Commande (WSL, dans ce dossier) |
 |---|---|
-| Mettre en ligne une modification | `bash deployer.sh` (tests, envoi du code, reconstruction) |
+| Mettre en ligne sans GitHub (secours) | `bash deployer.sh` : envoie la copie de travail du PC, commits ou non ; le prochain push la remplacera |
 | Rapatrier les sauvegardes sur le PC | `bash deployer.sh sauvegardes` (à faire au moins chaque semaine) |
 | Voir les journaux du backend | `ssh fidni-ovh docker logs -f --tail 100 fidni-backend` |
 | État des conteneurs | `ssh fidni-ovh docker ps` |
@@ -172,6 +191,8 @@ instance, `deployer.sh installer`, puis restauration de la dernière sauvegarde 
 | `restaurer.sh` | charge un export (base + fichiers + secrets) | VPS (via `deployer.sh migrer`) |
 | `sauvegarde.sh` | sauvegarde nocturne, 14 jours gardés | VPS (cron) |
 | `deployer.sh` | toutes les étapes ci-dessus | PC (WSL) |
+| `installer-ci.sh` | autorise GitHub Actions (utilisateur `deploiement`) | VPS (via `deployer.sh ci`) |
+| `deployer-ci.sh` | mise en ligne lancée par GitHub Actions | VPS (copie dans `/usr/local/sbin`) |
 
 Les secrets (réglages, mot de passe de la base, identifiants du tunnel) sont dans
 `/opt/fidni/secrets` sur le VPS, jamais dans le dépôt : il est public.
