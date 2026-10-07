@@ -53,6 +53,7 @@ INSTALLED_APPS = [
     'apps.classrooms.apps.ClassroomsConfig',
     'apps.concours.apps.ConcoursConfig',
     'apps.ia.apps.IaConfig',
+    'apps.notifications.apps.NotificationsConfig',
 ]
 
 MIDDLEWARE = [

@@ -27,6 +27,7 @@ from apps.users.overview_views import dashboard_overview
 from apps.users import admin_dashboard
 from apps.users import usage as usage_views
 from apps.users.my_stats import my_stats
+from apps.users.progression import progression
 from apps.things import reports as content_reports
 from apps.ia import views as ia_views
 from apps.things.verification import set_verification
@@ -50,6 +51,7 @@ from apps.learningpath.views import (
     VideoViewSet, ChapterQuizViewSet
 )
 from apps.uploads.views import FileAttachmentViewSet
+from apps.notifications import views as notification_views
 
 router = DefaultRouter()
 router.register(r'contents', ContentViewSet, basename='content')
@@ -125,6 +127,11 @@ urlpatterns = [
     path("api/token/refresh/", ThrottledTokenRefreshView.as_view(), name="refresh"),
     path('api/content/<str:content_id>/view/', mark_content_viewed, name='mark-content-viewed'),
 
+    # Notifications (cloche de la barre du haut)
+    path('api/notifications/', notification_views.notification_list, name='notifications'),
+    path('api/notifications/non-lues/', notification_views.unread_count, name='notifications-unread'),
+    path('api/notifications/lues/', notification_views.mark_read, name='notifications-read'),
+
     # Onboarding
     path('api/onboarding/', OnboardingView.as_view(), name='onboarding'),
     path('api/schools/', school_search, name='school-search'),
@@ -175,6 +182,7 @@ urlpatterns = [
          name='pilotage-signalement-ia-derniere'),
     # Statistiques de l'élève (page Statistiques) : période, matière, niveau.
     path('api/stats/me/', my_stats, name='my-stats'),
+    path('api/stats/progression/', progression, name='progression'),
     path('api/dashboard/learning-path/', get_learning_path_progress, name='learning-path-progress'),
     path('api/dashboard/recommended/', get_recommended_content, name='recommended-content'),
 

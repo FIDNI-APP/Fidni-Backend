@@ -120,6 +120,13 @@ check('filtres : rubrique à part', f['filtre-chapitre']['source'] == 'filtre' a
 pages = {p['page']: p for p in r.data['pages']}
 check('pages : fiche exercice en tête', r.data['pages'][0]['page'] == '/exercises/:id' and pages['/exercises/:id']['views'] == 2,
       r.data['pages'])
+from django.utils import timezone  # noqa: E402
+for i in range(20):
+    UsageDaily.objects.create(date=timezone.localdate(), kind='page', name=f'/page-{i}', count=50, visitors=5)
+UsageDaily.objects.create(date=timezone.localdate(), kind='page', name='/statistiques', count=1, visitors=1)
+pages = {p['page']: p for p in pc.get('/api/pilotage/?jours=7').data['pages']}
+check('toutes les pages, même peu vues (« Mes statistiques » au-delà de la 15e)',
+      pages.get('/statistiques', {}).get('views') == 1 and len(pages) >= 22, len(pages))
 check('date de début de la mesure', r.data['usage_since'] == '2026-10-06', r.data.get('usage_since'))
 
 print(f'\n{sum(results)}/{len(results)} vérifications réussies')
