@@ -249,11 +249,10 @@ TRACKED_FILTERS = [
     ('tri', 'Tri de la liste'),
     ('filtre-effacer', '« Tout effacer »'),
 ]
-TOP_PAGES = 15
 
 
 def _usage(first, prev_first, real_ids):
-    """Fonctionnalités (membres, période et période d'avant) et pages les plus vues (période)."""
+    """Fonctionnalités (membres, période et période d'avant) et toutes les pages vues (période)."""
     start = timezone.make_aware(datetime.combine(first, time.min))
     prev_start = timezone.make_aware(datetime.combine(prev_first, time.min))
     features = []
@@ -280,7 +279,9 @@ def _usage(first, prev_first, real_ids):
 
     page_rows = (UsageDaily.objects.filter(kind=UsageDaily.KIND_PAGE, date__gte=first)
                  .values('name').annotate(views=Sum('count'), visits=Sum('visitors')).order_by('-views', 'name'))
-    pages = [{'page': r['name'], 'views': r['views'], 'visits': r['visits']} for r in page_rows[:TOP_PAGES]]
+    # Toutes les pages (une cinquantaine de motifs au plus) : avant, seules les 15 premières remontaient
+    # et une page peu vue (ex. « Mes statistiques ») semblait jamais visitée. Le Pilotage replie la suite.
+    pages = [{'page': r['name'], 'views': r['views'], 'visits': r['visits']} for r in page_rows]
     return features, pages
 
 
