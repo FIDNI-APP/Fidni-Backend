@@ -45,6 +45,9 @@ prof, aime, garde, reussi, evalue, travaille, passe, survole, x, y = (
     user(n) for n in ('prof', 'aime', 'garde', 'reussi', 'evalue', 'travaille', 'passe', 'survole', 'x', 'y'))
 admin = User.objects.create_superuser('admin', 'admin@x.fr', 'Motdepasse-solide-42')
 parti = user('parti', is_active=False)
+discret = user('discret')
+discret.profile.comment_notifications = False
+discret.profile.save()
 ex = Content.objects.create(type='exercise', title='Limites usuelles', author=prof, json_content={'blocks': []})
 ct = ContentType.objects.get_for_model(Content)
 sid = str(ex.id)
@@ -52,6 +55,7 @@ Vote.objects.create(user=aime, value=Vote.UP, content_type=ct, object_id=sid)
 Save.objects.create(user=garde, content_type=ct, object_id=sid)
 Complete.objects.create(user=reussi, content_type=ct, object_id=sid, status='success')
 Complete.objects.create(user=parti, content_type=ct, object_id=sid, status='success')
+Complete.objects.create(user=discret, content_type=ct, object_id=sid, status='success')
 QuestionProgress.objects.create(user=evalue, content_type=ct, object_id=ex.id, question_path='q1', status='review')
 StudyTimeDay.objects.create(user=travaille, object_id=ex.id, date=date.today(), seconds=300)
 StudyTimeDay.objects.create(user=survole, object_id=ex.id, date=date.today(), seconds=30)
@@ -76,8 +80,8 @@ check('commentaire publié', r.status_code == 201, r.status_code)
 first = r.data['id']
 check('prévenus : auteur, j\'aime, favori, réussi, question évaluée, 2 min de travail, admin qui a commenté',
       notified() == {'prof', 'aime', 'garde', 'reussi', 'evalue', 'travaille', 'admin'}, notified())
-check('pas prévenus : l\'auteur du commentaire, un simple passage, 30 s, un compte désactivé',
-      not notified() & {'x', 'passe', 'survole', 'parti'}, notified())
+check('pas prévenus : l\'auteur du commentaire, un simple passage, 30 s, un compte désactivé, notifications coupées',
+      not notified() & {'x', 'passe', 'survole', 'parti', 'discret'}, notified())
 n = Notification.objects.get(recipient=aime)
 check('contenu de la notification', n.title == 'Limites usuelles' and n.link == f'/exercises/{ex.id}'
       and n.excerpt == 'Je bloque à la question 2, une idée ?' and n.actor == x and n.count == 1, vars(n))

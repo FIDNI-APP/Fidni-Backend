@@ -4,7 +4,8 @@
 revoir, a évalué une de ses questions, proposé une solution, ou y a travaillé au moins 2 minutes. Un
 simple passage sur la page ne suffit pas : sinon chaque commentaire préviendrait tous les visiteurs.
 L'auteur du commentaire n'est jamais prévenu ; l'auteur du commentaire auquel on répond reçoit une
-« réponse » plutôt qu'un « nouveau commentaire ».
+« réponse » plutôt qu'un « nouveau commentaire ». Qui a désactivé « Notifications de commentaires » dans
+ses paramètres n'en reçoit pas.
 """
 import logging
 
@@ -68,8 +69,9 @@ def notify(*, target, title, link, comment_id, author_id, text, participants, re
 
     reply_to = reply_to if reply_to and reply_to != author_id else None
     wanted = (set(participants) | ({reply_to} if reply_to else set())) - {author_id, None}
+    # Réglage du profil « Notifications de commentaires » désactivé : on respecte son choix.
     active = set(User.objects.filter(id__in=wanted, is_active=True).exclude(username=DELETED_USERNAME)
-                 .values_list('id', flat=True))
+                 .exclude(profile__comment_notifications=False).values_list('id', flat=True))
     groups = {Notification.KIND_COMMENT: active - {reply_to}}
     if reply_to in active:
         groups[Notification.KIND_REPLY] = {reply_to}
