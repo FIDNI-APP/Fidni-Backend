@@ -10,7 +10,9 @@ Score de chaque contenu (tout en Python : quelques centaines de contenus, une di
     réussi intéresse moins (il a « fini » ce chapitre) ;
   - nouveauté : un contenu récent remonte, d'autant plus s'il est dans un chapitre qu'il travaille ;
   - popularité (j'aime − je n'aime pas, vues) pour départager ;
-  - autre niveau que le sien : loin derrière ; « à retravailler » : remonte ; déjà ouvert : un peu derrière.
+  - autre niveau que le sien : loin derrière ; déjà ouvert : un peu derrière ;
+  - « à revoir » (le contenu, ou une de ses questions ratée ou réussie en partie) : en pause 3 jours,
+    puis remonte avec « À retravailler » — c'est ce qu'on promet à l'élève quand il clique.
 Puis on varie : chaque contenu de plus d'un même chapitre perd un peu, pour que la première page ne
 soit pas un seul chapitre. Ce qu'il a déjà réussi passe toujours après tout le reste.
 Visiteur : nouveauté + popularité + variété.
@@ -24,7 +26,9 @@ from django.utils import timezone
 HALF_LIFE_DAYS = 14   # un signal d'il y a 2 semaines compte moitié moins
 FRESH_DAYS = 10       # la nouveauté s'estompe sur une dizaine de jours
 REPEAT_PENALTY = 0.3  # par contenu déjà placé du même chapitre
-SIGNALS = {'view': 1.0, 'review': 3.0, 'success': 1.0, 'like': 2.0, 'save': 2.0, 'dislike': -1.5}
+REVIEW_DELAY_DAYS = 3  # « à revoir » : reproposé au bout de 3 jours (message affiché à l'élève)
+SIGNALS = {'view': 1.0, 'review': 3.0, 'success': 1.0, 'like': 2.0, 'save': 2.0, 'dislike': -1.5,
+           'assessed': 1.5}
 
 
 def _days(now, when):
@@ -32,10 +36,11 @@ def _days(now, when):
 
 
 def _user_signals(user, ct):
-    """{content_id: [(poids, date)]} et statut de réussite par contenu, pour un élève connecté."""
-    from apps.interactions.models import Complete, Save, Vote
+    """Pour un élève connecté : {content_id: [(poids, date)]}, statut de réussite par contenu, contenus
+    qu'il n'aime pas, et date à laquelle chaque contenu est passé « à revoir »."""
+    from apps.interactions.models import Complete, QuestionProgress, Save, Vote
     from apps.users.models import ViewHistory
-    signals, status, disliked = defaultdict(list), {}, set()
+    signals, status, disliked, review_at = defaultdict(list), {}, set(), {}
 
     def cid(oid):
         return int(oid) if str(oid).isdigit() else None
@@ -45,12 +50,25 @@ def _user_signals(user, ct):
         if (i := cid(oid)) is not None:
             status[i] = st
             signals[i].append((SIGNALS.get(st, 0), when))
+            if st == 'review':
+                review_at[i] = when
     for oid, when, spent in ViewHistory.objects.filter(user=user, content_type=ct).values_list(
             'object_id', 'viewed_at', 'time_spent'):
         # Réussi : le chapitre est fait, la lecture ne compte pas en plus (sinon un chapitre terminé
         # resterait « son » chapitre). Sinon, y passer du temps dit plus qu'un clic (×3 dès 20 min).
         if status.get(oid) != 'success':
             signals[oid].append((SIGNALS['view'] * (1 + min((spent or 0) / 600, 2)), when))
+    # Auto-évaluation des questions : un vrai travail sur le contenu (un signal par contenu, le plus récent).
+    # Une question ratée ou réussie en partie met le contenu « à revoir » (sauf s'il est réussi depuis).
+    last_assessed = {}
+    for oid, st, when in QuestionProgress.objects.filter(user=user, content_type=ct).values_list(
+            'object_id', 'status', 'assessed_at'):
+        last_assessed[oid] = max(when, last_assessed.get(oid, when))
+        if st != 'success' and status.get(oid) != 'success':
+            review_at[oid] = max(when, review_at.get(oid, when))
+    for oid, when in last_assessed.items():
+        if status.get(oid) != 'success':  # même raison que pour les lectures
+            signals[oid].append((SIGNALS['assessed'], when))
     for oid, value, when in Vote.objects.filter(user=user, content_type=ct).exclude(value=0).values_list(
             'object_id', 'value', 'updated_at'):
         if (i := cid(oid)) is not None:
@@ -60,7 +78,7 @@ def _user_signals(user, ct):
     for oid, when in Save.objects.filter(user=user, content_type=ct).values_list('object_id', 'saved_at'):
         if (i := cid(oid)) is not None:
             signals[i].append((SIGNALS['save'], when))
-    return signals, status, disliked
+    return signals, status, disliked, review_at
 
 
 def rank(queryset, user=None):
@@ -77,9 +95,9 @@ def rank(queryset, user=None):
     ct = ContentType.objects.get_for_model(Content)
     authed = user is not None and getattr(user, 'is_authenticated', False)
 
-    signals, status, disliked, level = {}, {}, set(), None
+    signals, status, disliked, review_at, level = {}, {}, set(), {}, None
     if authed:
-        signals, status, disliked = _user_signals(user, ct)
+        signals, status, disliked, review_at = _user_signals(user, ct)
         profile = getattr(user, 'profile', None)
         level = getattr(profile, 'class_level_id', None)
 
@@ -131,8 +149,10 @@ def rank(queryset, user=None):
         if other_level:
             s -= 4
         st = status.get(cid)
-        if st == 'review':
-            s += 1
+        # À revoir : en pause pendant 3 jours (il vient d'y travailler), puis il remonte.
+        due = cid in review_at and _days(now, review_at[cid]) >= REVIEW_DELAY_DAYS
+        if cid in review_at:
+            s += 1.5 if due else -1.5
         elif cid in signals:
             s -= 0.3  # déjà ouvert
         if cid in disliked:
@@ -140,8 +160,10 @@ def rank(queryset, user=None):
         best = max(chs, key=lambda ch: affinity.get(ch, 0)) if chs else None
         if other_level:
             reason = None
-        elif st == 'review':
+        elif due:
             reason = 'review'
+        elif cid in review_at:
+            reason = None  # en pause
         elif aff >= 0.25 and best is not None:
             reason = 'chapter'
         elif (likes or 0) - (dislikes or 0) >= 3:

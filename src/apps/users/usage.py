@@ -26,6 +26,7 @@ ACTIONS = {
     'voir-solution',      # « Voir la solution » d'une question
     'toutes-solutions',   # « Voir les solutions » de tout l'exercice
     'tout-reussi',        # « Tout réussi »
+    'trouve-apres-solution',  # « Tu avais trouvé ? » sous une solution ouverte : réponse donnée
     'imprimer',           # impression / PDF d'un contenu, d'une liste, d'un cahier
     'visite-guidee',      # visite guidée lancée (bouton ?)
     'recherche',          # recherche lancée
