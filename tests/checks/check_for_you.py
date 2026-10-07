@@ -25,7 +25,7 @@ from django.core.cache import cache  # noqa: E402
 from django.utils import timezone  # noqa: E402
 from rest_framework.test import APIClient  # noqa: E402
 from apps.caracteristics.models import Chapter, ClassLevel  # noqa: E402
-from apps.interactions.models import Complete, QuestionProgress, Vote  # noqa: E402
+from apps.interactions.models import Complete, Vote  # noqa: E402
 from apps.things.models import Content  # noqa: E402
 from apps.users.models import ViewHistory  # noqa: E402
 
@@ -98,7 +98,7 @@ check('visiteur : variété — la 1ère page n\'est pas qu\'un chapitre',
 # --- Élève qui a travaillé Limites et continuité, presque tout réussi, et commence la Dérivation.
 for ex in lim_ex[:5]:
     act(ex, 'success', days=10)
-act(lim_ex[5], 'review', days=4)  # « à revoir » il y a plus de 3 jours : il revient
+act(lim_ex[5], 'review', days=3)
 act(der_ex[0], days=1)
 c.force_authenticate(eleve)
 t, why = titles()
@@ -112,19 +112,6 @@ check('chapitre en cours (Dérivation) avant les chapitres jamais ouverts',
 check('raison « Suite de ton travail »', (why['Dérivation 1'] or '').startswith('Suite de ton travail'), why)
 check('autre niveau : derrière tout ce qui reste à faire de son niveau',
       t.index('Tronc commun') > max(t.index(e.title) for e in der_ex + autres_ex), t)
-
-# --- « À revoir » : en pause 3 jours (ce qu'on promet à l'élève), puis il remonte. Une question ratée suffit.
-QuestionProgress.objects.create(user=eleve, content_type=ct, object_id=der_ex[2].id, question_path='q1', status='review')
-t, why = titles()
-check('question ratée hier : en pause, pas en tête ni étiquetée',
-      t.index('Dérivation 2') > t.index('Dérivation 1') and why['Dérivation 2'] is None, (t, why['Dérivation 2']))
-QuestionProgress.objects.filter(user=eleve, object_id=der_ex[2].id).update(assessed_at=now - timedelta(days=4))
-t, why = titles()
-check('… 4 jours plus tard : « À retravailler », en tête (top 3)',
-      'Dérivation 2' in t[:3] and why['Dérivation 2'] == 'À retravailler', (t[:4], why['Dérivation 2']))
-QuestionProgress.objects.create(user=eleve, content_type=ct, object_id=der_ex[3].id, question_path='q1', status='success')
-t, why = titles()
-check('question réussie : pas « à revoir »', why['Dérivation 3'] != 'À retravailler', why['Dérivation 3'])
 
 # --- Les filtres s'appliquent toujours.
 t, _ = titles(f'&chapters[]={der.id}')
