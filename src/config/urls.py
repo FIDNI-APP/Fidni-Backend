@@ -27,6 +27,7 @@ from apps.users.overview_views import dashboard_overview
 from apps.users import admin_dashboard
 from apps.users import usage as usage_views
 from apps.users.my_stats import my_stats
+from apps.users.progression import progression
 from apps.things import reports as content_reports
 from apps.ia import views as ia_views
 from apps.things.verification import set_verification
@@ -181,6 +182,7 @@ urlpatterns = [
          name='pilotage-signalement-ia-derniere'),
     # Statistiques de l'élève (page Statistiques) : période, matière, niveau.
     path('api/stats/me/', my_stats, name='my-stats'),
+    path('api/stats/progression/', progression, name='progression'),
     path('api/dashboard/learning-path/', get_learning_path_progress, name='learning-path-progress'),
     path('api/dashboard/recommended/', get_recommended_content, name='recommended-content'),
 

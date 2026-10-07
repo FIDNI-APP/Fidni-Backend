@@ -265,6 +265,13 @@ class UserSettingsSerializer(serializers.ModelSerializer):
         fields = (
             'display_email', 'display_stats',
             'email_notifications', 'comment_notifications', 'solution_notifications',
+            # Objectif d'étude quotidien : réglable depuis « Ma progression » (avant : seulement à l'inscription).
+            'daily_goal_minutes',
         )
+
+    def validate_daily_goal_minutes(self, value):
+        if not 5 <= value <= 240:
+            raise serializers.ValidationError('Entre 5 et 240 minutes.')
+        return value
 
 
