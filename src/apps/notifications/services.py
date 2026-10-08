@@ -7,7 +7,9 @@ L'auteur du commentaire n'est jamais prévenu ; l'auteur du commentaire auquel o
 « réponse » plutôt qu'un « nouveau commentaire ». Qui a désactivé « Notifications de commentaires » dans
 ses paramètres n'en reçoit pas.
 """
+import html
 import logging
+import re
 
 from django.contrib.auth.models import User
 from django.contrib.contenttypes.models import ContentType
@@ -23,7 +25,9 @@ TYPE_PATH = {'exercise': 'exercises', 'exam': 'exams', 'lesson': 'lessons'}
 
 
 def excerpt(text):
-    text = ' '.join((text or '').split())
+    # Commentaire écrit avec l'éditeur (HTML, maths en $…$) : on garde le texte et les formules.
+    text = html.unescape(re.sub(r'<[^>]+>', ' ', text or ''))
+    text = ' '.join(text.split())
     return text if len(text) <= EXCERPT else text[:EXCERPT - 1].rstrip() + '…'
 
 
