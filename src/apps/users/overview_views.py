@@ -21,7 +21,7 @@ from apps.caracteristics.notions import notion_label
 from apps.interactions.models import Complete, QuestionProgress, TimeSession
 from apps.skilliq.models import SkillAssessment
 from apps.things.models import Content
-from apps.things.views import _walk_questions_meta
+from apps.things.question_index import question_index
 
 CALENDAR_DAYS = 7 * 52   # une année scolaire, en semaines entières
 TYPE_PATH = {'exercise': 'exercises', 'exam': 'exams', 'lesson': 'lessons'}
@@ -98,12 +98,11 @@ def dashboard_overview(request):
 
     # ── Contenus concernés (une seule requête) et chemin → notions
     content_ids = {r['object_id'] for r in qp} | {int(r['object_id']) for r in completes if str(r['object_id']).isdigit()}
-    contents = {c.id: c for c in Content.objects.filter(id__in=content_ids).prefetch_related('chapters')}
-    questions_of, skills_of = {}, {}
-    for cid, c in contents.items():
-        metas = list(_walk_questions_meta(c.json_content or {}))
-        questions_of[cid] = len(metas)
-        skills_of[cid] = {path: (meta.get('skills') or []) for path, _, meta in metas}
+    # Sans l'énoncé : l'index des questions vient du cache (things/question_index.py), mêmes chemins.
+    contents = {c.id: c for c in Content.objects.filter(id__in=content_ids).defer('json_content').prefetch_related('chapters')}
+    index = question_index(contents.values())
+    questions_of = {cid: len(index.get(cid, [])) for cid in contents}
+    skills_of = {cid: {path: skills for path, _, skills in index.get(cid, [])} for cid in contents}
 
     def brief(c, **extra):
         chapter = next(iter(c.chapters.all()), None)

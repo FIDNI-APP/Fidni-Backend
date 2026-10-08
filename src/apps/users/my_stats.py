@@ -21,6 +21,7 @@ from rest_framework.response import Response
 from apps.caracteristics.notions import notion_label
 from apps.interactions.models import Complete, QuestionProgress, StudyTimeDay
 from apps.things.models import Content
+from apps.things.question_index import question_index
 
 PERIODS = {'7': 7, '30': 30, '90': 90, '365': 365, 'all': None}
 WEIGHT = {'success': 1.0, 'partial': 0.5}
@@ -97,8 +98,10 @@ def my_stats(request):
     completes = [r for r in Complete.objects.filter(user=user, content_type=ct).values('object_id', 'status', 'updated_at')
                  if str(r['object_id']).isdigit()]
     ids = {r['object_id'] for r in qp} | {r['object_id'] for r in time_rows} | {int(r['object_id']) for r in completes}
-    all_contents = {c.id: c for c in Content.objects.filter(id__in=ids).select_related('subject')
+    # Sans l'énoncé : l'index des questions vient du cache (things/question_index.py).
+    all_contents = {c.id: c for c in Content.objects.filter(id__in=ids).defer('json_content').select_related('subject')
                     .prefetch_related('class_levels', 'chapters', 'subfields', 'theorems')}
+    index = question_index(all_contents.values())
 
     # Choix des filtres : seulement les matières et niveaux réellement travaillés.
     subjects, levels = {}, {}
@@ -141,7 +144,7 @@ def my_stats(request):
     for cid, c in contents.items():
         if c.type != 'exam' or cid not in status_of:
             continue
-        qs = [(path, pts) for path, pts, _ in _questions(c.json_content)]
+        qs = [(path, pts) for path, pts, _ in index.get(cid, [])]
         total = sum(p for _, p in qs)
         corrected = sum(p for path, p in qs if path in status_of[cid])
         if not total or corrected < total / 2:
@@ -194,7 +197,7 @@ def my_stats(request):
                        'success_rate': _pct(v['success'], v['questions']), 'minutes': round(v['seconds'] / 60)})
 
     # ── Difficultés : notions les moins réussies sur la période
-    skills_of = {cid: {path: skills for path, _, skills in _questions(c.json_content)} for cid, c in contents.items()}
+    skills_of = {cid: {path: skills for path, _, skills in index.get(cid, [])} for cid in contents}
     notion_rows = defaultdict(lambda: {'n': 0, 'ok': 0, 'chapters': Counter()})
     for r in q_now:
         c = contents[r['object_id']]

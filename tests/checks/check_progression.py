@@ -142,6 +142,22 @@ check('objectif quotidien modifiable', r.status_code == 200 and c.get('/api/stat
       r.status_code)
 check('objectif quotidien : valeur absurde refusée', c.patch('/api/settings/', {'daily_goal_minutes': 900}, format='json').status_code == 400)
 
+# Index des questions en cache (things/question_index.py) : relu sans recharger l'énoncé, refait
+# dès que le contenu change.
+from django.db import connection  # noqa: E402
+from django.test.utils import CaptureQueriesContext  # noqa: E402
+from apps.things.question_index import question_index  # noqa: E402
+light = list(Content.objects.filter(id=ex_der.id).only('id', 'updated_at'))
+first = question_index(light)
+connection.queries_log.clear()
+with CaptureQueriesContext(connection) as queries:
+    again = question_index(light)
+check('index des questions : relu du cache, sans requête', again == first and len(queries) == 0, len(queries))
+ex_der.json_content = {'version': '2.1', 'blocks': [q('q1', ['ipp']), q('q2', ['ipp'])]}
+ex_der.save()
+check('index des questions : contenu modifié → index refait',
+      question_index(list(Content.objects.filter(id=ex_der.id).only('id', 'updated_at')))[ex_der.id] == [('q1', 0.0, ['ipp']), ('q2', 0.0, ['ipp'])])
+
 # Élève sans niveau ni activité : page vide mais valide.
 nouveau = User.objects.create_user('nouveau', 'n@x.fr', 'Motdepasse-solide-42')
 c.force_authenticate(nouveau)

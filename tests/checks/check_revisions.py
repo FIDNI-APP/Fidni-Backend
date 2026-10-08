@@ -89,6 +89,26 @@ check('ajout rapide : liste étiquetée d’après l’exercice',
       list(quick.class_levels.values_list('id', flat=True)) == [level.id] and list(quick.chapters.values_list('id', flat=True)) == [chapter.id])
 r = c.post('/api/revision-lists/quick_add/', {'object_id': ex1.id}, format='json')
 check('ajout rapide idempotent', r.status_code == 200 and not r.data['added'] and quick.items.count() == 1, r.data)
+# Page Révisions : résumé léger des listes (plus de cartes complètes) et liste ouverte préchargée.
+from django.db import connection  # noqa: E402
+from django.test.utils import CaptureQueriesContext  # noqa: E402
+Complete.objects.update_or_create(user=alice, content_type=ct, object_id=str(ex1.id), defaults={'status': 'review'})
+connection.queries_log.clear()
+with CaptureQueriesContext(connection) as queries:
+    r = c.get('/api/revision-lists/')
+rows = {x['name']: x for x in r.data}
+check('listes : résumé léger', r.status_code == 200 and rows['À revoir']['item_count'] == 1
+      and rows['À revoir']['progress'] == {'success': 0, 'review': 1, 'todo': 0}
+      and rows['À revoir']['items'][0]['content_type_name'] == 'exercise' and 'content_object' not in rows['À revoir']['items'][0]
+      and rows['À revoir']['item_chapters'] == [chapter.name], rows.get('À revoir'))
+check('listes : peu de requêtes', len(queries) <= 12, len(queries))
+quick_id = rows['À revoir']['id']
+r = c.get(f'/api/revision-lists/{quick_id}/')
+item = r.data['items'][0]
+check('liste ouverte : carte complète avec l’énoncé', r.status_code == 200 and item['content_object']['id'] == ex1.id
+      and 'json_content' in item['content_object'] and item['content_type_name'] == 'exercise', r.data)
+r = c.get(f'/api/revision-lists/{quick_id}/statistics/')
+check('statistiques de la liste', r.data['total_items'] == 1 and r.data['review'] == 1 and r.data['completed'] == 1, r.data)
 r = c.get('/api/revision-lists/suggestions/')
 check('suggestion retirée une fois dans une liste', [x['id'] for x in r.data['results']] == [ex2.id], r.data)
 
