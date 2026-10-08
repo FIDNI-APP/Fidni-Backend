@@ -205,7 +205,7 @@ def overview(request):
 def _features():
     """(clé, libellé, queryset, champ de date, champ utilisateur) : fonctionnalités dont chaque usage est en base."""
     from apps.classrooms.models import ClassroomMembership
-    from apps.interactions.models import RevisionListItem, Save, Vote
+    from apps.interactions.models import RevisionListItem, Save, UpcomingTest, Vote
     from apps.notebooks.models import NotebookLessonEntry
     return [
         ('auto_evaluation', 'Auto-évaluation des questions', QuestionProgress.objects.all(), 'assessed_at', 'user_id'),
@@ -214,6 +214,8 @@ def _features():
         ('chrono', 'Chrono et épreuves', TimeSession.objects.all(), 'created_at', 'user_id'),
         ('favoris', 'Enregistrer (favoris)', Save.objects.all(), 'saved_at', 'user_id'),
         ('liste', 'Listes de révision', RevisionListItem.objects.all(), 'added_at', 'revision_list__user_id'),
+        ('ds', 'DS annoncés (« Mon prochain DS »)', UpcomingTest.objects.all(), 'created_at', 'user_id'),
+        ('ds_blanc', 'DS blancs terminés', UpcomingTest.objects.exclude(mock_done_at=None), 'mock_done_at', 'user_id'),
         ('cahier', 'Leçons ajoutées au cahier', NotebookLessonEntry.objects.all(), 'added_at', 'section__notebook__user_id'),
         ('skilliq', 'Tests Skill IQ', SkillAssessment.objects.all(), 'completed_at', 'user_id'),
         ('commentaire', 'Commentaires', Comment.objects.all(), 'created_at', 'author_id'),

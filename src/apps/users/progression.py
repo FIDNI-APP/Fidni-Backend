@@ -13,6 +13,7 @@ chiffres enregistrés :
 from bisect import bisect_left
 from collections import Counter, defaultdict
 from datetime import date, timedelta
+from types import SimpleNamespace
 
 from django.contrib.contenttypes.models import ContentType
 from django.db.models import Count
@@ -66,16 +67,13 @@ def _month_label(d):
     return f'{MONTHS[d.month - 1]} {d.year}'
 
 
-@api_view(['GET'])
-@permission_classes([IsAuthenticated])
-def progression(request):
-    user = request.user
-    today = timezone.localdate()
-    local = lambda dt: timezone.localtime(dt).date()  # noqa: E731
-    ct = ContentType.objects.get_for_model(Content)
-    profile = getattr(user, 'profile', None)
-    level = getattr(profile, 'class_level', None)
+def _local(dt):
+    return timezone.localtime(dt).date()
 
+
+def _collect(user):
+    """Ce que l'élève a fait : questions évaluées, contenus réussis / à revoir, temps, quiz Skill IQ."""
+    ct = ContentType.objects.get_for_model(Content)
     qp = list(QuestionProgress.objects.filter(user=user, content_type=ct)
               .values('object_id', 'question_path', 'status', 'created_at', 'assessed_at'))
     completes = [r for r in Complete.objects.filter(user=user, content_type=ct).values('object_id', 'status', 'updated_at')
@@ -87,18 +85,23 @@ def progression(request):
 
     ids = {r['object_id'] for r in qp} | {r['object_id'] for r in completes} | {r['object_id'] for r in time_rows}
     contents = {c.id: c for c in Content.objects.filter(id__in=ids).prefetch_related('chapters')}
-    chapters_of = {cid: [(ch.id, ch.name) for ch in c.chapters.all()] for cid, c in contents.items()}
-    skills_of = {cid: {path: skills for path, _, skills in _questions(c.json_content)} for cid, c in contents.items()}
+    return SimpleNamespace(
+        qp=qp, completes=completes, time_rows=time_rows, quizzes=quizzes, contents=contents,
+        chapters_of={cid: [(ch.id, ch.name) for ch in c.chapters.all()] for cid, c in contents.items()},
+        skills_of={cid: {path: skills for path, _, skills in _questions(c.json_content)} for cid, c in contents.items()},
+    )
 
-    # ── Par chapitre : questions (réussite), notions, temps, contenus réussis / à revoir
+
+def _per_chapter(d):
+    """Par chapitre (réussite des questions, notions, temps, contenus réussis / à revoir) et par notion."""
     chap = defaultdict(lambda: {'n': 0, 'score': 0.0, 'seconds': 0, 'last': None,
                                 'notions': defaultdict(lambda: [0, 0.0]), 'done': set(), 'review': []})
     notions = defaultdict(lambda: {'n': 0, 'score': 0.0, 'chapters': Counter()})
-    for r in qp:
+    for r in d.qp:
         score = WEIGHT.get(r['status'], 0)
-        day = local(r['assessed_at'])
-        skills = skills_of.get(r['object_id'], {}).get(r['question_path'], [])
-        mine = _question_chapters(chapters_of.get(r['object_id'], []), skills)
+        day = _local(r['assessed_at'])
+        skills = d.skills_of.get(r['object_id'], {}).get(r['question_path'], [])
+        mine = _question_chapters(d.chapters_of.get(r['object_id'], []), skills)
         for ch in mine:
             row = chap[ch]
             row['n'] += 1
@@ -112,30 +115,29 @@ def progression(request):
                 nrow['chapters'][ch] += 1
                 chap[ch]['notions'][slug][0] += 1
                 chap[ch]['notions'][slug][1] += score
-    for r in time_rows:
-        for ch, _ in chapters_of.get(r['object_id'], []):
+    for r in d.time_rows:
+        for ch, _ in d.chapters_of.get(r['object_id'], []):
             chap[ch]['seconds'] += r['seconds']
             chap[ch]['last'] = max(r['date'], chap[ch]['last']) if chap[ch]['last'] else r['date']
-    for r in sorted(completes, key=lambda x: x['updated_at'], reverse=True):
-        c = contents.get(r['object_id'])
+    for r in sorted(d.completes, key=lambda x: x['updated_at'], reverse=True):
+        c = d.contents.get(r['object_id'])
         if not c:
             continue
-        for ch, _ in chapters_of.get(c.id, []):
+        for ch, _ in d.chapters_of.get(c.id, []):
             if r['status'] == 'success' and c.type in ('exercise', 'exam'):
                 chap[ch]['done'].add(c.id)
             elif r['status'] == 'review' and len(chap[ch]['review']) < 3:
                 chap[ch]['review'].append({'id': c.id, 'title': c.title, 'url': f'/{TYPE_PATH.get(c.type, "exercises")}/{c.id}'})
+    return chap, notions
 
-    # Le programme : chapitres du niveau (sinon ceux qu'il a travaillés), et combien de contenus chacun.
-    chapter_qs = Chapter.objects.filter(class_levels=level) if level else Chapter.objects.filter(
-        id__in=set(chap) | set(quizzes))
-    chapter_list = list(chapter_qs.select_related('subfield').distinct().order_by('subfield__name', 'name'))
+
+def _chapter_entries(chapter_list, chap, quizzes, level):
+    """Une entrée par chapitre : état, maîtrise, notions les mieux / moins réussies, quiz, contenus."""
     counts = Counter(Content.chapters.through.objects.filter(
         chapter_id__in=[c.id for c in chapter_list], content__type__in=('exercise', 'exam'),
         **({'content__class_levels': level} if level else {})).values_list('chapter_id', flat=True))
     quiz_ready = set(SkillQuestion.objects.filter(is_active=True).values('chapter_id').annotate(n=Count('id'))
                      .filter(n__gt=0).values_list('chapter_id', flat=True))
-
     chapters = []
     for ch in chapter_list:
         row = chap.get(ch.id)
@@ -155,7 +157,7 @@ def progression(request):
             'id': ch.id, 'name': ch.name, 'subfield': ch.subfield.name if ch.subfield else 'Autres',
             'status': _status(mastery, touched), 'mastery': mastery, 'self_pct': self_pct,
             'questions': row['n'] if row else 0,
-            'skilliq': {'pct': quiz_pct, 'level': quiz.level, 'date': local(quiz.completed_at).isoformat()} if quiz else None,
+            'skilliq': {'pct': quiz_pct, 'level': quiz.level, 'date': _local(quiz.completed_at).isoformat()} if quiz else None,
             'quiz_ready': ch.id in quiz_ready,
             'seconds': row['seconds'] if row else 0,
             'contents': counts.get(ch.id, 0), 'done': len(row['done']) if row else 0,
@@ -163,6 +165,34 @@ def progression(request):
             'notions': {'best': best, 'worst': worst},
             'last_at': row['last'].isoformat() if row and row['last'] else None,
         })
+    return chapters
+
+
+def chapter_progress(user, chapters, level=None):
+    """Maîtrise de quelques chapitres, même calcul que la carte du programme (plan d'un DS)."""
+    d = _collect(user)
+    chap, _ = _per_chapter(d)
+    return _chapter_entries(chapters, chap, d.quizzes, level)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def progression(request):
+    user = request.user
+    today = timezone.localdate()
+    local = _local
+    profile = getattr(user, 'profile', None)
+    level = getattr(profile, 'class_level', None)
+
+    d = _collect(user)
+    qp, completes, time_rows, quizzes, contents = d.qp, d.completes, d.time_rows, d.quizzes, d.contents
+    chap, notions = _per_chapter(d)
+
+    # Le programme : chapitres du niveau (sinon ceux qu'il a travaillés), et combien de contenus chacun.
+    chapter_qs = Chapter.objects.filter(class_levels=level) if level else Chapter.objects.filter(
+        id__in=set(chap) | set(quizzes))
+    chapter_list = list(chapter_qs.select_related('subfield').distinct().order_by('subfield__name', 'name'))
+    chapters = _chapter_entries(chapter_list, chap, quizzes, level)
     by_id = {c['id']: c for c in chapters}
 
     # ── Points forts / à renforcer : notions (≥ 3 questions), puis chapitres du Skill IQ sans notions.

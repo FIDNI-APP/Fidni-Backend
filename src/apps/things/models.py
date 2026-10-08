@@ -1,4 +1,5 @@
 from django.db import models
+from django.utils import timezone
 from django.contrib.auth.models import User
 from django.contrib.contenttypes.fields import GenericRelation
 from apps.interactions.models import VotableMixin, CompleteableMixin, SaveableMixin
@@ -248,3 +249,20 @@ class ContentDailyView(models.Model):
 
     def __str__(self):
         return f"{self.content_id} · {self.date} : {self.count}"
+
+
+class CatchUpSkip(models.Model):
+    """« Pas encore fait » sur une carte du bandeau de rattrapage (« Tu as ouvert N exercices sans dire si
+    tu les as réussis »), ou bandeau fermé : l'élève a seulement regardé le contenu, il ne peut pas dire
+    s'il l'a réussi. On ne le lui redemande plus, sauf s'il y retravaille ensuite (things/catch_up.py)."""
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='catch_up_skips')
+    content = models.ForeignKey(Content, on_delete=models.CASCADE, related_name='+')
+    created_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        db_table = 'things_catchupskip'
+        constraints = [models.UniqueConstraint(fields=['user', 'content'], name='unique_catch_up_skip')]
+
+    def __str__(self):
+        return f"{self.user_id} · {self.content_id} : pas encore fait"
+

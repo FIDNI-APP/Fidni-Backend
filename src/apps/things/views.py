@@ -351,12 +351,22 @@ class ContentViewSet(VoteMixin, viewsets.ModelViewSet):
     @action(detail=True, methods=['post'])
     def comment(self, request, pk=None):
         item = self.get_object()
+        # Réponse : « parent » ou « parent_id » (la page d'un contenu envoyait « parent_id », que le serveur
+        # ignorait : chaque réponse était enregistrée à part au lieu de s'imbriquer sous le commentaire).
+        parent_id = request.data.get('parent') or request.data.get('parent_id') or None
+        if parent_id is not None:
+            try:
+                parent_id = int(parent_id)
+            except (TypeError, ValueError):
+                parent_id = -1
+            if not Comment.objects.filter(pk=parent_id, content_item=item).exists():
+                return Response({'error': 'Commentaire introuvable sur ce contenu.'}, status=status.HTTP_400_BAD_REQUEST)
         serializer = CommentSerializer(data=request.data, context={'request': request})
         if serializer.is_valid():
             comment = serializer.save(
                 content_item=item,
                 author=request.user,
-                parent_id=request.data.get('parent')
+                parent_id=parent_id,
             )
             # Uniquement ses propres fichiers, encore libres (voir attach_own_files).
             file_ids = request.data.get('file_ids') or []
@@ -430,6 +440,19 @@ class ContentViewSet(VoteMixin, viewsets.ModelViewSet):
         exclude = [int(x) for x in (request.query_params.get('exclude') or '').split(',')[:300] if x.isdigit()]
         count, items = pending(request.user, kind, exclude)
         return Response({'count': count, 'items': items})
+
+    @action(detail=False, methods=['post'], permission_classes=[IsAuthenticated], url_path='a-evaluer/ignorer')
+    def a_evaluer_ignorer(self, request):
+        """« Pas encore fait » sur une carte, ou bandeau fermé : {ids: [...]} ne sont plus demandés
+        (sauf si l'élève y retravaille ensuite, voir things/catch_up.py)."""
+        from .models import CatchUpSkip
+        ids = request.data.get('ids')
+        if not isinstance(ids, list) or not ids:
+            return Response({'error': 'ids required'}, status=status.HTTP_400_BAD_REQUEST)
+        now = timezone.now()
+        for cid in Content.objects.filter(id__in=[i for i in ids if isinstance(i, int)][:50]).values_list('id', flat=True):
+            CatchUpSkip.objects.update_or_create(user=request.user, content_id=cid, defaults={'created_at': now})
+        return Response({'ignored': True})
 
     # ---- question progress ----
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])

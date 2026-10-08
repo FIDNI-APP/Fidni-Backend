@@ -43,6 +43,7 @@ from apps.authentication.views import (
     ThrottledTokenObtainPairView, ThrottledTokenRefreshView,
 )
 from apps.interactions.views import RevisionListViewSet, track_study_time, get_taxonomy_time_stats
+from apps.interactions.devoirs import UpcomingTestViewSet
 from apps.notebooks.views import (
     NotebookViewSet, NotebookChapterViewSet, NotebookLessonEntryAnnotationViewSet
 )
@@ -70,6 +71,7 @@ router.register(r'path-chapters', PathChapterViewSet, basename='pathchapter')
 router.register(r'videos', VideoViewSet, basename='video')
 router.register(r'chapter-quizzes', ChapterQuizViewSet, basename='chapterquiz')
 router.register(r'revision-lists', RevisionListViewSet, basename='revisionlist')
+router.register(r'devoirs', UpcomingTestViewSet, basename='devoir')
 router.register(r'files', FileAttachmentViewSet, basename='fileattachment')
 
 urlpatterns = [
