@@ -3,6 +3,9 @@
 Contenus (exercices ou examens) qu'un élève a ouverts ces 30 derniers jours ET sur lesquels il a vraiment
 travaillé (au moins 2 minutes, solution regardée ou une question déjà évaluée), sans avoir dit s'il les a
 réussis (ni « Réussi » ni « À revoir »). Les plus récemment ouverts d'abord.
+
+« Pas encore fait » (ou bandeau fermé) : CatchUpSkip. Le contenu n'est plus demandé, sauf si l'élève y
+retravaille APRÈS (temps d'étude un jour suivant, question évaluée, solution regardée) : là, il peut juger.
 """
 from collections import Counter
 from datetime import timedelta
@@ -18,9 +21,9 @@ LIMIT = 5
 
 def pending(user, kind, exclude=()):
     """(nombre total, [cartes]) des contenus de ce type à évaluer, `LIMIT` cartes au plus.
-    `exclude` : ceux que l'élève a écartés en fermant le bandeau (mémorisés dans son navigateur)."""
+    `exclude` : ids à écarter en plus (ancienne version du bandeau, qui les gardait dans le navigateur)."""
     from apps.interactions.models import Complete, QuestionProgress, SolutionView, StudyTimeDay
-    from apps.things.models import Content
+    from apps.things.models import CatchUpSkip, Content
     from apps.users.models import ViewHistory
     from apps.users.my_stats import _questions
 
@@ -39,6 +42,23 @@ def pending(user, kind, exclude=()):
     assessed = Counter(QuestionProgress.objects.filter(user=user, content_type=ct, object_id__in=ids)
                        .values_list('object_id', flat=True))
     worked |= set(assessed)
+
+    # « Pas encore fait » : redemandé seulement s'il y a retravaillé depuis.
+    skipped = dict(CatchUpSkip.objects.filter(user=user, content_id__in=worked).values_list('content_id', 'created_at'))
+    if skipped:
+        again = set()
+        for cid, when in QuestionProgress.objects.filter(user=user, content_type=ct, object_id__in=skipped).values_list(
+                'object_id', 'assessed_at'):
+            if when > skipped[cid]:
+                again.add(cid)
+        for cid, when in SolutionView.objects.filter(user=user, content_type=ct, object_id__in=skipped).values_list(
+                'object_id', 'viewed_at'):
+            if when > skipped[cid]:
+                again.add(cid)
+        for cid, day in StudyTimeDay.objects.filter(user=user, object_id__in=skipped).values_list('object_id', 'date'):
+            if day > timezone.localtime(skipped[cid]).date():
+                again.add(cid)
+        worked -= set(skipped) - again
     contents = sorted(Content.objects.filter(id__in=worked, type=kind).exclude(author=user).prefetch_related('chapters'),
                       key=lambda c: seen[c.id], reverse=True)
     cards = []

@@ -24,7 +24,7 @@ from django.contrib.contenttypes.models import ContentType  # noqa: E402
 from django.utils import timezone  # noqa: E402
 from rest_framework.test import APIClient  # noqa: E402
 from apps.interactions.models import Complete, QuestionProgress, SolutionView, StudyTimeDay  # noqa: E402
-from apps.things.models import Content  # noqa: E402
+from apps.things.models import CatchUpSkip, Content  # noqa: E402
 from apps.users.models import ViewHistory  # noqa: E402
 
 settings.ALLOWED_HOSTS = ['*']
@@ -104,6 +104,20 @@ r = c.post(f'/api/contents/{travaille.id}/assess_many/',
 c.post(f'/api/contents/{entame.id}/mark_progress/', {'status': 'review'}, format='json')
 titles = [x['title'] for x in c.get('/api/contents/a-evaluer/?type=exercise').data['items']]
 check('une fois évalués, ils sortent du bandeau', titles == ['Solution regardée'], titles)
+
+# « Pas encore fait » : la carte part, et ne revient que s'il y retravaille ensuite.
+r = c.post('/api/contents/a-evaluer/ignorer/', {'ids': [solution.id]}, format='json')
+titles = [x['title'] for x in c.get('/api/contents/a-evaluer/?type=exercise').data['items']]
+check('« Pas encore fait » : plus demandé', r.status_code == 200 and 'Solution regardée' not in titles, (r.status_code, titles))
+ViewHistory.objects.filter(user=eleve, object_id=solution.id).update(viewed_at=timezone.now())
+titles = [x['title'] for x in c.get('/api/contents/a-evaluer/?type=exercise').data['items']]
+check('… rouvert sans y travailler : toujours pas demandé', 'Solution regardée' not in titles, titles)
+CatchUpSkip.objects.filter(user=eleve, content=solution).update(created_at=timezone.now() - timedelta(days=3))
+StudyTimeDay.objects.create(user=eleve, object_id=solution.id, date=date.today(), seconds=400)
+titles = [x['title'] for x in c.get('/api/contents/a-evaluer/?type=exercise').data['items']]
+check('… retravaillé un jour suivant : redemandé', 'Solution regardée' in titles, titles)
+check('ignorer sans ids : refusé', c.post('/api/contents/a-evaluer/ignorer/', {}, format='json').status_code == 400)
+check('ignorer : visiteur refusé', APIClient().post('/api/contents/a-evaluer/ignorer/', {'ids': [solution.id]}, format='json').status_code in (401, 403))
 
 print(f'\n{sum(results)}/{len(results)} vérifications réussies')
 sys.exit(0 if all(results) else 1)
