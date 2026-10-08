@@ -589,3 +589,37 @@ class StudyTimeDay(models.Model):
 
     def __str__(self):
         return f"{self.user.username} - {self.object_id} - {self.date}: {self.seconds}s"
+
+
+#----------------------------DS ANNONCÉS (« MON PROCHAIN DS »)-------------------------------
+
+class UpcomingTest(models.Model):
+    """
+    « Mon prochain DS » (08/10/2026) : un devoir annoncé en classe — matière, date, chapitres au
+    programme. Fidni en tire une révision ciblée (interactions/devoirs.py) ; la date passée, l'élève
+    peut y noter sa note.
+    """
+    KIND_CHOICES = [('ds', 'DS'), ('controle', 'Contrôle'), ('blanc', 'Examen blanc')]
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='upcoming_tests')
+    kind = models.CharField(max_length=10, choices=KIND_CHOICES, default='ds')
+    subject = models.ForeignKey('caracteristics.Subject', on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
+    class_level = models.ForeignKey('caracteristics.ClassLevel', on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
+    chapters = models.ManyToManyField('caracteristics.Chapter', related_name='upcoming_tests')
+    date = models.DateField()
+    grade = models.DecimalField(max_digits=4, decimal_places=2, null=True, blank=True, help_text='Note sur 20')
+    # DS blanc : exercices tirés au lancement (gardés tant qu'il n'en demande pas un autre), puis terminé.
+    mock_ids = models.JSONField(default=list, blank=True)
+    mock_started_at = models.DateTimeField(null=True, blank=True)
+    mock_done_at = models.DateTimeField(null=True, blank=True)
+    mock_seconds = models.PositiveIntegerField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        app_label = 'interactions'
+        ordering = ['date', 'id']
+        indexes = [models.Index(fields=['user', 'date'], name='upcomingtest_user_date')]
+
+    def __str__(self):
+        return f"{self.user.username} - {self.kind} {self.date}"
