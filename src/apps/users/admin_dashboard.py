@@ -7,8 +7,10 @@ GET /api/pilotage/utilisateurs/<id>/    dernières actions d'un membre
 
 Uniquement des faits enregistrés. « Actif » = au moins une action enregistrée sur la période :
 connexion, consultation d'un contenu, contenu terminé, question auto-évaluée, session de chrono, temps
-d'étude, commentaire, solution proposée, test Skill IQ. Les visiteurs non connectés n'apparaissent que
-dans les vues des contenus (ContentDailyView, depuis le 05/10/2026).
+d'étude, commentaire, solution proposée, test Skill IQ. Les visiteurs non connectés apparaissent dans les vues
+des contenus (ContentDailyView, depuis le 05/10/2026), et à part dans le bloc `anonymes` (depuis le 09/10/2026 :
+visiteurs distincts par jour, pages vues, contenus vus, gestes). `filter_values` : valeurs de filtre les plus
+utilisées dans les listes (difficulté, chapitre, tri…), depuis le 09/10/2026.
 Les comptes « maison » (administrateurs, compte éditorial, compte supprimé, compte de test) sont exclus des chiffres.
 """
 from collections import Counter, defaultdict
@@ -34,6 +36,8 @@ PERIODS = (7, 30, 90)
 VIEWS_SINCE = date(2026, 10, 5)
 # Pages vues et actions mesurées par le navigateur (UsageDaily) : à partir de cette date.
 USAGE_SINCE = date(2026, 10, 6)
+# Part des visiteurs non connectés (anon_count, anon_visitors) et valeurs des filtres : à partir de cette date.
+ANON_SINCE = date(2026, 10, 9)
 TOP_CONTENTS = 8
 # Comptes de vérification automatique (captures, tests en production) : pas de vrais membres.
 TEST_ACCOUNTS = ['fidni_test_claude']
@@ -182,6 +186,7 @@ def overview(request):
                     for i in ranked]
 
     features, pages = _usage(first, prev_first, real_ids)
+    signups_current = total(signups, current)
 
     return Response({
         'generated_at': timezone.now().isoformat(),
@@ -190,6 +195,8 @@ def overview(request):
         'usage_since': USAGE_SINCE.isoformat(),
         'features': features,
         'pages': pages,
+        'filter_values': _filter_values(first),
+        'anonymes': _anonymous(first, prev_first, current, previous, signups_current),
         'members_total': len(real_ids),
         'todo': {
             'reports_open': ContentReport.objects.filter(status=ContentReport.STATUS_OPEN).count(),
@@ -287,6 +294,127 @@ def _usage(first, prev_first, real_ids):
     # et une page peu vue (ex. « Mes statistiques ») semblait jamais visitée. Le Pilotage replie la suite.
     pages = [{'page': r['name'], 'views': r['views'], 'visits': r['visits']} for r in page_rows]
     return features, pages
+
+
+DIFFICULTY_LABEL = {'easy': 'Facile', 'medium': 'Moyen', 'hard': 'Difficile'}
+STATUS_LABEL = {'showViewed': 'Déjà vus', 'hideViewed': 'Masquer les vus', 'showCompleted': 'Réussis',
+                'showFailed': 'À revoir'}
+SORT_LABEL = {'recommended': 'Pour toi', 'most_upvoted': 'Plus aimés', 'newest': 'Plus récents',
+              'oldest': 'Plus anciens', 'most_commented': 'Plus commentés'}
+# Filtre envoyé par le navigateur → clé de TRACKED_FILTERS (même ligne du Pilotage).
+FILTER_KEY = {'niveau': 'filtre-niveau', 'matiere': 'filtre-matiere', 'sous-domaine': 'filtre-sous-domaine',
+              'chapitre': 'filtre-chapitre', 'theoreme': 'filtre-theoreme', 'difficulte': 'filtre-difficulte',
+              'statut': 'filtre-statut', 'national': 'filtre-national', 'date': 'filtre-date', 'tri': 'tri'}
+
+
+def _filter_values(first):
+    """Valeurs de filtre ajoutées sur la période (« exercise:difficulte:hard »…), avec leur nom lisible.
+
+    Une ligne par (liste, filtre, valeur) : le Pilotage regroupe par filtre et peut isoler une liste.
+    """
+    from apps.caracteristics.models import Chapter, ClassLevel, Subfield, Subject, Theorem
+    rows = (UsageDaily.objects.filter(kind=UsageDaily.KIND_FILTER, date__gte=first).values('name')
+            .annotate(c=Sum('count'), v=Sum('visitors'), a=Sum('anon_count')))
+    parsed = []
+    ids = defaultdict(set)
+    for r in rows:
+        parts = r['name'].split(':', 2)
+        if len(parts) != 3 or parts[1] not in FILTER_KEY:
+            continue
+        kind, filt, value = parts
+        parsed.append((kind, filt, value, r))
+        if value.isdigit():
+            ids[filt].add(int(value))
+    models_by_filter = {'niveau': ClassLevel, 'matiere': Subject, 'sous-domaine': Subfield, 'chapitre': Chapter,
+                        'theoreme': Theorem}
+    names = {}
+    for filt, model in models_by_filter.items():
+        if not ids[filt]:
+            continue
+        qs = model.objects.filter(id__in=ids[filt])
+        if model is Chapter:
+            qs = qs.prefetch_related('class_levels')
+            for c in qs:
+                levels = ', '.join(sorted(l.name for l in c.class_levels.all()))
+                names[(filt, str(c.id))] = f'{c.name} ({levels})' if levels else c.name
+        else:
+            names.update({(filt, str(pk)): name for pk, name in qs.values_list('id', 'name')})
+    out = []
+    for kind, filt, value, r in parsed:
+        if filt == 'difficulte':
+            label = DIFFICULTY_LABEL.get(value, value)
+        elif filt == 'statut':
+            label = STATUS_LABEL.get(value, value)
+        elif filt == 'tri':
+            label = SORT_LABEL.get(value, value)
+        elif filt == 'national':
+            label = 'Nationaux' if value == 'oui' else 'Devoirs (non nationaux)'
+        elif filt == 'date':
+            label = f'À partir de {value}'
+        else:
+            label = names.get((filt, value), f'#{value} (supprimé)')
+        out.append({'filter': FILTER_KEY[filt], 'type': kind, 'value': value, 'label': label,
+                    'count': r['c'] or 0, 'visits': r['v'] or 0, 'anon': r['a'] or 0})
+    out.sort(key=lambda x: -x['count'])
+    return out
+
+
+def _anonymous(first, prev_first, current, previous, signups_current):
+    """Visiteurs non connectés : visiteurs distincts par jour, pages et contenus vus, gestes (depuis ANON_SINCE).
+
+    `visits` = personnes distinctes chaque jour, additionnées sur la période (une personne venue 3 jours = 3).
+    """
+    site = {r['date']: r for r in UsageDaily.objects.filter(kind=UsageDaily.KIND_SITE, name='visites', date__gte=prev_first)
+            .values('date', 'count', 'visitors', 'anon_count', 'anon_visitors')}
+    content_anon = dict(ContentDailyView.objects.filter(date__gte=prev_first).values_list('date').annotate(s=Sum('anon_count')))
+    content_all = dict(ContentDailyView.objects.filter(date__gte=prev_first).values_list('date').annotate(s=Sum('count')))
+    measured = lambda d: d >= ANON_SINCE  # noqa: E731
+
+    def day(d):
+        r = site.get(d) or {}
+        if not measured(d):
+            return {'date': d.isoformat(), 'anon': None, 'members': None, 'anon_pages': None, 'anon_contents': None}
+        return {'date': d.isoformat(), 'anon': r.get('anon_visitors', 0),
+                'members': r.get('visitors', 0) - r.get('anon_visitors', 0),
+                'anon_pages': r.get('anon_count', 0), 'anon_contents': content_anon.get(d, 0)}
+
+    def sums(ds):
+        ds = [d for d in ds if measured(d)]
+        rows = [site.get(d) or {} for d in ds]
+        return {
+            'visits': sum(r.get('anon_visitors', 0) for r in rows),
+            'member_visits': sum(r.get('visitors', 0) - r.get('anon_visitors', 0) for r in rows),
+            'pages': sum(r.get('anon_count', 0) for r in rows),
+            'contents': sum(content_anon.get(d, 0) for d in ds),
+            'contents_all': sum(content_all.get(d, 0) for d in ds),
+        }
+
+    cur = sums(current)
+    prev = sums(previous) if previous[0] >= ANON_SINCE else None
+
+    page_rows = (UsageDaily.objects.filter(kind=UsageDaily.KIND_PAGE, date__gte=max(first, ANON_SINCE))
+                 .values('name').annotate(views=Sum('anon_count'), visits=Sum('anon_visitors'))
+                 .filter(views__gt=0).order_by('-views', 'name'))
+    pages = [{'page': r['name'], 'views': r['views'], 'visits': r['visits']} for r in page_rows]
+
+    top = list(ContentDailyView.objects.filter(date__gte=max(first, ANON_SINCE)).values('content_id')
+               .annotate(v=Sum('anon_count'), t=Sum('count')).filter(v__gt=0).order_by('-v')[:TOP_CONTENTS])
+    contents = {c.id: c for c in Content.objects.filter(id__in=[r['content_id'] for r in top]).only('id', 'type', 'title')}
+    top_contents = [{**_content_ref(contents[r['content_id']]), 'views': r['v'], 'total': r['t']}
+                    for r in top if r['content_id'] in contents]
+
+    labels = dict(TRACKED_ACTIONS)
+    action_rows = (UsageDaily.objects.filter(kind=UsageDaily.KIND_ACTION, name__in=labels, date__gte=max(first, ANON_SINCE))
+                   .values('name').annotate(c=Sum('anon_count'), t=Sum('count'), v=Sum('anon_visitors')))
+    actions = sorted(({'key': r['name'], 'label': labels[r['name']], 'count': r['c'] or 0, 'total': r['t'] or 0,
+                       'visits': r['v'] or 0} for r in action_rows), key=lambda x: -x['count'])
+
+    return {
+        'since': ANON_SINCE.isoformat(),
+        'current': cur, 'previous': prev, 'signups': signups_current,
+        'series': [day(d) for d in current],
+        'pages': pages, 'top_contents': top_contents, 'actions': actions,
+    }
 
 
 def recent_activity(real_ids, limit=40):

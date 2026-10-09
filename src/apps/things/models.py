@@ -237,10 +237,12 @@ class ContentDailyView(models.Model):
 
     Même règle que `Content.view_count` (une vue par personne et par contenu sur 24 h, robots et comptes
     maison exclus). Enregistré depuis le 05/10/2026 ; avant, seul le total `view_count` existe.
+    anon_count : la part des visiteurs non connectés (depuis le 09/10/2026).
     """
     content = models.ForeignKey(Content, on_delete=models.CASCADE, related_name='daily_views')
     date = models.DateField()
     count = models.PositiveIntegerField(default=0)
+    anon_count = models.PositiveIntegerField(default=0)
 
     class Meta:
         db_table = 'things_contentdailyview'

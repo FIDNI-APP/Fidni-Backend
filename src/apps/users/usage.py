@@ -1,9 +1,12 @@
 """Mesure d'usage : pages vues et quelques actions sans autre trace en base (Pilotage › Usage).
 
 POST /api/usage/  {kind: "page", name: "/exercises/:id"}  ou  {kind: "action", name: "imprimer"}
+                  ou  {kind: "filtre", name: "exercise:difficulte:hard"}  (valeur d'un filtre des listes)
 
 Le navigateur n'envoie que le motif de la route (jamais l'adresse exacte ni le contenu) ; les robots et les
 comptes maison ne sont pas comptés. Une même personne n'est comptée qu'une fois par jour dans `visitors`.
+Les visiteurs non connectés sont aussi comptés à part (anon_count, anon_visitors), et chaque page vue alimente
+la ligne du jour « site / visites » (personnes distinctes sur tout le site).
 """
 import hashlib
 import re
@@ -39,6 +42,12 @@ ACTIONS = {
 }
 
 
+# Valeur d'un filtre : « <liste>:<filtre>:<valeur> » (identifiant, difficulté, tri…), traduite au Pilotage.
+FILTER_RE = re.compile(
+    r'^(exercise|exam|lesson):(niveau|matiere|sous-domaine|chapitre|theoreme|difficulte|statut|national|date|tri)'
+    r':[A-Za-z0-9_-]{1,40}$')
+
+
 class UsageAnonThrottle(AnonRateThrottle):
     rate = '240/hour'
 
@@ -47,15 +56,20 @@ class UsageUserThrottle(UserRateThrottle):
     rate = '600/hour'
 
 
-def _bump(day, kind, name, new_visitor):
+def _bump(day, kind, name, new_visitor, anon):
     inc = {'count': F('count') + 1}
     if new_visitor:
         inc['visitors'] = F('visitors') + 1
+    if anon:
+        inc['anon_count'] = F('anon_count') + 1
+        if new_visitor:
+            inc['anon_visitors'] = F('anon_visitors') + 1
     if UsageDaily.objects.filter(date=day, kind=kind, name=name).update(**inc):
         return
     try:
         with transaction.atomic():
-            UsageDaily.objects.create(date=day, kind=kind, name=name, count=1, visitors=1 if new_visitor else 0)
+            UsageDaily.objects.create(date=day, kind=kind, name=name, count=1, visitors=1 if new_visitor else 0,
+                                      anon_count=1 if anon else 0, anon_visitors=1 if anon and new_visitor else 0)
     except IntegrityError:
         UsageDaily.objects.filter(date=day, kind=kind, name=name).update(**inc)
 
@@ -74,6 +88,9 @@ def record(request):
             return Response({'counted': False}, status=400)
     elif kind == UsageDaily.KIND_ACTION:
         if name not in ACTIONS:
+            return Response({'counted': False}, status=400)
+    elif kind == UsageDaily.KIND_FILTER:
+        if not FILTER_RE.match(name):
             return Response({'counted': False}, status=400)
     else:
         return Response({'counted': False}, status=400)
@@ -96,5 +113,10 @@ def record(request):
     if not cache.add(f'usage:recent:{tag}:{who}', 1, 5):
         return Response({'counted': False})
     new_visitor = cache.add(f'usage:jour:{day.isoformat()}:{tag}:{who}', 1, 26 * 3600)
-    _bump(day, kind, name, new_visitor)
+    anon = user is None
+    _bump(day, kind, name, new_visitor, anon)
+    if kind == UsageDaily.KIND_PAGE:
+        # Personnes distinctes sur tout le site ce jour-là (membres et visiteurs non connectés).
+        new_on_site = cache.add(f'usage:site:{day.isoformat()}:{who}', 1, 26 * 3600)
+        _bump(day, UsageDaily.KIND_SITE, 'visites', new_on_site, anon)
     return Response({'counted': True})
