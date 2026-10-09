@@ -36,16 +36,20 @@ logger = logging.getLogger('django')
 BOT_UA = re.compile(r'bot|crawl|spider|slurp|headless|lighthouse|preview|facebookexternalhit|whatsapp|python-requests|curl|wget', re.I)
 
 
-def _count_daily_view(content_id):
-    """+1 sur la ligne du jour (créée à la première vue ; deux créations simultanées → une seule ligne)."""
+def _count_daily_view(content_id, anon=False):
+    """+1 sur la ligne du jour (créée à la première vue ; deux créations simultanées → une seule ligne).
+    anon : vue d'un visiteur non connecté, comptée aussi dans anon_count."""
     day = timezone.localdate()
-    if ContentDailyView.objects.filter(content_id=content_id, date=day).update(count=F('count') + 1):
+    inc = {'count': F('count') + 1}
+    if anon:
+        inc['anon_count'] = F('anon_count') + 1
+    if ContentDailyView.objects.filter(content_id=content_id, date=day).update(**inc):
         return
     try:
         with transaction.atomic():
-            ContentDailyView.objects.create(content_id=content_id, date=day, count=1)
+            ContentDailyView.objects.create(content_id=content_id, date=day, count=1, anon_count=1 if anon else 0)
     except IntegrityError:
-        ContentDailyView.objects.filter(content_id=content_id, date=day).update(count=F('count') + 1)
+        ContentDailyView.objects.filter(content_id=content_id, date=day).update(**inc)
 
 
 def _forget_stats(content_id, user_id):
@@ -622,7 +626,7 @@ class ContentViewSet(VoteMixin, viewsets.ModelViewSet):
             if should_count:
                 Content.objects.filter(id=item.id).update(view_count=F('view_count') + 1)
                 item.refresh_from_db(fields=['view_count'])
-                _count_daily_view(item.id)
+                _count_daily_view(item.id, anon=user is None)
         except Exception as e:
             logger.error(f"Error recording view: {e}")
             should_count = False

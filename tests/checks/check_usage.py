@@ -129,5 +129,49 @@ check('toutes les pages, même peu vues (« Mes statistiques » au-delà de la 1
       pages.get('/statistiques', {}).get('views') == 1 and len(pages) >= 22, len(pages))
 check('date de début de la mesure', r.data['usage_since'] == '2026-10-06', r.data.get('usage_since'))
 
+# ── Visiteurs non connectés (09/10/2026) : comptés à part
+row = UsageDaily.objects.get(kind='page', name='/exercises/:id')
+check('page : part des visiteurs', (row.anon_count, row.anon_visitors) == (1, 1), (row.anon_count, row.anon_visitors))
+site = UsageDaily.objects.get(kind='site', name='visites')
+check('site : 3 personnes distinctes dont 1 visiteur', (site.visitors, site.anon_visitors) == (3, 1),
+      (site.visitors, site.anon_visitors))
+client(ip='10.0.0.7').post('/api/usage/', {'kind': 'page', 'name': '/exams'}, format='json')
+site.refresh_from_db()
+check('site : le même visiteur sur une autre page reste 1 personne', (site.count, site.anon_count, site.anon_visitors) == (4, 2, 1),
+      (site.count, site.anon_count, site.anon_visitors))
+r = client(ip='10.0.0.8').post(f'/api/contents/{ex.id}/view/')
+r = client(eleves[1]).post(f'/api/contents/{ex.id}/view/')
+from apps.things.models import ContentDailyView  # noqa: E402
+dv = ContentDailyView.objects.get(content=ex)
+check('vues du contenu : 2 dont 1 visiteur', (dv.count, dv.anon_count) == (2, 1), (dv.count, dv.anon_count))
+r = client(ip='10.0.0.8').post('/api/usage/', {'kind': 'action', 'name': 'voir-solution'}, format='json')
+
+# ── Valeurs des filtres
+for name in ('exercise:difficulte:hard', 'exercise:difficulte:easy', 'exam:niveau:%d' % level.id, 'lesson:tri:newest'):
+    r = client(eleves[1]).post('/api/usage/', {'kind': 'filtre', 'name': name}, format='json')
+    check(f'valeur de filtre comptée : {name}', r.data.get('counted') is True, r.data)
+client(ip='10.0.0.8').post('/api/usage/', {'kind': 'filtre', 'name': 'exercise:difficulte:hard'}, format='json')
+for bad in ('exercise:difficulte:<b>', 'autre:difficulte:hard', 'exercise:inconnu:1', 'exercise:difficulte:'):
+    r = client(eleves[1]).post('/api/usage/', {'kind': 'filtre', 'name': bad}, format='json')
+    check(f'valeur de filtre invalide refusée : {bad}', r.status_code == 400, r.status_code)
+
+r = pc.get('/api/pilotage/?jours=7')
+vals = {(v['type'], v['filter'], v['value']): v for v in r.data['filter_values']}
+hard = vals.get(('exercise', 'filtre-difficulte', 'hard'), {})
+check('filtres : « Difficile » 2 fois dont 1 visiteur, en tête', hard.get('label') == 'Difficile' and hard.get('count') == 2
+      and hard.get('anon') == 1 and r.data['filter_values'][0] is hard, r.data['filter_values'])
+check('filtres : identifiant traduit en nom', vals.get(('exam', 'filtre-niveau', str(level.id)), {}).get('label') == level.name,
+      r.data['filter_values'])
+check('filtres : tri traduit', vals.get(('lesson', 'tri', 'newest'), {}).get('label') == 'Plus récents', r.data['filter_values'])
+an = r.data['anonymes']
+check('anonymes : visites, pages, contenus', an['current']['visits'] == 1 and an['current']['pages'] == 2
+      and an['current']['contents'] == 1 and an['current']['contents_all'] == 2, an['current'])
+check('anonymes : courbe du jour', an['series'][-1]['anon'] == 1 and an['series'][-1]['members'] == 2, an['series'][-1])
+check('anonymes : pages vues', {p['page'] for p in an['pages']} == {'/exercises/:id', '/exams'}, an['pages'])
+check('anonymes : contenu le plus vu', an['top_contents'] and an['top_contents'][0]['id'] == ex.id
+      and an['top_contents'][0]['views'] == 1, an['top_contents'])
+acts = {a['key']: a for a in an['actions']}
+check('anonymes : gestes (voir la solution)', acts.get('voir-solution', {}).get('count') == 1, an['actions'])
+
 print(f'\n{sum(results)}/{len(results)} vérifications réussies')
 sys.exit(0 if all(results) else 1)
