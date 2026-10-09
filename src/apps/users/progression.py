@@ -27,7 +27,8 @@ from apps.caracteristics.notions import NOTIONS, TRANSVERSAL, notion_label
 from apps.interactions.models import Complete, QuestionProgress, StudyTimeDay
 from apps.skilliq.models import SkillAssessment, SkillQuestion
 from apps.things.models import Content
-from apps.users.my_stats import MONTHS, WEIGHT, _questions
+from apps.things.question_index import question_index
+from apps.users.my_stats import MONTHS, WEIGHT
 from apps.users.overview_views import _streaks
 
 TYPE_PATH = {'exercise': 'exercises', 'exam': 'exams', 'lesson': 'lessons'}
@@ -84,11 +85,14 @@ def _collect(user):
     quizzes = {q.chapter_id: q for q in SkillAssessment.objects.filter(user=user)}
 
     ids = {r['object_id'] for r in qp} | {r['object_id'] for r in completes} | {r['object_id'] for r in time_rows}
-    contents = {c.id: c for c in Content.objects.filter(id__in=ids).prefetch_related('chapters')}
+    # Sans l'énoncé (json_content) : l'index des questions vient du cache (things/question_index.py).
+    contents = {c.id: c for c in Content.objects.filter(id__in=ids).only('id', 'type', 'title', 'updated_at')
+                .prefetch_related('chapters')}
+    index = question_index(contents.values())
     return SimpleNamespace(
-        qp=qp, completes=completes, time_rows=time_rows, quizzes=quizzes, contents=contents,
+        qp=qp, completes=completes, time_rows=time_rows, quizzes=quizzes, contents=contents, index=index,
         chapters_of={cid: [(ch.id, ch.name) for ch in c.chapters.all()] for cid, c in contents.items()},
-        skills_of={cid: {path: skills for path, _, skills in _questions(c.json_content)} for cid, c in contents.items()},
+        skills_of={cid: {path: skills for path, _, skills in index.get(cid, [])} for cid in contents},
     )
 
 
@@ -185,7 +189,7 @@ def progression(request):
     level = getattr(profile, 'class_level', None)
 
     d = _collect(user)
-    qp, completes, time_rows, quizzes, contents = d.qp, d.completes, d.time_rows, d.quizzes, d.contents
+    qp, completes, time_rows, quizzes, contents, index = d.qp, d.completes, d.time_rows, d.quizzes, d.contents, d.index
     chap, notions = _per_chapter(d)
 
     # Le programme : chapitres du niveau (sinon ceux qu'il a travaillés), et combien de contenus chacun.
@@ -222,7 +226,7 @@ def progression(request):
     for cid, c in contents.items():
         if c.type != 'exam' or cid not in status_of:
             continue
-        qs = [(path, pts) for path, pts, _ in _questions(c.json_content)]
+        qs = [(path, pts) for path, pts, _ in index.get(cid, [])]
         total = sum(p for _, p in qs)
         corrected = sum(p for path, p in qs if path in status_of[cid])
         if not total or corrected < total / 2:

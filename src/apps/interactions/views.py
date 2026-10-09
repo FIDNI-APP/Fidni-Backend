@@ -88,6 +88,73 @@ class RevisionListViewSet(viewsets.ModelViewSet):
         return (RevisionList.objects.filter(user=self.request.user)
                 .prefetch_related('items', 'class_levels', 'subjects', 'chapters'))
 
+    def list(self, request, *args, **kwargs):
+        """
+        Page Révisions et fenêtre « Ajouter à une liste » : un résumé par liste, en 5 requêtes.
+
+        Avant (08/10/2026), chaque exercice de chaque liste était sérialisé en carte complète, énoncé
+        compris : ~500 requêtes et ~900 Ko pour 3 listes de 10 exercices, plusieurs secondes sur RDS.
+        Les éléments ne donnent plus que de quoi savoir si un contenu y est déjà (type réel :
+        exercise / exam) ; la progression (réussis, à revoir, à faire) est calculée ici.
+        """
+        from apps.things.models import Content
+        from apps.caracteristics.models import Chapter
+        lists = list(self.get_queryset())
+        ids = {item.object_id for rl in lists for item in rl.items.all()}
+        types = dict(Content.objects.filter(id__in=ids).values_list('id', 'type'))
+        ct = ContentType.objects.get_for_model(Content)
+        status_of = {int(o): st for o, st in Complete.objects.filter(
+            user=request.user, content_type=ct, object_id__in=[str(i) for i in ids]).values_list('object_id', 'status')
+            if str(o).isdigit()}
+        chapters_of = {}
+        for cid, name in Content.chapters.through.objects.filter(content_id__in=ids).values_list('content_id', 'chapter__name'):
+            chapters_of.setdefault(cid, []).append(name)
+        named = lambda qs: [{'id': x.id, 'name': x.name} for x in qs]  # noqa: E731
+        data = []
+        for rl in lists:
+            items = [i for i in rl.items.all() if i.object_id in types]  # contenu supprimé : ignoré
+            success = sum(status_of.get(i.object_id) == 'success' for i in items)
+            review = sum(status_of.get(i.object_id) == 'review' for i in items)
+            seen = []
+            for i in items:
+                for name in chapters_of.get(i.object_id, []):
+                    if name not in seen:
+                        seen.append(name)
+            data.append({
+                'id': rl.id, 'name': rl.name, 'description': rl.description, 'item_count': len(items),
+                'class_levels': named(rl.class_levels.all()), 'subjects': named(rl.subjects.all()),
+                'chapters': named(rl.chapters.all()), 'item_chapters': seen,
+                'progress': {'success': success, 'review': review, 'todo': len(items) - success - review},
+                'items': [{'id': i.id, 'object_id': i.object_id, 'content_type_name': types[i.object_id],
+                           'added_at': i.added_at} for i in items],
+                'created_at': rl.created_at, 'updated_at': rl.updated_at,
+            })
+        return Response(data)
+
+    def retrieve(self, request, *args, **kwargs):
+        """
+        Une liste ouverte (feuille de TD, PDF) : ses exercices en cartes complètes, préchargées d'un coup
+        (things/listing.py) au lieu d'une quinzaine de requêtes par exercice.
+        """
+        from apps.things.listing import serialize_content_list, with_list_relations
+        from apps.things.models import Content
+        rl = self.get_object()
+        items = list(rl.items.all())
+        contents = list(with_list_relations(Content.objects.filter(id__in=[i.object_id for i in items]), request.user))
+        cards = {card['id']: card for card in serialize_content_list(contents, request)}
+        types = {c.id: c.type for c in contents}
+        named = lambda qs: [{'id': x.id, 'name': x.name} for x in qs]  # noqa: E731
+        kept = [i for i in items if i.object_id in cards]
+        return Response({
+            'id': rl.id, 'name': rl.name, 'description': rl.description, 'item_count': len(kept),
+            'class_levels': named(rl.class_levels.all()), 'subjects': named(rl.subjects.all()),
+            'chapters': named(rl.chapters.all()),
+            'items': [{'id': i.id, 'content_object': cards[i.object_id], 'content_type': i.content_type_id,
+                       'object_id': i.object_id, 'content_type_name': types[i.object_id],
+                       'added_at': i.added_at, 'notes': i.notes} for i in kept],
+            'created_at': rl.created_at, 'updated_at': rl.updated_at,
+        })
+
     # Liste proposée en un clic depuis un exercice raté (« Ajouter à À revoir »).
     QUICK_LIST_NAME = 'À revoir'
     QUICK_LIST_DESCRIPTION = 'Les exercices que tu as ratés ou marqués à revoir, pour les retravailler.'
@@ -265,52 +332,23 @@ class RevisionListViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['get'])
     def statistics(self, request, pk=None):
-        """
-        Get statistics for a revision list.
-        Returns: completion counts, success/review breakdown, time spent
-        """
+        """Réussis / à revoir / à faire d'une liste, en une requête (avant : une par exercice)."""
+        from apps.things.models import Content
         revision_list = self.get_object()
-        items = revision_list.items.all()
-
-        total_items = items.count()
-
-        # Track completion status
-        completed_count = 0
-        success_count = 0
-        review_count = 0
-        pending_count = 0
-        total_time = 0
-
-        for item in items:
-            if item.content_object:
-                # Check completion status using GenericForeignKey
-                complete_record = Complete.objects.filter(
-                    user=request.user,
-                    content_type=item.content_type,
-                    object_id=item.object_id
-                ).first()
-
-                if complete_record:
-                    completed_count += 1
-                    if complete_record.status == 'success':
-                        success_count += 1
-                    else:
-                        review_count += 1
-                else:
-                    pending_count += 1
-
-                # Get time spent using GenericForeignKey
-
-        progress_percentage = (completed_count / total_items * 100) if total_items > 0 else 0
-
+        ids = [str(i) for i in revision_list.items.values_list('object_id', flat=True)]
+        statuses = dict(Complete.objects.filter(
+            user=request.user, content_type=ContentType.objects.get_for_model(Content), object_id__in=ids)
+            .values_list('object_id', 'status'))
+        success = sum(1 for i in ids if statuses.get(i) == 'success')
+        completed = sum(1 for i in ids if i in statuses)
         return Response({
-            'total_items': total_items,
-            'completed': completed_count,
-            'pending': pending_count,
-            'success': success_count,
-            'review': review_count,
-            'progress_percentage': round(progress_percentage, 1),
-            'total_time_seconds': total_time
+            'total_items': len(ids),
+            'completed': completed,
+            'pending': len(ids) - completed,
+            'success': success,
+            'review': completed - success,
+            'progress_percentage': round(completed / len(ids) * 100, 1) if ids else 0,
+            'total_time_seconds': 0,
         }, status=status.HTTP_200_OK)
 
 
