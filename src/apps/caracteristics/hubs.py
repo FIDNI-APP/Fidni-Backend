@@ -7,14 +7,21 @@ remonte bien mieux que la liste générale filtrée par un paramètre (?classLev
 Une seule source pour les textes : l'API (/api/hubs/, lue par l'application) et la page pré-remplie
 pour les moteurs de recherche (config/seo.py) disent exactement la même chose.
 Une page sans aucun contenu reste consultable mais n'est ni indexée ni dans le sitemap.
+
+Navigation en dossiers (10/10/2026) : Maths › niveau › chapitre, comme des dossiers qui contiennent les
+contenus (« fichiers »). `folders` = TOUS les chapitres du niveau (un chapitre sans contenu reste visible,
+marqué vide) ; GET /api/hubs/niveaux/ = les dossiers de niveaux d'une rubrique ; GET /api/hubs/nationaux/ =
+les dossiers par année du Bac national. Les devoirs (rubrique exams) ne comptent pas les sujets du Bac
+national, qui ont leur propre rubrique (même règle que la liste : is_national_exam=false).
 """
-from django.db.models import Max
+from django.contrib.contenttypes.models import ContentType
+from django.db.models import Count, Max
 from django.utils.text import slugify
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 
-from apps.caracteristics.models import Chapter, ClassLevel
+from apps.caracteristics.models import Chapter, ClassLevel, Subject
 
 SECTION_TYPE = {'exercises': 'exercise', 'lessons': 'lesson', 'exams': 'exam'}
 SECTION_LABEL = {'exercises': 'Exercices corrigés', 'lessons': 'Cours', 'exams': 'Devoirs et examens corrigés'}
@@ -116,7 +123,105 @@ def _level_chapters(kind, level):
     return [(ch, counts[ch.id]) for ch in chapters]
 
 
-def resolve(section, level_slug, chapter_slug=None):
+# Ordre des sous-domaines dans les dossiers d'un niveau (puis l'ordre du programme, l'id, dans chacun).
+SUBFIELD_ORDER = ['Analyse', 'Algèbre', 'Géométrie', 'Probabilités', 'Statistiques']
+
+
+def _folder_contents(kind, level=None):
+    """Contenus d'une rubrique tels que la liste les montre (devoirs : sans les sujets du Bac national)."""
+    from apps.things.models import Content
+    qs = Content.objects.filter(type=kind)
+    if level is not None:
+        qs = qs.filter(class_levels=level)
+    if kind == 'exam':
+        qs = qs.filter(is_national_exam=False)
+    return qs
+
+
+def _subject_name():
+    """La matière du site, s'il n'y en a qu'une (les maths) : racine du fil d'Ariane des dossiers."""
+    names = list(Subject.objects.values_list('name', flat=True)[:2])
+    return names[0] if len(names) == 1 else None
+
+
+def _progress(user, content_ids):
+    """{id du contenu: 'success' | 'review'} : contenus terminés par l'élève (Complete, object_id en str)."""
+    from apps.interactions.models import Complete
+    from apps.things.models import Content
+    if not content_ids:
+        return {}
+    ct = ContentType.objects.get_for_model(Content)
+    rows = Complete.objects.filter(user=user, content_type=ct,
+                                   object_id__in=[str(i) for i in content_ids]).values_list('object_id', 'status')
+    return {int(o): st for o, st in rows if str(o).isdigit()}
+
+
+def _folders(section, level, user=None):
+    """Tous les chapitres du niveau, contenus comptés (0 = dossier vide), et pour un élève connecté ce qu'il a
+    terminé dans chacun (`mine`)."""
+    from apps.things.models import Content
+    kind = SECTION_TYPE[section]
+    qs = _folder_contents(kind, level)
+    counts = {r['chapters']: r['n'] for r in qs.order_by().values('chapters').annotate(n=Count('id', distinct=True))
+              if r['chapters'] is not None}
+    mine = {}
+    if user is not None and getattr(user, 'is_authenticated', False):
+        ids = list(qs.values_list('id', flat=True).distinct())
+        done = _progress(user, ids)
+        if done:
+            links = Content.chapters.through.objects.filter(content_id__in=list(done)).values_list('content_id', 'chapter_id')
+            for cid, chid in links:
+                m = mine.setdefault(chid, {'done': 0, 'success': 0})
+                m['done'] += 1
+                m['success'] += done[cid] == 'success'
+    rank = {name: i for i, name in enumerate(SUBFIELD_ORDER)}
+    chapters = sorted(Chapter.objects.filter(class_levels=level).select_related('subfield'),
+                      key=lambda ch: (rank.get(ch.subfield.name if ch.subfield else '', len(rank)), ch.id))
+    out = []
+    for ch in chapters:
+        folder = {'id': ch.id, 'name': ch.name, 'slug': slug(ch.name), 'url': hub_url(section, level, ch),
+                  'count': counts.get(ch.id, 0), 'subfield': ch.subfield.name if ch.subfield else None}
+        if user is not None and getattr(user, 'is_authenticated', False):
+            folder['mine'] = mine.get(ch.id, {'done': 0, 'success': 0})
+        out.append(folder)
+    return out
+
+
+def levels(section):
+    """Dossiers de niveaux d'une rubrique : contenus et chapitres remplis de chacun."""
+    kind = SECTION_TYPE.get(section)
+    if kind is None:
+        return None
+    out = []
+    for level in ClassLevel.objects.order_by('order', 'id'):
+        qs = _folder_contents(kind, level)
+        level_chapters = set(Chapter.objects.filter(class_levels=level).values_list('id', flat=True))
+        used = set(qs.order_by().values_list('chapters', flat=True).distinct())
+        out.append({'id': level.id, 'name': level.name, 'slug': slug(level.name), 'url': hub_url(section, level),
+                    'count': qs.distinct().count(), 'chapters_total': len(level_chapters),
+                    'chapters_filled': len(level_chapters & used)})
+    return {'section': section, 'type': kind, 'subject': _subject_name(), 'label': SECTION_LABEL[section], 'levels': out}
+
+
+def national_years():
+    """Dossiers du Bac national, un par année (la plus récente d'abord) ; les sujets sans année à part (year=None)."""
+    from apps.things.models import Content
+    rows = (Content.objects.filter(type='exam', is_national_exam=True).order_by()
+            .values('id', 'national_year', 'class_levels__name').distinct())
+    years = {}
+    for r in rows:
+        y = years.setdefault(r['national_year'], {'ids': set(), 'levels': set()})
+        y['ids'].add(r['id'])
+        if r['class_levels__name']:
+            y['levels'].add(r['class_levels__name'])
+    order = {lv.name: lv.order for lv in ClassLevel.objects.all()}
+    out = [{'year': year, 'count': len(v['ids']), 'levels': sorted(v['levels'], key=lambda n: (order.get(n, 99), n))}
+           for year, v in years.items()]
+    out.sort(key=lambda y: (y['year'] is None, -(y['year'] or 0)))
+    return {'subject': _subject_name(), 'years': out}
+
+
+def resolve(section, level_slug, chapter_slug=None, user=None):
     """Tout ce qu'il faut pour afficher un hub, ou None si le niveau ou le chapitre n'existe pas."""
     kind = SECTION_TYPE.get(section)
     if kind is None:
@@ -145,11 +250,16 @@ def resolve(section, level_slug, chapter_slug=None):
             {'id': ch.id, 'name': ch.name, 'slug': slug(ch.name), 'count': n, 'url': hub_url(section, level, ch)}
             for ch, n in _level_chapters(kind, level)
         ],
+        # Dossiers : tous les chapitres du niveau, vides compris (navigation Maths › niveau › chapitre).
+        'folders': _folders(section, level, user),
+        'subject': _subject_name(),
         # Même niveau (et même chapitre) dans les autres rubriques : cours ↔ exercices ↔ examens.
         'related': [
             {'section': other, 'label': SECTION_LABEL[other], 'count': n, 'url': hub_url(other, level, chapter)}
             for other, okind in SECTION_TYPE.items() if other != section
-            for n in [_contents(okind, level, chapter).count()] if n > 0
+            # Comptés comme les dossiers de la rubrique (devoirs : sans les sujets du Bac national).
+            for n in [(_folder_contents(okind, level).filter(chapters=chapter) if chapter
+                       else _folder_contents(okind, level)).distinct().count()] if n > 0
         ],
     }
     return data
@@ -177,7 +287,24 @@ def all_hubs():
 def hub_view(request):
     """GET /api/hubs/?section=exercises&level=2eme-bac-sm[&chapter=limites-et-continuite]"""
     data = resolve(request.query_params.get('section', ''), request.query_params.get('level', ''),
-                   request.query_params.get('chapter') or None)
+                   request.query_params.get('chapter') or None, user=request.user)
     if data is None:
         return Response({'detail': 'Page introuvable.'}, status=404)
     return Response(data)
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def levels_view(request):
+    """GET /api/hubs/niveaux/?section=exercises : dossiers de niveaux de la rubrique."""
+    data = levels(request.query_params.get('section', ''))
+    if data is None:
+        return Response({'detail': 'Rubrique inconnue.'}, status=404)
+    return Response(data)
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def national_years_view(request):
+    """GET /api/hubs/nationaux/ : dossiers par année du Bac national."""
+    return Response(national_years())

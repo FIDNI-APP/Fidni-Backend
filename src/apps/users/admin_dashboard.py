@@ -417,6 +417,9 @@ TRACKED_ACTIONS = [
     ('signaler-ouvert', 'Fenêtre « Signaler une erreur » ouverte'),
     ('auth-ouverte', 'Fenêtre de connexion ouverte'),
     ('connexion-google', '« Continuer avec Google »'),
+    ('dossier-niveau', 'Dossier d’un niveau ouvert'),
+    ('dossier-chapitre', 'Dossier d’un chapitre ouvert'),
+    ('dossier-annee', 'Dossier d’une année du Bac ouvert'),
 ]
 # Filtres des listes (07/10/2026) : un filtre compté quand on l'ajoute.
 TRACKED_FILTERS = [

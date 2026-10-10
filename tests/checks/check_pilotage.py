@@ -234,5 +234,47 @@ rows = {x['username']: x for x in c.get('/api/pilotage/utilisateurs/?q=carla').d
 check('connexion seule : dernière activité affichée, pas comptée active',
       rows['carla']['last_activity'] and 'carla' not in who('filtre=actifs&jours=7'), rows.get('carla'))
 
+# Forme de la réponse (10/10/2026) : les nombres que la page affiche ne sont jamais None (seuls les champs
+# « pas encore mesuré » / « période d'avant » peuvent l'être), sur chaque période.
+NULLABLE = {'previous', 'success_pct', 'votes', 'basis', 'users', 'edit_url',
+            'views', 'active', 'signups', 'work', 'anon', 'members', 'anon_pages', 'anon_contents'}
+
+
+def nones(obj, path=''):
+    if isinstance(obj, dict):
+        for k, v in obj.items():
+            if v is None and k not in NULLABLE:
+                yield f'{path}.{k}'
+            yield from nones(v, f'{path}.{k}')
+    elif isinstance(obj, list):
+        for i, v in enumerate(obj):
+            yield from nones(v, f'{path}[{i}]')
+
+
+for n in (7, 30, 90):
+    d = c.get(f'/api/pilotage/?jours={n}').data
+    bad = sorted(set(nones(d)))
+    check(f'{n} j : aucun nombre à None hors champs prévus', not bad, bad[:10])
+    check(f'{n} j : blocs attendus présents', {'metrics', 'series', 'top_contents', 'features', 'pages', 'filter_values',
+                                               'anonymes', 'todo', 'funnel', 'auth_doors'} <= set(d), sorted(d))
+    check(f'{n} j : chiffres des métriques entiers', all(isinstance(d['metrics'][k]['value'], int)
+                                                         for k in ('views', 'active', 'signups', 'work')), d['metrics'])
+
+# Erreurs d'affichage envoyées par le navigateur (apps/logging/client_errors.py) : rangées dans ErrorLog,
+# regroupées par message, ouvertes aux visiteurs, sans exiger de champ sensible.
+from apps.logging.models import ErrorLog  # noqa: E402
+anon = APIClient()
+msg = "TypeError: Cannot read properties of undefined (reading 'DEV')"
+r1 = anon.post('/api/logs/client-errors/', {'message': msg, 'stack': 'at trackPage', 'path': '/pilotage'}, format='json')
+r2 = c.post('/api/logs/client-errors/', {'message': msg, 'path': '/exercises/3/edit'}, format='json')
+rows = ErrorLog.objects.filter(message=msg)
+check('erreur d’affichage : acceptée (visiteur et membre)', r1.status_code == 204 and r2.status_code == 204, (r1.status_code, r2.status_code))
+check('erreur d’affichage : une ligne, comptée deux fois, dernière page gardée',
+      rows.count() == 1 and rows[0].count == 2 and rows[0].endpoint == '/exercises/3/edit', list(rows.values('count', 'endpoint')))
+check('erreur d’affichage : message vide refusé', anon.post('/api/logs/client-errors/', {'message': ' '}, format='json').status_code == 400)
+long = anon.post('/api/logs/client-errors/', {'message': 'x' * 5000, 'stack': ['pas', 'une', 'chaîne']}, format='json')
+check('erreur d’affichage : message tronqué, pile non texte ignorée', long.status_code == 204
+      and ErrorLog.objects.filter(message='x' * 500, traceback__isnull=True).exists(), long.status_code)
+
 print(f'\n{sum(results)}/{len(results)} vérifications réussies')
 sys.exit(0 if all(results) else 1)

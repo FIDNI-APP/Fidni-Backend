@@ -288,6 +288,7 @@ REST_FRAMEWORK = {
         "classroom_join": "30/hour",  # essais de code de classe (par utilisateur)
         "proposed_solution": "20/hour",  # solutions d'élèves publiées (par utilisateur)
         "content_report": "20/hour",  # signalements d'erreurs sur les contenus (par utilisateur)
+        "client_error": "30/hour",  # erreurs d'affichage envoyées par le navigateur (par IP)
     },
     "UNAUTHENTICATED_USER": None
 }

@@ -67,6 +67,7 @@ PAGE_PATTERNS = [
     ('/lessons/:id', 'Page d’une leçon'),
     ('/exams', 'Liste des examens'),
     ('/exams/nationaux', 'Examens nationaux'),
+    ('/exams/nationaux/:annee', 'Bac national : une année'),
     ('/exams/niveau/:level/:chapter?', 'Examens d’un niveau'),
     ('/exams/:id/pdf', 'Examen : impression'),
     ('/exams/:id', 'Page d’un examen'),

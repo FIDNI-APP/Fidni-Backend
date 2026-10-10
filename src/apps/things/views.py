@@ -411,8 +411,11 @@ class ContentViewSet(VoteMixin, viewsets.ModelViewSet):
             filters &= Q(difficulty__in=difficulties)
         if is_national is not None:
             filters &= Q(is_national_exam=is_national.lower() == 'true')
-        if national_year:
-            filters &= Q(national_year=national_year)
+        # « aucune » : sujets nationaux sans année (dossier « Année non précisée » du Bac national, hubs.py).
+        if national_year == 'aucune':
+            filters &= Q(national_year__isnull=True)
+        elif national_year and national_year.isdigit():
+            filters &= Q(national_year=int(national_year))
         if year_min and year_min.isdigit():
             filters &= Q(national_year__gte=int(year_min))
         if year_max and year_max.isdigit():

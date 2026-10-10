@@ -135,6 +135,73 @@ check('année du Bac : filtre', ids(r) == set(), ids(r))
 r = cl.get('/api/contents/', {'type': 'exam', 'is_national_exam': 'true', 'national_year_min': 2015, 'national_year_max': 2019})
 check('année du Bac : intervalle', ids(r) == {bac.id}, ids(r))
 
+# ── Dossiers (10/10/2026) : Maths › niveau › chapitre ; Bac national par année
+from apps.interactions.models import Complete  # noqa: E402
+from django.contrib.contenttypes.models import ContentType  # noqa: E402
+from rest_framework.test import APIClient as _API  # noqa: E402
+sm2_chapters = list(Chapter.objects.filter(class_levels=sm2))
+d = cl.get('/api/hubs/', {'section': 'exercises', 'level': '2eme-bac-sm'}).json()
+fold = {f['id']: f for f in d['folders']}
+check('dossiers : TOUS les chapitres du niveau, vides compris', set(fold) == {c.id for c in sm2_chapters}
+      and len(d['folders']) == len(sm2_chapters), len(d['folders']))
+check('dossiers : contenus comptés, 0 pour un chapitre vide', fold[lim.id]['count'] == 2 and fold[suites.id]['count'] == 1
+      and sum(f['count'] == 0 for f in d['folders']) == len(sm2_chapters) - 2, [(f['name'], f['count']) for f in d['folders']])
+check('dossiers : lien, slug, sous-domaine', fold[lim.id]['url'] == '/exercises/niveau/2eme-bac-sm/limites-et-continuite'
+      and fold[lim.id]['slug'] == 'limites-et-continuite' and fold[lim.id]['subfield'] == 'Analyse', fold[lim.id])
+rank = ['Analyse', 'Algèbre', 'Géométrie', 'Probabilités', 'Statistiques']
+order = [rank.index(f['subfield']) if f['subfield'] in rank else 99 for f in d['folders']]
+check('dossiers : regroupés par sous-domaine (Analyse d’abord)', order == sorted(order), [f['subfield'] for f in d['folders']])
+check('dossiers : pas de « mine » pour un visiteur', all('mine' not in f for f in d['folders']))
+check('dossiers : matière unique nommée', d['subject'] == 'Mathématiques', d.get('subject'))
+eleve_d = User.objects.create_user('eleve_dossiers', 'ed@x.fr', 'x')
+ct_c = ContentType.objects.get_for_model(Content)
+Complete.objects.create(user=eleve_d, content_type=ct_c, object_id=str(e1.id), status='success')
+Complete.objects.create(user=eleve_d, content_type=ct_c, object_id=str(e3.id), status='review')
+api_e = _API(); api_e.force_authenticate(eleve_d)
+fold = {f['id']: f for f in api_e.get('/api/hubs/', {'section': 'exercises', 'level': '2eme-bac-sm'}).json()['folders']}
+check('dossiers : ce que l’élève a terminé, par chapitre', fold[lim.id]['mine'] == {'done': 1, 'success': 1}
+      and fold[suites.id]['mine'] == {'done': 1, 'success': 0}, (fold[lim.id].get('mine'), fold[suites.id].get('mine')))
+fold = {f['id']: f for f in cl.get('/api/hubs/', {'section': 'exams', 'level': '2eme-bac-sm'}).json()['folders']}
+check('dossiers devoirs : sans les sujets du Bac national', fold[lim.id]['count'] == 1, fold[lim.id])
+d = cl.get('/api/hubs/', {'section': 'exams', 'level': '2eme-bac-sm', 'chapter': 'limites-et-continuite'}).json()
+check('dossier de chapitre : même forme que la page du chapitre', d['chapter']['id'] == lim.id and len(d['folders']) == len(sm2_chapters))
+
+r = cl.get('/api/hubs/niveaux/', {'section': 'exercises'})
+lv = r.json().get('levels', []) if r.status_code == 200 else []
+by = {x['slug']: x for x in lv}
+check('niveaux : 200, ordre du programme', r.status_code == 200 and [x['name'] for x in lv]
+      == list(ClassLevel.objects.order_by('order').values_list('name', flat=True)), [x.get('name') for x in lv])
+check('niveaux : contenus et chapitres remplis', by['2eme-bac-sm']['count'] == 3 and by['2eme-bac-sm']['chapters_filled'] == 2
+      and by['2eme-bac-sm']['chapters_total'] == len(sm2_chapters) and by['2eme-bac-sm']['url'] == '/exercises/niveau/2eme-bac-sm',
+      by.get('2eme-bac-sm'))
+check('niveaux : niveau vide à 0', by['2eme-bac-pc']['count'] == 0 and by['2eme-bac-pc']['chapters_filled'] == 0, by.get('2eme-bac-pc'))
+check('niveaux : matière et rubrique', r.json()['subject'] == 'Mathématiques' and r.json()['type'] == 'exercise')
+ex_lv = {x['slug']: x for x in cl.get('/api/hubs/niveaux/', {'section': 'exams'}).json()['levels']}
+check('niveaux devoirs : sans le Bac national', ex_lv['2eme-bac-sm']['count'] == 1, ex_lv['2eme-bac-sm'])
+check('niveaux : rubrique inconnue → 404', cl.get('/api/hubs/niveaux/', {'section': 'zzz'}).status_code == 404)
+
+bac2 = make('exam', 'Examen national 2023', lim)
+bac2.is_national_exam, bac2.national_year = True, 2023
+bac2.save()
+bac2.class_levels.add(pc2)
+sans = make('exam', 'Sujet national sans année', lim)
+sans.is_national_exam = True
+sans.save()
+r = cl.get('/api/hubs/nationaux/')
+years = r.json().get('years', []) if r.status_code == 200 else []
+check('Bac national : une année par dossier, la plus récente d’abord, sans année à la fin',
+      [(y['year'], y['count']) for y in years] == [(2023, 1), (2019, 1), (None, 1)], years)
+check('Bac national : niveaux de chaque année', years and years[0]['levels'] == ['2ème Bac SM', '2ème Bac PC'], years[:1])
+r = cl.get('/api/contents/', {'type': 'exam', 'is_national_exam': 'true', 'national_year': 'aucune'})
+check('Bac national : sujets sans année (dossier à part)', ids(r) == {sans.id}, ids(r))
+r = cl.get('/api/contents/', {'type': 'exam', 'is_national_exam': 'true', 'national_year': '2023'})
+check('Bac national : une année', ids(r) == {bac2.id}, ids(r))
+r = cl.get('/api/contents/', {'type': 'exam', 'is_national_exam': 'true', 'national_year': 'abc'})
+check('Bac national : année invalide ignorée (pas d’erreur)', r.status_code == 200, r.status_code)
+rel = cl.get('/api/hubs/', {'section': 'exercises', 'level': '2eme-bac-sm', 'chapter': 'limites-et-continuite'}).json()['related']
+check('liens vers les devoirs : comptés sans le Bac national (comme leurs dossiers)',
+      next((x['count'] for x in rel if x['section'] == 'exams'), None) == 1, rel)
+
 # ── Compteur de vues (visiteurs comptés, une fois par 24 h ; robots et comptes maison exclus)
 from django.core.cache import cache  # noqa: E402
 from rest_framework.test import APIClient  # noqa: E402
