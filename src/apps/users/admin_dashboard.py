@@ -5,19 +5,26 @@ GET /api/pilotage/?jours=7|30|90        aperçu : à traiter, 4 chiffres compar�
 GET /api/pilotage/utilisateurs/         membres (recherche, filtres actifs/nouveaux/jamais actifs/enseignants, tri, pages)
 GET /api/pilotage/utilisateurs/<id>/    dernières actions d'un membre
 
-Uniquement des faits enregistrés. « Actif » = au moins une action enregistrée sur la période :
-connexion, consultation d'un contenu, contenu terminé, question auto-évaluée, session de chrono, temps
-d'étude, commentaire, solution proposée, test Skill IQ. Les visiteurs non connectés apparaissent dans les vues
-des contenus (ContentDailyView, depuis le 05/10/2026), et à part dans le bloc `anonymes` (depuis le 09/10/2026 :
+Uniquement des faits enregistrés. « Actif » un jour donné = au moins une action datée par un champ qui ne
+bouge plus (10/10/2026) : temps d'étude du jour, première auto-évaluation d'une question, contenu terminé,
+chrono, commentaire, solution proposée, quiz de chapitre, concours, favoris, listes, cahier, DS annoncé…
+Les dates écrasées à chaque passage (dernière consultation, dernière connexion) ne servent plus qu'à la
+« dernière activité » de la liste des membres : sinon la période d'avant et la rétention sont sous-comptées.
+`funnel` : entonnoir de la cohorte inscrite sur la période ; `auth_doors` : portes d'entrée de la fenêtre de
+connexion ; `todo.difficulty_gaps` : contenus dont le ressenti des élèves s'écarte de la difficulté affichée.
+Les visiteurs non connectés apparaissent dans les vues des contenus (ContentDailyView, depuis le 05/10/2026),
+et à part dans le bloc `anonymes` (depuis le 09/10/2026 :
 visiteurs distincts par jour, pages vues, contenus vus, gestes). `filter_values` : valeurs de filtre les plus
 utilisées dans les listes (difficulté, chapitre, tri…), depuis le 09/10/2026.
 Les comptes « maison » (administrateurs, compte éditorial, compte supprimé, compte de test) sont exclus des chiffres.
 """
+import logging
 from collections import Counter, defaultdict
 from datetime import date, datetime, time, timedelta, timezone as dt_timezone
 
 from django.contrib.auth.models import User
 from django.contrib.contenttypes.models import ContentType
+from django.db import models
 from django.db.models import Count, Max, Q, Sum
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
@@ -25,7 +32,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import BasePermission
 from rest_framework.response import Response
 
-from apps.interactions.models import Complete, QuestionProgress, StudyTimeTracker, TimeSession
+from apps.interactions.models import Complete, QuestionProgress, StudyTimeDay, StudyTimeTracker, TimeSession
 from apps.skilliq.models import SkillAssessment
 from apps.things.models import Comment, Content, ContentDailyView, ContentReport, ProposedSolution
 from apps.users.account_deletion import DELETED_USERNAME
@@ -43,6 +50,7 @@ TOP_CONTENTS = 8
 TEST_ACCOUNTS = ['fidni_test_claude']
 TYPE_PATH = {'exercise': 'exercises', 'exam': 'exams', 'lesson': 'lessons'}
 TYPE_LABEL = {'exercise': 'Exercice', 'exam': 'Examen', 'lesson': 'Leçon'}
+logger = logging.getLogger('django')
 
 
 class IsSuperuser(BasePermission):
@@ -61,40 +69,94 @@ def _real_users():
 
 
 # (queryset, champ de date, champ utilisateur) des actions qui comptent comme « activité ».
+# Uniquement des dates qui ne bougent plus (création, jour du temps d'étude) : un jour actif reste actif.
 def _activity_sources():
+    from apps.concours.models import SimulationSession
+    from apps.interactions.models import RevisionListItem, Save, UpcomingTest, Vote
+    from apps.notebooks.models import NotebookAnnotation, NotebookLessonEntry
+    from apps.things.models import CatchUpSkip, DifficultyFeedback
     return [
-        (ViewHistory.objects.all(), 'viewed_at', 'user_id'),
-        (Complete.objects.all(), 'updated_at', 'user_id'),
-        (QuestionProgress.objects.all(), 'assessed_at', 'user_id'),
+        (StudyTimeDay.objects.all(), 'date', 'user_id'),
+        (QuestionProgress.objects.all(), 'created_at', 'user_id'),
+        (Complete.objects.all(), 'created_at', 'user_id'),
         (TimeSession.objects.all(), 'created_at', 'user_id'),
-        (StudyTimeTracker.objects.all(), 'recorded_at', 'user_id'),
         (Comment.objects.all(), 'created_at', 'author_id'),
         (ProposedSolution.objects.all(), 'created_at', 'author_id'),
+        (SkillAssessment.objects.all(), 'created_at', 'user_id'),
+        (SimulationSession.objects.all(), 'started_at', 'user_id'),
+        (NotebookAnnotation.objects.all(), 'created_at', 'user_id'),
+        (NotebookLessonEntry.objects.all(), 'added_at', 'section__notebook__user_id'),
+        (RevisionListItem.objects.all(), 'added_at', 'revision_list__user_id'),
+        (Save.objects.all(), 'saved_at', 'user_id'),
+        (Vote.objects.all(), 'created_at', 'user_id'),
+        (UpcomingTest.objects.all(), 'created_at', 'user_id'),
+        (ContentReport.objects.all(), 'created_at', 'user_id'),
+        (CatchUpSkip.objects.all(), 'created_at', 'user_id'),
+        (DifficultyFeedback.objects.all(), 'created_at', 'user_id'),
+    ]
+
+
+# Dates écrasées à chaque passage : justes pour la DERNIÈRE action (liste des membres), pas pour les jours d'avant.
+def _last_only_sources():
+    return [
+        (ViewHistory.objects.all(), 'viewed_at', 'user_id'),
+        (QuestionProgress.objects.all(), 'assessed_at', 'user_id'),
+        (Complete.objects.all(), 'updated_at', 'user_id'),
         (SkillAssessment.objects.all(), 'completed_at', 'user_id'),
         (User.objects.all(), 'last_login', 'id'),
     ]
 
 
+def _since(qs, field, since):
+    """`field >= since`, que le champ soit une date-heure ou une date (StudyTimeDay.date)."""
+    f = qs.model._meta.get_field(field)
+    if isinstance(since, datetime) and not isinstance(f, models.DateTimeField):
+        since = timezone.localtime(since).date()
+    return qs.filter(**{f'{field}__gte': since})
+
+
+def _as_datetime(value):
+    """Date d'une ligne → date-heure comparable (une date seule = minuit, heure locale)."""
+    if isinstance(value, datetime) or value is None:
+        return value
+    return timezone.make_aware(datetime.combine(value, time.min))
+
+
 def _active_user_ids(since, real_ids):
     ids = set()
     for qs, field, ufield in _activity_sources():
-        ids.update(qs.filter(**{f'{field}__gte': since}).values_list(ufield, flat=True))
+        # order_by() : sans le tri par défaut du modèle, DISTINCT porte bien sur l'utilisateur seul.
+        ids.update(_since(qs, field, since).order_by().values_list(ufield, flat=True).distinct())
     return ids & real_ids
+
+
+def _active_days(users, since):
+    """{utilisateur: {jours actifs}} depuis `since`, pour des ids ou un queryset d'utilisateurs."""
+    days = defaultdict(set)
+    for qs, field, ufield in _activity_sources():
+        rows = _since(qs.filter(**{f'{ufield}__in': users}), field, since).order_by().values_list(ufield, field)
+        for uid, when in rows:
+            if uid is not None and when:
+                days[uid].add(_day(when))
+    return days
 
 
 def _last_activity(user_ids):
     """utilisateur → date de sa dernière action enregistrée."""
     last = {}
-    for qs, field, ufield in _activity_sources():
+    for qs, field, ufield in _activity_sources() + _last_only_sources():
         rows = qs.filter(**{f'{ufield}__in': user_ids}).values(ufield).annotate(m=Max(field))
         for row in rows:
-            uid, when = row[ufield], row['m']
+            uid, when = row[ufield], _as_datetime(row['m'])
             if when and (uid not in last or when > last[uid]):
                 last[uid] = when
     return last
 
 
 def _day(dt):
+    """Jour local d'une date-heure ; une date est rendue telle quelle."""
+    if not isinstance(dt, datetime):
+        return dt
     return timezone.localtime(dt).date()
 
 
@@ -144,12 +206,13 @@ def overview(request):
     # ── Jour par jour, sur les deux périodes
     signups = Counter(_day(d) for d in real.filter(date_joined__gte=since).values_list('date_joined', flat=True))
     active_by_day = defaultdict(set)
-    for qs, field, ufield in _activity_sources():
-        for uid, when in qs.filter(**{f'{field}__gte': since}).values_list(ufield, field):
-            if uid in real_ids and when:
-                active_by_day[_day(when)].add(uid)
-    work = Counter(_day(d) for d in real_only(Complete.objects.filter(updated_at__gte=since)).values_list('updated_at', flat=True))
-    work.update(_day(d) for d in real_only(QuestionProgress.objects.filter(assessed_at__gte=since)).values_list('assessed_at', flat=True))
+    for uid, ds in _active_days(real.values('id'), since).items():
+        for d in ds:
+            active_by_day[d].add(uid)
+    # Travail daté à sa création : une question réévaluée plus tard ne quitte pas son jour d'origine.
+    work = Counter()
+    for model in (Complete, QuestionProgress):
+        work.update(_day(d) for d in real_only(model.objects.filter(created_at__gte=since)).values_list('created_at', flat=True))
     views = dict(ContentDailyView.objects.filter(date__gte=prev_first).values_list('date').annotate(s=Sum('count')))
 
     def total(per_day, ds):
@@ -198,10 +261,13 @@ def overview(request):
         'filter_values': _filter_values(first),
         'anonymes': _anonymous(first, prev_first, current, previous, signups_current),
         'members_total': len(real_ids),
+        'funnel': _funnel(start, real),
+        'auth_doors': _auth_doors(first),
         'todo': {
             'reports_open': ContentReport.objects.filter(status=ContentReport.STATUS_OPEN).count(),
             'a_verifier': [_content_ref(c) for c in Content.objects.filter(json_content__a_verifier=True)
                            .only('id', 'type', 'title').order_by('-created_at')],
+            'difficulty_gaps': _difficulty_gaps(),
         },
         'metrics': metrics,
         'series': series,
@@ -209,11 +275,80 @@ def overview(request):
     })
 
 
+def _funnel(start, real=None):
+    """Entonnoir de la cohorte inscrite depuis `start` (comptes maison exclus).
+
+    signups → verified (e-mail confirmé) → onboarded (profil complété) → first_view (un contenu ouvert) →
+    first_work (une question auto-évaluée ou un contenu terminé) ; back_d7 = revenus entre J+7 et J+13
+    parmi les d7_eligible (inscrits depuis au moins 7 jours), jours actifs pris dans _activity_sources.
+    """
+    real = _real_users() if real is None else real
+    cohort = real.filter(date_joined__gte=start)
+    joined = {uid: _day(d) for uid, d in cohort.values_list('id', 'date_joined')}
+    ids = cohort.values('id')
+    ct = ContentType.objects.get_for_model(Content)
+
+    def members(qs):
+        return set(qs.filter(user_id__in=ids).order_by().values_list('user_id', flat=True).distinct())
+    viewed = members(ViewHistory.objects.filter(content_type=ct))
+    worked = members(QuestionProgress.objects.all()) | members(Complete.objects.all())
+    last_eligible_day = timezone.localdate() - timedelta(days=7)
+    eligible = [uid for uid, d in joined.items() if d <= last_eligible_day]
+    days = _active_days(eligible, start) if eligible else {}
+    back = [uid for uid in eligible
+            if any(joined[uid] + timedelta(days=7) <= d <= joined[uid] + timedelta(days=13) for d in days.get(uid, ()))]
+    return {
+        'signups': len(joined),
+        'verified': cohort.filter(is_active=True, profile__email_verified=True).count(),
+        'onboarded': cohort.filter(profile__onboarding_completed=True).count(),
+        'first_view': len(viewed),
+        'first_work': len(worked),
+        'back_d7': len(back),
+        'd7_eligible': len(eligible),
+    }
+
+
+AUTH_DOOR_PREFIX = 'auth:porte:'
+
+
+def _auth_doors(first):
+    """Portes d'entrée de la fenêtre de connexion / inscription (« vote », « bandeau »…) sur la période."""
+    rows = (UsageDaily.objects.filter(kind=UsageDaily.KIND_FILTER, name__startswith=AUTH_DOOR_PREFIX, date__gte=first)
+            .values('name').annotate(c=Sum('count'), v=Sum('visitors'), a=Sum('anon_count')))
+    out = [{'source': r['name'][len(AUTH_DOOR_PREFIX):], 'count': r['c'] or 0, 'visits': r['v'] or 0,
+            'anon': r['a'] or 0} for r in rows]
+    out.sort(key=lambda x: (-x['count'], x['source']))
+    return out
+
+
+def _difficulty_gaps():
+    """Écarts entre difficulté affichée et ressenti des élèves (things/difficulty.py), à corriger à la main."""
+    try:
+        from apps.things.difficulty import difficulty_gaps
+        gaps = difficulty_gaps()
+    except Exception:  # le reste du Pilotage s'affiche quand même ; l'erreur est journalisée
+        logger.exception('Pilotage : écarts de difficulté indisponibles')
+        return []
+    out = []
+    for gap in gaps:
+        content = gap.get('content')
+        if content is None:
+            continue
+        felt, ref = gap.get('felt'), _content_ref(content)
+        out.append({**ref, 'edit_url': f'{ref["url"]}/edit', 'declared': gap.get('declared'),
+                    'felt': felt.get('level') if isinstance(felt, dict) else felt,
+                    'n': gap.get('n'), 'success_pct': gap.get('success_pct'), 'votes': gap.get('votes'),
+                    'basis': gap.get('basis')})
+    return out
+
+
 def _features():
     """(clé, libellé, queryset, champ de date, champ utilisateur) : fonctionnalités dont chaque usage est en base."""
     from apps.classrooms.models import ClassroomMembership
-    from apps.interactions.models import RevisionListItem, Save, UpcomingTest, Vote
-    from apps.notebooks.models import NotebookLessonEntry
+    from apps.concours.models import SimulationSession
+    from apps.interactions.models import RevisionList, RevisionListItem, Save, SolutionView, UpcomingTest, Vote
+    from apps.notebooks.models import NotebookAnnotation, NotebookLessonEntry
+    from apps.things.models import CatchUpSkip, DifficultyFeedback
     return [
         ('auto_evaluation', 'Auto-évaluation des questions', QuestionProgress.objects.all(), 'assessed_at', 'user_id'),
         ('termine', 'Contenu terminé (réussi ou à revoir)', Complete.objects.all(), 'updated_at', 'user_id'),
@@ -229,6 +364,14 @@ def _features():
         ('solution', 'Solutions proposées', ProposedSolution.objects.all(), 'created_at', 'author_id'),
         ('signalement', 'Erreurs signalées', ContentReport.objects.all(), 'created_at', 'user_id'),
         ('classe', 'Classe rejointe', ClassroomMembership.objects.all(), 'joined_at', 'student_id'),
+        # Audit du 10/10/2026 : usages en base jusqu'ici absents du Pilotage.
+        ('concours', 'Simulations de concours', SimulationSession.objects.all(), 'started_at', 'user_id'),
+        ('annotation', 'Annotations dans les cahiers', NotebookAnnotation.objects.all(), 'created_at', 'user_id'),
+        ('liste_creee', 'Listes de révision créées', RevisionList.objects.all(), 'created_at', 'user_id'),
+        ('pas_encore_fait', '« Pas encore fait » (bandeau de rattrapage)', CatchUpSkip.objects.all(), 'created_at', 'user_id'),
+        ('note_ds', 'Notes de DS saisies', UpcomingTest.objects.exclude(grade=None), 'updated_at', 'user_id'),
+        ('solution_vue', 'Solutions ouvertes (par contenu)', SolutionView.objects.all(), 'viewed_at', 'user_id'),
+        ('ressenti', 'Difficulté ressentie donnée', DifficultyFeedback.objects.all(), 'created_at', 'user_id'),
     ]
 
 
@@ -523,7 +666,9 @@ def users_list(request):
     real_all = [i for i in all_ids if i not in house_all]
     groups = {
         'tous': all_ids,
-        'actifs': [i for i in real_all if i in last_all and last_all[i] >= since],
+        # Même définition que la tuile « actifs » de l'aperçu (dates stables) ; la dernière activité affichée,
+        # elle, tient compte aussi des consultations et connexions.
+        'actifs': sorted(_active_user_ids(since, set(real_all))),
         'nouveaux': list(base.filter(date_joined__gte=since).exclude(_house_filter()).values_list('id', flat=True)),
         'jamais': [i for i in real_all if i not in last_all],
         'enseignants': list(base.filter(profile__user_type='teacher').values_list('id', flat=True)),

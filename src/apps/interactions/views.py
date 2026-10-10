@@ -98,7 +98,6 @@ class RevisionListViewSet(viewsets.ModelViewSet):
         exercise / exam) ; la progression (réussis, à revoir, à faire) est calculée ici.
         """
         from apps.things.models import Content
-        from apps.caracteristics.models import Chapter
         lists = list(self.get_queryset())
         ids = {item.object_id for rl in lists for item in rl.items.all()}
         types = dict(Content.objects.filter(id__in=ids).values_list('id', 'type'))
@@ -158,37 +157,63 @@ class RevisionListViewSet(viewsets.ModelViewSet):
     # Liste proposée en un clic depuis un exercice raté (« Ajouter à À revoir »).
     QUICK_LIST_NAME = 'À revoir'
     QUICK_LIST_DESCRIPTION = 'Les exercices que tu as ratés ou marqués à revoir, pour les retravailler.'
+    QUICK_ADD_MAX = 50  # contenus par ajout en lot
 
     @staticmethod
-    def _label_from_content(revision_list, content):
-        """Étiquette la liste avec le niveau, la matière et les chapitres du contenu ajouté."""
-        revision_list.class_levels.add(*content.class_levels.all())
-        if content.subject_id:
-            revision_list.subjects.add(content.subject_id)
-        revision_list.chapters.add(*content.chapters.all())
+    def _label_from_contents(revision_list, contents):
+        """Étiquette la liste avec les niveaux, matières et chapitres des contenus ajoutés."""
+        levels = {lv.id for c in contents for lv in c.class_levels.all()}
+        subjects = {c.subject_id for c in contents if c.subject_id}
+        chapters = {ch.id for c in contents for ch in c.chapters.all()}
+        if levels:
+            revision_list.class_levels.add(*levels)
+        if subjects:
+            revision_list.subjects.add(*subjects)
+        if chapters:
+            revision_list.chapters.add(*chapters)
 
     @action(detail=False, methods=['post'])
     def quick_add(self, request):
         """
-        Ajoute un exercice ou un examen à la liste « À revoir » (créée au besoin, étiquetée
-        d'après le contenu). Attend : object_id. Renvoie la liste et si l'élément était nouveau.
+        Ajoute à la liste « À revoir » (créée au besoin, étiquetée d'après les contenus) un exercice ou
+        un examen (object_id), ou plusieurs d'un coup (object_ids : plus de boucle de requêtes côté
+        navigateur). Renvoie la liste et si un élément était nouveau ; en lot, aussi added_ids.
         """
         from apps.things.models import Content
-        content = Content.objects.filter(pk=request.data.get('object_id'), type__in=('exercise', 'exam')).first()
-        if content is None:
+        many = 'object_ids' in request.data
+        if many:
+            raw = request.data.getlist('object_ids') if hasattr(request.data, 'getlist') else request.data.get('object_ids')
+            if not isinstance(raw, list):
+                return Response({'error': 'object_ids : une liste d’identifiants.'}, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            raw = [request.data.get('object_id')]
+        ids = []
+        for value in raw[:self.QUICK_ADD_MAX]:
+            try:
+                ids.append(int(value))
+            except (TypeError, ValueError):
+                continue
+        contents = sorted(Content.objects.filter(pk__in=ids, type__in=('exercise', 'exam'))
+                          .prefetch_related('class_levels', 'chapters'), key=lambda c: ids.index(c.id))
+        if not contents:
             return Response({'error': 'Contenu introuvable.'}, status=status.HTTP_404_NOT_FOUND)
         revision_list, created_list = RevisionList.objects.get_or_create(
             user=request.user, name=self.QUICK_LIST_NAME,
             defaults={'description': self.QUICK_LIST_DESCRIPTION})
-        _, added = RevisionListItem.objects.get_or_create(
-            revision_list=revision_list,
-            content_type=ContentType.objects.get_for_model(Content),
-            object_id=content.pk)
-        self._label_from_content(revision_list, content)
+        ct = ContentType.objects.get_for_model(Content)
+        already = set(revision_list.items.filter(content_type=ct, object_id__in=[c.pk for c in contents])
+                      .values_list('object_id', flat=True))
+        new = [c for c in contents if c.pk not in already]
+        RevisionListItem.objects.bulk_create(
+            [RevisionListItem(revision_list=revision_list, content_type=ct, object_id=c.pk) for c in new],
+            ignore_conflicts=True)
+        self._label_from_contents(revision_list, contents)
         revision_list.save(update_fields=['updated_at'])
-        return Response({'list_id': revision_list.id, 'list_name': revision_list.name,
-                         'created_list': created_list, 'added': added},
-                        status=status.HTTP_201_CREATED if added else status.HTTP_200_OK)
+        payload = {'list_id': revision_list.id, 'list_name': revision_list.name,
+                   'created_list': created_list, 'added': bool(new)}
+        if many:
+            payload.update({'added_ids': [c.pk for c in new], 'added_count': len(new)})
+        return Response(payload, status=status.HTTP_201_CREATED if new else status.HTTP_200_OK)
 
     @action(detail=False, methods=['get'])
     def suggestions(self, request):
@@ -332,7 +357,8 @@ class RevisionListViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['get'])
     def statistics(self, request, pk=None):
-        """Réussis / à revoir / à faire d'une liste, en une requête (avant : une par exercice)."""
+        """Réussis / à revoir / à faire d'une liste, en une requête (avant : une par exercice), et le
+        statut de chaque élément (`statuses` : {object_id: 'success' | 'review' | None}) pour sa pastille."""
         from apps.things.models import Content
         revision_list = self.get_object()
         ids = [str(i) for i in revision_list.items.values_list('object_id', flat=True)]
@@ -349,6 +375,7 @@ class RevisionListViewSet(viewsets.ModelViewSet):
             'review': completed - success,
             'progress_percentage': round(completed / len(ids) * 100, 1) if ids else 0,
             'total_time_seconds': 0,
+            'statuses': {i: statuses[i] if statuses.get(i) in ('success', 'review') else None for i in ids},
         }, status=status.HTTP_200_OK)
 
 

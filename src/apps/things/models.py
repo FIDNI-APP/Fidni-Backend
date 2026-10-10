@@ -98,29 +98,6 @@ class Content(CompleteableMixin, SaveableMixin, models.Model):
         from apps.things.structure_utils import get_section_count
         return get_section_count(self._get_structure())
 
-    @property
-    def success_count(self):
-        return self.progress.filter(status='success').count()
-
-    @property
-    def review_count(self):
-        return self.progress.filter(status='review').count()
-
-    @property
-    def average_time_spent(self):
-        if not self.time_spent.exists():
-            return 0
-        total_time = sum(t.time_spent for t in self.time_spent.all())
-        count = self.time_spent.count()
-        return total_time / count if count else 0
-
-    @property
-    def average_perceived_difficulty(self):
-        ratings = self.difficulty_ratings.all()
-        if not ratings:
-            return None
-        return sum(r.rating for r in ratings) / ratings.count()
-
 
 # =====================
 # SOLUTION

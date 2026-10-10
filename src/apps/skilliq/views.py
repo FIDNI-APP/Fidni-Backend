@@ -1,4 +1,5 @@
 # apps/skilliq/views.py
+from django.db import transaction
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
@@ -17,7 +18,7 @@ from .serializers import (
 def get_my_assessments(request):
     """Get all skill assessments for the current user"""
     assessments = SkillAssessment.objects.filter(user=request.user).select_related('chapter', 'chapter__subject')
-    serializer = SkillAssessmentSerializer(assessments, many=True)
+    serializer = SkillAssessmentSerializer(assessments, many=True, context={'request': request})
     return Response(serializer.data)
 
 
@@ -82,19 +83,19 @@ def submit_quiz(request, chapter_id):
         if user_answer is not None and user_answer == question.correct_answer:
             score += points
 
-    # Create or update assessment
-    assessment, created = SkillAssessment.objects.update_or_create(
-        user=request.user,
-        chapter_id=chapter_id,
-        defaults={
-            'score': score,
-            'max_score': max_score,
-            'answers': answers,
-            'time_spent': time_spent
-        }
-    )
+    # Un résultat par chapitre ; un nouveau passage garde le score précédent (« 40 % → 80 % »).
+    with transaction.atomic():
+        assessment, created = SkillAssessment.objects.select_for_update().get_or_create(
+            user=request.user, chapter_id=chapter_id,
+            defaults={'score': score, 'max_score': max_score, 'answers': answers, 'time_spent': time_spent})
+        if not created:
+            assessment.previous_score, assessment.previous_max = assessment.score, assessment.max_score
+            assessment.attempts = (assessment.attempts or 1) + 1
+            assessment.score, assessment.max_score = score, max_score
+            assessment.answers, assessment.time_spent = answers, time_spent
+            assessment.save()
 
-    result = SkillAssessmentSerializer(assessment).data
+    result = SkillAssessmentSerializer(assessment, context={'request': request}).data
     # Correction question par question, envoyée seulement APRÈS la soumission (la bonne réponse
     # n'est jamais dans le quiz lui-même) : l'élève voit ses erreurs et l'explication.
     result['correction'] = [
@@ -123,7 +124,7 @@ def get_chapter_assessment(request, chapter_id):
             user=request.user,
             chapter_id=chapter_id
         )
-        serializer = SkillAssessmentSerializer(assessment)
+        serializer = SkillAssessmentSerializer(assessment, context={'request': request})
         return Response(serializer.data)
     except SkillAssessment.DoesNotExist:
         return Response(

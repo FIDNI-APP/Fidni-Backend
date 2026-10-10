@@ -76,5 +76,55 @@ check('bloqué après 15 essais : signalé', any(t['blocked'] for t in d['thrott
       and any('Bloqué' in w for w in d['warnings']) and any(l['status'] == 429 for l in d['logs']), (d['throttles'], d['warnings']))
 check('requête trop courte refusée', pc.get('/api/pilotage/connexion/', {'q': 'a'}).status_code == 400)
 
+# Connexion avec Google (jeton remplacé par une fonction factice : Google n'est jamais appelé)
+from apps.authentication import google  # noqa: E402
+from apps.users.models import GoogleAccount  # noqa: E402
+
+FAKE = {'yasmine': {'sub': 'g-yas', 'email': 'yasmine@gmail.com', 'given_name': 'Yasmine', 'family_name': 'Alaoui',
+                    'name': 'Yasmine Alaoui'},
+        'nadia': {'sub': 'g-nadia', 'email': 'nadia.perso@gmail.com', 'given_name': 'Nadia', 'family_name': 'B',
+                  'name': 'Nadia B'}}
+
+
+def fake_verify(token):
+    if token not in FAKE:
+        raise google.GoogleTokenError('jeton inconnu')
+    return dict(FAKE[token])
+
+
+google.verify_google_credential = fake_verify
+cache.clear()
+r = visitor.post('/api/auth/google/', {'credential': 'yasmine'}, format='json')
+check('Google, nouveau compte sans les cases : consent_required', r.status_code == 400
+      and r.data.get('code') == 'consent_required', r.data)
+visitor.post('/api/auth/google/', {'credential': 'pirate'}, format='json')
+d = pc.get('/api/pilotage/connexion/', {'q': 'yasmine@gmail.com'}).data
+check('… journal retrouvé par l’adresse (dans la réponse), avec son explication',
+      any(l['code'] == 'consent_required' and l['identifier'] == 'yasmine@gmail.com' and l['hint'] for l in d['logs']),
+      d['logs'])
+check('… aucun jeton dans la réponse du diagnostic', 'pirate' not in str(d))
+cache.clear()
+r = visitor.post('/api/auth/google/', {'credential': 'yasmine', 'accept_terms': True, 'age_ok': True}, format='json')
+check('Google : compte créé', r.status_code == 200 and r.data.get('created') is True, r.data)
+d = pc.get('/api/pilotage/connexion/', {'q': 'yasmine@gmail.com'}).data
+acc = d['accounts'][0] if d['accounts'] else {}
+check('compte Google : google = true, sans mot de passe', acc.get('google') is True and acc.get('has_password') is False, acc)
+check('… avertissement juste (Google, « Mot de passe oublié » possible)',
+      any('se connecte avec Google' in w and 'Mot de passe oublié' in w for w in d['warnings'])
+      and not any('n’envoie rien' in w for w in d['warnings']), d['warnings'])
+d = pc.get('/api/pilotage/connexion/', {'q': 'Amine'}).data
+check('compte classique : google = false', all(a['google'] is False for a in d['accounts']), d['accounts'])
+
+nadia = User.objects.create_user('nadia', 'nadia@ecole.ma', PWD)
+GoogleAccount.objects.create(user=nadia, sub='g-nadia', email='nadia.perso@gmail.com')
+d = pc.get('/api/pilotage/connexion/', {'q': 'nadia.perso@gmail.com'}).data
+check('recherche par l’adresse Google liée (différente du compte)', [a['username'] for a in d['accounts']] == ['nadia']
+      and d['accounts'][0]['google'] and d['accounts'][0]['has_password'], d['accounts'])
+
+sans = User.objects.create_user('sansmdp', 'sans@x.fr')
+d = pc.get('/api/pilotage/connexion/', {'q': 'sans@x.fr'}).data
+check('sans mot de passe ni Google : « Mot de passe oublié » n’envoie rien',
+      any('n’envoie rien' in w for w in d['warnings']), d['warnings'])
+
 print(f'\n{sum(results)}/{len(results)} vérifications réussies')
 sys.exit(0 if all(results) else 1)

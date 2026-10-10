@@ -7,6 +7,10 @@ mieux que le texte ce qu'un contenu fait travailler. Score de similarité (cosin
   sous-domaines ×0,5, difficulté voisine ±0,4, un peu de popularité pour départager.
 Toujours le même niveau (un élève de TC ne reçoit pas un sujet de 2ème Bac). Pour un élève connecté,
 ce qu'il a déjà réussi passe après le reste. Chaque recommandation dit pourquoi (« Mêmes notions : … »).
+
+« Exercice suivant » après le résultat (`apres`) : après « À revoir », rien de plus difficile et le cours du
+chapitre d'abord ; après « Réussi », rien de plus facile. Ce qui ne respecte pas la règle passe en dernier
+(jamais de liste vide pour autant).
 """
 import math
 
@@ -60,8 +64,12 @@ def _weighted_cos(a, b, w):
     return sum(w[x] ** 2 for x in common) / math.sqrt(sum(w[x] ** 2 for x in a) * sum(w[x] ** 2 for x in b))
 
 
-def _reason(src, c, w):
+def _reason(src, c, w, apres=None):
     from apps.caracteristics.notions import notion_label
+    if apres == 'review' and c['type'] == 'lesson':
+        ch = [c['chapters'][i] for i in src['chapters'] if i in c['chapters']]
+        if ch:
+            return 'Revois le cours : ' + ch[0]
     common = sorted(src['skills'] & c['skills'], key=lambda x: (-w[x], x))  # les plus rares d'abord
     if common:
         return 'Mêmes notions : ' + ', '.join(notion_label(s) for s in common[:2]) + (' …' if len(common) > 2 else '')
@@ -72,8 +80,9 @@ def _reason(src, c, w):
     return ('Utilise aussi : ' + th[0]) if th else 'Même domaine'
 
 
-def similar(content_id, user=None):
-    """[(id, score, raison)] des contenus les plus proches, dosés par type (4 du même type, 2 des autres)."""
+def similar(content_id, user=None, apres=None):
+    """[(id, score, raison)] des contenus les plus proches, dosés par type (4 du même type, 2 des autres).
+    apres : 'review' ou 'success' (« Exercice suivant » après le résultat), voir plus haut."""
     idx = _index()
     src = idx.get(content_id)
     if src is None:
@@ -104,16 +113,23 @@ def similar(content_id, user=None):
         if src['diff'] and c['diff']:
             s += {0: 0.4, 1: 0.0, 2: -0.4}[abs(src['diff'] - c['diff'])]
         s += 0.3 * math.log1p(c['views']) / math.log(1000)
-        # Déjà réussi : toujours après ce qui reste à faire.
-        scored.append((done.get(str(cid)) == 'success', -s, cid))
+        off = False
+        if apres == 'review':
+            off = bool(src['diff'] and c['diff'] and c['diff'] > src['diff'])
+            if c['type'] == 'lesson' and set(src['chapters']) & set(c['chapters']):
+                s += 3  # le cours du chapitre d'abord
+        elif apres == 'success':
+            off = bool(src['diff'] and c['diff'] and c['diff'] < src['diff'])
+        # Hors règle, puis déjà réussi : toujours après ce qui reste à faire.
+        scored.append((off, done.get(str(cid)) == 'success', -s, cid))
     scored.sort()
     out, per_type = [], {}
-    for _, s, cid in scored:
+    for _, _, s, cid in scored:
         t = idx[cid]['type']
         if per_type.get(t, 0) >= (QUOTA_SAME_TYPE if t == src['type'] else QUOTA_OTHER_TYPE):
             continue
         per_type[t] = per_type.get(t, 0) + 1
-        out.append((cid, round(-s, 3), _reason(src, idx[cid], w)))
+        out.append((cid, round(-s, 3), _reason(src, idx[cid], w, apres)))
         if len(out) == LIMIT:
             break
     return out

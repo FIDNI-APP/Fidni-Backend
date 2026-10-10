@@ -306,6 +306,8 @@ class UpcomingTestViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['get'])
     def plan(self, request, pk=None):
+        """Plan de révision. Chaque chapitre porte `hub_url` (users/progression.py) : sa page d'exercices
+        au niveau de l'élève, où mène « S'entraîner »."""
         test = self.get_object()
         entries = _ordered_chapters(test, request.user)
         names = {c['id']: c['name'] for c in entries}

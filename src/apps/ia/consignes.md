@@ -59,7 +59,7 @@ Ne mets **pas** les champs `source`, `credit`, `a_verifier`, `doublon_ok` : le s
 - `{"type": "question", "html": "…", "points": 1.5, "solution": "…", "notions": ["…"]}`
 - avec sous-questions : `{"type": "question", "html": "…", "points": 3, "sous_questions": [{"html": "…", "points": 1, "solution": "…", "notions": ["…"]}, …]}` — alors **pas** de `solution` sur la question elle-même ; son `html` peut être vide si le document n'a que « 1) a- … b- … » ; son `points` (facultatif) égale la somme des sous-questions.
 
-Champs facultatifs d'une question sans sous-questions ou d'une sous-question : `notions` (1 à 3 identifiants de l'annexe B), `difficulte`, `indice` (HTML court), `erreurs_frequentes` (liste de textes).
+Champs facultatifs d'une question sans sous-questions ou d'une sous-question : `notions` (1 à 3 identifiants de l'annexe B), `difficulte`, `indice` (HTML court), `erreurs_frequentes` (liste de textes). **Examen** : `difficulte` est attendue sur **chaque** question sans sous-questions et sur chaque sous-question ; le serveur en déduit le label de l'examen, pondéré par les points (voir §8).
 
 Au moins une question par fiche. Un devoir noté sur 20 doit totaliser 20 points (sinon garde les points du document et signale-le dans `doutes`).
 
@@ -112,7 +112,8 @@ Forme exigée, **comme une copie d'élève excellent** :
 
 - **Niveau** : « TC », « TCS », « TC BIOF » → `Tronc commun Sciences` ; « 1 SM », « 1BAC SM », « 1SMF » → `1ère Bac SM` ; « 2 SM », « 2SMF », « 2 SM-A/B » → `2ème Bac SM` ; « 2 PC » → `2ème Bac PC`. Si l'administrateur a indiqué un niveau, prends-le. Autre niveau : signale-le dans `doutes`.
 - **Chapitres** : noms **exacts** de l'annexe A, pour le niveau choisi (les homonymes comme « Suites numériques » existent dans plusieurs niveaux : c'est le niveau qui distingue).
-- **Difficulté** : `facile` (application directe du cours ; les exercices d'application d'un cours sont toujours `facile`), `moyen` (plusieurs étapes, une idée), `difficile` (raisonnement long ou astucieux, niveau Bac / concours).
+- **Difficulté** : à juger **par rapport à un élève du niveau qui découvre le chapitre** (pas pour un professeur, ni pour un élève qui a déjà tout révisé). `facile` (application directe du cours ; les exercices d'application d'un cours sont toujours `facile`), `moyen` (plusieurs étapes, une idée), `difficile` (raisonnement long ou astucieux, niveau Bac / concours).
+- **Examen** : donne aussi la `difficulte` de **chaque question** (même échelle). Le label de l'examen en est déduit, pondéré par les points : au moins 35 % des points en `difficile` → `difficile` ; au moins 60 % en `facile` → `facile` ; sinon `moyen`. Mets dans `difficulte` de la fiche le label que donne cette règle.
 - **Notions** : identifiants **exacts** de l'annexe B (liste fermée ; toute autre valeur est refusée). Choisis ce que la question fait réellement travailler.
 - **Théorèmes** : noms exacts de l'annexe C. Le chapitre d'un théorème utilisé doit figurer dans `chapitres`.
 

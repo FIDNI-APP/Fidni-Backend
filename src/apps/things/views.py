@@ -2,6 +2,7 @@ from rest_framework import viewsets, status
 from rest_framework.decorators import action, api_view, permission_classes as perm_classes, throttle_classes
 from rest_framework.response import Response
 from rest_framework.pagination import PageNumberPagination
+from rest_framework.throttling import UserRateThrottle
 from datetime import timedelta
 from django.utils import timezone
 from django.core.cache import cache
@@ -9,13 +10,14 @@ from django.contrib.auth.models import User
 
 from django.contrib.contenttypes.models import ContentType
 from django.db import IntegrityError, transaction
-from django.db.models import Count, Q, F
+from django.db.models import Q, F
 
-from django.db.models import Case, IntegerField, TextField, When
-from django.db.models.functions import Cast
+from django.db.models import Case, IntegerField, When
+from django.db.models.functions import Length, Substr
 
 from .models import Content, ContentDailyView, Solution, Comment, ProposedSolution
 from .pdf_parser import parse_pdf
+from .search_text import normalize as normalize_search
 from .serializers import ContentSerializer, ContentListSerializer, ContentCreateSerializer, SolutionSerializer, CommentSerializer, ProposedSolutionSerializer
 from . import for_you
 from .listing import in_order, serialize_content_list, with_list_relations
@@ -29,6 +31,7 @@ from config.throttling import PdfParseThrottle, ProposedSolutionThrottle
 
 import hashlib
 import logging
+import math
 import re
 logger = logging.getLogger('django')
 
@@ -50,6 +53,124 @@ def _count_daily_view(content_id, anon=False):
             ContentDailyView.objects.create(content_id=content_id, date=day, count=1, anon_count=1 if anon else 0)
     except IntegrityError:
         ContentDailyView.objects.filter(content_id=content_id, date=day).update(**inc)
+
+
+# Origine d'une auto-évaluation (QuestionProgress.source) : sert à pondérer la réussite réelle (things/difficulty.py).
+ASSESS_SOURCES = {'question', 'tout', 'apres_solution', 'rattrapage'}
+SEARCH_NAMES_KEY = 'search_taxonomy_names_v1'
+DIFFICULTY_RANK = Case(When(difficulty='easy', then=0), When(difficulty='medium', then=1), When(difficulty='hard', then=2),
+                       default=3, output_field=IntegerField())
+
+
+class RessentiThrottle(UserRateThrottle):
+    """Ressenti sur la difficulté : un geste par contenu, largement assez pour un élève (comme les signalements)."""
+    scope = 'ressenti'
+    rate = '60/hour'
+
+
+def _ids(values):
+    """Identifiants numériques d'un paramètre répété ou séparé par des virgules (« 3,5 »)."""
+    return [int(x) for v in values for x in str(v).split(',') if x.strip().isdigit()]
+
+
+def _strip_solutions(value):
+    if isinstance(value, dict):
+        return {k: _strip_solutions(v) for k, v in value.items() if k != 'solution'}
+    if isinstance(value, list):
+        return [_strip_solutions(v) for v in value]
+    return value
+
+
+def _card_structure(structure, max_blocks=6):
+    """Mode Cartes (view=card) : l'énoncé allégé, sans aucune solution et 6 blocs au plus."""
+    light = _strip_solutions(structure or {})
+    for key in ('blocks', 'sections'):
+        if isinstance(light.get(key), list):
+            light[key] = light[key][:max_blocks]
+    return light
+
+
+def _user_progress(items, user):
+    """{id: {assessed, success, total} | None} : questions évaluées par l'élève, une requête pour la page."""
+    if user is None:
+        return {}
+    from apps.users.my_stats import _questions
+    finals = {c.id: {path for path, _, _ in _questions(c.json_content)} for c in items}
+    counts = {cid: [0, 0] for cid in finals}
+    rows = QuestionProgress.objects.filter(user=user, content_type=ContentType.objects.get_for_model(Content),
+                                           object_id__in=list(finals)).values_list('object_id', 'question_path', 'status')
+    for cid, path, st in rows:
+        if st and path in finals.get(cid, ()):
+            counts[cid][0] += 1
+            counts[cid][1] += st == 'success'
+    return {cid: {'assessed': a, 'success': ok, 'total': len(finals[cid])} if finals[cid] else None
+            for cid, (a, ok) in counts.items()}
+
+
+def _viewer(request):
+    user = getattr(request, 'user', None)
+    return user if getattr(user, 'is_authenticated', False) else None
+
+
+def _felt(items):
+    """Ressenti des élèves (things/difficulty.py) ; une panne du calcul ne casse jamais une liste."""
+    from .difficulty import felt_for
+    try:
+        return felt_for(items)
+    except Exception:
+        logger.exception('Ressenti des élèves : calcul impossible')
+        return {}
+
+
+def _search(queryset, query):
+    """Recherche mot par mot sur Content.search_text (titre + texte visible, normalisés comme la requête) et sur
+    les noms de la taxonomie (matière, niveau, chapitre, théorème, sous-domaine). Classement : tous les mots dans
+    le titre, puis dans le titre ou un chapitre, puis ailleurs (annotation `_search_rank`)."""
+    from apps.caracteristics.models import Chapter, ClassLevel, Subfield, Subject, Theorem
+    terms = normalize_search(query).split()[:6]
+    if not terms:
+        return queryset
+    # Quelques centaines de noms, normalisés en Python : « continuite » trouve « Limites et continuité ».
+    # Gardés 10 min (5 requêtes de moins par recherche ; la taxonomie change rarement).
+    names = cache.get(SEARCH_NAMES_KEY)
+    if names is None:
+        names = {field: [(pk, normalize_search(name)) for pk, name in model.objects.values_list('id', 'name')]
+                 for field, model in (('chapters', Chapter), ('theorems', Theorem), ('subfields', Subfield),
+                                      ('class_levels', ClassLevel), ('subject', Subject))}
+        cache.set(SEARCH_NAMES_KEY, names, 600)
+    matching = Content.objects.all()
+    # Début de search_text = le titre normalisé (même longueur que le titre, accents compris).
+    titled = Content.objects.annotate(_title=Substr('search_text', 1, Length('title')))
+    in_title, in_title_or_chapter = titled, titled
+    for term in terms:
+        hit = Q(search_text__contains=term)
+        for field, rows in names.items():
+            ids = [pk for pk, name in rows if term in name]
+            if ids:
+                hit |= Q(**{f'{field}__id__in': ids})
+        # Un filter() par mot : chaque mot peut correspondre à un chapitre (ou théorème) différent.
+        matching = matching.filter(hit)
+        in_title = in_title.filter(_title__contains=term)
+        chapters = [pk for pk, name in names['chapters'] if term in name]
+        in_title_or_chapter = in_title_or_chapter.filter(Q(_title__contains=term) | Q(chapters__id__in=chapters))
+    # Sous-requêtes sur les identifiants : les jointures (chapitres, théorèmes…) ne dupliquent pas les
+    # résultats et ne faussent pas les compteurs de votes.
+    return queryset.filter(pk__in=matching.values('pk')).annotate(_search_rank=Case(
+        When(pk__in=in_title.values('pk'), then=0),
+        When(pk__in=in_title_or_chapter.values('pk'), then=1),
+        default=2, output_field=IntegerField(),
+    ))
+
+
+def _session_score(data):
+    """(score, max_score) valides d'une épreuve, sinon None."""
+    try:
+        score, max_score = float(data.get('score')), float(data.get('max_score'))
+    except (TypeError, ValueError):
+        return None
+    if not (math.isfinite(score) and math.isfinite(max_score)) or max_score <= 0 or not 0 <= score <= max_score:
+        return None
+    return score, max_score
 
 
 def _forget_stats(content_id, user_id):
@@ -166,10 +287,29 @@ class ContentViewSet(VoteMixin, viewsets.ModelViewSet):
         if request.query_params.get('sort') == 'recommended' and not (request.query_params.get('search') or '').strip():
             return self._list_recommended(request, queryset)
         page = self.paginate_queryset(queryset)
-        items = page if page is not None else queryset
+        items = list(page if page is not None else queryset)
         # La structure (json_content) est une colonne de chaque ligne, déjà chargée.
-        serializer = self.get_serializer(items, many=True)
-        return self.get_paginated_response(serializer.data) if page is not None else Response(serializer.data)
+        data = self._decorate(request, items, self.get_serializer(items, many=True).data)
+        return self.get_paginated_response(data) if page is not None else Response(data)
+
+    def _decorate(self, request, items, data):
+        """Après la pagination (seulement la page affichée) : ressenti des élèves, progression de l'élève
+        connecté (une requête pour la page) et, en mode Cartes (view=card), l'énoncé allégé."""
+        felt = _felt(items)
+        progress = _user_progress(items, _viewer(request))
+        card = request.query_params.get('view') == 'card'
+        for row in data:
+            row['felt'] = felt.get(row['id'])
+            row['user_progress'] = progress.get(row['id'])
+            if card and 'json_content' in row:
+                row['json_content'] = _card_structure(row['json_content'])
+        return data
+
+    def retrieve(self, request, *args, **kwargs):
+        instance = self.get_object()
+        data = self.get_serializer(instance).data
+        data['felt'] = _felt([instance]).get(instance.id)
+        return Response(data)
 
     def _list_recommended(self, request, queryset):
         """Tri « Pour toi » (things/for_you.py) : l'ordre est calculé en Python, page par page.
@@ -187,7 +327,7 @@ class ContentViewSet(VoteMixin, viewsets.ModelViewSet):
         page = self.paginate_queryset(ranked)
         reasons = {str(cid): why for cid, why in page}
         items = in_order(with_list_relations(Content.objects.all(), user), [cid for cid, _ in page])
-        data = self.get_serializer(items, many=True).data
+        data = self._decorate(request, items, self.get_serializer(items, many=True).data)
         for row in data:
             row['recommendation_reason'] = reasons.get(str(row['id']))
         return self.get_paginated_response(data)
@@ -231,35 +371,14 @@ class ContentViewSet(VoteMixin, viewsets.ModelViewSet):
         if type_scope:
             queryset = queryset.filter(type=type_scope)
 
-        # Recherche : chaque mot doit apparaître dans le titre, l'énoncé (json_content), la
-        # matière, un chapitre, un théorème… Avant, la recherche appelait similarity() de
-        # l'extension pg_trgm, absente de la base : toute recherche renvoyait une erreur 500.
-        # (L'ancien champ texte `content`, hérité de l'époque MongoDB, a été supprimé.)
+        # Recherche (things/search_text.py) : sans accents, ni balises, ni LaTeX (« derivee » trouve « Dérivée »).
         search_query = (self.request.query_params.get('search') or '').strip()[:100]
         if search_query:
-            matching = Content.objects.annotate(_body=Cast('json_content', TextField()))
-            for term in search_query.split()[:6]:
-                matching = matching.filter(
-                    Q(title__icontains=term) |
-                    Q(_body__icontains=term) |
-                    Q(subject__name__icontains=term) |
-                    Q(chapters__name__icontains=term) |
-                    Q(theorems__name__icontains=term) |
-                    Q(subfields__name__icontains=term) |
-                    Q(class_levels__name__icontains=term)
-                )
-            # Sous-requête sur les identifiants : les jointures (chapitres, théorèmes…) ne
-            # dupliquent pas les résultats et ne faussent pas les compteurs de votes.
-            queryset = queryset.filter(pk__in=matching.values('pk')).annotate(
-                _search_rank=Case(
-                    When(title__icontains=search_query, then=0),
-                    default=1,
-                    output_field=IntegerField(),
-                ),
-            )
+            queryset = _search(queryset, search_query)
 
-        # Filters
-        class_levels = self.request.query_params.getlist('class_levels[]')
+        # Filters (niveaux : « class_levels[] » répété ou « class_levels=3,5 », celui de la recherche)
+        params = self.request.query_params
+        class_levels = _ids(params.getlist('class_levels[]') + params.getlist('class_levels'))
         subjects = self.request.query_params.getlist('subjects[]')
         chapters = self.request.query_params.getlist('chapters[]')
         difficulties = self.request.query_params.getlist('difficulties[]')
@@ -320,6 +439,12 @@ class ContentViewSet(VoteMixin, viewsets.ModelViewSet):
 
         queryset = queryset.filter(filters)
 
+        # « À faire » : tout sauf ce que l'élève a déjà réussi (Complete.object_id est un CharField).
+        if self.request.query_params.get('todo', '').lower() == 'true' and _viewer(self.request):
+            done = Complete.objects.filter(user=self.request.user, content_type=ContentType.objects.get_for_model(Content),
+                                           status='success').values_list('object_id', flat=True)
+            queryset = queryset.exclude(id__in=[int(o) for o in done if str(o).isdigit()])
+
         if hide_viewed and self.request.user and self.request.user.is_authenticated:
             content_ct = ContentType.objects.get_for_model(Content)
             viewed_ids = [
@@ -331,12 +456,15 @@ class ContentViewSet(VoteMixin, viewsets.ModelViewSet):
             queryset = queryset.exclude(id__in=viewed_ids)
 
         sort_by = self.request.query_params.get('sort')
-        if search_query and sort_by in (None, '', 'recommended'):
-            # Recherche sans tri choisi (ou « Pour toi », qui ne vaut que sans recherche) : les titres qui contiennent la recherche d'abord.
+        if search_query and sort_by in (None, '', 'recommended') and '_search_rank' in queryset.query.annotations:
+            # Recherche sans tri choisi (ou « Pour toi », qui ne vaut que sans recherche) : titre, puis chapitre, puis texte.
             queryset = queryset.order_by('_search_rank', '-created_at')
+        elif sort_by == 'easiest':
+            # « Du plus facile au plus difficile » (sans difficulté : en dernier), puis les plus récents.
+            queryset = queryset.annotate(_difficulty_rank=DIFFICULTY_RANK).order_by('_difficulty_rank', '-created_at')
         elif sort_by == 'oldest':
             queryset = queryset.order_by('created_at')
-        elif sort_by == 'recommended':
+        elif sort_by == 'recommended' and not search_query:
             pass  # ordre calculé dans list() (things/for_you.py)
         elif sort_by == 'most_upvoted':
             # « Plus aimés » : le plus de j'aime, puis le moins de je n'aime pas.
@@ -436,13 +564,15 @@ class ContentViewSet(VoteMixin, viewsets.ModelViewSet):
     # ---- à évaluer (bandeau de rattrapage de la liste « Pour toi ») ----
     @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated], url_path='a-evaluer')
     def a_evaluer(self, request):
-        """Contenus ouverts et travaillés sans « Réussi » ni « À revoir » (things/catch_up.py)."""
+        """Contenus ouverts et travaillés sans « Réussi » ni « À revoir » (things/catch_up.py).
+        ?chapter=<id> : sur la page d'un chapitre, seulement ce chapitre."""
         from .catch_up import pending
         kind = self.content_type_scope or request.query_params.get('type') or 'exercise'
         if kind not in (Content.TYPE_EXERCISE, Content.TYPE_EXAM):
             return Response({'count': 0, 'items': []})
         exclude = [int(x) for x in (request.query_params.get('exclude') or '').split(',')[:300] if x.isdigit()]
-        count, items = pending(request.user, kind, exclude)
+        chapter = request.query_params.get('chapter') or ''
+        count, items = pending(request.user, kind, exclude, chapter=int(chapter) if chapter.isdigit() else None)
         return Response({'count': count, 'items': items})
 
     @action(detail=False, methods=['post'], permission_classes=[IsAuthenticated], url_path='a-evaluer/ignorer')
@@ -458,6 +588,30 @@ class ContentViewSet(VoteMixin, viewsets.ModelViewSet):
             CatchUpSkip.objects.update_or_create(user=request.user, content_id=cid, defaults={'created_at': now})
         return Response({'ignored': True})
 
+    # ---- ressenti sur la difficulté (things/difficulty.py) ----
+    @action(detail=True, methods=['post', 'delete'], permission_classes=[IsAuthenticated],
+            throttle_classes=[RessentiThrottle], url_path='ressenti')
+    def ressenti(self, request, pk=None):
+        """POST {felt: easier | as_said | harder} : « C'était plus facile / comme annoncé / plus dur » ;
+        DELETE : retire son avis. Exercices et examens seulement."""
+        from .difficulty import forget
+        from .models import DifficultyFeedback
+        item = self.get_object()
+        if item.type not in (Content.TYPE_EXERCISE, Content.TYPE_EXAM):
+            return Response({'error': 'Ressenti : exercices et examens seulement.'}, status=status.HTTP_400_BAD_REQUEST)
+        if request.method == 'DELETE':
+            DifficultyFeedback.objects.filter(user=request.user, content=item).delete()
+            forget(item)
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        felt = request.data.get('felt')
+        if not isinstance(felt, str) or felt not in dict(DifficultyFeedback.FELT_CHOICES):
+            return Response({'error': 'felt : easier, as_said ou harder'}, status=status.HTTP_400_BAD_REQUEST)
+        # `declared` : la difficulté affichée au moment de l'avis (un avis ne vaut que pour elle).
+        DifficultyFeedback.objects.update_or_create(user=request.user, content=item,
+                                                    defaults={'felt': felt, 'declared': item.difficulty})
+        forget(item)
+        return Response({'felt': felt, 'declared': item.difficulty, 'ressenti': _felt([item]).get(item.id)})
+
     # ---- question progress ----
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
     def assess_question(self, request, pk=None):
@@ -468,10 +622,13 @@ class ContentViewSet(VoteMixin, viewsets.ModelViewSet):
             return Response({'error': 'question_path required'}, status=status.HTTP_400_BAD_REQUEST)
         if assessment_status not in ['success', 'partial', 'review', 'failed']:
             return Response({'error': 'Invalid status'}, status=status.HTTP_400_BAD_REQUEST)
+        source = request.data.get('source') or 'question'
+        if not isinstance(source, str) or source not in ASSESS_SOURCES:
+            return Response({'error': 'Invalid source'}, status=status.HTTP_400_BAD_REQUEST)
         ct = ContentType.objects.get_for_model(Content)
         progress, _ = QuestionProgress.objects.update_or_create(
             user=request.user, content_type=ct, object_id=item.id,
-            question_path=question_path, defaults={'status': assessment_status}
+            question_path=question_path, defaults={'status': assessment_status, 'source': source}
         )
         _forget_stats(item.id, request.user.id)
         return Response({'question_path': progress.question_path, 'status': progress.status,
@@ -480,7 +637,8 @@ class ContentViewSet(VoteMixin, viewsets.ModelViewSet):
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
     def assess_many(self, request, pk=None):
         """Plusieurs questions d'un coup (« Tout réussi ») : {assessments: {chemin: statut | null}},
-        et, si `completion` est donné, le résultat du contenu (« success », « review » ou null pour l'effacer)."""
+        et, si `completion` est donné, le résultat du contenu (« success », « review » ou null pour l'effacer).
+        `source` : d'où vient l'évaluation (« tout », « rattrapage »…, « question » par défaut)."""
         item = self.get_object()
         assessments = request.data.get('assessments')
         if not isinstance(assessments, dict) or not assessments or len(assessments) > 300:
@@ -491,14 +649,22 @@ class ContentViewSet(VoteMixin, viewsets.ModelViewSet):
         completion = request.data.get('completion', 'unchanged')
         if completion not in ('unchanged', None, 'success', 'review'):
             return Response({'error': 'Invalid completion'}, status=status.HTTP_400_BAD_REQUEST)
+        source = request.data.get('source') or 'question'
+        if not isinstance(source, str) or source not in ASSESS_SOURCES:
+            return Response({'error': 'Invalid source'}, status=status.HTTP_400_BAD_REQUEST)
         ct = ContentType.objects.get_for_model(Content)
         mine = dict(user=request.user, content_type=ct, object_id=item.id)
         with transaction.atomic():
+            # Statut inchangé : la question garde l'origine de son évaluation (un « Tout réussi » qui confirme
+            # des questions déjà jugées une à une ne les fait pas peser moitié dans things/difficulty.py).
+            before = dict(QuestionProgress.objects.filter(question_path__in=list(assessments), **mine)
+                          .values_list('question_path', 'status'))
             for path, st in assessments.items():
                 if st is None:
                     QuestionProgress.objects.filter(question_path=path, **mine).delete()
                 else:
-                    QuestionProgress.objects.update_or_create(question_path=path, defaults={'status': st}, **mine)
+                    defaults = {'status': st} if before.get(path) == st else {'status': st, 'source': source}
+                    QuestionProgress.objects.update_or_create(question_path=path, defaults=defaults, **mine)
             if completion is None:
                 Complete.objects.filter(**mine).delete()
             elif completion != 'unchanged':
@@ -654,7 +820,9 @@ class ContentViewSet(VoteMixin, viewsets.ModelViewSet):
                     'started_at': sessions[0].started_at,
                     'ended_at': sessions[0].ended_at,
                     'notes': sessions[0].notes,
-                    'created_at': sessions[0].created_at
+                    'created_at': sessions[0].created_at,
+                    'score': sessions[0].score,
+                    'max_score': sessions[0].max_score,
                 },
                 'improvement_percentage': None
             }
@@ -668,12 +836,14 @@ class ContentViewSet(VoteMixin, viewsets.ModelViewSet):
         sessions_data = [{
             'id': s.id, 'duration_seconds': s.session_duration_in_seconds,
             'session_type': s.session_type, 'started_at': s.started_at,
-            'ended_at': s.ended_at, 'notes': s.notes, 'created_at': s.created_at
+            'ended_at': s.ended_at, 'notes': s.notes, 'created_at': s.created_at,
+            'score': s.score, 'max_score': s.max_score,
         } for s in sessions]
         return Response({'sessions': sessions_data, 'stats': stats})
 
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
     def save_session(self, request, pk=None):
+        """Enregistre une session chronométrée ; renvoie son id (et accepte déjà la note : score, max_score)."""
         item = self.get_object()
         try:
             duration_seconds = int(request.data.get('duration_seconds', 0))
@@ -681,6 +851,11 @@ class ContentViewSet(VoteMixin, viewsets.ModelViewSet):
                 return Response({'error': 'Duration must be > 0'}, status=status.HTTP_400_BAD_REQUEST)
         except (TypeError, ValueError):
             return Response({'error': 'Invalid duration'}, status=status.HTTP_400_BAD_REQUEST)
+        score = None
+        if request.data.get('score') is not None or request.data.get('max_score') is not None:
+            score = _session_score(request.data)
+            if score is None:
+                return Response({'error': 'Invalid score'}, status=status.HTTP_400_BAD_REQUEST)
         try:
             ct = ContentType.objects.get_for_model(Content)
             session = TimeSession.objects.create(
@@ -689,12 +864,15 @@ class ContentViewSet(VoteMixin, viewsets.ModelViewSet):
                 started_at=timezone.now() - timedelta(seconds=duration_seconds),
                 ended_at=timezone.now(),
                 session_type=request.data.get('session_type', 'practice'),
-                notes=request.data.get('notes', '')
+                notes=request.data.get('notes', ''),
+                score=score[0] if score else None,
+                max_score=score[1] if score else None,
             )
             response_data = {
                 'message': 'Session saved',
+                'id': session.id,
                 'session': {'id': session.id, 'duration_seconds': session.session_duration_in_seconds,
-                            'created_at': session.created_at}
+                            'created_at': session.created_at, 'score': session.score, 'max_score': session.max_score}
             }
             previous = TimeSession.objects.filter(
                 user=request.user, content_type=ct, object_id=item.id
@@ -711,6 +889,23 @@ class ContentViewSet(VoteMixin, viewsets.ModelViewSet):
         except Exception as e:
             logger.error(f"Error saving session: {e}")
             return Response({'error': 'Failed to save session'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
+    def session_score(self, request, pk=None):
+        """Note d'une épreuve chronométrée, une fois corrigée : {session_id, score, max_score} (sa session seulement)."""
+        item = self.get_object()
+        session_id = str(request.data.get('session_id') or '')
+        score = _session_score(request.data)
+        if not session_id.isdigit() or score is None:
+            return Response({'error': 'session_id, score et max_score requis (0 ≤ score ≤ max_score)'},
+                            status=status.HTTP_400_BAD_REQUEST)
+        session = TimeSession.objects.filter(id=int(session_id), user=request.user, object_id=str(item.id),
+                                             content_type=ContentType.objects.get_for_model(Content)).first()
+        if session is None:
+            return Response({'error': 'Session not found'}, status=status.HTTP_404_NOT_FOUND)
+        session.score, session.max_score = score
+        session.save(update_fields=['score', 'max_score'])
+        return Response({'id': session.id, 'score': session.score, 'max_score': session.max_score})
 
     @action(detail=True, methods=['delete'], permission_classes=[IsAuthenticated],
             url_path='delete_session/(?P<session_id>[^/.]+)')
@@ -741,7 +936,9 @@ class ContentViewSet(VoteMixin, viewsets.ModelViewSet):
                 'ended_at': s.ended_at.isoformat(),
                 'created_at': s.created_at.isoformat(),
                 'session_type': s.session_type,
-                'notes': s.notes
+                'notes': s.notes,
+                'score': s.score,
+                'max_score': s.max_score,
             } for s in sessions]})
         except Exception as e:
             logger.error(f"Error retrieving session history: {e}")
@@ -749,12 +946,12 @@ class ContentViewSet(VoteMixin, viewsets.ModelViewSet):
                             status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     # ---- statistics ----
-    def _get_successful_users_study_stats(self, item, ct):  # noqa: C901
+    def _get_successful_users_study_stats(self, item, ct, house=()):  # noqa: C901
         from apps.interactions.models import TaxonomyTimeSpent
         from apps.caracteristics.models import Chapter
         successful_users = Complete.objects.filter(
             content_type=ct, object_id=item.id, status='success'
-        ).values_list('user', flat=True)
+        ).exclude(user_id__in=house).values_list('user', flat=True)
         if not successful_users:
             return {'exercises_avg_seconds': 0, 'lessons_avg_seconds': 0,
                     'exams_avg_seconds': 0, 'chapters': []}
@@ -764,18 +961,15 @@ class ContentViewSet(VoteMixin, viewsets.ModelViewSet):
                     'exams_avg_seconds': 0, 'chapters': []}
         chapter_ct = ContentType.objects.get_for_model(Chapter)
         from datetime import timedelta as td
-        total_ex = td(); total_le = td(); total_ex2 = td(); count = 0
-        for user_id in successful_users:
-            for chapter in chapters:
-                ts = TaxonomyTimeSpent.objects.filter(
-                    user_id=user_id, taxonomy_type='chapter',
-                    content_type=chapter_ct, object_id=chapter.id
-                ).first()
-                if ts:
-                    total_ex += ts.exercise_time
-                    total_le += ts.lesson_time
-                    total_ex2 += ts.exam_time
-            count += 1
+        total_ex = td(); total_le = td(); total_ex2 = td()
+        successful_users = list(successful_users)
+        count = len(successful_users)
+        # Une requête pour tous les élèves et chapitres (une ligne par élève et chapitre : unique_together).
+        for ts in TaxonomyTimeSpent.objects.filter(user_id__in=successful_users, taxonomy_type='chapter',
+                                                   content_type=chapter_ct, object_id__in=[c.id for c in chapters]):
+            total_ex += ts.exercise_time
+            total_le += ts.lesson_time
+            total_ex2 += ts.exam_time
         if count > 0:
             return {
                 'exercises_avg_seconds': int(total_ex.total_seconds() / count),
@@ -795,13 +989,18 @@ class ContentViewSet(VoteMixin, viewsets.ModelViewSet):
         if cached:
             return Response(cached)
         try:
+            from apps.users.admin_dashboard import _house_filter
             ct = ContentType.objects.get_for_model(Content)
-            completions = Complete.objects.filter(content_type=ct, object_id=item.id)
+            # Les chiffres de la classe : vrais élèves seulement (admins, compte éditorial et comptes de test
+            # exclus) ; ce qui concerne l'utilisateur qui regarde reste à lui, même s'il est un compte maison.
+            house = list(User.objects.filter(_house_filter()).values_list('id', flat=True))
+            completions = Complete.objects.filter(content_type=ct, object_id=item.id).exclude(user_id__in=house)
             success_count = completions.filter(status='success').count()
             review_count = completions.filter(status='review').count()
             total_participants = completions.values('user').distinct().count()
             success_percentage = int(success_count / total_participants * 100) if total_participants > 0 else 0
-            sessions = TimeSession.objects.filter(content_type=ct, object_id=item.id)
+            all_sessions = TimeSession.objects.filter(content_type=ct, object_id=item.id)
+            sessions = all_sessions.exclude(user_id__in=house)
             if sessions.exists():
                 total_secs = sum(int(s.session_duration.total_seconds()) for s in sessions)
                 average_time_seconds = int(total_secs / sessions.count())
@@ -813,25 +1012,26 @@ class ContentViewSet(VoteMixin, viewsets.ModelViewSet):
             if is_auth:
                 uc = Complete.objects.filter(user=request.user, content_type=ct, object_id=item.id).first()
                 user_completed = uc.status if uc else None
-                user_session = sessions.filter(user=request.user).order_by('-created_at').first()
+                user_session = all_sessions.filter(user=request.user).order_by('-created_at').first()
                 if user_session:
                     user_time_seconds = int(user_session.session_duration.total_seconds())
                     slower = sessions.filter(
                         session_duration__gt=user_session.session_duration
                     ).values('user').distinct().count()
                     user_time_percentile = int(slower / max(total_participants, 1) * 100)
-            solution_views = SolutionView.objects.filter(content_type=ct, object_id=item.id)
-            users_viewed_before_success = 0
-            for u in solution_views.values('user').distinct():
-                uid = u['user']
-                uv = solution_views.filter(user=uid).first()
-                uc = Complete.objects.filter(user=uid, content_type=ct, object_id=item.id, status='success').first()
-                if uv and uc and uv.viewed_at <= uc.created_at:
-                    users_viewed_before_success += 1
-            user_viewed_solution = is_auth and solution_views.filter(user=request.user).exists()
-            solution_matches = SolutionMatch.objects.filter(content_type=ct, object_id=item.id)
-            user_solution_matched = is_auth and solution_matches.filter(user=request.user).exists()
-            study_stats = self._get_successful_users_study_stats(item, ct)
+            all_solution_views = SolutionView.objects.filter(content_type=ct, object_id=item.id)
+            solution_views = all_solution_views.exclude(user_id__in=house)
+            # Solution regardée avant son « Réussi » : deux requêtes (avant, deux par élève).
+            viewed = dict(solution_views.values_list('user_id', 'viewed_at'))  # une vue par élève (unique)
+            succeeded = dict(Complete.objects.filter(content_type=ct, object_id=str(item.id), status='success',
+                                                     user_id__in=list(viewed)).values_list('user_id', 'created_at'))
+            users_viewed_before_success = sum(1 for uid, at in viewed.items()
+                                              if uid in succeeded and at <= succeeded[uid])
+            user_viewed_solution = is_auth and all_solution_views.filter(user=request.user).exists()
+            all_solution_matches = SolutionMatch.objects.filter(content_type=ct, object_id=item.id)
+            solution_matches = all_solution_matches.exclude(user_id__in=house)
+            user_solution_matched = is_auth and all_solution_matches.filter(user=request.user).exists()
+            study_stats = self._get_successful_users_study_stats(item, ct, house)
 
             # ── Histogramme des temps (8 classes, bornées au p95 pour lisser les outliers)
             durations = sorted(int(s.session_duration.total_seconds()) for s in sessions)
@@ -852,21 +1052,21 @@ class ContentViewSet(VoteMixin, viewsets.ModelViewSet):
 
             # ── Réussite par question (auto-évaluations QuestionProgress)
             # Ordre + libellés lisibles depuis la structure ; agrégats depuis QuestionProgress.
-            from apps.interactions.models import QuestionProgress
-            qp = QuestionProgress.objects.filter(content_type=ct, object_id=item.id)
+            all_qp = QuestionProgress.objects.filter(content_type=ct, object_id=item.id)
+            qp = all_qp.exclude(user_id__in=house)
             questions_meta = list(_walk_questions_meta(item.json_content or {}))
             path_label = {path: label for path, label, _ in questions_meta}
             path_skills = {path: (meta.get('skills') or []) for path, _, meta in questions_meta}
 
             by_path = {}
-            for row in qp.values('question_path', 'status'):
+            for row in qp.exclude(status='').values('question_path', 'status'):
                 b = by_path.setdefault(row['question_path'], {'total': 0, 'success': 0})
                 b['total'] += 1
                 if row['status'] == 'success':
                     b['success'] += 1
             user_statuses = {}
             if is_auth:
-                user_statuses = dict(qp.filter(user=request.user).values_list('question_path', 'status'))
+                user_statuses = dict(all_qp.filter(user=request.user).values_list('question_path', 'status'))
 
             # Suivre l'ordre de la structure ; garder les orphelins (paths sans structure) à la fin.
             ordered_paths = [p for p, _, _ in questions_meta] + [p for p in by_path if p not in path_label]
@@ -1110,16 +1310,22 @@ def parse_pdf_view(request):
 
 @api_view(['GET'])
 def get_content_recommendations(request, content_id):
-    """« Pour continuer » sous un contenu : les plus semblables (apps/things/similar.py), avec la raison."""
+    """« Pour continuer » sous un contenu : les plus semblables (apps/things/similar.py), avec la raison.
+    ?apres=review|success : « Exercice suivant » après le résultat (pas plus dur après un échec, et le cours
+    du chapitre d'abord ; pas plus facile après une réussite)."""
     from apps.things.similar import similar
     if not Content.objects.filter(id=content_id).exists():
         return Response({'error': 'Not found'}, status=404)
-    picks = similar(int(content_id), getattr(request, 'user', None))
+    apres = request.query_params.get('apres')
+    picks = similar(int(content_id), getattr(request, 'user', None), apres=apres if apres in ('review', 'success') else None)
     loaded = with_list_relations(Content.objects.all(), getattr(request, 'user', None))
-    cards = serialize_content_list(in_order(loaded, [cid for cid, _, _ in picks]), request)
+    items = in_order(loaded, [cid for cid, _, _ in picks])
+    cards = serialize_content_list(items, request)
     reasons = {cid: reason for cid, _, reason in picks}
+    felt = _felt(items)
     for card in cards:
         card['reason'] = reasons.get(card['id'], '')
+        card['felt'] = felt.get(card['id'])
         card.pop('json_content', None)  # la carte n'affiche pas l'énoncé : réponse 20 fois plus légère
         card.pop('structure', None)
     return Response({'items': cards})

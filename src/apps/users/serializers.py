@@ -1,6 +1,7 @@
 # users/serializers.py - Mise à jour pour inclure les nouveaux champs
 from rest_framework import serializers
 from django.contrib.auth.models import User
+from django.utils import timezone
 from .models import UserProfile, SubjectGrade
 from apps.caracteristics.models import ClassLevel, Subject
 
@@ -173,6 +174,15 @@ class UserSerializer(serializers.ModelSerializer):
         request = self.context.get('request')
         viewer = getattr(request, 'user', None) if request else None
         is_self = bool(viewer and getattr(viewer, 'is_authenticated', False) and viewer.id == instance.id)
+        # Réponse de connexion (mot de passe, Google, lien de confirmation) : la requête est encore
+        # anonyme, mais la vue sait que c'est le compte de celui qui vient de se connecter.
+        if self.parent is None and self.context.get('is_owner') is True:
+            is_self = True
+        if is_self and self.parent is None:
+            # Réglages du compte : « Définir un mot de passe », « Connecté avec Google ». Pas pour
+            # l'auteur imbriqué dans une liste (une requête de plus par ligne, inutile).
+            data['has_password'] = instance.has_usable_password()
+            data['google_linked'] = instance.google_accounts.exists()
         if is_self or (viewer and getattr(viewer, 'is_staff', False)):
             return data
         profile = getattr(instance, 'profile', None)
@@ -202,6 +212,10 @@ class UserSerializer(serializers.ModelSerializer):
         # Update profile data
         if profile_data:
             profile = instance.profile
+
+            # Première fin de l'onboarding : datée pour l'entonnoir du Pilotage.
+            if profile_data.get('onboarding_completed') is True and not profile.onboarding_completed_at:
+                profile.onboarding_completed_at = timezone.now()
 
             # Extract special fields that need special handling
             subject_grades_data = profile_data.pop('subject_grades', None)

@@ -9,6 +9,8 @@ chiffres enregistrés :
 - points forts / à renforcer = notions des questions (≥ 3 évaluées) et chapitres du Skill IQ ;
 - évolution = questions réussies et exercices réussis cumulés depuis le début, notes d'examen ;
 - temps d'étude = journal jour par jour (StudyTimeDay) et objectif quotidien du profil.
+Chaque chapitre porte `hub_url` : sa page d'exercices au niveau de l'élève (/exercises/niveau/2eme-bac-sm/
+limites-et-continuite), où mène « S'entraîner » ; None si le chapitre n'est pas de son niveau.
 """
 from bisect import bisect_left
 from collections import Counter, defaultdict
@@ -22,6 +24,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from apps.caracteristics.hubs import hub_url
 from apps.caracteristics.models import Chapter
 from apps.caracteristics.notions import NOTIONS, TRANSVERSAL, notion_label
 from apps.interactions.models import Complete, QuestionProgress, StudyTimeDay
@@ -142,6 +145,9 @@ def _chapter_entries(chapter_list, chap, quizzes, level):
         **({'content__class_levels': level} if level else {})).values_list('chapter_id', flat=True))
     quiz_ready = set(SkillQuestion.objects.filter(is_active=True).values('chapter_id').annotate(n=Count('id'))
                      .filter(n__gt=0).values_list('chapter_id', flat=True))
+    # Page du chapitre au niveau de l'élève : seulement si le chapitre est de son niveau (sinon 404).
+    in_level = set(Chapter.objects.filter(class_levels=level, id__in=[c.id for c in chapter_list])
+                   .values_list('id', flat=True)) if level else set()
     chapters = []
     for ch in chapter_list:
         row = chap.get(ch.id)
@@ -168,6 +174,7 @@ def _chapter_entries(chapter_list, chap, quizzes, level):
             'review': row['review'] if row else [],
             'notions': {'best': best, 'worst': worst},
             'last_at': row['last'].isoformat() if row and row['last'] else None,
+            'hub_url': hub_url('exercises', level, ch) if ch.id in in_level else None,
         })
     return chapters
 
@@ -204,7 +211,8 @@ def progression(request):
         ch = by_id.get(chapter_id)
         return {'label': label, 'pct': pct, 'chapter_id': chapter_id if ch else None,
                 'chapter': ch['name'] if ch else None, 'source': source, 'questions': questions,
-                'url': f'/exercises?chapters={chapter_id}' if chapter_id else '/exercises'}
+                'url': f'/exercises?chapters={chapter_id}' if chapter_id else '/exercises',
+                'hub_url': ch['hub_url'] if ch else None}
     rated = []
     for slug, row in notions.items():
         if row['n'] >= MIN_QUESTIONS:

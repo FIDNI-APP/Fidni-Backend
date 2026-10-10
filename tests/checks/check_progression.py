@@ -1,5 +1,5 @@
 """Ma progression (apps/users/progression.py) : carte du programme, points forts / à renforcer, Skill IQ,
-évolution depuis le début, temps d'étude."""
+évolution depuis le début, temps d'étude, page d'exercices de chaque chapitre (hub_url)."""
 import os
 import runpy
 import sys
@@ -110,6 +110,10 @@ check('détail : notions les mieux et les moins réussies', L['notions']['best']
       and D['notions']['worst'][0]['pct'] < 60, (L['notions'], D['notions']))
 check('Skill IQ seul : compte aussi', A['status'] == 'weak' and A['mastery'] == 30 and A['self_pct'] is None, A)
 check('pas commencé, quiz disponible', V['status'] == 'todo' and V['quiz_ready'] and V['mastery'] is None, V)
+from apps.caracteristics.hubs import slug  # noqa: E402
+check('« S’entraîner » : page du chapitre à son niveau', L['hub_url'] == '/exercises/niveau/2eme-bac-sm/limites-et-continuite'
+      and D['hub_url'] == f'/exercises/niveau/2eme-bac-sm/{slug(der.name)}'
+      and all(x['hub_url'] for x in d['chapters']), (L['hub_url'], D['hub_url']))
 s = d['summary']['chapters']
 check('résumé des états', s['mastered'] == 1 and s['weak'] == 2 and s['todo'] == s['total'] - 3, s)
 
@@ -118,7 +122,8 @@ check('points forts : la notion la mieux réussie', d['strengths'] and d['streng
 weak = {x['label']: x for x in d['weaknesses']}
 check('à renforcer : notion ratée et chapitre du Skill IQ', any(x['source'] == 'notion' for x in d['weaknesses'])
       and autre.name in weak and weak[autre.name]['source'] == 'skilliq'
-      and weak[autre.name]['url'] == f'/exercises?chapters={autre.id}', d['weaknesses'])
+      and weak[autre.name]['url'] == f'/exercises?chapters={autre.id}'
+      and weak[autre.name]['hub_url'] == f'/exercises/niveau/2eme-bac-sm/{slug(autre.name)}', d['weaknesses'])
 
 pts = d['evolution']['points']
 check('évolution : cumuls qui ne baissent jamais, jusqu\'au total', pts and all(
@@ -164,6 +169,10 @@ c.force_authenticate(nouveau)
 r = c.get('/api/stats/progression/')
 check('nouvel élève : rien à montrer, pas d\'erreur', r.status_code == 200 and r.data['since'] is None
       and r.data['evolution']['points'] == [] and r.data['time']['total_seconds'] == 0, r.status_code)
+# Sans niveau : pas de page de niveau où l'envoyer (l'ancien lien sert alors).
+SkillAssessment.objects.create(user=nouveau, chapter=lim, score=5, max_score=10)
+r = c.get('/api/stats/progression/')
+check('sans niveau : pas de hub_url', [x['hub_url'] for x in r.data['chapters']] == [None], r.data['chapters'])
 
 print(f'\n{sum(results)}/{len(results)} vérifications réussies')
 sys.exit(0 if all(results) else 1)

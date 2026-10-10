@@ -12,6 +12,19 @@ import logging
 logger = logging.getLogger('django')
 
 
+def expected_minutes(structure):
+    """Durée attendue « ≈ N min » : somme des meta.expected_seconds des questions finales, None si aucune."""
+    seconds = None
+    for block in (structure or {}).get('blocks') or []:
+        if block.get('type') != 'question':
+            continue
+        for q in (block.get('subQuestions') or [block]):
+            value = (q.get('meta') or {}).get('expected_seconds')
+            if isinstance(value, (int, float)) and not isinstance(value, bool) and value > 0:
+                seconds = (seconds or 0) + value
+    return max(1, round(seconds / 60)) if seconds else None
+
+
 # =====================
 # SOLUTION
 # =====================
@@ -124,6 +137,7 @@ class ContentSerializer(serializers.ModelSerializer):
         data['total_points'] = get_total_points(json_content)
         data['item_count'] = get_item_count(json_content)
         data['section_count'] = get_section_count(json_content)
+        data['expected_minutes'] = expected_minutes(json_content)
         return data
 
     def get_comments(self, obj):
@@ -215,6 +229,9 @@ class ContentListSerializer(serializers.ModelSerializer):
         data['json_content'] = json_content
         data['total_points'] = get_total_points(json_content)
         data['item_count'] = get_item_count(json_content)
+        # Parties d'un examen : lues par la carte, dont la structure est tronquée en mode Cartes (view=card).
+        data['section_count'] = get_section_count(json_content)
+        data['expected_minutes'] = expected_minutes(json_content)
         return data
 
     def get_chapters(self, obj):

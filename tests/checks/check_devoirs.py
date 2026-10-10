@@ -112,6 +112,8 @@ check('chapitres : le plus fragile d’abord, le maîtrisé en dernier', order[0
 by_id = {x['id']: x for x in p['chapters']}
 check('même maîtrise que Ma progression', by_id[lim.id]['mastery'] == 100 and by_id[der.id]['status'] == 'weak'
       and by_id[suites.id]['status'] == 'todo' and by_id[suites.id]['quiz_ready'], [(x['name'], x['status'], x['mastery']) for x in p['chapters']])
+check('« S’entraîner » : page du chapitre à son niveau', by_id[lim.id]['hub_url'] == '/exercises/niveau/2eme-bac-sm/limites-et-continuite'
+      and all(x['hub_url'] for x in p['chapters']), [x['hub_url'] for x in p['chapters']])
 check('prêt à : moyenne des chapitres évalués', p['readiness'] == round((100 + by_id[der.id]['mastery']) / 2), p['readiness'])
 ex_ids = [x['id'] for x in p['exercises']]
 check('exercices pour toi : ceux des chapitres du DS, jamais déjà réussis', lim1.id not in ex_ids and hors.id not in ex_ids
@@ -176,6 +178,13 @@ check('note > 20 : refusée', c.patch(f'/api/devoirs/{past.data["id"]}/', {'grad
 r = c.patch(f'/api/devoirs/{test_id}/', {'chapter_ids': [lim.id, der.id]}, format='json')
 t = UpcomingTest.objects.get(id=test_id)
 check('chapitres modifiés : DS blanc à retirer', r.status_code == 200 and t.mock_ids == [] and t.mock_done_at is None, (t.mock_ids, t.mock_done_at))
+# Chapitre d'un autre niveau (DS de rattrapage, par ex.) : pas de page à son niveau, l'ancien lien sert.
+tcs_ch = Chapter.objects.filter(class_levels__name='Tronc commun Sciences', subject=maths).exclude(class_levels=sm).first()
+r = c.post('/api/devoirs/', {'subject_id': maths.id, 'date': (today + timedelta(days=8)).isoformat(),
+                             'chapter_ids': [tcs_ch.id, lim.id]}, format='json')
+hubs = {x['id']: x['hub_url'] for x in c.get(f'/api/devoirs/{r.data["id"]}/plan/').data['chapters']}
+check('chapitre hors de son niveau : pas de hub_url', hubs == {tcs_ch.id: None, lim.id: by_id[lim.id]['hub_url']}, hubs)
+c.delete(f'/api/devoirs/{r.data["id"]}/')
 c.force_authenticate(autre_eleve)
 check('un autre élève ne voit pas ses DS', c.get('/api/devoirs/').data == [] and c.get(f'/api/devoirs/{test_id}/plan/').status_code == 404)
 check('rappel : rien pour un élève sans DS', c.get('/api/devoirs/prochain/').data == {'test': None})

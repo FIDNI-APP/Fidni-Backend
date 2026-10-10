@@ -37,7 +37,7 @@ from apps.caracteristics.views import (
     difficulty_counts, school_search,
 )
 from apps.authentication.views import (
-    LogoutView, LoginView, RegisterView,
+    LogoutView, LoginView, GoogleLoginView, RegisterView,
     VerifyEmailView, ResendVerificationView,
     PasswordResetRequestView, PasswordResetConfirmView,
     ThrottledTokenObtainPairView, ThrottledTokenRefreshView,
@@ -118,6 +118,8 @@ urlpatterns = [
     
     # Authentication
     path('api/auth/login/', LoginView.as_view(), name='login'),
+    # Connexion (ou inscription) avec Google : jeton d'identité vérifié ici (apps/authentication/google.py).
+    path('api/auth/google/', GoogleLoginView.as_view(), name='google-login'),
     path('api/auth/register/', RegisterView.as_view(), name='register'),
     path('api/auth/logout/', LogoutView.as_view(), name='logout'),
     path('api/auth/verify-email/', VerifyEmailView.as_view(), name='verify-email'),

@@ -12,9 +12,10 @@ from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.core.validators import validate_email
 from django.db import transaction
+from django.utils import timezone
 
 from .serializers import UserSerializer, UserSettingsSerializer
-from .models import SubjectGrade, ViewHistory, get_random_avatar
+from .models import SubjectGrade, UserProfile, ViewHistory, get_random_avatar
 from apps.things.models import Content
 from apps.caracteristics.models import Subject, ClassLevel
 from apps.interactions.models import Complete, Save
@@ -156,6 +157,8 @@ class AvatarUploadView(APIView):
 
 # ============ ONBOARDING ============
 
+ONBOARDING_LAST_STEP = 5  # posé à la fin de l'onboarding ; le PATCH accepte 0 à 5
+
 class OnboardingView(APIView):
     """Handle onboarding flow"""
     permission_classes = [IsAuthenticated]
@@ -202,12 +205,21 @@ class OnboardingView(APIView):
         profile = request.user.profile
         data = request.data
         
-        # Update step tracker
-        if 'current_step' in data and hasattr(profile, 'onboarding_step'):
-            profile.onboarding_step = data['current_step']
-        
+        # Étape atteinte (à chaque « Continuer ») : l'onboarding reprend là, et le Pilotage voit où l'on s'arrête.
+        if 'current_step' in data:
+            step = data['current_step']
+            # Chiffres ASCII seulement : « ² » passe isdigit() mais fait planter int().
+            if (isinstance(step, bool) or not str(step).isascii() or not str(step).isdigit()
+                    or int(step) > ONBOARDING_LAST_STEP):
+                return Response({'error': 'Étape invalide.', 'field': 'current_step'},
+                                status=status.HTTP_400_BAD_REQUEST)
+            profile.onboarding_step = int(step)
+
         # Update basic fields
         if 'user_type' in data:
+            if data['user_type'] not in [code for code, _ in UserProfile.USER_TYPE_CHOICES]:
+                return Response({'error': 'Type de compte invalide.', 'field': 'user_type'},
+                                status=status.HTTP_400_BAD_REQUEST)
             profile.user_type = data['user_type']
         
         if 'class_level' in data and data['class_level']:
@@ -321,10 +333,14 @@ class OnboardingView(APIView):
 
                 profile.save()
 
-            # Mark onboarding as completed
+            # Mark onboarding as completed (la date de la première fin sert à l'entonnoir du Pilotage)
             profile.onboarding_completed = True
-            profile.onboarding_step = 5
-            profile.save(update_fields=['onboarding_completed', 'onboarding_step'])
+            profile.onboarding_step = ONBOARDING_LAST_STEP
+            fields = ['onboarding_completed', 'onboarding_step']
+            if profile.onboarding_completed_at is None:
+                profile.onboarding_completed_at = timezone.now()
+                fields.append('onboarding_completed_at')
+            profile.save(update_fields=fields)
 
             return Response({
                 'message': 'Onboarding completed successfully',
@@ -342,11 +358,20 @@ class OnboardingView(APIView):
 
 # ============ USER PROFILE VIEWSET ============
 
+def _self_or_admin(request, user):
+    """Le compte lui-même ou un administrateur (un visiteur a request.user = None : pas d'erreur 500)."""
+    viewer = request.user
+    return bool(getattr(viewer, 'is_authenticated', False) and (viewer.id == user.id or viewer.is_superuser))
+
+
 class UserProfileViewSet(viewsets.ModelViewSet):
     # « Compte supprimé » n'a pas de page de profil.
     queryset = User.objects.exclude(username=DELETED_USERNAME)
     serializer_class = UserSerializer
     lookup_field = 'username'
+    # USERNAME_RE autorise le point à l'inscription (« amine.b ») : le motif par défaut du routeur
+    # ([^/.]+) renvoyait 404 sur ces profils.
+    lookup_value_regex = '[^/]+'
     # Pas de liste, de création ni de suppression par cette route : elles étaient ouvertes
     # à tous (n'importe qui pouvait lister les comptes ou en supprimer un). Un profil se
     # consulte par son nom et ne se modifie que par son propriétaire.
@@ -388,7 +413,7 @@ class UserProfileViewSet(viewsets.ModelViewSet):
         """Get the user's onboarding status"""
         user = self.get_object()
         
-        if user.id != request.user.id and not request.user.is_superuser:
+        if not _self_or_admin(request, user):
             return Response(
                 {'error': 'You cannot check other users\' onboarding status'},
                 status=status.HTTP_403_FORBIDDEN
@@ -403,9 +428,10 @@ class UserProfileViewSet(viewsets.ModelViewSet):
     def stats(self, request, username=None):
         user = self.get_object()
         
-        is_owner = request.user.is_authenticated and request.user.id == user.id
-        
-        if not is_owner and not user.profile.display_stats and not request.user.is_superuser:
+        is_owner = bool(getattr(request.user, 'is_authenticated', False) and request.user.id == user.id)
+        is_admin = bool(getattr(request.user, 'is_superuser', False))
+
+        if not is_owner and not user.profile.display_stats and not is_admin:
             return Response(
                 {'error': 'This user\'s statistics are private'},
                 status=status.HTTP_403_FORBIDDEN
@@ -418,7 +444,7 @@ class UserProfileViewSet(viewsets.ModelViewSet):
             'learning_stats': {}
         }
         
-        if is_owner or request.user.is_superuser:
+        if is_owner or is_admin:
             response_data['learning_stats'] = user.profile.get_learning_stats()
         
         return Response(response_data)
@@ -435,21 +461,21 @@ class UserProfileViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['get'])
     def saved_exercises(self, request, username=None):
         user = self.get_object()
-        if user.id != request.user.id and not request.user.is_superuser:
+        if not _self_or_admin(request, user):
             return Response({'error': "You cannot view other users' saved exercises"}, status=status.HTTP_403_FORBIDDEN)
         return self._saved_by_type(user, 'exercise', request)
 
     @action(detail=True, methods=['get'])
     def saved_lessons(self, request, username=None):
         user = self.get_object()
-        if user.id != request.user.id and not request.user.is_superuser:
+        if not _self_or_admin(request, user):
             return Response({'error': "You cannot view other users' saved lessons"}, status=status.HTTP_403_FORBIDDEN)
         return self._saved_by_type(user, 'lesson', request)
 
     @action(detail=True, methods=['get'])
     def saved_exams(self, request, username=None):
         user = self.get_object()
-        if user.id != request.user.id and not request.user.is_superuser:
+        if not _self_or_admin(request, user):
             return Response({'error': "You cannot view other users' saved exams"}, status=status.HTTP_403_FORBIDDEN)
         return self._saved_by_type(user, 'exam', request)
 
@@ -468,7 +494,7 @@ class UserProfileViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['get'])
     def history(self, request, username=None):
         user = self.get_object()
-        if user.id != request.user.id and not request.user.is_superuser:
+        if not _self_or_admin(request, user):
             return Response({'error': "You cannot view other users' history"}, status=status.HTTP_403_FORBIDDEN)
         history = ViewHistory.objects.filter(user=user).order_by('-viewed_at')
         return Response(ViewHistorySerializer(history, many=True, context={'request': request}).data)
@@ -476,14 +502,14 @@ class UserProfileViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['get'])
     def success_thing(self, request, username=None):
         user = self.get_object()
-        if user.id != request.user.id and not request.user.is_superuser:
+        if not _self_or_admin(request, user):
             return Response({'error': "You cannot view other users' progress"}, status=status.HTTP_403_FORBIDDEN)
         return self._completed_by_status(user, 'success', request)
 
     @action(detail=True, methods=['get'])
     def review_thing(self, request, username=None):
         user = self.get_object()
-        if user.id != request.user.id and not request.user.is_superuser:
+        if not _self_or_admin(request, user):
             return Response({'error': "You cannot view other users' progress"}, status=status.HTTP_403_FORBIDDEN)
         return self._completed_by_status(user, 'review', request)
 
@@ -733,16 +759,22 @@ class StudentInvitationsView(APIView):
 # ---------------------------------------------------------------------------
 
 class PasswordChangeView(APIView):
+    """Changer de mot de passe, ou en définir un (compte créé avec Google : pas de mot de passe actuel)."""
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
         current_password = request.data.get('current_password')
         new_password = request.data.get('new_password')
 
-        if not current_password or not new_password:
-            return Response({'error': 'Mot de passe actuel et nouveau mot de passe requis'}, status=status.HTTP_400_BAD_REQUEST)
-        if not request.user.check_password(current_password):
-            return Response({'error': 'Mot de passe actuel incorrect'}, status=status.HTTP_400_BAD_REQUEST)
+        if request.user.has_usable_password():
+            if not current_password or not new_password:
+                return Response({'error': 'Mot de passe actuel et nouveau mot de passe requis'}, status=status.HTTP_400_BAD_REQUEST)
+            if not request.user.check_password(current_password):
+                return Response({'error': 'Mot de passe actuel incorrect'}, status=status.HTTP_400_BAD_REQUEST)
+        elif not new_password:
+            return Response({'error': 'Nouveau mot de passe requis'}, status=status.HTTP_400_BAD_REQUEST)
+        if not isinstance(new_password, str):  # un nombre en JSON faisait planter le validateur
+            return Response({'error': 'Nouveau mot de passe invalide'}, status=status.HTTP_400_BAD_REQUEST)
         try:
             validate_password(new_password, user=request.user)
         except DjangoValidationError as e:
@@ -783,6 +815,10 @@ class UpdateUserInfoView(APIView):
             user.profile.save(update_fields=profile_fields)
 
         if (email := request.data.get('email')) is not None and str(email).strip().lower() != (user.email or '').lower():
+            # Compte créé avec Google : sans mot de passe, rien ne prouverait que c'est bien lui.
+            if not user.has_usable_password():
+                return Response({'error': 'Définis d’abord un mot de passe pour changer d’adresse e-mail.',
+                                 'code': 'set_password_first'}, status=status.HTTP_400_BAD_REQUEST)
             # Changer l'e-mail permet ensuite de réinitialiser le mot de passe : sans cette
             # vérification, une session laissée ouverte suffisait pour s'approprier le compte.
             if not user.check_password(request.data.get('current_password') or ''):
@@ -850,7 +886,8 @@ class UpdateMeView(APIView):
 # ---------------------------------------------------------------------------
 
 class DeleteAccountView(APIView):
-    """L'utilisateur supprime son propre compte (mot de passe exigé).
+    """L'utilisateur supprime son propre compte (mot de passe exigé s'il en a un : un compte créé
+    avec Google n'en a pas).
 
     Ses contributions publiques restent en ligne sous « Compte supprimé » ;
     tout le reste (profil, progression, favoris, cahiers, fichiers…) est effacé.
@@ -860,7 +897,7 @@ class DeleteAccountView(APIView):
 
     def post(self, request):
         user = request.user
-        if not user.check_password(request.data.get('password') or ''):
+        if user.has_usable_password() and not user.check_password(request.data.get('password') or ''):
             return Response({'error': 'Mot de passe incorrect.', 'code': 'password'},
                             status=status.HTTP_400_BAD_REQUEST)
         if user.is_superuser:

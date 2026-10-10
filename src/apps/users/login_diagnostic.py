@@ -4,10 +4,12 @@ GET /api/pilotage/connexion/?q=<e-mail ou nom d'utilisateur>
 
 Rassemble ce qui explique un échec de connexion, sans jamais montrer de mot de passe :
 - le ou les comptes qui portent cet e-mail / ce nom (la connexion prend le plus ancien si deux comptes
-  partagent la même adresse, à la casse près) et leur état (actif, e-mail confirmé, dernière connexion) ;
+  partagent la même adresse, à la casse près) et leur état (actif, e-mail confirmé, dernière connexion,
+  connexion avec Google) ;
 - le blocage temporaire après trop d'essais (LoginAccountThrottle : 15 essais par heure et par identifiant) ;
-- les requêtes d'authentification en échec (APILog : connexion, inscription, confirmation d'e-mail, mot de
-  passe oublié) qui contiennent l'identifiant ou viennent du compte, et les erreurs serveur du compte (ErrorLog).
+- les requêtes d'authentification en échec (APILog : connexion, connexion Google, inscription, confirmation
+  d'e-mail, mot de passe oublié) qui contiennent l'identifiant ou viennent du compte, et les erreurs serveur
+  du compte (ErrorLog).
 Les journaux sont conservés 180 jours (apps/users/legal.py) ; une connexion réussie n'y figure pas
 (seulement les réponses en erreur et les requêtes lentes) : elle se voit dans « dernière connexion ».
 """
@@ -22,15 +24,23 @@ from rest_framework.response import Response
 
 from apps.logging.models import APILog, ErrorLog
 from apps.users.admin_dashboard import IsSuperuser
+from apps.users.models import GoogleAccount
 from config.throttling import LoginAccountThrottle
 
 AUTH_PATHS = ('/api/auth/', '/api/token')
+GOOGLE_PATH = '/api/auth/google/'
 MAX_LOGS = 60
 # Codes renvoyés par les routes d'authentification → explication pour l'administrateur.
 CODE_HINT = {
     'invalid_credentials': 'Mot de passe incorrect, ou aucun compte avec cet identifiant.',
     'email_not_verified': 'Adresse e-mail pas encore confirmée : le lien de confirmation n’a pas été cliqué.',
     'account_disabled': 'Compte désactivé.',
+    'consent_required': 'Connexion Google, nouveau compte : les deux cases (conditions, accord parental) '
+                        'n’ont pas encore été cochées. Le compte n’existe qu’après.',
+    'invalid_token': 'Connexion Google refusée par le serveur : jeton expiré ou falsifié, Client ID différent '
+                     'de GOOGLE_CLIENT_ID, ou adresse non confirmée chez Google.',
+    'google_unavailable': 'Connexion Google : le serveur n’a pas pu joindre Google (réseau). Réessayer.',
+    'set_password_first': 'Compte créé avec Google : définir un mot de passe avant de changer d’adresse e-mail.',
 }
 
 
@@ -73,8 +83,10 @@ def _log_row(log):
     return {
         'at': log.timestamp.isoformat(), 'method': log.method, 'endpoint': log.endpoint,
         'status': log.status_code, 'ip': log.ip_address, 'user': log.user.username if log.user_id else None,
-        'identifier': request.get('identifier') or request.get('email') or request.get('username')
-        if isinstance(request, dict) else None,
+        # Connexion Google : pas d'identifiant dans la requête (jeton), l'adresse est dans la réponse.
+        'identifier': (request.get('identifier') or request.get('email') or request.get('username')
+                       if isinstance(request, dict) else None)
+        or (response.get('email') if isinstance(response, dict) else None),
         'code': code, 'message': str(message)[:300] if message else None, 'hint': CODE_HINT.get(code),
     }
 
@@ -86,11 +98,13 @@ def login_diagnostic(request):
     if len(q) < 3:
         return Response({'detail': 'Indique au moins 3 caractères (e-mail ou nom d’utilisateur).'}, status=400)
 
-    users = list(User.objects.filter(Q(email__iexact=q) | Q(username__iexact=q))
-                 .select_related('profile').order_by('id'))
+    # Aussi le compte lié à cette adresse Google, si elle diffère de l'adresse du compte.
+    users = list(User.objects.filter(Q(email__iexact=q) | Q(username__iexact=q) | Q(google_accounts__email__iexact=q))
+                 .select_related('profile').distinct().order_by('id'))
     # Celui que la connexion choisit : même règle que apps/authentication/views._find_user.
     chosen = (User.objects.filter(email__iexact=q) if '@' in q else User.objects.filter(username=q)).order_by('id').first()
 
+    google_ids = set(GoogleAccount.objects.filter(user__in=users).values_list('user_id', flat=True))
     accounts = []
     warnings = []
     for u in users:
@@ -103,6 +117,7 @@ def login_diagnostic(request):
             'has_password': u.has_usable_password(), 'date_joined': u.date_joined.isoformat(),
             'last_login': u.last_login.isoformat() if u.last_login else None,
             'used_for_login': chosen is not None and u.id == chosen.id,
+            'google': u.id in google_ids,
         })
         if not u.is_active and not verified:
             warnings.append(f'« {u.username} » : e-mail jamais confirmé, la connexion est refusée tant que le lien '
@@ -110,7 +125,13 @@ def login_diagnostic(request):
         elif not u.is_active:
             warnings.append(f'« {u.username} » : compte désactivé.')
         if not u.has_usable_password():
-            warnings.append(f'« {u.username} » : aucun mot de passe défini — passer par « Mot de passe oublié ».')
+            if u.id in google_ids:
+                warnings.append(f'« {u.username} » : se connecte avec Google (aucun mot de passe) ; peut définir '
+                                'un mot de passe via « Mot de passe oublié ».')
+            else:
+                # « Mot de passe oublié » n'envoie rien à un compte sans mot de passe ni Google.
+                warnings.append(f'« {u.username} » : aucun mot de passe et pas de connexion Google — « Mot de '
+                                'passe oublié » n’envoie rien ; en définir un depuis l’admin Django.')
     same_email = [u for u in users if u.email and u.email.lower() == q.lower()]
     if len(same_email) > 1:
         warnings.append(f'{len(same_email)} comptes partagent cette adresse : la connexion par e-mail prend le plus ancien '
@@ -134,6 +155,8 @@ def login_diagnostic(request):
     who = Q()
     for ident in identifiers:
         who |= Q(request_body__icontains=json.dumps(ident, ensure_ascii=False)[1:-1])
+        # Connexion Google refusée : l'adresse n'apparaît que dans la réponse (consentement demandé).
+        who |= Q(endpoint__startswith=GOOGLE_PATH, response_body__icontains=json.dumps(ident, ensure_ascii=False)[1:-1])
     if users:
         who |= Q(user_id__in=[u.id for u in users])
     logs = APILog.objects.filter(path_q).filter(who).select_related('user').order_by('-timestamp')[:MAX_LOGS]

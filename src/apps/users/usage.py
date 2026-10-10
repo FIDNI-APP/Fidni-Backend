@@ -107,14 +107,15 @@ def record(request):
 
     kind = request.data.get('kind')
     name = str(request.data.get('name') or '')
+    # fullmatch : « $ » seul laisserait passer un saut de ligne final, stocké tel quel dans le nom.
     if kind == UsageDaily.KIND_PAGE:
-        if not PAGE_RE.match(name):
+        if not PAGE_RE.fullmatch(name):
             return Response({'counted': False}, status=400)
     elif kind == UsageDaily.KIND_ACTION:
         if name not in ACTIONS:
             return Response({'counted': False}, status=400)
     elif kind == UsageDaily.KIND_FILTER:
-        if not FILTER_RE.match(name):
+        if not FILTER_RE.fullmatch(name):
             return Response({'counted': False}, status=400)
     else:
         return Response({'counted': False}, status=400)
