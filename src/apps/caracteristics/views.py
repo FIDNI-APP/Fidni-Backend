@@ -270,6 +270,12 @@ def difficulty_counts(request):
     is_national = (request.query_params.get('is_national_exam') or '').lower()
     if is_national in ('true', 'false'):
         qs = qs.filter(is_national_exam=is_national == 'true')
+    # Dossier d'une année du Bac national (« aucune » : sujets sans année), comme la liste.
+    year = request.query_params.get('national_year') or ''
+    if year == 'aucune':
+        qs = qs.filter(national_year__isnull=True)
+    elif year.isdigit():
+        qs = qs.filter(national_year=int(year))
 
     counts = qs.values('difficulty').annotate(count=Count('id', distinct=True))
     result = {item['difficulty']: item['count'] for item in counts if item['difficulty']}

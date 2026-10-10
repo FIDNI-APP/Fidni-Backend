@@ -58,6 +58,8 @@ ACTIONS = {
     'signaler-ouvert',    # fenêtre « Signaler une erreur » ouverte (envoyée ou non)
     'auth-ouverte',       # fenêtre de connexion / inscription ouverte
     'connexion-google',   # bouton « Continuer avec Google » utilisé
+    # Dossiers des listes (10/10/2026) : Maths › niveau › chapitre, Bac national par année.
+    'dossier-niveau', 'dossier-chapitre', 'dossier-annee',
     # Filtres des listes (exercices, examens, leçons) : un filtre ajouté, le tri, « Tout effacer ».
     'filtre-niveau', 'filtre-matiere', 'filtre-sous-domaine', 'filtre-chapitre', 'filtre-theoreme',
     'filtre-difficulte', 'filtre-statut', 'filtre-national', 'filtre-date', 'filtre-effacer', 'tri',
