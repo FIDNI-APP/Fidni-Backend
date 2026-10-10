@@ -5,7 +5,11 @@ Uniquement des chiffres enregistrés (aucune estimation) :
   enregistrées, quiz Skill IQ. Le temps d'étude automatique n'a pas d'historique par jour (une ligne
   cumulée par contenu) : il n'entre donc pas dans le calendrier ;
 - maîtrise = part des questions auto-évaluées « réussi » ;
-- notions = étiquettes des questions (référentiel apps/caracteristics/notions.py).
+- notions = étiquettes des questions (référentiel apps/caracteristics/notions.py), chacune avec son
+  chapitre (`chapter_id`, pour ouvrir « Ma progression » sur ce chapitre) ;
+- à revoir = contenus marqués « à revoir » depuis au moins 2 jours (le refaire tout de suite n'apprend
+  rien), du plus ancien au plus récent, avec `days_ago` (« raté il y a 5 j ») ;
+- `level_hub_url` = page de niveau des exercices de l'élève (/exercises/niveau/2eme-bac-sm).
 """
 from collections import Counter, defaultdict
 from datetime import timedelta
@@ -16,6 +20,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from apps.caracteristics.hubs import hub_url
 from apps.caracteristics.models import Chapter
 from apps.caracteristics.notions import notion_label
 from apps.interactions.models import Complete, QuestionProgress, TimeSession
@@ -25,6 +30,7 @@ from apps.things.question_index import question_index
 
 CALENDAR_DAYS = 7 * 52   # une année scolaire, en semaines entières
 TYPE_PATH = {'exercise': 'exercises', 'exam': 'exams', 'lesson': 'lessons'}
+REVIEW_AFTER_DAYS = 2    # « À revoir » proposé à nouveau après 2 jours
 
 
 def _pct(part, whole):
@@ -126,12 +132,12 @@ def dashboard_overview(request):
                             last_at=max(r['assessed_at'] for r in rows).isoformat()))
     resume.sort(key=lambda x: x['last_at'], reverse=True)
 
-    # ── À revoir : contenus marqués « échoué / à revoir »
+    # ── À revoir : marqués « à revoir » il y a au moins 2 jours, ce qui attend depuis le plus longtemps d'abord
     review = []
-    for r in sorted(completes, key=lambda x: x['updated_at'], reverse=True):
+    for r in sorted(completes, key=lambda x: x['updated_at']):
         cid = int(r['object_id']) if str(r['object_id']).isdigit() else None
-        if r['status'] == 'review' and cid in contents:
-            review.append(brief(contents[cid]))
+        if r['status'] == 'review' and cid in contents and now - r['updated_at'] >= timedelta(days=REVIEW_AFTER_DAYS):
+            review.append(brief(contents[cid], days_ago=(today - timezone.localtime(r['updated_at']).date()).days))
 
     # ── Maîtrise par chapitre (auto-évaluations) + Skill IQ
     chap_rows = defaultdict(list)
@@ -151,18 +157,33 @@ def dashboard_overview(request):
             'contents': Content.objects.filter(chapters=ch, **({'class_levels': level} if level else {})).count(),
         })
 
-    # ── Notions à retravailler (au moins 2 questions évaluées, moins de 60 % réussies)
-    notion_stats = defaultdict(lambda: [0, 0])
+    # ── Notions à retravailler (au moins 2 questions évaluées, moins de 60 % réussies), avec le chapitre
+    # où il les a le plus travaillées (celui de la notion parmi ceux du contenu, comme Ma progression)
+    # et qui est dans son programme : le lien ouvre ce chapitre dans Ma progression.
+    from apps.users.progression import _question_chapters  # progression importe ce module
+    chapters_of = {cid: [(ch.id, ch.name) for ch in c.chapters.all()] for cid, c in contents.items()}
+    programme = {c['id'] for c in chapters}
+    notion_stats = defaultdict(lambda: [0, 0, Counter()])
     for r in qp:
-        for slug in skills_of.get(r['object_id'], {}).get(r['question_path'], []):
-            notion_stats[slug][0] += 1
-            notion_stats[slug][1] += r['status'] == 'success'
-    weak = sorted(({'slug': s, 'label': notion_label(s), 'assessed': n, 'mastery_pct': _pct(ok, n)}
-                   for s, (n, ok) in notion_stats.items() if n >= 2 and _pct(ok, n) < 60),
+        skills = skills_of.get(r['object_id'], {}).get(r['question_path'], [])
+        mine = _question_chapters(chapters_of.get(r['object_id'], []), skills) if skills else []
+        for slug in skills:
+            row = notion_stats[slug]
+            row[0] += 1
+            row[1] += r['status'] == 'success'
+            row[2].update(mine)
+
+    def notion_chapter(counter):
+        return next((ch for ch, _ in counter.most_common() if ch in programme), None)
+
+    weak = sorted(({'slug': s, 'label': notion_label(s), 'assessed': n, 'mastery_pct': _pct(ok, n),
+                    'chapter_id': notion_chapter(where)}
+                   for s, (n, ok, where) in notion_stats.items() if n >= 2 and _pct(ok, n) < 60),
                   key=lambda x: (x['mastery_pct'], -x['assessed']))
 
     return Response({
         'level': {'id': level.id, 'name': level.name} if level else None,
+        'level_hub_url': hub_url('exercises', level) if level else None,
         'streak': {'current': current_streak, 'best': best_streak},
         'calendar': calendar,
         'week': week_stats(week_start, now),

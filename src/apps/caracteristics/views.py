@@ -266,6 +266,10 @@ def difficulty_counts(request):
         qs = qs.filter(chapters__id__in=chapter_ids)
     if theorem_ids:
         qs = qs.filter(theorems__id__in=theorem_ids)
+    # « Examens nationaux » / « Devoirs » : mêmes compteurs que la liste affichée (avant, les deux s'additionnaient).
+    is_national = (request.query_params.get('is_national_exam') or '').lower()
+    if is_national in ('true', 'false'):
+        qs = qs.filter(is_national_exam=is_national == 'true')
 
     counts = qs.values('difficulty').annotate(count=Count('id', distinct=True))
     result = {item['difficulty']: item['count'] for item in counts if item['difficulty']}

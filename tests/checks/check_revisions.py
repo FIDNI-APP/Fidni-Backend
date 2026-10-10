@@ -1,4 +1,5 @@
-"""Listes de révision : étiquettes (niveau, matière, chapitres), ajout rapide « À revoir », suggestions."""
+"""Listes de révision : étiquettes (niveau, matière, chapitres), ajout rapide « À revoir » (un ou plusieurs
+contenus), suggestions, statut de chaque élément (pastilles)."""
 import os
 import sys
 import tempfile
@@ -23,7 +24,7 @@ from django.contrib.auth.models import User  # noqa: E402
 from django.contrib.contenttypes.models import ContentType  # noqa: E402
 from rest_framework.test import APIClient  # noqa: E402
 from apps.caracteristics.models import ClassLevel, Subject, Chapter  # noqa: E402
-from apps.interactions.models import Complete, QuestionProgress, RevisionList  # noqa: E402
+from apps.interactions.models import Complete, QuestionProgress, RevisionList, RevisionListItem  # noqa: E402
 from apps.things.models import Content  # noqa: E402
 
 settings.ALLOWED_HOSTS = ['*']
@@ -109,6 +110,25 @@ check('liste ouverte : carte complète avec l’énoncé', r.status_code == 200 
       and 'json_content' in item['content_object'] and item['content_type_name'] == 'exercise', r.data)
 r = c.get(f'/api/revision-lists/{quick_id}/statistics/')
 check('statistiques de la liste', r.data['total_items'] == 1 and r.data['review'] == 1 and r.data['completed'] == 1, r.data)
+check('statistiques : statut de chaque élément', r.data['statuses'] == {str(ex1.id): 'review'}, r.data.get('statuses'))
+
+# Ajout en lot (object_ids) : une requête au lieu d'une boucle côté navigateur.
+lesson = Content.objects.create(type='lesson', title='Leçon', author=editorial, subject=subject,
+                                json_content={'version': '2.1', 'blocks': []})
+r = c.post('/api/revision-lists/quick_add/', {'object_ids': [ex1.id, ex2.id, ex3.id, lesson.id, 999999, 'x']}, format='json')
+check('ajout en lot : seulement les nouveaux exercices / examens', r.status_code == 201 and r.data['added']
+      and r.data['added_ids'] == [ex2.id, ex3.id] and r.data['added_count'] == 2 and r.data['list_id'] == quick_id
+      and quick.items.count() == 3, r.data)
+r = c.post('/api/revision-lists/quick_add/', {'object_ids': [ex2.id, ex3.id]}, format='json')
+check('ajout en lot idempotent', r.status_code == 200 and r.data['added_ids'] == [] and quick.items.count() == 3, r.data)
+check('ajout en lot : rien de valable → 404', c.post('/api/revision-lists/quick_add/', {'object_ids': [lesson.id]},
+                                                      format='json').status_code == 404)
+check('ajout en lot : pas une liste → 400', c.post('/api/revision-lists/quick_add/', {'object_ids': 5},
+                                                    format='json').status_code == 400)
+r = c.get(f'/api/revision-lists/{quick_id}/statistics/')
+check('statistiques : réussi / à revoir / pas encore fait', r.data['statuses'] == {
+    str(ex1.id): 'review', str(ex2.id): None, str(ex3.id): 'success'} and r.data['success'] == 1, r.data.get('statuses'))
+RevisionListItem.objects.filter(revision_list=quick).exclude(object_id=ex1.id).delete()
 r = c.get('/api/revision-lists/suggestions/')
 check('suggestion retirée une fois dans une liste', [x['id'] for x in r.data['results']] == [ex2.id], r.data)
 

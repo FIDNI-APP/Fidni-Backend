@@ -173,5 +173,65 @@ check('anonymes : contenu le plus vu', an['top_contents'] and an['top_contents']
 acts = {a['key']: a for a in an['actions']}
 check('anonymes : gestes (voir la solution)', acts.get('voir-solution', {}).get('count') == 1, an['actions'])
 
+
+# ── Audit du 10/10/2026 : nouveaux gestes mesurés, porte d'entrée de l'inscription, origine d'une auto-évaluation
+import re  # noqa: E402
+from apps.users.admin_dashboard import TRACKED_ACTIONS, TRACKED_FILTERS  # noqa: E402
+from apps.users.usage import ACTIONS  # noqa: E402
+
+NEW_ACTIONS = ['partager', 'chrono-demarre', 'epreuve-demarree', 'epreuve-terminee', 'similaire', 'suivant-apres-resultat',
+               'ressenti', 'cloche', 'retour-liste', 'sommaire-lecon', 'affichage-enonces', 'charger-plus', 'recherche-vide',
+               'accueil-reprendre', 'accueil-pour-toi', 'annoncer-ds', 'prog-entrainer', 'prog-cours', 'prog-quiz',
+               'quiz-refait', 'mode-revision', 'barre-mobile', 'visite-auto', 'visite-passee', 'visite-finie',
+               'signaler-ouvert', 'auth-ouverte', 'connexion-google']
+labelled = {k for k, _ in TRACKED_ACTIONS + TRACKED_FILTERS}
+check('nouveaux gestes dans la liste fermée', set(NEW_ACTIONS) <= ACTIONS, set(NEW_ACTIONS) - ACTIONS)
+check('chaque geste accepté a son libellé au Pilotage (et inversement)', labelled == ACTIONS, labelled ^ ACTIONS)
+FRONT = os.path.join(os.path.dirname(BACKEND), 'Fidni-Frontend', 'src', 'lib', 'usage.ts')
+if os.path.exists(FRONT):
+    src = open(FRONT, encoding='utf-8').read()
+    block = src[src.index('export type UsageAction'):]
+    front = set(re.findall(r"'([a-z-]+)'", block[:block.index(';')]))
+    check('même liste fermée côté navigateur (lib/usage.ts UsageAction)', front == ACTIONS, front ^ ACTIONS)
+el = client(eleves[1], ip='10.0.0.21')
+refused = [a for a in NEW_ACTIONS if el.post('/api/usage/', {'kind': 'action', 'name': a}, format='json').data.get('counted') is not True]
+check('nouveaux gestes comptés', not refused, refused)
+check('nouveaux gestes : une ligne du jour chacun',
+      UsageDaily.objects.filter(kind='action', name__in=NEW_ACTIONS, count=1).count() == len(NEW_ACTIONS))
+door = client(ip='10.0.0.22')
+for name in ('auth:porte:vote', 'auth:porte:barre-haut', 'auth:porte:' + 'a' * 30):
+    r = door.post('/api/usage/', {'kind': 'filtre', 'name': name}, format='json')
+    check(f'porte d’inscription comptée : {name[:24]}', r.data.get('counted') is True, r.data)
+row = UsageDaily.objects.get(kind='filtre', name='auth:porte:vote')
+check('porte : visiteur non connecté compté à part', (row.count, row.anon_count, row.anon_visitors) == (1, 1, 1),
+      (row.count, row.anon_count, row.anon_visitors))
+for bad in ('auth:porte:', 'auth:porte:Vote', 'auth:porte:vote!', 'auth:porte:' + 'a' * 31, 'auth:autre:vote',
+            'auth:porte:vote:2', 'exercise:porte:vote', 'auth:porte:vote\n', 'exercise:difficulte:hard\n'):
+    r = door.post('/api/usage/', {'kind': 'filtre', 'name': bad}, format='json')
+    check(f'porte invalide refusée : {bad[:26]!r}', r.status_code == 400, r.status_code)
+r = door.post('/api/usage/', {'kind': 'page', 'name': '/exercises\n'}, format='json')
+check('page avec saut de ligne final refusée', r.status_code == 400, r.status_code)
+for bad in ('Partager', 'partager ', 'auth:porte:vote'):
+    r = door.post('/api/usage/', {'kind': 'action', 'name': bad}, format='json')
+    check(f'geste invalide refusé : {bad!r}', r.status_code == 400, r.status_code)
+d = pc.get('/api/pilotage/?jours=7').data
+nav = {x['key']: x for x in d['features'] if x['source'] == 'navigateur'}
+check('Pilotage : nouveaux gestes affichés', nav.get('partager', {}).get('actions') == 1
+      and nav.get('connexion-google', {}).get('actions') == 1, nav.get('partager'))
+check('Pilotage : portes d’inscription', {(x['source'], x['count']) for x in d['auth_doors']}
+      == {('vote', 1), ('barre-haut', 1), ('a' * 30, 1)}, d['auth_doors'])
+
+# Origine d'une auto-évaluation (QuestionProgress.source) : « Tout réussi », réponse sous la solution, bandeau.
+cl = client(eleves[1], ip='10.0.0.23')
+cl.post(f'/api/contents/{ex.id}/assess_many/', {'assessments': {'q1': 'success', 'q2.s1': 'success'}, 'source': 'tout'},
+        format='json')
+cl.post(f'/api/contents/{ex.id}/assess_question/',
+        {'question_path': 'q2.s2', 'status': 'review', 'source': 'apres_solution'}, format='json')
+src = dict(QuestionProgress.objects.filter(user=eleves[1]).values_list('question_path', 'source'))
+check('source de l’auto-évaluation enregistrée', src == {'q1': 'tout', 'q2.s1': 'tout', 'q2.s2': 'apres_solution'}, src)
+cl.post(f'/api/contents/{ex.id}/assess_question/', {'question_path': 'q1', 'status': 'success'}, format='json')
+check('sans source : « question par question »',
+      QuestionProgress.objects.get(user=eleves[1], question_path='q1').source == 'question')
+
 print(f'\n{sum(results)}/{len(results)} vérifications réussies')
 sys.exit(0 if all(results) else 1)

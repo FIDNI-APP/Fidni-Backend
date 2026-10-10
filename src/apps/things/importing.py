@@ -21,6 +21,7 @@ FORMAT = 'fidni-fiche/1'
 EDITORIAL_USERNAME = 'Fidni'  # auteur des contenus importés (compte éditorial, sans mot de passe)
 TYPES = {'exercice': 'exercise', 'examen': 'exam', 'lecon': 'lesson'}
 DIFFICULTIES = {'facile': 'easy', 'moyen': 'medium', 'difficile': 'hard'}
+EXAM_HARD_SHARE, EXAM_EASY_SHARE = 0.35, 0.60  # part des points (examen) : voir exam_difficulty
 ORIGINS = {'officiel', 'original', 'autorise'}  # document public officiel / rédigé pour Fidni / avec l'accord de l'auteur
 CALLOUTS = {'theorem', 'property', 'definition', 'lemma', 'corollary', 'example', 'remark', 'proof', 'method', 'warning'}
 
@@ -230,7 +231,40 @@ def validate(fiche: dict) -> tuple[list[str], list[str], set[str]]:
             errors.append('examen.annee : année de la session (examen national)')
         if ex.get('duree_minutes') is not None and not (isinstance(ex['duree_minutes'], int) and ex['duree_minutes'] > 0):
             errors.append('examen.duree_minutes : entier positif')
+        if isinstance(fiche.get('blocs'), list):
+            derived = exam_difficulty(fiche)
+            if derived is None:
+                warnings.append('difficulte : à donner sur chaque question d’un examen '
+                                '(sinon le label de la fiche est gardé)')
+            elif derived != DIFFICULTIES.get(fiche.get('difficulte')):
+                label = next(k for k, v in DIFFICULTIES.items() if v == derived)
+                warnings.append(f'difficulté de l’examen : « {label} » d’après ses questions '
+                                f'(fiche : « {fiche.get("difficulte")} »)')
     return errors, warnings, images
+
+
+def exam_difficulty(fiche: dict) -> str | None:
+    """Label d'un examen tiré de ses questions finales, pondérées par les points : au moins 35 % des points en
+    « difficile » → hard ; au moins 60 % en « facile » → easy ; sinon medium. Un seul label d'auteur classait
+    les sujets de Bac en « moyen ». None si une question n'a pas de difficulté (le label de la fiche reste)."""
+    finals = []
+    for b in fiche.get('blocs') or []:
+        if isinstance(b, dict) and b.get('type') == 'question':
+            finals += [q for q in (b.get('sous_questions') or [b]) if isinstance(q, dict)]
+    if not finals or any(q.get('difficulte') not in DIFFICULTIES for q in finals):
+        return None
+    points = [q['points'] if _num(q.get('points')) and q['points'] > 0 else None for q in finals]
+    weights = points if all(points) else [1] * len(finals)  # barème incomplet : questions à égalité
+    total = sum(weights)
+
+    def share(level):
+        return sum(w for q, w in zip(finals, weights) if q['difficulte'] == level) / total
+
+    if share('difficile') >= EXAM_HARD_SHARE:
+        return 'hard'
+    if share('facile') >= EXAM_EASY_SHARE:
+        return 'easy'
+    return 'medium'
 
 
 def _question_points(q: dict) -> float:
@@ -555,6 +589,8 @@ def import_fiche(fiche: dict, base_dir: str, *, api_base: str = 'https://api.fid
         content.title = fiche['titre'].strip()
         content.subject = res['subject']
         content.difficulty = DIFFICULTIES.get(fiche.get('difficulte')) if kind != 'lesson' else None
+        if kind == 'exam':
+            content.difficulty = exam_difficulty(fiche) or content.difficulty
         ex = fiche.get('examen') or {}
         content.is_national_exam = bool(ex.get('national')) if kind == 'exam' else False
         content.national_year = ex.get('annee') if kind == 'exam' else None

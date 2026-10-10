@@ -19,9 +19,10 @@ MIN_SECONDS = 120
 LIMIT = 5
 
 
-def pending(user, kind, exclude=()):
+def pending(user, kind, exclude=(), chapter=None):
     """(nombre total, [cartes]) des contenus de ce type à évaluer, `LIMIT` cartes au plus.
-    `exclude` : ids à écarter en plus (ancienne version du bandeau, qui les gardait dans le navigateur)."""
+    `exclude` : ids à écarter en plus (ancienne version du bandeau, qui les gardait dans le navigateur).
+    `chapter` : id d'un chapitre, sur la page de ce chapitre (le bandeau ne parle alors que de lui)."""
     from apps.interactions.models import Complete, QuestionProgress, SolutionView, StudyTimeDay
     from apps.things.models import CatchUpSkip, Content
     from apps.users.models import ViewHistory
@@ -59,14 +60,17 @@ def pending(user, kind, exclude=()):
             if day > timezone.localtime(skipped[cid]).date():
                 again.add(cid)
         worked -= set(skipped) - again
-    contents = sorted(Content.objects.filter(id__in=worked, type=kind).exclude(author=user).prefetch_related('chapters'),
-                      key=lambda c: seen[c.id], reverse=True)
+    qs = Content.objects.filter(id__in=worked, type=kind).exclude(author=user)
+    if chapter is not None:
+        qs = qs.filter(chapters__id=chapter).distinct()
+    contents = sorted(qs.prefetch_related('chapters'), key=lambda c: seen[c.id], reverse=True)
     cards = []
     for c in contents[:LIMIT]:
-        chapter = next(iter(c.chapters.all()), None)
+        # Sur la page d'un chapitre, c'est lui qu'on nomme (un contenu peut en avoir plusieurs).
+        first = next((ch for ch in c.chapters.all() if ch.id == chapter), None) or next(iter(c.chapters.all()), None)
         cards.append({
             'id': c.id, 'title': c.title, 'type': c.type, 'difficulty': c.difficulty,
-            'chapter': chapter.name if chapter else None, 'seen_at': seen[c.id],
+            'chapter': first.name if first else None, 'seen_at': seen[c.id],
             # Questions à cocher « réussies » d'un coup, comme « Tout réussi » sur la page du contenu.
             'paths': [path for path, _, _ in _questions(c.json_content)],
             'assessed': assessed.get(c.id, 0),

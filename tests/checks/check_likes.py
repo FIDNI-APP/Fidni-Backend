@@ -1,8 +1,7 @@
-"""J'aime / je n'aime pas : nombres séparés, tri « Plus aimés », encart de l'accueil."""
+"""J'aime / je n'aime pas : nombres séparés, tri « Plus aimés », « Pour toi » de l'accueil."""
 import os
 import sys
 import tempfile
-from datetime import date, timedelta
 
 BACKEND = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, BACKEND + '/src')
@@ -86,7 +85,9 @@ check('tri « Plus anciens » inchangé', [x['title'][0] for x in rows] == ['D',
 cl.force_authenticate(users[2])
 r = cl.get('/api/dashboard/recommended/')
 ex = [x['title'][0] for x in r.data['exercises']]
-check('accueil : les plus aimés du niveau, niveau renvoyé', r.status_code == 200 and ex[:2] == ['A', 'B']
+# « Pour toi » (for_you.rank) : le plus aimé d'abord, celui qu'il n'aime pas en dernier.
+check('accueil : « Pour toi » du niveau (le plus aimé d’abord, celui qu’il n’aime pas en dernier), raison et niveau renvoyés',
+      r.status_code == 200 and ex[0] == 'A' and ex[-1] == 'B' and all('reason' in x for x in r.data['exercises'])
       and r.data['level'] == '2ème Bac SM', (ex, r.data.get('level')))
 
 print(f'\n{sum(results)}/{len(results)} vérifications réussies')

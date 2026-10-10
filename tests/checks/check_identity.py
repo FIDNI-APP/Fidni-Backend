@@ -7,16 +7,17 @@ import time
 BACKEND = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, BACKEND + '/src')
 sys.path.insert(0, BACKEND)
+DB = os.path.join(tempfile.gettempdir(), 'fidni-identity.sqlite3')
 os.environ.update({
     'DJANGO_SETTINGS_MODULE': 'config.settings',
     'DJANGO_ENV': 'development',
     'DB_ENGINE': 'sqlite',
-    'SQLITE_PATH': os.path.join(tempfile.gettempdir(), 'fidni-identity.sqlite3'),
+    'SQLITE_PATH': DB,
     'AWS_STORAGE_ENABLED': 'false',
     'EMAIL_BACKEND': 'django.core.mail.backends.locmem.EmailBackend',
 })
-if os.path.exists('/tmp/fidni-identity.sqlite3'):
-    os.remove('/tmp/fidni-identity.sqlite3')
+if os.path.exists(DB):
+    os.remove(DB)
 
 import django  # noqa: E402
 django.setup()

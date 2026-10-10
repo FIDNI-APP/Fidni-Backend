@@ -7,16 +7,17 @@ import sys
 BACKEND = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, BACKEND + '/src')
 sys.path.insert(0, BACKEND)
+DB = os.path.join(tempfile.gettempdir(), 'fidni-check.sqlite3')
 os.environ.update({
     'DJANGO_SETTINGS_MODULE': 'config.settings',
     'DJANGO_ENV': 'development',
     'DB_ENGINE': 'sqlite',
-    'SQLITE_PATH': os.path.join(tempfile.gettempdir(), 'fidni-check.sqlite3'),
+    'SQLITE_PATH': DB,
     'AWS_STORAGE_ENABLED': 'false',
     'EMAIL_BACKEND': 'django.core.mail.backends.locmem.EmailBackend',
 })
-if os.path.exists('/tmp/fidni-check.sqlite3'):
-    os.remove('/tmp/fidni-check.sqlite3')
+if os.path.exists(DB):
+    os.remove(DB)
 
 import django  # noqa: E402
 django.setup()
@@ -188,9 +189,13 @@ carol.refresh_from_db()
 check('… adresse inchangée', carol.email == 'carol@exemple.fr', carol.email)
 r = c.patch('/api/auth/user/update/', {'first_name': 'Carole', 'email': 'CAROL@exemple.fr'}, format='json')
 check('nom modifiable sans mot de passe (même e-mail)', r.status_code == 200, (r.status_code, getattr(r, 'data', '')))
+mail.outbox[:] = []
 r = c.patch('/api/auth/user/update/', {'email': 'carole@exemple.fr', 'current_password': 'Motdepasse-solide-42'}, format='json')
 carol.refresh_from_db()
 check('e-mail changé avec le bon mot de passe', r.status_code == 200 and carol.email == 'carole@exemple.fr', r.status_code)
+check('… nouvelle adresse à confirmer, lien envoyé à elle seule', not carol.profile.email_verified and carol.is_active
+      and r.data.get('email_verification_sent') is True and [m.to for m in mail.outbox] == [['carole@exemple.fr']],
+      (carol.profile.email_verified, [m.to for m in mail.outbox]))
 
 
 def jwt_login(username, password, ip):

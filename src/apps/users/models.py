@@ -152,6 +152,7 @@ class UserProfile(models.Model):
     # Onboarding
     onboarding_completed = models.BooleanField(default=_defaults['onboarding_completed'])
     onboarding_step = models.PositiveIntegerField(default=0)
+    onboarding_completed_at = models.DateTimeField(null=True, blank=True)
 
     # Email verification. default=True so existing rows backfill as verified on
     # migration; RegisterView explicitly sets False for NEW signups (which are
@@ -487,3 +488,16 @@ class UsageDaily(models.Model):
 
     def __str__(self):
         return f"{self.date} · {self.kind} {self.name} : {self.count}"
+
+
+class GoogleAccount(models.Model):
+    """Compte Google lié (connexion avec Google, 10/10/2026). `sub` = identifiant Google stable de la personne
+    (l'e-mail peut changer). Supprimé avec le compte ; exporté avec « Mes données »."""
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='google_accounts')
+    sub = models.CharField(max_length=255, unique=True)
+    email = models.EmailField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    last_used_at = models.DateTimeField(null=True, blank=True)
+
+    def __str__(self):
+        return f"Google {self.email or self.sub} → {self.user_id}"

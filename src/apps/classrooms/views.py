@@ -8,14 +8,19 @@ Endpoints:
     PATCH  /api/classrooms/<id>/             owner can rename / change description
     DELETE /api/classrooms/<id>/             owner deletes
     POST   /api/classrooms/<id>/regenerate_code/   owner regenerates join code
-    GET    /api/classrooms/<id>/members/     owner lists members
+    GET    /api/classrooms/<id>/members/     owner lists members (a student only gets their own row)
     DELETE /api/classrooms/<id>/members/<student_id>/   owner removes a student
     POST   /api/classrooms/<id>/subjects/    owner adds subject + teacher
     DELETE /api/classrooms/<id>/subjects/<sub_id>/      owner removes a subject
     POST   /api/classrooms/join/             student joins by code  body: {code}
     POST   /api/classrooms/<id>/leave/       student leaves a classroom
     GET    /api/classrooms/progress/weekly/  student weekly success vs classroom avg
+    GET    /api/classrooms/<id>/td-lists/<td_id>/suivi/   owner: who did the TD (students × exercises)
+
+Confidentialité (10/10/2026) : un élève ne voit ni la liste de ses camarades, ni leurs stats, ni
+aucun e-mail ; tout cela est réservé au propriétaire de la classe (le prof).
 """
+from collections import Counter, defaultdict
 from datetime import timedelta
 
 from django.contrib.auth.models import User
@@ -30,7 +35,7 @@ from config.throttling import ClassroomJoinThrottle
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from apps.interactions.models import Complete, StudyTimeTracker
+from apps.interactions.models import Complete, QuestionProgress, StudyTimeTracker
 from apps.things.models import Content
 from apps.caracteristics.models import Subject
 
@@ -114,11 +119,16 @@ class ClassroomViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['get'], url_path='members')
     def members(self, request, pk=None):
         classroom = self.get_object()
-        # Owner sees all; members see at least themselves + count via classroom serializer
-        if classroom.owner_id != request.user.id and not classroom.memberships.filter(student=request.user).exists():
+        # Le prof voit tous ses élèves (avec leur e-mail) ; un élève, seulement sa propre ligne
+        # (le nombre d'élèves est dans student_count).
+        is_owner = classroom.owner_id == request.user.id
+        if not is_owner and not classroom.memberships.filter(student=request.user).exists():
             return Response({'detail': 'Accès refusé.'}, status=status.HTTP_403_FORBIDDEN)
         qs = classroom.memberships.select_related('student', 'student__profile').all()
-        return Response(ClassroomMembershipSerializer(qs, many=True, context={'request': request}).data)
+        if not is_owner:
+            qs = qs.filter(student=request.user)
+        return Response(ClassroomMembershipSerializer(
+            qs, many=True, context={'request': request, 'show_email': is_owner}).data)
 
     @action(detail=True, methods=['delete'], url_path=r'members/(?P<student_id>\d+)')
     def remove_member(self, request, pk=None, student_id=None):
@@ -144,7 +154,7 @@ class ClassroomViewSet(viewsets.ModelViewSet):
         if 'teacher_id' not in data or not data.get('teacher_id'):
             data['teacher_id'] = request.user.id
 
-        serializer = ClassroomSubjectSerializer(data=data, context={'request': request})
+        serializer = ClassroomSubjectSerializer(data=data, context={'request': request, 'show_email': True})
         serializer.is_valid(raise_exception=True)
 
         # Ensure that the teacher_id refers to a teacher account
@@ -159,7 +169,7 @@ class ClassroomViewSet(viewsets.ModelViewSet):
                             status=status.HTTP_400_BAD_REQUEST)
 
         cs = serializer.save(classroom=classroom)
-        return Response(ClassroomSubjectSerializer(cs, context={'request': request}).data,
+        return Response(ClassroomSubjectSerializer(cs, context={'request': request, 'show_email': True}).data,
                         status=status.HTTP_201_CREATED)
 
     @action(detail=True, methods=['delete'], url_path=r'subjects/(?P<sub_id>\d+)')
@@ -330,6 +340,10 @@ def weekly_progress(request):
 # TDList ViewSet (nested under classroom)
 # ────────────────────────────────────────────────────────────────────
 
+TO_REVIEW = ('review', 'failed')  # questions « à revoir » (QuestionProgress)
+HARDEST = 5                        # questions les plus ratées montrées au prof
+
+
 class TDListViewSet(viewsets.ModelViewSet):
     """
     Endpoints (mounted at /api/classrooms/<classroom_pk>/td-lists/):
@@ -340,6 +354,7 @@ class TDListViewSet(viewsets.ModelViewSet):
         DELETE /<pk>/                     owner deletes
         POST   /<pk>/items/               owner adds item   body: {content_id}
         DELETE /<pk>/items/<item_id>/     owner removes item
+        GET    /<pk>/suivi/               owner: students × exercises, finished, hardest questions
     """
     serializer_class = TDListSerializer
     permission_classes = [IsAuthenticated]
@@ -425,6 +440,72 @@ class TDListViewSet(viewsets.ModelViewSet):
         if not deleted:
             return Response({'detail': 'Élément introuvable.'}, status=status.HTTP_404_NOT_FOUND)
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @action(detail=True, methods=['get'])
+    def suivi(self, request, classroom_pk=None, pk=None):
+        """Suivi d'un TD par le prof (propriétaire seulement) : pour chaque élève et chaque exercice, le
+        statut (réussi / à revoir / rien), le nombre de questions à revoir et la dernière activité ;
+        combien d'élèves ont tout réussi ; les questions les plus souvent à revoir."""
+        td_list = self.get_object()
+        if td_list.classroom.owner_id != request.user.id:
+            return Response({'detail': "Action réservée au propriétaire."}, status=status.HTTP_403_FORBIDDEN)
+        from apps.things.views import _walk_questions_meta
+
+        students = [m.student for m in td_list.classroom.memberships.select_related('student').order_by('student__username')]
+        items = [it for it in td_list.items.all()]
+        ids = [it.content_id for it in items]
+        user_ids = [s.id for s in students]
+        ct = ContentType.objects.get_for_model(Content)
+
+        status_of, last_at = {}, {}
+        for uid, oid, st, when in Complete.objects.filter(
+                user_id__in=user_ids, content_type=ct, object_id__in=[str(i) for i in ids]).values_list(
+                'user_id', 'object_id', 'status', 'updated_at'):
+            if str(oid).isdigit():  # Complete.object_id : CharField
+                status_of[(uid, int(oid))] = st
+                last_at[(uid, int(oid))] = when
+        to_review = Counter()             # (élève, exercice) → questions à revoir
+        who = defaultdict(set)            # (exercice, question) → élèves qui l'ont à revoir
+        for uid, oid, path, st, when in QuestionProgress.objects.filter(
+                user_id__in=user_ids, content_type=ct, object_id__in=ids).values_list(
+                'user_id', 'object_id', 'question_path', 'status', 'assessed_at'):
+            key = (uid, oid)
+            last_at[key] = max(last_at[key], when) if key in last_at else when
+            if st in TO_REVIEW:
+                to_review[key] += 1
+                who[(oid, path)].add(uid)
+
+        cells = {
+            str(s.id): {
+                str(i): {
+                    'status': status_of.get((s.id, i)) if status_of.get((s.id, i)) in ('success', 'review') else None,
+                    'review_questions': to_review[(s.id, i)],
+                    'at': last_at[(s.id, i)].isoformat() if (s.id, i) in last_at else None,
+                } for i in ids
+            } for s in students
+        }
+        finished = sum(1 for s in students if ids and all(status_of.get((s.id, i)) == 'success' for i in ids))
+
+        # Questions les plus souvent à revoir, dans l'ordre du TD à égalité ; libellés de la page (Q1, Q2a…).
+        position = {it.content_id: n for n, it in enumerate(items)}
+        order, labels = {}, {}
+        for it in items:
+            for n, (path, label, _) in enumerate(_walk_questions_meta(it.content.json_content or {})):
+                order[(it.content_id, path)] = n
+                labels[(it.content_id, path)] = label
+        titles = {it.content_id: it.content.title for it in items}
+        ranked = sorted(who.items(), key=lambda kv: (-len(kv[1]), position.get(kv[0][0], 0), order.get(kv[0], 999)))
+        hardest = [{'object_id': oid, 'title': titles.get(oid), 'question_path': path,
+                    'label': labels.get((oid, path), path), 'review_count': len(uids)}
+                   for (oid, path), uids in ranked[:HARDEST]]
+
+        return Response({
+            'students': [{'id': s.id, 'username': s.username, 'full_name': s.get_full_name()} for s in students],
+            'items': [{'object_id': it.content_id, 'type': it.content.type, 'title': it.content.title} for it in items],
+            'cells': cells,
+            'summary': {'finished': finished, 'total': len(students)},
+            'hardest': hardest,
+        })
 
 
 # ────────────────────────────────────────────────────────────────────
@@ -554,14 +635,23 @@ def classroom_student_stats(request, pk):
 
     student_id = request.query_params.get('student_id')
     if student_id:
-        student_id = int(student_id)
-        if classroom.owner_id != request.user.id and student_id != request.user.id:
+        try:
+            student_id = int(student_id)
+        except ValueError:
+            return Response({'detail': 'student_id invalide.'}, status=status.HTTP_400_BAD_REQUEST)
+        if student_id != request.user.id and (
+                classroom.owner_id != request.user.id
+                or not classroom.memberships.filter(student_id=student_id).exists()):
+            # Un élève : seulement les siennes. Le prof : seulement celles des élèves de SA classe.
             return Response({'detail': 'Accès refusé.'}, status=status.HTTP_403_FORBIDDEN)
     else:
         student_id = request.user.id
 
     subject_id = request.query_params.get('subject_id')
-    subject_id = int(subject_id) if subject_id else None
+    try:
+        subject_id = int(subject_id) if subject_id else None
+    except ValueError:
+        return Response({'detail': 'subject_id invalide.'}, status=status.HTTP_400_BAD_REQUEST)
 
     axes = _compute_skill_axes(student_id, subject_id)
 
@@ -593,15 +683,19 @@ def classroom_roster_stats(request, pk):
     GET /api/classrooms/<pk>/roster-stats/?subject_id=<id>
 
     Returns one summary card per student (overall score + axes) scoped to a subject.
-    Owner-or-member only.
+    Le prof reçoit la carte de chaque élève ; un élève, seulement la sienne (jamais celles des autres).
     """
     classroom = get_object_or_404(Classroom, pk=pk)
+    is_owner = classroom.owner_id == request.user.id
     is_member = classroom.memberships.filter(student=request.user).exists()
-    if classroom.owner_id != request.user.id and not is_member:
+    if not is_owner and not is_member:
         return Response({'detail': 'Accès refusé.'}, status=status.HTTP_403_FORBIDDEN)
 
     subject_id = request.query_params.get('subject_id')
-    subject_id = int(subject_id) if subject_id else None
+    try:
+        subject_id = int(subject_id) if subject_id else None
+    except ValueError:
+        return Response({'detail': 'subject_id invalide.'}, status=status.HTTP_400_BAD_REQUEST)
 
     members = (
         ClassroomMembership.objects
@@ -609,6 +703,8 @@ def classroom_roster_stats(request, pk):
         .select_related('student', 'student__profile')
         .order_by('student__username')
     )
+    if not is_owner:
+        members = members.filter(student=request.user)
     cards = []
     for m in members:
         axes = _compute_skill_axes(m.student_id, subject_id)

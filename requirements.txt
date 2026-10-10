@@ -7,6 +7,7 @@ Django==5.2.17             # LTS (support jusqu’en 2028) — 5.0 ne reçoit pl
 djangorestframework==3.17.2
 djangorestframework-simplejwt==5.5.1
 PyJWT==2.15.0
+cryptography==50.0.2       # PyJWT RS256 : vérification des jetons « Connexion avec Google »
 django-cors-headers==4.9.0
 
 # ── Database: PostgreSQL (AWS RDS) ──────────────────────────────────────────

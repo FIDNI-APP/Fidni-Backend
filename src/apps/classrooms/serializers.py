@@ -1,5 +1,7 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
+from django.contrib.contenttypes.models import ContentType
+from django.db.models import Count
 
 from apps.caracteristics.models import Subject, ClassLevel
 from apps.things.models import Content
@@ -11,11 +13,19 @@ from .models import (
 
 
 class _UserMiniSerializer(serializers.ModelSerializer):
+    """Élève ou prof en bref. L'e-mail n'est donné qu'au propriétaire de la classe (context
+    show_email) : un élève ne voit jamais celui de ses camarades ni celui du prof."""
     avatar = serializers.SerializerMethodField()
 
     class Meta:
         model = User
         fields = ('id', 'username', 'email', 'avatar')
+
+    def to_representation(self, obj):
+        data = super().to_representation(obj)
+        if not self.context.get('show_email'):
+            data.pop('email', None)
+        return data
 
     def get_avatar(self, obj):
         prof = getattr(obj, 'profile', None)
@@ -102,6 +112,16 @@ class ClassroomSerializer(serializers.ModelSerializer):
         u = self._request_user()
         return bool(u and obj.memberships.filter(student_id=u.id).exists())
 
+    def to_representation(self, instance):
+        # E-mails (propriétaire, profs des matières) : pour le seul propriétaire de cette classe.
+        ctx = self.context
+        before = ctx.get('show_email')
+        ctx['show_email'] = self.get_is_owner(instance)
+        try:
+            return super().to_representation(instance)
+        finally:
+            ctx['show_email'] = before
+
 
 class TDListItemSerializer(serializers.ModelSerializer):
     content_id = serializers.PrimaryKeyRelatedField(
@@ -129,6 +149,8 @@ class TDListSerializer(serializers.ModelSerializer):
 
     # Per-student progress (set by view depending on context)
     progress = serializers.SerializerMethodField()
+    # Propriétaire : combien d'élèves de la classe ont réussi tout le TD (None pour un élève).
+    class_progress = serializers.SerializerMethodField()
 
     # Write fields
     subject_id = serializers.PrimaryKeyRelatedField(
@@ -140,14 +162,14 @@ class TDListSerializer(serializers.ModelSerializer):
         model = TDList
         fields = (
             'id', 'classroom', 'title', 'description',
-            'subject_id', 'subject_name',
+            'subject', 'subject_id', 'subject_name',
             'created_by_username',
             'due_date', 'created_at', 'updated_at',
-            'items', 'item_count', 'progress',
+            'items', 'item_count', 'progress', 'class_progress',
         )
         read_only_fields = ('id', 'classroom', 'created_at', 'updated_at',
-                            'items', 'item_count', 'progress',
-                            'subject_name', 'created_by_username')
+                            'items', 'item_count', 'progress', 'class_progress',
+                            'subject', 'subject_name', 'created_by_username')
 
     def get_item_count(self, obj):
         return obj.items.count()
@@ -157,10 +179,9 @@ class TDListSerializer(serializers.ModelSerializer):
         request = self.context.get('request')
         if not request or not request.user.is_authenticated:
             return None
-        from django.contrib.contenttypes.models import ContentType
         from apps.interactions.models import Complete
 
-        items = list(obj.items.values_list('content_id', flat=True))
+        items = [it.content_id for it in obj.items.all()]
         if not items:
             return {'completed': 0, 'total': 0}
 
@@ -172,3 +193,25 @@ class TDListSerializer(serializers.ModelSerializer):
             status='success',
         ).count()
         return {'completed': completed, 'total': len(items)}
+
+    def get_class_progress(self, obj):
+        """{finished, total} : élèves qui ont réussi tous les exercices du TD, sur les élèves de la classe.
+        Pour le propriétaire seulement (None pour un élève)."""
+        request = self.context.get('request')
+        if not request or obj.classroom.owner_id != request.user.id:
+            return None
+        from apps.interactions.models import Complete
+        # Élèves de la classe : lus une fois pour toute la liste des TD (même classe).
+        if not hasattr(self, '_students_of'):
+            self._students_of = {}
+        cache = self._students_of
+        if obj.classroom_id not in cache:
+            cache[obj.classroom_id] = list(obj.classroom.memberships.values_list('student_id', flat=True))
+        students = cache[obj.classroom_id]
+        items = [str(it.content_id) for it in obj.items.all()]
+        if not students or not items:
+            return {'finished': 0, 'total': len(students)}
+        finished = (Complete.objects.filter(user_id__in=students, content_type=ContentType.objects.get_for_model(Content),
+                                            object_id__in=items, status='success')
+                    .values('user_id').annotate(n=Count('id')).filter(n=len(items)).count())
+        return {'finished': finished, 'total': len(students)}

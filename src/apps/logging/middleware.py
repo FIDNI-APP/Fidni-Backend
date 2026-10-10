@@ -11,11 +11,12 @@ import logging
 logger = logging.getLogger("django")
 
 
-# Jamais écrits en base : mots de passe, jetons, liens de réinitialisation.
+# Jamais écrits en base : mots de passe, jetons, liens de réinitialisation, jeton d'identité Google
+# (`credential` de /api/auth/google/, rejouable tant qu'il n'a pas expiré).
 SENSITIVE_KEYS = {
     'password', 'password1', 'password2', 'confirmpassword', 'confirm_password',
     'current_password', 'new_password', 'old_password',
-    'token', 'access', 'refresh', 'uid', 'secret', 'api_key',
+    'token', 'access', 'refresh', 'uid', 'secret', 'api_key', 'credential',
 }
 
 

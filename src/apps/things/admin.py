@@ -7,7 +7,7 @@ class ContentAdmin(admin.ModelAdmin):
     list_display = ('title', 'type', 'difficulty', 'author', 'created_at', 'view_count')
     list_filter = ('type', 'difficulty', 'is_national_exam', 'chapters', 'class_levels')
     filter_horizontal = ('chapters', 'class_levels', 'theorems', 'subfields')
-    search_fields = ('title', 'content', 'author__username')
+    search_fields = ('title', 'author__username')
     date_hierarchy = 'created_at'
     readonly_fields = ('created_at', 'updated_at', 'view_count', 'display_id')
 

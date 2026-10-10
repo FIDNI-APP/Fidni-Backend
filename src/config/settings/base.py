@@ -219,6 +219,14 @@ BREVO_TIMEOUT = int(os.getenv('BREVO_TIMEOUT', '10'))
 # Public URL of the SPA — used to build links inside verification emails.
 FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:5173')
 
+# ── Connexion avec Google (apps/authentication/google.py) ──────────────────
+# Client ID public (il figure aussi dans le front) : audience attendue des jetons d'identité Google.
+# Le code secret OAuth n'est ni utilisé ni stocké.
+GOOGLE_CLIENT_ID = os.getenv('GOOGLE_CLIENT_ID', '344349997591-ns0tpm59m2ugm33783rsrvl60avp9eeb.apps.googleusercontent.com')
+# Par défaut Django envoie « same-origin », qui coupe la fenêtre de connexion Google ouverte depuis
+# les pages servies par Django (pages SEO) : on autorise les fenêtres qu'elles ouvrent.
+SECURE_CROSS_ORIGIN_OPENER_POLICY = 'same-origin-allow-popups'
+
 # IndexNow (config/indexnow.py) : clé publique, dont le fichier est frontend/public/<clé>.txt. Actif en production.
 INDEXNOW_KEY = os.getenv('INDEXNOW_KEY', '93ee34525bd85504f81a723d63fca280')
 INDEXNOW_ENABLED = False

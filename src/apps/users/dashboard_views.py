@@ -7,13 +7,16 @@ from rest_framework.response import Response
 from rest_framework import status
 
 from django.contrib.contenttypes.models import ContentType
-from django.db.models import Sum, Q
+from django.db.models import Count, Q, Sum
 from django.utils import timezone
 from datetime import timedelta
+import logging
 
 from apps.things.models import Content
 from apps.interactions.models import Complete, StudyTimeTracker
 from apps.caracteristics.models import Chapter
+
+logger = logging.getLogger('django')
 
 
 @api_view(['GET'])
@@ -318,91 +321,103 @@ def calculate_user_level(user):
     return level
 
 
+REC_LIMIT = 8   # contenus proposés par type
+
+
+def _target_subjects(profile):
+    """Matières visées du profil (ManyToMany, ou liste pour un ancien format)."""
+    ts = getattr(profile, 'target_subjects', None) if profile else None
+    if ts is None:
+        return []
+    if hasattr(ts, 'all'):
+        return list(ts.values_list('id', flat=True))
+    return list(ts) if isinstance(ts, list) else []
+
+
+def _recommended(user, kind, scope, ds, done):
+    """[(id, raison)] « Pour toi » d'un type de contenu, sans ce qu'il a déjà réussi.
+
+    Ordre des viviers, le premier qui propose encore quelque chose l'emporte : chapitres du DS
+    (au niveau du DS, toutes matières : les chapitres la disent déjà), son niveau, tout le site.
+    Le classement porte sur tout le vivier, réussis compris (un chapitre presque fini intéresse
+    moins), puis on retire les réussis.
+    """
+    from apps.interactions.models import Vote
+    from apps.things import for_you
+    base = Content.objects.filter(type=kind)
+    scoped = base.filter(scope) if scope else base
+    pools = []
+    if ds:
+        ds_chapters, ds_level = ds
+        in_ds = base.filter(id__in=Content.chapters.through.objects.filter(
+            chapter_id__in=ds_chapters).values('content_id'))
+        pools.append((in_ds.filter(class_levels=ds_level) if ds_level else in_ds, True))
+    pools.append((scoped, False))
+    if scope:
+        pools.append((base, False))
+    pool, for_ds = next(((qs, is_ds) for qs, is_ds in pools if qs.exclude(id__in=done).exists()), (None, False))
+    if pool is None:
+        return []
+    likes = Count('votes', filter=Q(votes__value=Vote.UP), distinct=True)
+    dislikes = Count('votes', filter=Q(votes__value=Vote.DOWN), distinct=True)
+    ranked = for_you.rank(pool.annotate(like_count_annotation=likes, dislike_count_annotation=dislikes), user)
+    picked = [(cid, label) for cid, label in ranked if cid not in done][:REC_LIMIT]
+    if for_ds:
+        picked = [(cid, label or 'Au programme de ton DS') for cid, label in picked]
+    return picked
+
+
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def get_recommended_content(request):
+    """« Pour toi » de l'accueil : exercices, leçons et examens (8 de chaque au plus).
+
+    Même classement que les listes (things/for_you.py : chapitres travaillés, « à retravailler »,
+    nouveautés, popularité), avec la raison de chaque choix (`reason`) :
+    - de son niveau (et de ses matières), sinon de tout le site s'il n'y a plus rien ;
+    - jamais ce qu'il a déjà réussi ; ce qu'il a marqué « à revoir » reste proposé ;
+    - un DS annoncé dans les 14 jours (comme le rappel de l'accueil) : seulement ses chapitres, même hors
+      de ses matières visées.
+    Avant (10/10/2026) : les 8 plus aimés du niveau, les mêmes pour tous, « à revoir » exclus.
     """
-    Get recommended exercises, lessons, and exams for the user.
-    Uses a simple recommendation algorithm based on:
-    - User's class level
-    - User's target subjects
-    - Most upvoted content
-    - Content user hasn't completed yet
-    """
+    from apps.interactions.devoirs import SOON_DAYS
+    from apps.interactions.models import UpcomingTest
+    from apps.things.listing import in_order, with_list_relations
+    from apps.things.serializers import ContentListSerializer
+
     try:
         user = request.user
-        user_profile = getattr(user, 'profile', None)
-
-        # Get user's class level and target subjects safely
-        class_level = getattr(user_profile, 'class_level', None) if user_profile else None
-
-        # Handle target_subjects - it could be a ManyRelatedManager or a list/JSONField
-        target_subjects = []
-        if user_profile:
-            ts = getattr(user_profile, 'target_subjects', None)
-            if ts is not None:
-                # If it's a ManyRelatedManager (ManyToManyField)
-                if hasattr(ts, 'all'):
-                    target_subjects = list(ts.values_list('id', flat=True))
-                # If it's already a list or JSONField
-                elif isinstance(ts, list):
-                    target_subjects = ts
-                else:
-                    target_subjects = []
-
-        from apps.things.serializers import ContentListSerializer
-        from apps.things.listing import with_list_relations
-
-        content_ct = ContentType.objects.get_for_model(Content)
-
-        # Get IDs of content user has already completed (per type).
-        # object_id is a CharField: materialize as ints so the later
-        # .exclude(id__in=...) compares bigint to bigint (Postgres refuses varchar=bigint).
-        completed_ids_by_type = {}
-        for t in ('exercise', 'lesson', 'exam'):
-            type_ids = [str(i) for i in Content.objects.filter(type=t).values_list('id', flat=True)]
-            completed_ids_by_type[t] = [
-                int(oid) for oid in Complete.objects.filter(
-                    user=user, content_type=content_ct, object_id__in=type_ids
-                ).values_list('object_id', flat=True)
-                if str(oid).isdigit()
-            ]
-
-        base_filters = Q()
+        profile = getattr(user, 'profile', None)
+        class_level = getattr(profile, 'class_level', None) if profile else None
+        subjects = _target_subjects(profile)
+        scope = Q()
         if class_level:
-            base_filters &= Q(class_levels=class_level)
-        if target_subjects:
-            base_filters &= Q(subject_id__in=target_subjects)
+            scope &= Q(class_levels=class_level)
+        if subjects:
+            scope &= Q(subject_id__in=subjects)
 
-        def get_recommended(content_type, completed_ids, extra_filters=Q()):
-            qs = Content.objects.filter(type=content_type).exclude(id__in=completed_ids)
-            if extra_filters:
-                qs = qs.filter(extra_filters)
-            qs = with_list_relations(qs, user).order_by('-like_count_annotation', 'dislike_count_annotation', '-created_at')[:8]
-            if not qs.exists() and extra_filters:
-                qs = with_list_relations(Content.objects.filter(type=content_type).exclude(id__in=completed_ids), user)\
-                    .order_by('-like_count_annotation', 'dislike_count_annotation', '-created_at')[:8]
-            return qs
-
-        exercises = get_recommended('exercise', completed_ids_by_type['exercise'], base_filters)
-        lessons = get_recommended('lesson', completed_ids_by_type['lesson'], base_filters)
-        exams = get_recommended('exam', completed_ids_by_type['exam'], base_filters)
+        ct = ContentType.objects.get_for_model(Content)
+        # Complete.object_id est un CharField : ids relus en entiers.
+        done = {int(o) for o in Complete.objects.filter(user=user, content_type=ct, status='success')
+                .values_list('object_id', flat=True) if str(o).isdigit()}
+        today = timezone.localdate()
+        test = (UpcomingTest.objects.filter(user=user, date__gte=today, date__lte=today + timedelta(days=SOON_DAYS))
+                .select_related('class_level').order_by('date', 'id').first())
+        ds_chapters = list(test.chapters.values_list('id', flat=True)) if test else []
+        ds = (ds_chapters, test.class_level or class_level) if ds_chapters else None
 
         ctx = {'request': request}
-        return Response({
-            'exercises': ContentListSerializer(exercises, many=True, context=ctx).data,
-            'lessons': ContentListSerializer(lessons, many=True, context=ctx).data,
-            'exams': ContentListSerializer(exams, many=True, context=ctx).data,
-            'level': class_level.name if class_level else None,
-        })
-    except Exception as e:
-        # Log the error and return a more helpful response
-        import traceback
-        print(f"Error in get_recommended_content: {str(e)}")
-        print(traceback.format_exc())
-        return Response({
-            'error': str(e),
-            'exercises': [],
-            'lessons': [],
-            'exams': []
-        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        out = {}
+        for kind, key in (('exercise', 'exercises'), ('lesson', 'lessons'), ('exam', 'exams')):
+            picked = _recommended(user, kind, scope, ds, done)
+            reasons = dict(picked)
+            items = in_order(with_list_relations(Content.objects.all(), user), [cid for cid, _ in picked])
+            rows = ContentListSerializer(items, many=True, context=ctx).data
+            for row in rows:
+                row['reason'] = reasons.get(row['id'])
+            out[key] = rows
+        out['level'] = class_level.name if class_level else None
+        return Response(out)
+    except Exception:
+        logger.exception('get_recommended_content')
+        return Response({'exercises': [], 'lessons': [], 'exams': []}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

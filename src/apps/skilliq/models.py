@@ -58,6 +58,11 @@ class SkillAssessment(models.Model):
     answers = models.JSONField(default=dict, help_text="Question ID -> user's answer index")
     time_spent = models.PositiveIntegerField(default=0, help_text="Time spent in seconds")
 
+    # Score de la tentative précédente (10/10/2026) : « 40 % → 80 % » après un nouveau passage.
+    previous_score = models.PositiveSmallIntegerField(null=True, blank=True)
+    previous_max = models.PositiveSmallIntegerField(null=True, blank=True)
+    attempts = models.PositiveSmallIntegerField(default=1)
+
     completed_at = models.DateTimeField(auto_now=True)
     created_at = models.DateTimeField(auto_now_add=True)
 

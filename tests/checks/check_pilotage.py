@@ -24,9 +24,9 @@ from django.contrib.contenttypes.models import ContentType  # noqa: E402
 from django.utils import timezone  # noqa: E402
 from rest_framework.test import APIClient  # noqa: E402
 from apps.caracteristics.models import ClassLevel, Subject  # noqa: E402
-from apps.interactions.models import Complete, QuestionProgress  # noqa: E402
+from apps.interactions.models import Complete, QuestionProgress, StudyTimeDay  # noqa: E402
 from apps.things.models import Comment, Content, ContentDailyView, ContentReport  # noqa: E402
-from apps.users.admin_dashboard import VIEWS_SINCE  # noqa: E402
+from apps.users.admin_dashboard import VIEWS_SINCE, _active_days  # noqa: E402
 from apps.users.models import ViewHistory  # noqa: E402
 
 settings.ALLOWED_HOSTS = ['*']
@@ -69,6 +69,8 @@ Complete.objects.create(user=alice, content_type=ct, object_id=str(ex.id), statu
 QuestionProgress.objects.create(user=alice, content_type=ct, object_id=ex.id, question_path='q1', status='success')
 v = ViewHistory.objects.create(user=bob, content_type=ct, object_id=ex.id)
 ViewHistory.objects.filter(pk=v.pk).update(viewed_at=now - timedelta(days=3))
+# Jour actif = date stable : son temps d'étude ce jour-là (la date de consultation, elle, est écrasée à chaque passage).
+StudyTimeDay.objects.create(user=bob, object_id=ex.id, date=timezone.localdate() - timedelta(days=3), seconds=240)
 ViewHistory.objects.create(user=admin, content_type=ct, object_id=ex.id)
 Comment.objects.create(content_item=ex, author=alice, content='Merci !')
 ex2 = Content.objects.create(type='exercise', title='Corrigé à relire', author=editorial, subject=subject,
@@ -140,6 +142,97 @@ r = c.get(f'/api/pilotage/utilisateurs/{alice.id}/')
 kinds = {e['kind'] for e in r.data['activity']}
 check('fiche membre : dernières actions', r.status_code == 200 and {'signup', 'view', 'complete', 'comment'} <= kinds, kinds)
 check('fiche membre : compte inconnu → 404', c.get('/api/pilotage/utilisateurs/999999/').status_code == 404)
+
+
+# ── Audit du 10/10/2026 : entonnoir, portes d'inscription, nouvelles fonctionnalités, écarts de difficulté
+from apps.concours.models import SimulationSession  # noqa: E402
+from apps.interactions.models import RevisionList, SolutionView, UpcomingTest  # noqa: E402
+from apps.notebooks.models import NotebookAnnotation  # noqa: E402
+from apps.things.models import CatchUpSkip, DifficultyFeedback  # noqa: E402
+from apps.users.models import UsageDaily  # noqa: E402
+
+f30 = c.get('/api/pilotage/?jours=30').data['funnel']
+check('entonnoir : cohorte des 30 j (alice, bob, prof ; carla trop ancienne, admin exclu)',
+      f30 == {'signups': 3, 'verified': 3, 'onboarded': 0, 'first_view': 2, 'first_work': 1, 'back_d7': 1,
+              'd7_eligible': 1}, f30)
+# emma : inscrite il y a 20 jours, e-mail jamais confirmé ; fares : profil complété, a travaillé le lendemain
+# de son inscription puis a seulement réévalué la même question aujourd'hui (assessed_at bouge, created_at non).
+emma = User.objects.create_user('emma', 'emma@x.fr', 'Motdepasse-solide-42', is_active=False)
+emma.profile.email_verified = False
+emma.profile.save()
+fares = User.objects.create_user('fares', 'fares@x.fr', 'Motdepasse-solide-42')
+fares.profile.onboarding_completed = True
+fares.profile.save()
+User.objects.filter(pk=emma.pk).update(date_joined=now - timedelta(days=20))
+User.objects.filter(pk=fares.pk).update(date_joined=now - timedelta(days=15))
+qp = QuestionProgress.objects.create(user=fares, content_type=ct, object_id=ex.id, question_path='q1', status='review')
+QuestionProgress.objects.filter(pk=qp.pk).update(created_at=now - timedelta(days=14))
+d = c.get('/api/pilotage/?jours=30').data
+check('entonnoir : confirmés, profil complété, 1er travail, retour J7 (dates stables seulement)',
+      d['funnel'] == {'signups': 5, 'verified': 4, 'onboarded': 1, 'first_view': 2, 'first_work': 2, 'back_d7': 1,
+                      'd7_eligible': 3}, d['funnel'])
+by_day = {x['date']: x['active'] for x in d['series']}
+check('courbe : la réévaluation d’aujourd’hui ne déplace pas le jour actif de fares',
+      by_day[(today - timedelta(days=14)).isoformat()] == 1 and by_day[today.isoformat()] == 1, by_day)
+check('entonnoir 7 j : personne n’a encore 7 jours', c.get('/api/pilotage/?jours=7').data['funnel']['d7_eligible'] == 0)
+
+UsageDaily.objects.create(date=today, kind='filtre', name='auth:porte:vote', count=3, visitors=2, anon_count=3, anon_visitors=2)
+UsageDaily.objects.create(date=today - timedelta(days=1), kind='filtre', name='auth:porte:bandeau', count=1, visitors=1,
+                          anon_count=1, anon_visitors=1)
+UsageDaily.objects.create(date=today - timedelta(days=40), kind='filtre', name='auth:porte:vieux', count=9, visitors=9)
+UsageDaily.objects.create(date=today, kind='filtre', name='exercise:difficulte:hard', count=1, visitors=1)
+d = c.get('/api/pilotage/?jours=30').data
+doors = [(x['source'], x['count']) for x in d['auth_doors']]
+check('portes d’inscription de la période, la plus utilisée en tête', doors == [('vote', 3), ('bandeau', 1)], d['auth_doors'])
+check('portes : pas mêlées aux valeurs des filtres', all(v['filter'] != 'porte' for v in d['filter_values'])
+      and len(d['filter_values']) == 1, d['filter_values'])
+
+lesson = Content.objects.create(type='lesson', title='Leçon', author=editorial, subject=subject,
+                                json_content={'version': '2.1', 'blocks': []})
+for u in (alice, admin):   # admin : compté nulle part
+    SimulationSession.objects.create(user=u, mode='random_mix', concours_type='ensa', duration_minutes=60)
+    NotebookAnnotation.objects.create(user=u, lesson=lesson, annotation_id='a1', annotation_type='note',
+                                      position_x=1, position_y=1)
+    RevisionList.objects.create(user=u, name='Pour le DS')
+    CatchUpSkip.objects.create(user=u, content=ex)
+    UpcomingTest.objects.create(user=u, date=today, grade=14)
+    SolutionView.objects.create(user=u, content_type=ct, object_id=ex.id)
+    DifficultyFeedback.objects.create(user=u, content=ex, felt='harder', declared='medium')
+UpcomingTest.objects.create(user=bob, date=today)   # DS sans note : pas une « note de DS »
+gaby = User.objects.create_user('gaby', 'gaby@x.fr', 'Motdepasse-solide-42')   # ne fait que des concours
+User.objects.filter(pk=gaby.pk).update(date_joined=now - timedelta(days=60))
+SimulationSession.objects.create(user=gaby, mode='random_mix', concours_type='ensa', duration_minutes=60)
+d = c.get('/api/pilotage/?jours=30').data
+base = {x['key']: x for x in d['features'] if x['source'] == 'base'}
+new_keys = ('concours', 'annotation', 'liste_creee', 'pas_encore_fait', 'note_ds', 'solution_vue', 'ressenti')
+check('nouvelles fonctionnalités en base : 1 membre, 1 usage chacune (admin exclu)',
+      all(base.get(k, {}).get('users') == 1 and base[k]['actions'] == 1 for k in new_keys if k != 'concours')
+      and base['concours']['users'] == 2, {k: base.get(k) for k in new_keys})
+check('ressenti : en base ET geste du navigateur, rubriques séparées',
+      {x['source'] for x in d['features'] if x['key'] == 'ressenti'} == {'base', 'navigateur'})
+check('actif grâce à une source ajoutée (gaby : concours seulement)', d['metrics']['active']['value'] == 4
+      and _active_days([gaby.id], now - timedelta(days=1)).get(gaby.id) == {today},
+      d['metrics']['active'])
+gaps = d['todo'].get('difficulty_gaps')
+check('à traiter : écarts de difficulté présents (liste)', isinstance(gaps, list), gaps)
+# 5 élèves trouvent « plus dur » un exercice annoncé facile : ressenti décalé d'un niveau (things/difficulty.py).
+ex3 = Content.objects.create(type='exercise', title='Annoncé facile', difficulty='easy', author=editorial, subject=subject,
+                             json_content={'version': '2.1', 'blocks': []})
+for i in range(5):
+    u = User.objects.create_user(f'avis{i}', f'avis{i}@x.fr', 'Motdepasse-solide-42')
+    DifficultyFeedback.objects.create(user=u, content=ex3, felt='harder', declared='easy')
+gaps = c.get('/api/pilotage/?jours=30').data['todo']['difficulty_gaps']
+g3 = next((g for g in gaps if g['id'] == ex3.id), None)
+check('écart de difficulté remonté dans « À traiter »', g3 is not None and g3['declared'] == 'easy'
+      and g3['felt'] == 'medium' and g3['votes'].get('harder') == 5 and g3['url'] == f'/exercises/{ex3.id}'
+      and g3['edit_url'] == f'/exercises/{ex3.id}/edit', gaps)
+check('écarts de difficulté : forme attendue', all({'id', 'type', 'title', 'url', 'declared', 'felt', 'n', 'success_pct',
+                                                    'votes'} <= set(g) for g in gaps), gaps)
+# Une simple connexion n'est pas une activité datée (la date est écrasée) : « dernière activité » oui, « actifs » non.
+User.objects.filter(pk=carla.pk).update(last_login=now)
+rows = {x['username']: x for x in c.get('/api/pilotage/utilisateurs/?q=carla').data['results']}
+check('connexion seule : dernière activité affichée, pas comptée active',
+      rows['carla']['last_activity'] and 'carla' not in who('filtre=actifs&jours=7'), rows.get('carla'))
 
 print(f'\n{sum(results)}/{len(results)} vérifications réussies')
 sys.exit(0 if all(results) else 1)

@@ -14,6 +14,7 @@ td_list_detail = views.TDListViewSet.as_view({
 })
 td_list_add_item = views.TDListViewSet.as_view({'post': 'add_item'})
 td_list_remove_item = views.TDListViewSet.as_view({'delete': 'remove_item'})
+td_list_suivi = views.TDListViewSet.as_view({'get': 'suivi'})
 
 urlpatterns = [
     path('join/', views.join_classroom, name='classroom-join'),
@@ -24,6 +25,7 @@ urlpatterns = [
     path('<int:classroom_pk>/td-lists/<int:pk>/', td_list_detail, name='tdlist-detail'),
     path('<int:classroom_pk>/td-lists/<int:pk>/items/', td_list_add_item, name='tdlist-add-item'),
     path('<int:classroom_pk>/td-lists/<int:pk>/items/<int:item_id>/', td_list_remove_item, name='tdlist-remove-item'),
+    path('<int:classroom_pk>/td-lists/<int:pk>/suivi/', td_list_suivi, name='tdlist-suivi'),
 
     # Skill stats
     path('<int:pk>/student-stats/', views.classroom_student_stats, name='classroom-student-stats'),
