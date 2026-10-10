@@ -164,6 +164,10 @@ class TimeSession(models.Model):
     
     # Notes optionnelles de l'utilisateur sur cette session
     notes = models.TextField(blank=True)
+
+    # Épreuve d'examen (10/10/2026) : note de CE passage (évaluations faites après le départ du chrono).
+    score = models.FloatField(null=True, blank=True)
+    max_score = models.FloatField(null=True, blank=True)
     
     class Meta:
         app_label = 'interactions'
@@ -496,6 +500,17 @@ class QuestionProgress(models.Model):
 
     # Solution validation (student's comparison of their solution vs official)
     solution_validation = models.CharField(max_length=20, choices=VALIDATION_CHOICES, null=True, blank=True)
+
+    # D'où vient l'évaluation (10/10/2026) : question par question, « Tout réussi » en un clic, réponse à
+    # « Tu avais trouvé ? » sous une solution ouverte, ou bandeau de rattrapage de la liste. Sert à pondérer
+    # la réussite réelle (things/difficulty.py) : un « Tout réussi » en un clic pèse moins.
+    SOURCE_CHOICES = [
+        ('question', 'Question par question'),
+        ('tout', 'Tout réussi'),
+        ('apres_solution', 'Après la solution'),
+        ('rattrapage', 'Bandeau de rattrapage'),
+    ]
+    source = models.CharField(max_length=16, choices=SOURCE_CHOICES, default='question')
 
     assessed_at = models.DateTimeField(auto_now=True)
     created_at = models.DateTimeField(auto_now_add=True)

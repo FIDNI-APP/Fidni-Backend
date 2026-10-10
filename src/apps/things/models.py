@@ -53,6 +53,10 @@ class Content(CompleteableMixin, SaveableMixin, models.Model):
     national_year = models.PositiveIntegerField(null=True, blank=True)
     duration_minutes = models.PositiveIntegerField(null=True, blank=True)
 
+    # Recherche (10/10/2026) : titre + texte visible, sans accents ni balises ni LaTeX, en minuscules
+    # (« derivee » trouve « Dérivée »). Recalculé à chaque save() — voir things/search_text.py.
+    search_text = models.TextField(blank=True, default='')
+
     class Meta:
         ordering = ['-created_at']
         db_table = 'things_content'
@@ -69,6 +73,11 @@ class Content(CompleteableMixin, SaveableMixin, models.Model):
                 models.Max('display_id')
             )['display_id__max']
             self.display_id = (max_id or 0) + 1
+        from apps.things.search_text import build_search_text
+        self.search_text = build_search_text(self.title, self.json_content)
+        update_fields = kwargs.get('update_fields')
+        if update_fields is not None and ('title' in update_fields or 'json_content' in update_fields):
+            kwargs['update_fields'] = list({*update_fields, 'search_text'})
         super().save(*args, **kwargs)
 
     def _get_structure(self) -> dict:
@@ -268,3 +277,28 @@ class CatchUpSkip(models.Model):
     def __str__(self):
         return f"{self.user_id} · {self.content_id} : pas encore fait"
 
+
+
+class DifficultyFeedback(models.Model):
+    """Difficulté ressentie par un élève (10/10/2026) : « C'était plus facile / comme annoncé / plus dur
+    qu'annoncé ». Un avis par élève et par contenu, modifiable. `declared` garde la difficulté affichée au
+    moment de l'avis (elle peut changer ensuite). Sert au « ressenti des élèves » (things/difficulty.py)."""
+    FELT_CHOICES = [
+        ('easier', 'Plus facile qu’annoncé'),
+        ('as_said', 'Comme annoncé'),
+        ('harder', 'Plus difficile qu’annoncé'),
+    ]
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='difficulty_feedback')
+    content = models.ForeignKey(Content, on_delete=models.CASCADE, related_name='difficulty_feedback')
+    felt = models.CharField(max_length=8, choices=FELT_CHOICES)
+    declared = models.CharField(max_length=10, null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'things_difficultyfeedback'
+        constraints = [models.UniqueConstraint(fields=['user', 'content'], name='unique_difficulty_feedback')]
+        indexes = [models.Index(fields=['content'], name='difficultyfeedback_content')]
+
+    def __str__(self):
+        return f"{self.user_id} · {self.content_id} : {self.felt}"

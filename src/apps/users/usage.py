@@ -36,6 +36,28 @@ ACTIONS = {
     'recherche',          # recherche lancée
     'onglet-activite',    # onglet « Activité » d'un contenu ouvert
     'onglet-solutions',   # onglet « Solutions des élèves » ouvert
+    # Audit du 10/10/2026 : gestes jusqu'ici invisibles.
+    'partager',           # « Partager » d'un contenu
+    'chrono-demarre',     # chrono d'un exercice lancé (seule la sauvegarde laissait une trace)
+    'epreuve-demarree', 'epreuve-terminee',  # épreuve chronométrée d'un examen
+    'similaire',          # clic dans « Pour continuer »
+    'suivant-apres-resultat',  # « Exercice suivant » proposé après Réussi / À revoir
+    'ressenti',           # « C'était : plus facile / comme annoncé / plus dur »
+    'cloche',             # cloche des notifications ouverte
+    'retour-liste',       # bouton retour d'un contenu vers la liste
+    'sommaire-lecon',     # sommaire d'une leçon utilisé
+    'affichage-enonces',  # liste passée en mode « Énoncés »
+    'charger-plus',       # « Charger plus » dans une liste
+    'recherche-vide',     # recherche sans résultat
+    'accueil-reprendre', 'accueil-pour-toi', 'annoncer-ds',  # accueil connecté
+    'prog-entrainer', 'prog-cours', 'prog-quiz',  # Ma progression › chapitre
+    'quiz-refait',        # quiz de chapitre repassé
+    'mode-revision',      # liste de révision ouverte en mode révision
+    'barre-mobile',       # barre d'onglets en bas sur téléphone
+    'visite-auto', 'visite-passee', 'visite-finie',  # visites guidées
+    'signaler-ouvert',    # fenêtre « Signaler une erreur » ouverte (envoyée ou non)
+    'auth-ouverte',       # fenêtre de connexion / inscription ouverte
+    'connexion-google',   # bouton « Continuer avec Google » utilisé
     # Filtres des listes (exercices, examens, leçons) : un filtre ajouté, le tri, « Tout effacer ».
     'filtre-niveau', 'filtre-matiere', 'filtre-sous-domaine', 'filtre-chapitre', 'filtre-theoreme',
     'filtre-difficulte', 'filtre-statut', 'filtre-national', 'filtre-date', 'filtre-effacer', 'tri',
@@ -45,7 +67,9 @@ ACTIONS = {
 # Valeur d'un filtre : « <liste>:<filtre>:<valeur> » (identifiant, difficulté, tri…), traduite au Pilotage.
 FILTER_RE = re.compile(
     r'^(exercise|exam|lesson):(niveau|matiere|sous-domaine|chapitre|theoreme|difficulte|statut|national|date|tri)'
-    r':[A-Za-z0-9_-]{1,40}$')
+    r':[A-Za-z0-9_-]{1,40}$'
+    # Porte d'entrée de la fenêtre d'inscription (10/10/2026) : « auth:porte:vote », « auth:porte:bandeau »…
+    r'|^auth:porte:[a-z0-9-]{1,30}$')
 
 
 class UsageAnonThrottle(AnonRateThrottle):
