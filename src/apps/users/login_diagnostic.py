@@ -41,6 +41,8 @@ CODE_HINT = {
                      'de GOOGLE_CLIENT_ID, ou adresse non confirmée chez Google.',
     'google_unavailable': 'Connexion Google : le serveur n’a pas pu joindre Google (réseau). Réessayer.',
     'set_password_first': 'Compte créé avec Google : définir un mot de passe avant de changer d’adresse e-mail.',
+    'use_password_reset': 'Compte sans mot de passe (Google) : le premier mot de passe se définit par le lien '
+                          '« Mot de passe oublié » (bouton « Définir un mot de passe » des réglages).',
 }
 
 
@@ -124,6 +126,10 @@ def login_diagnostic(request):
                             'de confirmation n’a pas été cliqué (le membre peut demander un nouvel e-mail).')
         elif not u.is_active:
             warnings.append(f'« {u.username} » : compte désactivé.')
+        elif not verified:
+            warnings.append(f'« {u.username} » : nouvelle adresse e-mail pas encore confirmée (changée dans les '
+                            'réglages). La connexion marche ; une connexion avec Google à cette adresse retirera le '
+                            'mot de passe du compte.')
         if not u.has_usable_password():
             if u.id in google_ids:
                 warnings.append(f'« {u.username} » : se connecte avec Google (aucun mot de passe) ; peut définir '

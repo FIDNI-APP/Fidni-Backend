@@ -1,5 +1,5 @@
-"""Connexion avec Google (apps/authentication/google.py + GoogleLoginView) et comptes sans mot de passe,
-sur une base SQLite jetable. Google n'est jamais appelé : la vérification du jeton est remplacée par une
+"""Connexion avec Google (apps/authentication/google.py + GoogleLoginView), comptes sans mot de passe et
+nouvelle adresse e-mail à confirmer, sur une base SQLite jetable. Google n'est jamais appelé : la vérification du jeton est remplacée par une
 fonction factice, puis la vraie fonction est testée avec une clé RSA locale et un faux client JWKS."""
 import os
 import re
@@ -30,7 +30,9 @@ from django.core.cache import cache  # noqa: E402
 from rest_framework.test import APIClient  # noqa: E402
 
 from apps.authentication import google  # noqa: E402
+from apps.authentication.tokens import make_verification_token  # noqa: E402
 from apps.authentication.views import USERNAME_RE  # noqa: E402
+from apps.logging.models import APILog  # noqa: E402
 from apps.users.legal import TERMS_VERSION  # noqa: E402
 from apps.users.models import GoogleAccount  # noqa: E402
 
@@ -74,6 +76,21 @@ def bearer(access):
     return APIClient(HTTP_CF_CONNECTING_IP='4.4.4.5', HTTP_AUTHORIZATION=f'Bearer {access}')
 
 
+def login(identifier, password):
+    cache.clear()
+    return anon.post('/api/auth/login/', {'identifier': identifier, 'password': password}, format='json')
+
+
+def refresh_ok(refresh):
+    cache.clear()
+    return anon.post('/api/token/refresh/', {'refresh': refresh}, format='json').status_code == 200
+
+
+def link_in(message, pattern):
+    m = re.search(pattern, message.body)
+    return m.groups() if m else None
+
+
 CONSENT = {'accept_terms': True, 'age_ok': True}
 
 # 1. Jeton refusé
@@ -81,6 +98,16 @@ r = gpost('faux')
 check('jeton invalide : 400 invalid_token', r.status_code == 400 and r.data.get('code') == 'invalid_token', r.data)
 r = anon.post('/api/auth/google/', {}, format='json')
 check('sans jeton : 400 invalid_token', r.status_code == 400 and r.data.get('code') == 'invalid_token', r.data)
+# Le jeton d'identité est rejouable tant qu'il n'a pas expiré : jamais écrit dans les journaux.
+APILog.objects.all().delete()
+SECRET = 'eyJhbGciOiJSUzI1NiJ9.jeton-google-confidentiel.signature'
+gpost(SECRET)
+logs = list(APILog.objects.filter(endpoint='/api/auth/google/'))
+check('journal : l’appel en erreur est journalisé', len(logs) == 1 and logs[0].status_code == 400,
+      [(l.status_code, l.request_body) for l in logs])
+check('… sans le jeton Google (masqué)', logs and all(SECRET not in (l.request_body or '') + (l.response_body or '')
+                                                     for l in logs) and '[masqué]' in (logs[0].request_body or ''),
+      [l.request_body for l in logs])
 
 # 2. Nouveau compte : consentement exigé
 ident('amine', 'g-amine', 'Amine.Benali+fidni@gmail.com', 'Amine', 'Benali')
@@ -181,6 +208,70 @@ cache.clear()
 r = anon.post('/api/auth/login/', {'identifier': 'attente@exemple.fr', 'password': PWD}, format='json')
 check('… l’auteur de l’inscription ne peut plus s’y connecter', r.status_code == 401, r.status_code)
 
+# 5 bis. Adresse changée dans les réglages mais pas confirmée : la liaison Google la traite comme en attente.
+# Scénario : un membre met l'adresse de quelqu'un d'autre sur son compte, dont il connaît le mot de passe.
+pirate = User.objects.create_user('pirate', 'pirate@exemple.fr', PWD)
+r = login('pirate', PWD)
+pirate_refresh = r.data.get('refresh')
+r = bearer(r.data['access']).patch('/api/auth/user/update/', {'email': 'Victime@gmail.com', 'current_password': PWD},
+                                   format='json')
+pirate.refresh_from_db()
+check('nouvelle adresse non confirmée (préparation)', r.status_code == 200 and pirate.email == 'victime@gmail.com'
+      and not pirate.profile.email_verified and pirate.is_active, r.data)
+pirate.profile.terms_version = ''
+pirate.profile.save()
+check('… le membre se connecte toujours avec son mot de passe', login('pirate', PWD).status_code == 200)
+ident('victime', 'g-victime', 'victime@gmail.com')
+r = gpost('victime')
+pirate.refresh_from_db()
+check('liaison Google à une adresse non confirmée : les cases sont demandées', r.status_code == 400
+      and r.data.get('code') == 'consent_required' and pirate.has_usable_password()
+      and not GoogleAccount.objects.filter(sub='g-victime').exists(), r.data)
+r = gpost('victime', **CONSENT)
+pirate.refresh_from_db()
+pirate.profile.refresh_from_db()
+check('… puis connexion au compte qui porte l’adresse, adresse confirmée', r.status_code == 200
+      and r.data['user']['id'] == pirate.id and r.data.get('created') is False and pirate.is_active
+      and pirate.profile.email_verified and pirate.profile.email_verified_at
+      and GoogleAccount.objects.filter(sub='g-victime', user=pirate).exists(), r.data)
+check('… mot de passe retiré', not pirate.has_usable_password() and r.data['user'].get('has_password') is False)
+check('… sessions ouvertes avant fermées (jeton de rafraîchissement révoqué)', not refresh_ok(pirate_refresh))
+check('… la nouvelle session fonctionne', refresh_ok(r.data['refresh']))
+check('… l’ancien mot de passe ne connecte plus', login('victime@gmail.com', PWD).status_code == 401
+      and login('pirate', PWD).status_code == 401)
+check('… conditions acceptées par la personne qui possède l’adresse', pirate.profile.terms_version == TERMS_VERSION)
+
+# Nouvelle adresse confirmée par le lien « Mot de passe oublié » : liaison simple ensuite.
+lea = User.objects.create_user('lea', 'lea@exemple.fr', PWD)
+r = bearer(login('lea', PWD).data['access']).patch('/api/auth/user/update/',
+                                                   {'email': 'lea.perso@gmail.com', 'current_password': PWD},
+                                                   format='json')
+lea.refresh_from_db()
+check('autre membre : nouvelle adresse à confirmer', r.status_code == 200 and not lea.profile.email_verified, r.data)
+cache.clear()
+mail.outbox[:] = []
+anon.post('/api/auth/password-reset/', {'email': 'lea.perso@gmail.com'}, format='json')
+lea_link = link_in(mail.outbox[0], r'uid=([^&\s]+)&token=([^\s]+)') if mail.outbox else ('', '')
+r = anon.post('/api/auth/password-reset/confirm/', {'uid': lea_link[0], 'token': lea_link[1],
+                                                    'password': 'Mdp-de-lea-solide-5'}, format='json')
+lea.refresh_from_db()
+check('… le lien « Mot de passe oublié » reçu à la nouvelle adresse la confirme', r.status_code == 200
+      and lea.profile.email_verified and lea.is_active, r.data)
+ident('lea', 'g-lea', 'lea.perso@gmail.com')
+r = gpost('lea')
+lea.refresh_from_db()
+check('… adresse confirmée : liaison Google simple, mot de passe conservé', r.status_code == 200
+      and r.data['user']['id'] == lea.id and lea.check_password('Mdp-de-lea-solide-5')
+      and GoogleAccount.objects.filter(sub='g-lea', user=lea).exists(), r.data)
+
+# Compte déjà lié (même sub) dont l'adresse redevient celle de Google : confirmée, rien d'autre ne change.
+lea.profile.email_verified = False
+lea.profile.save()
+r = gpost('lea')
+lea.refresh_from_db()
+check('compte lié, adresse = adresse Google : confirmée sans retirer le mot de passe', r.status_code == 200
+      and lea.profile.email_verified and lea.check_password('Mdp-de-lea-solide-5'), r.data)
+
 # 6. Compte désactivé : refusé
 off = User.objects.create_user('off', 'off@exemple.fr', PWD)
 off.is_active = False
@@ -240,36 +331,82 @@ check('changer d’e-mail sans mot de passe : set_password_first', r.status_code
 r = c.patch('/api/auth/user/update/', {'first_name': 'Amin'}, format='json')
 check('… le reste reste modifiable', r.status_code == 200, r.data)
 
+# Premier mot de passe : jamais depuis une simple session ouverte, seulement par le lien reçu par e-mail.
+for what, body in (('corps vide', {}), ('nouveau seul', {'new_password': 'Nouveau-mdp-solide-7'}),
+                   ('nombre', {'new_password': 123456789012}),
+                   ('actuel vide', {'current_password': '', 'new_password': 'Nouveau-mdp-solide-7'})):
+    r = c.post('/api/auth/password/change/', body, format='json')
+    check(f'premier mot de passe depuis la session : 400 use_password_reset ({what})', r.status_code == 400
+          and r.data.get('code') == 'use_password_reset' and 'Mot de passe oublié' in r.data.get('error', ''), r.data)
+u.refresh_from_db()
+check('… toujours sans mot de passe', not u.has_usable_password())
+
 cache.clear()
 mail.outbox[:] = []
 anon.post('/api/auth/password-reset/', {'email': 'amine.benali+fidni@gmail.com'}, format='json')
 check('mot de passe oublié : lien envoyé au compte Google', len(mail.outbox) == 1, len(mail.outbox))
+reset_link = link_in(mail.outbox[0], r'uid=([^&\s]+)&token=([^\s]+)') if mail.outbox else None
 sans = User.objects.create_user('sansmdp', 'sans@exemple.fr')  # ni mot de passe ni Google
 cache.clear()
 anon.post('/api/auth/password-reset/', {'email': 'sans@exemple.fr'}, format='json')
 check('… mais rien pour un compte sans mot de passe ni Google', len(mail.outbox) == 1 and not sans.has_usable_password(),
       len(mail.outbox))
-
-r = c.post('/api/auth/password/change/', {}, format='json')
-check('définir un mot de passe : nouveau mot de passe requis', r.status_code == 400, r.data)
-r = c.post('/api/auth/password/change/', {'new_password': 'court'}, format='json')
-check('… mot de passe faible refusé', r.status_code == 400, r.data)
-r = c.post('/api/auth/password/change/', {'new_password': 123456789012}, format='json')
-check('… nombre au lieu d’un texte : 400 (pas d’erreur serveur)', r.status_code == 400, r.status_code)
-r = c.post('/api/auth/password/change/', {'new_password': 'Nouveau-mdp-solide-7'}, format='json')
-u.refresh_from_db()
-check('définir un mot de passe sans l’actuel : 200 + jetons', r.status_code == 200 and r.data.get('refresh')
-      and u.check_password('Nouveau-mdp-solide-7'), r.data)
 cache.clear()
-r = anon.post('/api/auth/login/', {'identifier': 'amine.benali+fidni@gmail.com', 'password': 'Nouveau-mdp-solide-7'},
-              format='json')
+r = anon.post('/api/auth/password-reset/confirm/', {'uid': reset_link[0], 'token': reset_link[1],
+                                                    'password': 'Nouveau-mdp-solide-7'}, format='json')
+u.refresh_from_db()
+check('… le lien reçu permet de choisir le premier mot de passe', r.status_code == 200
+      and u.check_password('Nouveau-mdp-solide-7'), r.data)
+r = login('amine.benali+fidni@gmail.com', 'Nouveau-mdp-solide-7')
 check('… connexion par mot de passe ensuite', r.status_code == 200 and r.data['user'].get('has_password') is True, r.status_code)
 c2 = bearer(r.data['access'])
 r = c2.post('/api/auth/password/change/', {'new_password': 'Encore-un-mdp-solide-9'}, format='json')
-check('… désormais, l’actuel est exigé', r.status_code == 400, r.data)
+check('… désormais, l’actuel est exigé', r.status_code == 400 and r.data.get('code') != 'use_password_reset', r.data)
+
+# 8 bis. Nouvelle adresse e-mail : à confirmer, le compte reste utilisable
+mail.outbox[:] = []
 r = c2.patch('/api/auth/user/update/', {'email': 'amine@exemple.fr', 'current_password': 'Nouveau-mdp-solide-7'},
              format='json')
-check('… et l’e-mail se change avec lui', r.status_code == 200, r.data)
+u.refresh_from_db()
+check('changer d’e-mail avec le mot de passe : 200, lien de confirmation envoyé', r.status_code == 200
+      and r.data.get('email_verification_sent') is True and r.data['user'].get('email_verified') is False
+      and u.email == 'amine@exemple.fr', r.data)
+check('… adresse à confirmer, compte toujours actif', u.is_active and not u.profile.email_verified
+      and u.profile.email_verified_at is None)
+msg = mail.outbox[0] if len(mail.outbox) == 1 else None
+check('… e-mail dédié, envoyé à la nouvelle adresse (pas « Bienvenue »)', msg is not None
+      and msg.to == ['amine@exemple.fr'] and 'nouvelle adresse' in msg.subject
+      and 'Confirme ta nouvelle adresse' in msg.alternatives[0][0] and 'Bienvenue' not in msg.alternatives[0][0]
+      and '/verify-email?token=' in msg.body, msg and (msg.to, msg.subject))
+check('… « adresse à confirmer » dans le profil du propriétaire',
+      c2.get('/api/auth/user/').data.get('email_verified') is False)
+r = login('amine@exemple.fr', 'Nouveau-mdp-solide-7')
+check('… la connexion par mot de passe marche toujours', r.status_code == 200, r.status_code)
+cache.clear()
+mail.outbox[:] = []
+anon.post('/api/auth/resend-verification/', {'email': 'amine@exemple.fr'}, format='json')
+check('… « renvoyer le lien » renvoie l’e-mail de nouvelle adresse', len(mail.outbox) == 1
+      and 'nouvelle adresse' in mail.outbox[0].subject, [m.subject for m in mail.outbox])
+verify_token = link_in(msg, r'token=([^\s]+)')[0] if msg else ''
+cache.clear()
+r = anon.post('/api/auth/verify-email/', {'token': verify_token}, format='json')
+u.refresh_from_db()
+check('… le lien confirme la nouvelle adresse, sans ouvrir de session', r.status_code == 200
+      and r.data.get('detail') == 'new_email_verified' and 'access' not in r.data and 'refresh' not in r.data
+      and u.profile.email_verified and u.profile.email_verified_at, r.data)
+r = anon.post('/api/auth/verify-email/', {'token': verify_token}, format='json')
+check('… lien déjà utilisé : already_verified', r.status_code == 200 and r.data.get('detail') == 'already_verified', r.data)
+old_token = make_verification_token(User(id=u.id, email='amine.benali+fidni@gmail.com'))
+r = anon.post('/api/auth/verify-email/', {'token': old_token}, format='json')
+check('… un lien émis pour l’ancienne adresse ne vaut plus', r.status_code == 400 and r.data.get('code') == 'token_invalid',
+      r.data)
+bloque = User.objects.create_user('bloque', 'bloque@exemple.fr', PWD)
+bloque.is_active = False
+bloque.save()
+r = anon.post('/api/auth/verify-email/', {'token': make_verification_token(bloque)}, format='json')
+bloque.refresh_from_db()
+check('compte désactivé (adresse déjà confirmée) : un lien ne le réactive pas', r.status_code == 200
+      and 'access' not in r.data and not bloque.is_active, r.data)
 
 r = APIClient(HTTP_CF_CONNECTING_IP='5.5.5.5', HTTP_AUTHORIZATION=f"Bearer {gpost('sara').data['access']}") \
     .post('/api/auth/delete-account/', {}, format='json')

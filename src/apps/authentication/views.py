@@ -25,7 +25,7 @@ from apps.users.serializers import (
     UserSerializer,
 )
 from . import google
-from .emails import send_password_reset_email, send_verification_email
+from .emails import send_email_change_verification, send_password_reset_email, send_verification_email
 from .tokens import read_verification_token
 from apps.users.identity import clean_person_name
 from apps.users.legal import accept_terms
@@ -169,8 +169,12 @@ class GoogleLoginView(views.APIView):
 
     Compte retrouvé par l'identifiant Google (sub), sinon par l'adresse e-mail (le plus ancien, comme
     _find_user) et le lien est créé ; sinon nouveau compte, après acceptation des conditions comme
-    l'inscription classique. Google a confirmé l'adresse : pas d'e-mail de confirmation. Un compte
-    jamais confirmé est activé après acceptation des conditions, sans son mot de passe d'inscription.
+    l'inscription classique. Google a confirmé l'adresse : pas d'e-mail de confirmation.
+
+    Liaison par adresse à un compte dont l'adresse n'est pas confirmée (inscription en attente, ou
+    adresse changée dans les réglages sans cliquer le lien) : traité comme un compte en attente. Les
+    cases sont demandées, puis le compte est activé et l'adresse confirmée, son mot de passe retiré et
+    toutes ses sessions fermées. Adresse confirmée : liaison simple, le mot de passe reste.
     """
     permission_classes = [AllowAny]
     authentication_classes = []
@@ -190,39 +194,53 @@ class GoogleLoginView(views.APIView):
                             status=status.HTTP_400_BAD_REQUEST)
 
         created = False
-        link = GoogleAccount.objects.select_related('user').filter(sub=info['sub']).first()
-        user = link.user if link else User.objects.filter(email__iexact=info['email']).order_by('id').first()
+        unconfirmed = False
+        link = GoogleAccount.objects.select_related('user', 'user__profile').filter(sub=info['sub']).first()
+        if link is not None:
+            user = link.user
+            if not user.is_active:
+                return Response({'error': 'Ce compte est désactivé.', 'code': 'account_disabled'},
+                                status=status.HTTP_403_FORBIDDEN)
+            profile = getattr(user, 'profile', None)
+            if profile is not None and not profile.email_verified and (user.email or '').lower() == info['email']:
+                # L'adresse du compte est celle de ce compte Google, déjà lié : Google la confirme.
+                profile.email_verified = True
+                profile.email_verified_at = timezone.now()
+                profile.save(update_fields=['email_verified', 'email_verified_at'])
+        else:
+            user = User.objects.filter(email__iexact=info['email']).order_by('id').first()
+            profile = getattr(user, 'profile', None) if user is not None else None
+            # Adresse jamais confirmée sur ce compte (inscription en attente, ou adresse changée dans les
+            # réglages sans cliquer le lien) : n'importe qui a pu la saisir. Google prouve maintenant qui
+            # la possède : cette personne accepte elle-même les conditions, et le mot de passe du compte
+            # ne sert plus (sinon celui qui a saisi l'adresse entrerait dans le compte qu'elle va utiliser).
+            unconfirmed = profile is not None and not profile.email_verified
+            if user is not None and not user.is_active and not unconfirmed:
+                return Response({'error': 'Ce compte est désactivé.', 'code': 'account_disabled'},
+                                status=status.HTTP_403_FORBIDDEN)
 
-        # Compte en attente de confirmation d'e-mail (inscription jamais confirmée) : n'importe qui a pu
-        # le créer avec cette adresse. Google prouve maintenant qui la possède : cette personne accepte
-        # elle-même les conditions, et le mot de passe choisi à l'inscription ne sert plus (sinon son
-        # auteur entrerait dans le compte qu'elle va utiliser).
-        profile = getattr(user, 'profile', None) if user is not None else None
-        pending = (user is not None and not user.is_active and profile is not None and not profile.email_verified
-                   and (user.email or '').lower() == info['email'])
-        if user is not None and not user.is_active and not pending:
-            return Response({'error': 'Ce compte est désactivé.', 'code': 'account_disabled'},
-                            status=status.HTTP_403_FORBIDDEN)
-
-        if user is None or pending:
+        if user is None or unconfirmed:
             # RGPD : mêmes cases que l'inscription (non pré-cochées), exigées ici aussi.
             if data.get('accept_terms') is not True or data.get('age_ok') is not True:
                 name = info['name'] or f"{info['given_name']} {info['family_name']}".strip()
-                return Response({'error': 'Accepte les conditions d’utilisation pour créer ton compte.',
+                action = 'créer ton compte' if user is None else 'continuer'
+                return Response({'error': f'Accepte les conditions d’utilisation pour {action}.',
                                  'code': 'consent_required', 'email': info['email'], 'name': name},
                                 status=status.HTTP_400_BAD_REQUEST)
 
         if user is None:
             user, link, created = _create_google_user(info)
-        elif pending:
+        elif unconfirmed:
             with transaction.atomic():
                 user.is_active = True
-                user.set_unusable_password()  # « Mot de passe oublié » ou les réglages pour en définir un
+                user.set_unusable_password()  # « Mot de passe oublié » pour en définir un
                 user.save(update_fields=['is_active', 'password'])
                 profile.email_verified = True
                 profile.email_verified_at = timezone.now()
                 profile.save(update_fields=['email_verified', 'email_verified_at'])
                 accept_terms(profile)
+                # Plus aucune session ouverte avant cette connexion (jetons d'accès : 60 min au plus).
+                revoke_all_sessions(user)
 
         if link is None:
             link, _ = GoogleAccount.objects.get_or_create(sub=info['sub'],
@@ -355,21 +373,28 @@ class VerifyEmailView(views.APIView):
                             status=status.HTTP_400_BAD_REQUEST)
 
         profile = getattr(user, 'profile', None)
-        # Première confirmation : l'élève est connecté directement (il vient de créer son compte et
-        # enchaîne sur la complétude du profil). Un lien déjà utilisé ne connecte plus personne.
-        first_time = not user.is_active or (profile is not None and not profile.email_verified)
+        # Lien déjà utilisé : il ne connecte plus personne. Un compte désactivé par l'équipe (adresse
+        # déjà confirmée) ne se réactive pas non plus par un ancien lien.
+        if profile is None or profile.email_verified:
+            return Response({'detail': 'already_verified'}, status=status.HTTP_200_OK)
 
-        if not user.is_active:
-            user.is_active = True
-            user.save(update_fields=['is_active'])
-
-        if profile is not None and not profile.email_verified:
+        signup = not user.is_active  # inscription en attente de confirmation
+        with transaction.atomic():
+            if signup:
+                user.is_active = True
+                user.save(update_fields=['is_active'])
             profile.email_verified = True
             profile.email_verified_at = timezone.now()
             profile.save(update_fields=['email_verified', 'email_verified_at'])
 
-        if not first_time:
-            return Response({'detail': 'already_verified'}, status=status.HTTP_200_OK)
+        if not signup:
+            # Nouvelle adresse d'un compte actif (changée dans les réglages) : confirmée, mais sans ouvrir
+            # de session. Celui qui reçoit ce lien n'est pas forcément le titulaire du compte (adresse
+            # saisie par erreur ou exprès) : il ne doit pas y entrer. Le titulaire reste connecté.
+            return Response({'detail': 'new_email_verified'}, status=status.HTTP_200_OK)
+
+        # Première confirmation d'une inscription : l'élève est connecté directement (il vient de créer
+        # son compte et enchaîne sur la complétude du profil).
 
         refresh = RefreshToken.for_user(user)
         update_last_login(None, user)
@@ -395,8 +420,9 @@ class ResendVerificationView(views.APIView):
             try:
                 user = _find_user(email)
                 profile = getattr(user, 'profile', None) if user else None
-                if user and (profile is None or not profile.email_verified):
-                    send_verification_email(user)
+                if user and profile is not None and not profile.email_verified:
+                    # Compte actif : c'est une nouvelle adresse à confirmer, pas une inscription.
+                    (send_email_change_verification if user.is_active else send_verification_email)(user)
             except Exception:
                 logger.exception("Failed to resend verification email")
 
@@ -450,16 +476,17 @@ class PasswordResetConfirmView(views.APIView):
                             status=status.HTTP_400_BAD_REQUEST)
 
         user.set_password(password)
-        # Recevoir le lien prouve l'accès à la boîte mail : le compte est donc confirmé.
+        # Recevoir le lien prouve l'accès à la boîte mail : l'adresse est donc confirmée (inscription en
+        # attente activée, ou nouvelle adresse pas encore confirmée). Un compte désactivé le reste.
         fields = ['password']
-        if not user.is_active:
-            profile = getattr(user, 'profile', None)
-            if profile is not None and not profile.email_verified:
+        profile = getattr(user, 'profile', None)
+        if profile is not None and not profile.email_verified:
+            if not user.is_active:
                 user.is_active = True
                 fields.append('is_active')
-                profile.email_verified = True
-                profile.email_verified_at = timezone.now()
-                profile.save(update_fields=['email_verified', 'email_verified_at'])
+            profile.email_verified = True
+            profile.email_verified_at = timezone.now()
+            profile.save(update_fields=['email_verified', 'email_verified_at'])
         user.save(update_fields=fields)
         # Quelqu'un connaissait peut-être l'ancien mot de passe : on ferme toutes les sessions.
         revoke_all_sessions(user)

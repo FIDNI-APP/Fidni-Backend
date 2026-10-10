@@ -426,7 +426,7 @@ TRACKED_FILTERS = [
     ('filtre-theoreme', 'Théorème'),
     ('filtre-sous-domaine', 'Sous-domaine'),
     ('filtre-matiere', 'Matière'),
-    ('filtre-statut', 'Statut (vus, réussis, à revoir)'),
+    ('filtre-statut', 'Statut (à faire, réussis, à revoir, vus)'),
     ('filtre-national', 'Examen national'),
     ('filtre-date', 'Date'),
     ('tri', 'Tri de la liste'),
@@ -470,9 +470,10 @@ def _usage(first, prev_first, real_ids):
 
 DIFFICULTY_LABEL = {'easy': 'Facile', 'medium': 'Moyen', 'hard': 'Difficile'}
 STATUS_LABEL = {'showViewed': 'Déjà vus', 'hideViewed': 'Masquer les vus', 'showCompleted': 'Réussis',
-                'showFailed': 'À revoir'}
+                'showFailed': 'À revoir', 'todo': 'À faire'}
 SORT_LABEL = {'recommended': 'Pour toi', 'most_upvoted': 'Plus aimés', 'newest': 'Plus récents',
-              'oldest': 'Plus anciens', 'most_commented': 'Plus commentés'}
+              'oldest': 'Plus anciens', 'most_commented': 'Plus commentés',
+              'easiest': 'Du plus facile au plus difficile'}
 # Filtre envoyé par le navigateur → clé de TRACKED_FILTERS (même ligne du Pilotage).
 FILTER_KEY = {'niveau': 'filtre-niveau', 'matiere': 'filtre-matiere', 'sous-domaine': 'filtre-sous-domaine',
               'chapitre': 'filtre-chapitre', 'theoreme': 'filtre-theoreme', 'difficulte': 'filtre-difficulte',

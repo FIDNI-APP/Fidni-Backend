@@ -80,6 +80,31 @@ def send_verification_email(user) -> None:
     logger.info("Verification email sent to user %s", user.pk)
 
 
+def send_email_change_verification(user) -> None:
+    """Nouvelle adresse d'un compte existant (réglages) : même lien que l'inscription
+    (VerifyEmailView), lié à cette adresse ; il confirme l'adresse sans ouvrir de session."""
+    token = make_verification_token(user)
+    link = f"{_site_url()}/verify-email?token={token}"
+
+    _send_account_email(
+        user,
+        subject="Confirme ta nouvelle adresse e-mail — Fidni",
+        preheader="Un clic pour confirmer la nouvelle adresse de ton compte Fidni.",
+        heading="Confirme ta nouvelle adresse",
+        paragraphs=[
+            "Tu as changé l'adresse e-mail de ton compte Fidni. Confirme-la pour qu'elle serve "
+            "à récupérer ton compte (mot de passe oublié, connexion avec Google).",
+            "En attendant, tu peux continuer à te connecter avec ton mot de passe.",
+        ],
+        cta_label="Confirmer ma nouvelle adresse",
+        link=link,
+        expiry="Ce lien est valable 3 jours.",
+        safety_note="Tu n'as rien changé ? Quelqu'un a peut-être saisi ton adresse par erreur : "
+                    "ignore cet e-mail, elle ne sera pas confirmée.",
+    )
+    logger.info("Email change verification sent to user %s", user.pk)
+
+
 def send_password_reset_email(user) -> None:
     """Send a single-use password-reset link.
 

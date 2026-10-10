@@ -759,20 +759,26 @@ class StudentInvitationsView(APIView):
 # ---------------------------------------------------------------------------
 
 class PasswordChangeView(APIView):
-    """Changer de mot de passe, ou en définir un (compte créé avec Google : pas de mot de passe actuel)."""
+    """Changer de mot de passe : l'actuel est toujours exigé.
+
+    Compte sans mot de passe (créé avec Google) : le premier se choisit par le lien « Mot de passe
+    oublié », qui prouve l'accès à la boîte mail. Une session laissée ouverte ne doit pas suffire pour
+    poser un mot de passe, puis changer d'adresse e-mail et s'approprier le compte.
+    """
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
         current_password = request.data.get('current_password')
         new_password = request.data.get('new_password')
 
-        if request.user.has_usable_password():
-            if not current_password or not new_password:
-                return Response({'error': 'Mot de passe actuel et nouveau mot de passe requis'}, status=status.HTTP_400_BAD_REQUEST)
-            if not request.user.check_password(current_password):
-                return Response({'error': 'Mot de passe actuel incorrect'}, status=status.HTTP_400_BAD_REQUEST)
-        elif not new_password:
-            return Response({'error': 'Nouveau mot de passe requis'}, status=status.HTTP_400_BAD_REQUEST)
+        if not request.user.has_usable_password():
+            return Response({'error': 'Ton compte n’a pas encore de mot de passe : utilise « Mot de passe oublié » '
+                                      'pour en choisir un, on t’envoie un lien par e-mail.',
+                             'code': 'use_password_reset'}, status=status.HTTP_400_BAD_REQUEST)
+        if not current_password or not new_password:
+            return Response({'error': 'Mot de passe actuel et nouveau mot de passe requis'}, status=status.HTTP_400_BAD_REQUEST)
+        if not request.user.check_password(current_password):
+            return Response({'error': 'Mot de passe actuel incorrect'}, status=status.HTTP_400_BAD_REQUEST)
         if not isinstance(new_password, str):  # un nombre en JSON faisait planter le validateur
             return Response({'error': 'Nouveau mot de passe invalide'}, status=status.HTTP_400_BAD_REQUEST)
         try:
@@ -790,11 +796,19 @@ class PasswordChangeView(APIView):
 
 
 class UpdateUserInfoView(APIView):
+    """Prénom, nom, établissement… et adresse e-mail (mot de passe actuel exigé).
+
+    Une nouvelle adresse est à confirmer : `email_verified` repasse à False et un lien part vers elle
+    (« Confirme ta nouvelle adresse », même lien que l'inscription). Le compte reste actif et la
+    connexion par mot de passe continue de marcher ; tant qu'elle n'est pas confirmée, la connexion
+    Google avec cette adresse traite le compte comme en attente (mot de passe retiré, sessions fermées).
+    """
     permission_classes = [IsAuthenticated]
 
     def patch(self, request):
         user = request.user
         updated_fields = []
+        email_changed = False
 
         # Prénom, nom, établissement : modifiables, mais jamais vidés (ils sont obligatoires).
         error = apply_identity(user, request.data, required=False)
@@ -817,7 +831,8 @@ class UpdateUserInfoView(APIView):
         if (email := request.data.get('email')) is not None and str(email).strip().lower() != (user.email or '').lower():
             # Compte créé avec Google : sans mot de passe, rien ne prouverait que c'est bien lui.
             if not user.has_usable_password():
-                return Response({'error': 'Définis d’abord un mot de passe pour changer d’adresse e-mail.',
+                return Response({'error': 'Choisis d’abord un mot de passe (« Mot de passe oublié » t’envoie un lien) '
+                                      'pour changer d’adresse e-mail.',
                                  'code': 'set_password_first'}, status=status.HTTP_400_BAD_REQUEST)
             # Changer l'e-mail permet ensuite de réinitialiser le mot de passe : sans cette
             # vérification, une session laissée ouverte suffisait pour s'approprier le compte.
@@ -833,13 +848,31 @@ class UpdateUserInfoView(APIView):
                 return Response({'error': 'Cet email est déjà utilisé'}, status=status.HTTP_400_BAD_REQUEST)
             user.email = email
             updated_fields.append('email')
+            email_changed = True
 
         if updated_fields:
-            user.save(update_fields=updated_fields)
+            with transaction.atomic():
+                user.save(update_fields=updated_fields)
+                if email_changed:
+                    # Rien ne prouve encore que la nouvelle adresse est à lui.
+                    user.profile.email_verified = False
+                    user.profile.email_verified_at = None
+                    user.profile.save(update_fields=['email_verified', 'email_verified_at'])
 
-        return Response({'message': 'Informations mises à jour', 'user': {
+        extra = {}
+        if email_changed:
+            from apps.authentication.emails import send_email_change_verification
+            try:
+                send_email_change_verification(user)
+                extra['email_verification_sent'] = True
+            except Exception:  # l'adresse est changée ; « Renvoyer le lien » reste possible
+                logger.exception('Envoi de la confirmation de nouvelle adresse impossible (utilisateur %s)', user.pk)
+                extra['email_verification_sent'] = False
+
+        return Response({'message': 'Informations mises à jour', **extra, 'user': {
             'id': user.id, 'username': user.username,
-            'email': user.email, 'first_name': user.first_name, 'last_name': user.last_name,
+            'email': user.email, 'email_verified': user.profile.email_verified,
+            'first_name': user.first_name, 'last_name': user.last_name,
             'school_name': user.profile.school_name, 'gender': user.profile.gender,
             'birth_date': user.profile.birth_date.isoformat() if user.profile.birth_date else None,
         }})

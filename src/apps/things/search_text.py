@@ -6,9 +6,12 @@ requête normalisée de la même façon (things/views.py), donc « derivee » tr
 import re
 import unicodedata
 
-# Clés techniques du JSON de contenu : jamais montrées telles quelles à l'élève.
+# Clés techniques du JSON de contenu : jamais montrées telles quelles à l'élève. `import` : traçabilité
+# d'un contenu importé (importing.py, ia/pipeline.py : cle, source.document/origine, importe_le, ia) ;
+# sans elle, « officiel », « pdf » ou « 2026 » trouvaient tous les contenus importés.
 SKIP_KEYS = {'id', 'type', 'version', 'meta', 'style', 'class', 'src', 'href', 'url', 'points', 'difficulty',
-             'expected_seconds', 'skills', 'a_verifier', 'modifs_ia', 'difficulte_historique', 'credit'}
+             'expected_seconds', 'skills', 'a_verifier', 'modifs_ia', 'difficulte_historique', 'credit',
+             'import', 'cle', 'origine', 'importe_le'}
 _TAG = re.compile(r'<[^>]+>')
 _LATEX_CMD = re.compile(r'\\[a-zA-Z]+')
 _SPACES = re.compile(r'\s+')

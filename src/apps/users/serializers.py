@@ -179,10 +179,12 @@ class UserSerializer(serializers.ModelSerializer):
         if self.parent is None and self.context.get('is_owner') is True:
             is_self = True
         if is_self and self.parent is None:
-            # Réglages du compte : « Définir un mot de passe », « Connecté avec Google ». Pas pour
-            # l'auteur imbriqué dans une liste (une requête de plus par ligne, inutile).
+            # Réglages du compte : « Définir un mot de passe », « Connecté avec Google », « Adresse à
+            # confirmer ». Pas pour l'auteur imbriqué dans une liste (une requête de plus par ligne, inutile).
             data['has_password'] = instance.has_usable_password()
             data['google_linked'] = instance.google_accounts.exists()
+            own_profile = getattr(instance, 'profile', None)
+            data['email_verified'] = bool(own_profile is None or own_profile.email_verified)
         if is_self or (viewer and getattr(viewer, 'is_staff', False)):
             return data
         profile = getattr(instance, 'profile', None)

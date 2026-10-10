@@ -615,6 +615,13 @@ def _build_session_recap(sess: SimulationSession) -> dict:
 @permission_classes([IsAuthenticated])
 def session_recap(request, session_id):
     sess = get_object_or_404(SimulationSession, pk=session_id, user=request.user)
+    # Le bilan contient les bonnes réponses et les explications : pas tant qu'on peut encore répondre
+    # (même limite que la réponse à une question : fin du chrono + délai de grâce).
+    if sess.status == SimulationSession.STATUS_IN_PROGRESS:
+        deadline = sess.started_at + timedelta(minutes=sess.duration_minutes)
+        if timezone.now() <= deadline + ANSWER_GRACE:
+            return Response({'code': 'in_progress', 'detail': 'Termine la simulation pour voir le corrigé.'},
+                            status=status.HTTP_409_CONFLICT)
     return Response(_build_session_recap(sess))
 
 
