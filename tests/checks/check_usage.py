@@ -211,6 +211,8 @@ for bad in ('auth:porte:', 'auth:porte:Vote', 'auth:porte:vote!', 'auth:porte:' 
     check(f'porte invalide refusée : {bad[:26]!r}', r.status_code == 400, r.status_code)
 r = door.post('/api/usage/', {'kind': 'page', 'name': '/exercises\n'}, format='json')
 check('page avec saut de ligne final refusée', r.status_code == 400, r.status_code)
+r = door.post('/api/usage/', {'kind': 'page', 'name': '/exercises/niveau/:level/:chapter?'}, format='json')
+check('motif à segment facultatif (« :chapter? ») compté', r.status_code == 200 and r.data['counted'], r.status_code)
 for bad in ('Partager', 'partager ', 'auth:porte:vote'):
     r = door.post('/api/usage/', {'kind': 'action', 'name': bad}, format='json')
     check(f'geste invalide refusé : {bad!r}', r.status_code == 400, r.status_code)

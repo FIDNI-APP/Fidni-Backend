@@ -78,9 +78,11 @@ PAGE_PATTERNS = [
     ('/concours/sessions/:sessionId/recap', 'Bilan d’un concours'),
     ('/concours/tips', 'Conseils concours'),
     ('/concours/tips/:id', 'Conseil concours'),
-    ('/skill-iq', 'Skill IQ'),
+    ('/skill-iq', 'Quiz par chapitre'),
     ('/progression', 'Ma progression'),
     ('/statistiques', 'Mes statistiques (ancienne page)'),
+    ('/reviser', 'Réviser'),
+    ('/enregistrements', 'Mes enregistrements'),
     ('/notebooks', 'Cahiers'),
     ('/notebooks/:id/pdf', 'Cahier : impression'),
     ('/revision-lists', 'Révisions'),
@@ -110,6 +112,7 @@ PAGE_PATTERNS = [
 # Motifs ajoutés à PAGES le 10/10/2026 : pas mesurés avant (« jamais vue » n'a de sens qu'à partir de là).
 PAGES_SINCE_AUDIT = {'/revisions/ds/:id', '/revisions/ds/:id/blanc', '/verify-email', '/reset-password',
                      '/exams/nationaux/:annee',  # dossiers du Bac national par année (10/10/2026)
+                     '/reviser', '/enregistrements',  # refonte de l'espace élève (11/10/2026)
                      '/learning-path/:pathId/chapters/:chapterId/videos/:videoId',
                      '/learning-path/:pathId/chapters/:chapterId/quiz'}
 

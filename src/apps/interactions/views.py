@@ -4,6 +4,7 @@ from rest_framework.response import Response
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import IsAuthenticated
 from django.contrib.contenttypes.models import ContentType
+from django.utils import timezone
 
 
 from .models import Vote, RevisionList, RevisionListItem, StudyTimeTracker, Complete
@@ -220,7 +221,11 @@ class RevisionListViewSet(viewsets.ModelViewSet):
         """
         Exercices et examens à retravailler : marqués « Échoué », ou avec des questions
         auto-évaluées ratées / à revoir / partielles, et qui ne sont encore dans aucune liste.
+        ?tout=1 (page « Réviser », section « À refaire », 11/10/2026) : aussi ceux déjà rangés dans une liste
+        (`in_list`), du plus ancien au plus récent (on refait d'abord ce qui a été raté il y a longtemps),
+        avec `days_ago`, 30 au plus.
         """
+        everything = request.query_params.get('tout') in ('1', 'true')
         from apps.things.models import Content
         from .models import QuestionProgress
         user = request.user
@@ -244,20 +249,27 @@ class RevisionListViewSet(viewsets.ModelViewSet):
             entry['weak'] += 1
             if qp.assessed_at and qp.assessed_at > entry['at']:
                 entry['at'] = qp.assessed_at
-        ids = [oid for oid, e in found.items() if oid not in in_lists and (e['failed'] or oid not in validated)]
+        ids = [oid for oid, e in found.items()
+               if (everything or oid not in in_lists) and (e['failed'] or oid not in validated)]
         contents = {c.id: c for c in Content.objects.filter(id__in=ids, type__in=('exercise', 'exam'))
                     .prefetch_related('chapters', 'class_levels')}
         rows = []
-        for oid in sorted(contents, key=lambda i: found[i]['at'], reverse=True)[:12]:
+        now = timezone.now()
+        order = sorted(contents, key=lambda i: found[i]['at'] or now, reverse=not everything)
+        for oid in order[:30 if everything else 12]:
             c, e = contents[oid], found[oid]
-            rows.append({
+            row = {
                 'id': c.id, 'type': c.type, 'title': c.title,
                 'failed': e['failed'], 'weak_questions': e['weak'],
                 'chapters': [ch.name for ch in c.chapters.all()],
                 'class_level': next((lv.name for lv in c.class_levels.all()), None),
                 'at': e['at'],
-            })
-        return Response({'count': len(ids), 'results': rows})
+            }
+            if everything:
+                row['in_list'] = oid in in_lists
+                row['days_ago'] = (now - e['at']).days if e['at'] else None
+            rows.append(row)
+        return Response({'count': len(contents), 'results': rows})
 
     def get_serializer_class(self):
         """Use different serializers for different actions"""

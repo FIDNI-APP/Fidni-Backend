@@ -23,7 +23,9 @@ from rest_framework.throttling import AnonRateThrottle, UserRateThrottle
 
 from apps.users.models import UsageDaily
 
-PAGE_RE = re.compile(r'^/[a-z0-9/:_-]{0,78}$')
+# « ? » : segment facultatif d'un motif (« /exercises/niveau/:level/:chapter? ») ; sans lui, les pages de niveau et de
+# chapitre n'étaient jamais comptées (refusées en 400) depuis le 06/10/2026.
+PAGE_RE = re.compile(r'^/[a-z0-9/:_?-]{0,78}$')
 # Actions mesurées côté navigateur : le reste (auto-évaluations, j'aime, commentaires…) se compte en base.
 ACTIONS = {
     'voir-solution',      # « Voir la solution » d'une question
