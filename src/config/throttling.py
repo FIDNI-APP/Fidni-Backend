@@ -18,6 +18,11 @@ class _ClientIPThrottle(SimpleRateThrottle):
         return self.cache_format % {'scope': self.scope, 'ident': self.get_ident(request)}
 
 
+class ClientErrorThrottle(_ClientIPThrottle):
+    """Erreurs d'affichage envoyées par le navigateur (apps/logging/client_errors.py) : ouvert aux visiteurs."""
+    scope = 'client_error'
+
+
 class AuthRateThrottle(_ClientIPThrottle):
     """Connexion, inscription : freine les requêtes en rafale depuis une même adresse.
     Assez large pour une classe entière qui se connecte derrière la même IP de lycée."""

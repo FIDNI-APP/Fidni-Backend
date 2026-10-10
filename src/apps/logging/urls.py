@@ -3,6 +3,7 @@ URL configuration for logging app
 """
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
+from .client_errors import client_error
 from .views import (
     ErrorLogViewSet, APILogViewSet, SystemEventViewSet,
     test_errors, test_post_error,
@@ -16,6 +17,7 @@ router.register(r'api-logs', APILogViewSet, basename='apilog')
 router.register(r'events', SystemEventViewSet, basename='event')
 
 urlpatterns = [
+    path('client-errors/', client_error, name='client-error'),
     path('', include(router.urls)),
     path('test/errors/', test_errors, name='test-errors'),
     path('test/post-error/', test_post_error, name='test-post-error'),
