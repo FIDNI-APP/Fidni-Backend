@@ -274,8 +274,12 @@ def difficulty_counts(request):
     year = request.query_params.get('national_year') or ''
     if year == 'aucune':
         qs = qs.filter(national_year__isnull=True)
-    elif year.isdigit():
+    elif year.isascii() and year.isdigit():
         qs = qs.filter(national_year=int(year))
+    # Dossier « Sans chapitre » d'un niveau : comme la liste (things/views.py).
+    if request.query_params.get('sans_chapitre') == 'true':
+        qs = (qs.exclude(chapters__class_levels__id__in=class_level_ids) if class_level_ids
+              else qs.filter(chapters__isnull=True))
 
     counts = qs.values('difficulty').annotate(count=Count('id', distinct=True))
     result = {item['difficulty']: item['count'] for item in counts if item['difficulty']}

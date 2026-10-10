@@ -285,14 +285,13 @@ def _nav_html():
 
 def _levels_html():
     """Accueil : par niveau, les liens vers les exercices, cours et examens (pages hubs)."""
-    from apps.caracteristics.hubs import SECTION_LABEL, SECTION_TYPE, hub_url
+    from apps.caracteristics.hubs import SECTION_LABEL, SECTION_TYPE, _folder_contents, hub_url
     from apps.caracteristics.models import ClassLevel
-    from apps.things.models import Content
     rows = []
     for level in ClassLevel.objects.order_by('id'):
         links = [f'<a href="{hub_url(section, level)}">{SECTION_LABEL[section]} {html.escape(level.name)}</a>'
                  for section, kind in SECTION_TYPE.items()
-                 if Content.objects.filter(type=kind, class_levels=level).exists()]
+                 if _folder_contents(kind, level).exists()]
         if links:
             rows.append(f'<li><strong>{html.escape(level.name)}</strong> : {" · ".join(links)}</li>')
     return ('<h2 style="font-size:21px;margin-top:28px">Par niveau</h2><ul>' + ''.join(rows) + '</ul>') if rows else ''
@@ -300,8 +299,7 @@ def _levels_html():
 
 def hub_page(request, section, level, chapter=None):
     """Page par niveau ou par chapitre (/exercises/niveau/2eme-bac-sm[/limites-et-continuite])."""
-    from apps.caracteristics.hubs import SECTION_TYPE, resolve
-    from apps.things.models import Content
+    from apps.caracteristics.hubs import SECTION_TYPE, _folder_contents, resolve
 
     page = _index_html()
     site = settings.FRONTEND_URL.rstrip('/')
@@ -311,7 +309,8 @@ def hub_page(request, section, level, chapter=None):
         return _render(page, title='Page introuvable | Fidni', description='Cette page n’existe pas.',
                        url=f'{site}/{section}', body='', status=404, noindex=True)
     url = site + data['url']
-    qs = Content.objects.filter(type=SECTION_TYPE[section], class_levels__id=data['level']['id'])
+    # Mêmes contenus que la page (devoirs : sans les sujets du Bac national).
+    qs = _folder_contents(SECTION_TYPE[section]).filter(class_levels__id=data['level']['id'])
     if data['chapter']:
         qs = qs.filter(chapters__id=data['chapter']['id'])
     items = list(qs.distinct().order_by('-updated_at')[:300])

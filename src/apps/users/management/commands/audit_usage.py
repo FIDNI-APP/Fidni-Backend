@@ -109,6 +109,7 @@ PAGE_PATTERNS = [
 ]
 # Motifs ajoutés à PAGES le 10/10/2026 : pas mesurés avant (« jamais vue » n'a de sens qu'à partir de là).
 PAGES_SINCE_AUDIT = {'/revisions/ds/:id', '/revisions/ds/:id/blanc', '/verify-email', '/reset-password',
+                     '/exams/nationaux/:annee',  # dossiers du Bac national par année (10/10/2026)
                      '/learning-path/:pathId/chapters/:chapterId/videos/:videoId',
                      '/learning-path/:pathId/chapters/:chapterId/quiz'}
 

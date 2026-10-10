@@ -44,9 +44,20 @@ def hub_url(section, level, chapter=None):
     return f'{path}/{slug(chapter.name)}' if chapter else path
 
 
-def _contents(kind, level, chapter=None):
+def _folder_contents(kind, level=None):
+    """Contenus d'une rubrique tels que la liste les montre (devoirs : sans les sujets du Bac national, qui ont
+    leur rubrique). Même règle pour la page, ses dossiers, ses textes, le sitemap et la page pré-remplie."""
     from apps.things.models import Content
-    qs = Content.objects.filter(type=kind, class_levels=level)
+    qs = Content.objects.filter(type=kind)
+    if level is not None:
+        qs = qs.filter(class_levels=level)
+    if kind == 'exam':
+        qs = qs.filter(is_national_exam=False)
+    return qs
+
+
+def _contents(kind, level, chapter=None):
+    qs = _folder_contents(kind, level)
     if chapter is not None:
         qs = qs.filter(chapters=chapter)
     return qs.distinct()
@@ -112,10 +123,9 @@ def _texts(section, level, chapter, count):
 
 def _level_chapters(kind, level):
     """Chapitres du niveau qui ont au moins un contenu de ce type, dans l'ordre du programme."""
-    from apps.things.models import Content
     level_chapters = set(Chapter.objects.filter(class_levels=level).values_list('id', flat=True))
     counts = {}
-    for content in Content.objects.filter(type=kind, class_levels=level).distinct().prefetch_related('chapters'):
+    for content in _folder_contents(kind, level).distinct().prefetch_related('chapters'):
         for ch in content.chapters.all():
             if ch.id in level_chapters:
                 counts[ch.id] = counts.get(ch.id, 0) + 1
@@ -125,17 +135,6 @@ def _level_chapters(kind, level):
 
 # Ordre des sous-domaines dans les dossiers d'un niveau (puis l'ordre du programme, l'id, dans chacun).
 SUBFIELD_ORDER = ['Analyse', 'Algèbre', 'Géométrie', 'Probabilités', 'Statistiques']
-
-
-def _folder_contents(kind, level=None):
-    """Contenus d'une rubrique tels que la liste les montre (devoirs : sans les sujets du Bac national)."""
-    from apps.things.models import Content
-    qs = Content.objects.filter(type=kind)
-    if level is not None:
-        qs = qs.filter(class_levels=level)
-    if kind == 'exam':
-        qs = qs.filter(is_national_exam=False)
-    return qs
 
 
 def _subject_name():
@@ -252,14 +251,17 @@ def resolve(section, level_slug, chapter_slug=None, user=None):
         ],
         # Dossiers : tous les chapitres du niveau, vides compris (navigation Maths › niveau › chapitre).
         'folders': _folders(section, level, user),
+        # Contenus du niveau rangés dans aucun de ses chapitres : un dossier « Sans chapitre » à part, sinon
+        # introuvables depuis les dossiers (liste : /api/contents/?class_levels=<id>&sans_chapitre=true).
+        'unfiled': (_folder_contents(kind, level).exclude(chapters__class_levels=level).distinct().count()
+                    if chapter is None else 0),
         'subject': _subject_name(),
         # Même niveau (et même chapitre) dans les autres rubriques : cours ↔ exercices ↔ examens.
         'related': [
             {'section': other, 'label': SECTION_LABEL[other], 'count': n, 'url': hub_url(other, level, chapter)}
             for other, okind in SECTION_TYPE.items() if other != section
             # Comptés comme les dossiers de la rubrique (devoirs : sans les sujets du Bac national).
-            for n in [(_folder_contents(okind, level).filter(chapters=chapter) if chapter
-                       else _folder_contents(okind, level)).distinct().count()] if n > 0
+            for n in [_contents(okind, level, chapter).count()] if n > 0
         ],
     }
     return data
@@ -267,11 +269,10 @@ def resolve(section, level_slug, chapter_slug=None, user=None):
 
 def all_hubs():
     """(url, dernière mise à jour) de chaque hub qui a du contenu : pour le sitemap."""
-    from apps.things.models import Content
     out = []
     for section, kind in SECTION_TYPE.items():
         for level in ClassLevel.objects.order_by('id'):
-            qs = Content.objects.filter(type=kind, class_levels=level)
+            qs = _folder_contents(kind, level)
             last = qs.aggregate(m=Max('updated_at'))['m']
             if last is None:
                 continue

@@ -68,9 +68,14 @@ class RessentiThrottle(UserRateThrottle):
     rate = '60/hour'
 
 
+def _digits(value):
+    """Chiffres ASCII seulement : « ² » passe isdigit() mais pas int() (erreur 500 sur un paramètre d'adresse)."""
+    return bool(value) and value.isascii() and value.isdigit()
+
+
 def _ids(values):
     """Identifiants numériques d'un paramètre répété ou séparé par des virgules (« 3,5 »)."""
-    return [int(x) for v in values for x in str(v).split(',') if x.strip().isdigit()]
+    return [int(x.strip()) for v in values for x in str(v).split(',') if _digits(x.strip())]
 
 
 def _strip_solutions(value):
@@ -414,12 +419,15 @@ class ContentViewSet(VoteMixin, viewsets.ModelViewSet):
         # « aucune » : sujets nationaux sans année (dossier « Année non précisée » du Bac national, hubs.py).
         if national_year == 'aucune':
             filters &= Q(national_year__isnull=True)
-        elif national_year and national_year.isdigit():
+        elif _digits(national_year):
             filters &= Q(national_year=int(national_year))
-        if year_min and year_min.isdigit():
+        if _digits(year_min):
             filters &= Q(national_year__gte=int(year_min))
-        if year_max and year_max.isdigit():
+        if _digits(year_max):
             filters &= Q(national_year__lte=int(year_max))
+        # Dossier « Sans chapitre » d'un niveau (hubs.py `unfiled`) : contenus sans aucun chapitre de ce niveau.
+        if params.get('sans_chapitre') == 'true':
+            filters &= ~Q(chapters__class_levels__id__in=class_levels) if class_levels else Q(chapters__isnull=True)
 
         if self.request.user and self.request.user.is_authenticated:
             content_ct = ContentType.objects.get_for_model(Content)
@@ -568,14 +576,17 @@ class ContentViewSet(VoteMixin, viewsets.ModelViewSet):
     @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated], url_path='a-evaluer')
     def a_evaluer(self, request):
         """Contenus ouverts et travaillés sans « Réussi » ni « À revoir » (things/catch_up.py).
-        ?chapter=<id> : sur la page d'un chapitre, seulement ce chapitre."""
+        ?chapter=<id> : sur la page d'un chapitre, seulement ce chapitre ; ?level=<id> : seulement ce niveau."""
         from .catch_up import pending
         kind = self.content_type_scope or request.query_params.get('type') or 'exercise'
         if kind not in (Content.TYPE_EXERCISE, Content.TYPE_EXAM):
             return Response({'count': 0, 'items': []})
-        exclude = [int(x) for x in (request.query_params.get('exclude') or '').split(',')[:300] if x.isdigit()]
+        exclude = [int(x) for x in (request.query_params.get('exclude') or '').split(',')[:300] if _digits(x)]
         chapter = request.query_params.get('chapter') or ''
-        count, items = pending(request.user, kind, exclude, chapter=int(chapter) if chapter.isdigit() else None)
+        # ?level=<id> : dans les dossiers d'un niveau, seulement ce niveau.
+        level = request.query_params.get('level') or ''
+        count, items = pending(request.user, kind, exclude, chapter=int(chapter) if _digits(chapter) else None,
+                               level=int(level) if _digits(level) else None)
         return Response({'count': count, 'items': items})
 
     @action(detail=False, methods=['post'], permission_classes=[IsAuthenticated], url_path='a-evaluer/ignorer')

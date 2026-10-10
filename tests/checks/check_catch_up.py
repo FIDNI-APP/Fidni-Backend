@@ -117,6 +117,14 @@ StudyTimeDay.objects.create(user=eleve, object_id=solution.id, date=date.today()
 titles = [x['title'] for x in c.get('/api/contents/a-evaluer/?type=exercise').data['items']]
 check('… retravaillé un jour suivant : redemandé', 'Solution regardée' in titles, titles)
 check('ignorer sans ids : refusé', c.post('/api/contents/a-evaluer/ignorer/', {}, format='json').status_code == 400)
+# Dossiers d'un niveau (10/10/2026) : ?level=<id> ne garde que les contenus de ce niveau.
+from apps.caracteristics.models import ClassLevel  # noqa: E402
+lv_a, lv_b = ClassLevel.objects.order_by('id')[:2]
+solution.class_levels.add(lv_a)
+in_a = [x['title'] for x in c.get(f'/api/contents/a-evaluer/?type=exercise&level={lv_a.id}').data['items']]
+in_b = [x['title'] for x in c.get(f'/api/contents/a-evaluer/?type=exercise&level={lv_b.id}').data['items']]
+check('?level= : seulement les contenus de ce niveau', in_a == ['Solution regardée'] and in_b == [], (in_a, in_b))
+check('?level= invalide : ignoré, sans erreur', c.get('/api/contents/a-evaluer/?type=exercise&level=²').status_code == 200)
 check('ignorer : visiteur refusé', APIClient().post('/api/contents/a-evaluer/ignorer/', {'ids': [solution.id]}, format='json').status_code in (401, 403))
 
 print(f'\n{sum(results)}/{len(results)} vérifications réussies')

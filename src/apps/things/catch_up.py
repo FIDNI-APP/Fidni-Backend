@@ -19,10 +19,11 @@ MIN_SECONDS = 120
 LIMIT = 5
 
 
-def pending(user, kind, exclude=(), chapter=None):
+def pending(user, kind, exclude=(), chapter=None, level=None):
     """(nombre total, [cartes]) des contenus de ce type à évaluer, `LIMIT` cartes au plus.
     `exclude` : ids à écarter en plus (ancienne version du bandeau, qui les gardait dans le navigateur).
-    `chapter` : id d'un chapitre, sur la page de ce chapitre (le bandeau ne parle alors que de lui)."""
+    `chapter` : id d'un chapitre, sur la page de ce chapitre (le bandeau ne parle alors que de lui).
+    `level` : id d'un niveau, dans ses dossiers de chapitres (10/10/2026)."""
     from apps.interactions.models import Complete, QuestionProgress, SolutionView, StudyTimeDay
     from apps.things.models import CatchUpSkip, Content
     from apps.users.models import ViewHistory
@@ -63,6 +64,8 @@ def pending(user, kind, exclude=(), chapter=None):
     qs = Content.objects.filter(id__in=worked, type=kind).exclude(author=user)
     if chapter is not None:
         qs = qs.filter(chapters__id=chapter).distinct()
+    if level is not None:
+        qs = qs.filter(class_levels__id=level).distinct()
     contents = sorted(qs.prefetch_related('chapters'), key=lambda c: seen[c.id], reverse=True)
     cards = []
     for c in contents[:LIMIT]:
