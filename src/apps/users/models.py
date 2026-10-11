@@ -160,6 +160,14 @@ class UserProfile(models.Model):
     email_verified = models.BooleanField(default=True)
     email_verified_at = models.DateTimeField(null=True, blank=True)
 
+    # Adresses IP (sécurité : bannir aussi l'IP d'un compte supprimé par la modération, users/bans.py).
+    # signup_ip est effacée après LOG_RETENTION (legal.purge_old_logs) ; last_ip est remplacée à chaque connexion.
+    signup_ip = models.GenericIPAddressField(null=True, blank=True)
+    last_ip = models.GenericIPAddressField(null=True, blank=True)
+    last_ip_at = models.DateTimeField(null=True, blank=True)
+    # IP distinctes des 30 derniers jours ([{ip, at}], 10 au plus) : une IP mobile change souvent.
+    recent_ips = models.JSONField(default=list, blank=True)
+
     # Target Subjects (favorite subjects — students)
     target_subjects = models.ManyToManyField(
         'caracteristics.Subject',
@@ -501,3 +509,27 @@ class GoogleAccount(models.Model):
 
     def __str__(self):
         return f"Google {self.email or self.sub} → {self.user_id}"
+
+
+class Bannissement(models.Model):
+    """Compte banni par la modération (users/bans.py) : son adresse e-mail (normalisée) et son compte Google,
+    définitivement ; ses adresses IP pour 30 jours (IP mobiles partagées). Bloque seulement la CRÉATION d'un
+    compte (inscription, nouveau compte Google) : un membre existant sur la même IP n'est pas gêné."""
+    KIND_EMAIL, KIND_GOOGLE, KIND_IP = 'email', 'google', 'ip'
+    KIND_CHOICES = [(KIND_EMAIL, 'Adresse e-mail'), (KIND_GOOGLE, 'Compte Google'), (KIND_IP, 'Adresse IP')]
+
+    kind = models.CharField(max_length=10, choices=KIND_CHOICES)
+    value = models.CharField(max_length=255)
+    username = models.CharField(max_length=150, blank=True, default='')
+    motif = models.CharField(max_length=300, blank=True, default='')
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=['kind', 'value'], name='bannissement_unique')]
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.kind} {self.value}"
+

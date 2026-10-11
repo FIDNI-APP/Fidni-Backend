@@ -30,6 +30,8 @@ from .tokens import read_verification_token
 from apps.users.identity import clean_person_name
 from apps.users.legal import accept_terms
 from apps.users.models import GoogleAccount
+from apps.users.bans import BANNED_MESSAGE, ban_reason, client_ip, remember_ip
+from .pseudos import PSEUDO_REFUSE, pseudo_interdit
 
 
 import logging
@@ -97,6 +99,7 @@ class LoginView(views.APIView):
 
 def _session(user, request):
     """Jetons JWT + profil complet : réponse d'une connexion réussie (mot de passe ou Google)."""
+    remember_ip(user, request)  # IP de connexion, pour pouvoir la bannir (users/bans.py)
     refresh = RefreshToken.for_user(user)
     update_last_login(None, user)
     return {
@@ -114,6 +117,20 @@ class ThrottledTokenObtainPairView(TokenObtainPairView):
 class ThrottledTokenRefreshView(TokenRefreshView):
     throttle_classes = [TokenRefreshThrottle]
 
+    def post(self, request, *args, **kwargs):
+        response = super().post(request, *args, **kwargs)
+        # Session renouvelée : dernière IP du compte (bannir un compte bannit aussi ses IP, users/bans.py).
+        if response.status_code == 200 and isinstance(response.data, dict) and response.data.get('access'):
+            try:
+                from rest_framework_simplejwt.tokens import AccessToken
+                user_id = AccessToken(response.data['access']).get('user_id')
+                user = User.objects.filter(pk=user_id).first() if user_id else None
+                if user is not None:
+                    remember_ip(user, request)
+            except Exception:  # noqa: BLE001 — jamais au prix du renouvellement
+                pass
+        return response
+
 
 #----------------------------GOOGLE-------------------------------
 
@@ -127,6 +144,8 @@ def _username_from_email(email: str) -> str:
     base = re.sub(r'_{2,}', '_', base).strip('_-')[:24].strip('_-')  # place pour un suffixe numérique
     if len(base) < 3:
         base = f'{base}_eleve' if base else 'eleve'
+    if pseudo_interdit(base):  # adresse insultante : pseudo neutre (pseudos.py)
+        base = 'eleve'
     taken = {u.lower() for u in User.objects.filter(username__istartswith=base).values_list('username', flat=True)}
     candidate, n = base, 1
     while candidate in taken:
@@ -220,6 +239,11 @@ class GoogleLoginView(views.APIView):
                                 status=status.HTTP_403_FORBIDDEN)
 
         if user is None or unconfirmed:
+            # Création d'un compte (ou reprise d'une adresse jamais confirmée) : refusée à une personne bannie
+            # par la modération (adresse, compte Google ou IP, users/bans.py), avant même les cases à cocher.
+            if ban_reason(email=info['email'], google_sub=info['sub'], ip=client_ip(request)):
+                logger.info('Connexion Google : création refusée (bannissement) pour %s', info['email'])
+                return Response({'error': BANNED_MESSAGE, 'code': 'banned'}, status=status.HTTP_403_FORBIDDEN)
             # RGPD : mêmes cases que l'inscription (non pré-cochées), exigées ici aussi.
             if data.get('accept_terms') is not True or data.get('age_ok') is not True:
                 name = info['name'] or f"{info['given_name']} {info['family_name']}".strip()
@@ -230,6 +254,8 @@ class GoogleLoginView(views.APIView):
 
         if user is None:
             user, link, created = _create_google_user(info)
+            if created:
+                remember_ip(user, request, signup=True)
         elif unconfirmed:
             with transaction.atomic():
                 user.is_active = True
@@ -276,11 +302,19 @@ class RegisterView(views.APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
+        if pseudo_interdit(username):
+            return Response({'error': PSEUDO_REFUSE, 'field': 'username'}, status=status.HTTP_400_BAD_REQUEST)
+
         try:
             validate_email(email)
         except ValidationError:
             return Response({'error': 'Adresse e-mail invalide.', 'field': 'email'},
                             status=status.HTTP_400_BAD_REQUEST)
+
+        # Personne bannie par la modération (adresse ou IP, users/bans.py) : refus sans dire pourquoi.
+        if ban_reason(email=email, ip=client_ip(request)):
+            logger.info('Inscription refusée (bannissement) pour %s', email)
+            return Response({'error': BANNED_MESSAGE, 'code': 'banned'}, status=status.HTTP_400_BAD_REQUEST)
 
         if User.objects.filter(username__iexact=username).exists():
             return Response(
@@ -319,6 +353,7 @@ class RegisterView(views.APIView):
         # both /api/token/ (SimpleJWT) and the custom login above.
         user.is_active = False
         user.save(update_fields=['is_active'])
+        remember_ip(user, request, signup=True)
 
         profile = getattr(user, 'profile', None)
         if profile is not None:

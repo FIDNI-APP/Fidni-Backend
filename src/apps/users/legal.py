@@ -69,4 +69,9 @@ def purge_old_logs():
     # Notifications déjà lues depuis plus de 6 mois : elles ne servent plus à rien.
     from apps.notifications.models import Notification
     total += Notification.objects.filter(read_at__lt=cutoff).delete()[0]
+    # Sécurité (users/bans.py) : IP bannies expirées supprimées ; IP d'inscription effacée après la même durée.
+    from apps.users.bans import purge_expired
+    from apps.users.models import UserProfile
+    total += purge_expired()
+    UserProfile.objects.filter(signup_ip__isnull=False, user__date_joined__lt=cutoff).update(signup_ip=None)
     return total

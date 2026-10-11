@@ -23,6 +23,7 @@ from apps.things.listing import in_order, serialize_content_list, with_list_rela
 from apps.interactions.serializers import ViewHistorySerializer
 
 from apps.authentication.views import USERNAME_RE
+from apps.authentication.pseudos import PSEUDO_REFUSE, pseudo_interdit
 from .identity import apply_identity
 from .account_deletion import DELETED_USERNAME, delete_account, is_deleted_account
 from .legal import accept_terms, export_user_data
@@ -894,6 +895,8 @@ class UpdateMeView(APIView):
             if new_username != user.username:
                 if not USERNAME_RE.match(new_username):
                     return Response({'error': "3 à 30 caractères : lettres, chiffres, « . », « _ » ou « - »"}, status=status.HTTP_400_BAD_REQUEST)
+                if pseudo_interdit(new_username):
+                    return Response({'error': PSEUDO_REFUSE}, status=status.HTTP_400_BAD_REQUEST)
                 if User.objects.filter(username__iexact=new_username).exclude(id=user.id).exists():
                     return Response({'error': "Ce nom d'utilisateur est déjà pris"}, status=status.HTTP_400_BAD_REQUEST)
                 user.username = new_username
@@ -956,10 +959,15 @@ class ModerationDeleteAccountView(APIView):
         if target.is_staff or target.is_superuser or target.pk == request.user.pk or target.username == EDITORIAL_USERNAME:
             return Response({'error': 'Un compte administrateur ne se supprime pas ainsi.'},
                             status=status.HTTP_403_FORBIDDEN)
+        # Bannir (adresse, compte Google, IP) AVANT la suppression : après, on ne sait plus qui c'était.
+        banned = None
+        if request.data.get('bannir') is True:
+            from apps.users.bans import ban_user
+            banned = ban_user(target, by=request.user, motif=(request.data.get('motif') or 'Supprimé par la modération'))
         summary = delete_account(target, keep_contributions=False)
-        logger.warning('Modération : %s a supprimé le compte %s et son contenu (%s)',
-                       request.user.username, username, summary)
-        return Response({'detail': 'account_deleted', 'removed': summary})
+        logger.warning('Modération : %s a supprimé le compte %s et son contenu (%s)%s',
+                       request.user.username, username, summary, f', banni ({banned})' if banned else '')
+        return Response({'detail': 'account_deleted', 'removed': summary, 'banned': banned})
 
 
 class ExportMyDataView(APIView):

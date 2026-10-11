@@ -25,7 +25,7 @@ from apps.users.dashboard_views import (
 )
 from apps.users.study_stats_views import get_study_statistics
 from apps.users.overview_views import dashboard_overview
-from apps.users import admin_dashboard, login_diagnostic
+from apps.users import admin_dashboard, bans_views as bans, login_diagnostic
 from apps.users import usage as usage_views
 from apps.skilliq import admin_api as quiz_admin
 from apps.users.my_stats import my_stats
@@ -178,6 +178,8 @@ urlpatterns = [
     path('api/pilotage/utilisateurs/<int:pk>/', admin_dashboard.user_detail, name='pilotage-utilisateur'),
     # « Un membre n'arrive pas à se connecter » : comptes, blocage, journaux d'authentification.
     path('api/pilotage/connexion/', login_diagnostic.login_diagnostic, name='pilotage-connexion'),
+    path('api/pilotage/bannis/', bans.bans_view, name='pilotage-bannis'),
+    path('api/pilotage/bannis/<int:pk>/', bans.ban_delete_view, name='pilotage-banni'),
     # Signalements d'erreurs sur les contenus : envoi (élèves connectés), suivi (administrateurs).
     path('api/contents/<int:content_id>/report/', content_reports.report_content, name='content-report'),
     # Correction « à vérifier » : validée (ou remise) par un administrateur depuis le site.
