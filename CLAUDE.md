@@ -30,7 +30,7 @@ backend/
 ├── requirements.txt         ← dépendances DIRECTES uniquement (~15)
 ├── certs/global-bundle.pem  ← CA RDS (sslmode=verify-full)
 ├── nginx/                   ← reverse proxy interne au conteneur (port 80 → gunicorn 8000)
-├── tests/base_tables.py     ← seeder de taxonomie (pas des tests), lancé par entrypoint
+├── tests/base_tables.py     ← seeder de taxonomie (pas des tests), lancé par entrypoint, construit depuis programme.py
 └── src/
     ├── config/              ← urls.py racine, wsgi.py, settings/
     └── apps/                ← 13 apps Django (voir ci-dessous)
@@ -56,6 +56,7 @@ backend/
 
 ## Conventions & pièges connus
 
+- **Taxonomie = programme officiel** (11/10/2026) : source unique `apps/caracteristics/programme.py` (niveaux → chapitres dans l'ordre d'enseignement, capacités, hors programme, théorèmes et leur domaine `DOMAINE_THEOREME`, alias d'anciens noms et d'adresses) ; API : `rang()`, `chapitres_du_niveau()`, `annexe_d()`, `traduire_noms()`, `ecarts_base()`. Y modifier le programme, jamais `tests/base_tables.py` (qui n'ajoute que). Passage de l'ancienne taxonomie : migration `caracteristics/0003_programme_officiel` (données figées, code figé dans `programme_migration.py`, rapport dans `SystemEvent` « migration ») ; répétition sur une vraie base, tout annulé : `python manage.py programme_officiel --a-blanc` (sans option : écarts base/programme, lecture seule). « Espaces vectoriels » reste un chapitre du 2ème Bac SM.
 - **Structures de contenu** : vivent dans `Content.json_content` (JSONB). Accès via `apps/things/content_store.py` (même API que l'ancien store MongoDB, supprimé). Idem concours.
 - **Generic relations** (`Vote`/`Save`/`Complete`…) : `object_id` est un **CharField** — toujours passer des ids **string** (`[str(i) for i in ...]`), PostgreSQL refuse les comparaisons varchar/bigint (bug classique hérité de SQLite).
 - **Tri « Pour toi »** (`sort=recommended`, défaut des listes côté front) : `apps/things/for_you.py` — score par élève (chapitres travaillés, nouveautés, à retravailler, réussis en dernier, variété), calculé en Python puis paginé dans `ContentViewSet.list`. Vérifié par `tests/checks/check_for_you.py`.
