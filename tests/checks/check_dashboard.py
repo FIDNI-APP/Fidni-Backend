@@ -100,7 +100,7 @@ check('à revoir : depuis au moins 2 jours, le plus ancien d’abord, avec « il
 check('page de niveau des exercices', d['level_hub_url'] == '/exercises/niveau/2eme-bac-sm', d.get('level_hub_url'))
 lim = next(c for c in d['chapters'] if c['name'] == 'Limites et continuité')
 check('chapitre : 4 questions, 25 % réussies, 4 contenus', (lim['assessed'], lim['success_pct'], lim['contents']) == (4, 25, 4), lim)
-check('couverture : 1 chapitre sur 14', d['coverage'] == {'total': 14, 'touched': 1}, d['coverage'])
+check('couverture : 1 chapitre sur 13 (programme du 2ème Bac SM)', d['coverage'] == {'total': 13, 'touched': 1}, d['coverage'])
 check('notions faibles avec libellés (arctan 0 %, tvi 50 %)',
       [(n['slug'], n['label'], n['mastery_pct']) for n in d['weak_notions']]
       == [('arctan', 'Fonction arc tangente', 0), ('tvi', 'Théorème des valeurs intermédiaires', 50)], d['weak_notions'])
