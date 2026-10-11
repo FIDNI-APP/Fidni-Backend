@@ -3,7 +3,7 @@
 # Logs:   docker compose logs -f fidni-backend
 #
 # Config/secrets come from ./.env (NOT committed — see .env.example).
-# Database: AWS RDS PostgreSQL (password via AWS Secrets Manager, ~/.aws mounted).
+# Database: PostgreSQL 18, container fidni-db on the same OVH server (DB_HOST=fidni-db, DB_PASSWORD in .env).
 # Media:    AWS S3 (django-storages).
 # The backend binds to localhost only; the cloudflared tunnel
 # (api.fidni.fr -> http://localhost:8080) is the single public entry point.

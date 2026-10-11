@@ -1,22 +1,22 @@
 # Fidni backend — carte du projet
 
-Django 5 + DRF · PostgreSQL (AWS RDS, JSONB pour les structures de contenu) · S3 (médias) · JWT (simplejwt).
+Django 5 + DRF · PostgreSQL 18 (conteneur `fidni-db` sur le serveur OVH, JSONB pour les structures de contenu) · S3 (médias) · JWT (simplejwt).
 Une seule stack, un seul fichier d'env, un seul compose.
 
 ## Démarrer
 
 ```bash
-docker compose up --build -d      # stack prod complète (RDS + S3), port 127.0.0.1:8080
+docker compose up --build -d      # backend prod (base fidni-db + S3), port 127.0.0.1:8080
 docker compose logs -f fidni-backend
-# manage.py local (WSL, venv) : lit le même .env → même RDS
+# manage.py local (WSL, venv) : lit le même .env → même base
 python manage.py migrate / createsuperuser / shell
 ```
 
 ## Configuration — UN seul endroit
 
-- **`.env`** (racine backend, git-ignoré) : TOUTES les variables — Django, RDS, Secrets Manager, S3, SMTP Brevo, CORS. Template : `.env.example`.
+- **`.env`** (racine backend, git-ignoré) : TOUTES les variables — Django, base, S3, SMTP Brevo, CORS. Template : `.env.example`.
 - Lu par : `docker-compose.yml` (`env_file`) ET `src/config/settings/base.py` (`load_dotenv`).
-- Secrets AWS : jamais dans `.env` — le mot de passe RDS vient de Secrets Manager, les credentials AWS du `~/.aws` monté en RO dans le conteneur.
+- Base : `DB_HOST=fidni-db`, mot de passe dans `DB_PASSWORD` (`.env`) ; `AWS_DB_SECRET_ARN` (Secrets Manager) reste possible mais n'est pas utilisé. Credentials AWS (S3) : `~/.aws` monté en RO dans le conteneur.
 - Settings : `src/config/settings/` — `base.py` (tout), `dev.py`/`prod.py` (petits overrides). `DJANGO_ENV=production` dans `.env` sélectionne prod.
 
 ## Arborescence
@@ -76,6 +76,10 @@ backend/
 
 ## Infra
 
-- **RDS** : `database-1...eu-west-3.rds.amazonaws.com` / db `fidni` — mot de passe via Secrets Manager (ARN dans `.env`).
-- **Tunnel** : cloudflared sur l'hôte → `localhost:8080`. Le conteneur n'expose rien publiquement.
-- ⚠️ TODO sécurité : security group RDS encore ouvert (0.0.0.0/0) — à restreindre au port 5432 + IP.
+- **Serveur OVH**, 4 conteneurs Docker : `fidni-backend` (127.0.0.1:8080), `fidni-frontend` (127.0.0.1:3001),
+  `fidni-tunnel` (cloudflared → ces deux ports), `fidni-db` (PostgreSQL 18, port 5432 non publié, joignable par le
+  réseau Docker). Rien n'est exposé publiquement hors du tunnel.
+- **Sauvegarde de la base** (avant une migration de données, par exemple) :
+  `docker exec fidni-db sh -c 'pg_dump -U "$POSTGRES_USER" -Fc "$POSTGRES_DB"' > ~/fidni-$(date +%F).dump`.
+  Restauration : `docker stop fidni-backend` puis
+  `docker exec -i fidni-db sh -c 'pg_restore -U "$POSTGRES_USER" -d "$POSTGRES_DB" --clean --if-exists' < ~/fidni-AAAA-MM-JJ.dump`.
