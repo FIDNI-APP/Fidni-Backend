@@ -166,6 +166,7 @@ urlpatterns = [
     # Pilotage (administrateurs) : inscrits, activité, statistiques d'usage.
     path('api/usage/', usage_views.record, name='usage'),
     path('api/pilotage/', admin_dashboard.overview, name='pilotage'),
+    path('api/pilotage/serie/', admin_dashboard.serie, name='pilotage-serie'),
     path('api/pilotage/utilisateurs/', admin_dashboard.users_list, name='pilotage-utilisateurs'),
     path('api/pilotage/utilisateurs/<int:pk>/', admin_dashboard.user_detail, name='pilotage-utilisateur'),
     # « Un membre n'arrive pas à se connecter » : comptes, blocage, journaux d'authentification.

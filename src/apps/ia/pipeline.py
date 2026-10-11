@@ -33,7 +33,7 @@ ORIGINES = {
     'officiel': 'Sujet officiel (document public).',
     'original': 'Contenu rédigé pour Fidni.',
 }
-CHAMPS = {'enonce': 'content', 'solution': 'solution', 'contenu': 'content'}
+CHAMPS = {'enonce': 'content', 'solution': 'solution', 'contenu': 'content', 'indication': 'hint'}
 DUREE_MAX = timedelta(minutes=30)  # sans nouvelles du travail au-delà : interrompu
 
 
@@ -447,12 +447,16 @@ def _extrait(content, cible):
         lignes.append(f'<bloc id="{b.get("id")}" type="{b.get("type")}"{marque}>')
         if _html(b.get('content')):
             lignes.append(f'  <enonce>{_html(b.get("content"))}</enonce>')
+        if b.get('hint'):  # la « Méthode », montrée à l'élève avant la solution
+            lignes.append(f'  <indication>{_html(b["hint"])}</indication>')
         if b.get('solution'):
             lignes.append(f'  <solution>{_html(b["solution"])}</solution>')
         for sq in b.get('subQuestions') or []:
             m = ' signale="oui"' if cible == f"{b.get('id')}.{sq.get('id')}" else ''
             lignes.append(f'  <sous_question id="{sq.get("id")}"{m}>')
             lignes.append(f'    <enonce>{_html(sq.get("content"))}</enonce>')
+            if sq.get('hint'):
+                lignes.append(f'    <indication>{_html(sq["hint"])}</indication>')
             if sq.get('solution'):
                 lignes.append(f'    <solution>{_html(sq["solution"])}</solution>')
             lignes.append('  </sous_question>')
@@ -491,9 +495,9 @@ def _controler_modif(structure, m, i):
     if part is None:
         return None, [f'{ou} : bloc « {bloc} »' + (f' / sous-question « {sq} »' if sq else '') + ' introuvable']
     if champ not in CHAMPS:
-        return None, [f'{ou} : champ « {champ} » (enonce ou solution)']
+        return None, [f'{ou} : champ « {champ} » (enonce, indication ou solution)']
     cle = CHAMPS[champ]
-    if cle == 'solution' and (part.get('subQuestions') or part.get('type') in ('section', 'context')
+    if cle in ('solution', 'hint') and (part.get('subQuestions') or part.get('type') in ('section', 'context')
                               or 'sections' in structure):
         return None, [f'{ou} : ce bloc n’a pas de solution (elle va dans les sous-questions)']
     if part.get('type') == 'section' and cle == 'content':
@@ -615,7 +619,7 @@ def appliquer(job, *, a_verifier, auteur):
             if part is None or _html(part.get(m['champ'])) != m['avant']:
                 raise IAErreur('Le contenu a été modifié depuis la proposition : relancer l’IA sur ce signalement.')
             part[m['champ']] = {'type': 'text', 'html': m['apres']}
-        if a_verifier and any(m['champ'] == 'solution' for m in modifs):
+        if a_verifier and any(m['champ'] in ('solution', 'hint') for m in modifs):
             structure['a_verifier'] = True
         structure.setdefault('modifs_ia', []).append({
             'date': timezone.now().isoformat(), 'travail': job.pk, 'signalement': job.report_id,

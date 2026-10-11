@@ -79,8 +79,9 @@ def _ids(values):
 
 
 def _strip_solutions(value):
+    """Énoncé seul : sans les solutions ni les indications (« Méthode »)."""
     if isinstance(value, dict):
-        return {k: _strip_solutions(v) for k, v in value.items() if k != 'solution'}
+        return {k: _strip_solutions(v) for k, v in value.items() if k not in ('solution', 'hint')}
     if isinstance(value, list):
         return [_strip_solutions(v) for v in value]
     return value

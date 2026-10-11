@@ -37,6 +37,9 @@ class Content(CompleteableMixin, SaveableMixin, models.Model):
     title = models.CharField(max_length=200)
     author = models.ForeignKey(User, on_delete=models.PROTECT, related_name='content_items')
     subject = models.ForeignKey(Subject, on_delete=models.PROTECT, related_name='content_items', null=True)
+    # Établissement d'origine (facultatif) : le lycée où ce devoir ou cet exercice a été donné.
+    school = models.ForeignKey('caracteristics.School', on_delete=models.SET_NULL, null=True, blank=True,
+                               related_name='contents')
     chapters = models.ManyToManyField(Chapter, related_name='content_items', blank=True)
     class_levels = models.ManyToManyField(ClassLevel, related_name='content_items')
     theorems = models.ManyToManyField(Theorem, related_name='content_items', blank=True)

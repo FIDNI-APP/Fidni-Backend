@@ -61,3 +61,76 @@ def get_section_count(structure: dict) -> int:
         if b.get('type') == 'section'
     )
 
+
+
+# --------------------------------------------------------------------------- indication (« Méthode »)
+# Une solution commence par « <p><strong>Méthode :</strong> l'idée</p> » (règle de rédaction de l'import et de
+# l'IA). Ce paragraphe devient l'indication de la question (bouton « Indication » du site, avant la solution) :
+# champ `hint` ({'type': 'text', 'html': '<p>l'idée</p>'}) à côté de `solution`. La rédaction ne change pas.
+import re as _re
+
+_METHOD = _re.compile(
+    r'^\s*<p>\s*<strong>\s*M[ée]thode\s*(?:&nbsp;| |\s)*:?\s*</strong>\s*(?::\s*)?(?P<idee>.*?)</p>\s*',
+    _re.IGNORECASE | _re.DOTALL,
+)
+
+
+def split_method(html: str):
+    """(« <p>idée</p> », reste) si la solution commence par un paragraphe « Méthode : », sinon (None, html).
+    Rien n'est séparé si la méthode est vide ou constitue toute la solution."""
+    m = _METHOD.match(html or '')
+    if not m or not m.group('idee').strip():
+        return None, html
+    rest = html[m.end():].strip()
+    if not rest:
+        return None, html
+    # « Méthode : on factorise… » → indication seule : « On factorise… » (majuscule d'une phrase).
+    idee = m.group('idee').strip()
+    if idee[:1].islower():
+        idee = idee[0].upper() + idee[1:]
+    return f'<p>{idee}</p>', rest
+
+
+def _after_label(idee: str) -> str:
+    """Après « Méthode : », la phrase reprend en minuscule (« On factorise » → « on factorise »)."""
+    return idee[0].lower() + idee[1:] if idee[:1].isupper() and idee[1:2].islower() else idee
+
+
+def _items(structure):
+    for block in (structure or {}).get('blocks', []) or []:
+        if isinstance(block, dict):
+            yield block
+            for sq in block.get('subQuestions') or []:
+                if isinstance(sq, dict):
+                    yield sq
+
+
+def move_methods_to_hints(structure: dict) -> int:
+    """Sépare la « Méthode » de chaque solution en indication (sur place). Une indication déjà présente est
+    gardée telle quelle. Renvoie le nombre de questions modifiées."""
+    n = 0
+    for item in _items(structure):
+        sol = item.get('solution')
+        if not isinstance(sol, dict) or item.get('hint'):
+            continue
+        hint, rest = split_method(sol.get('html') or '')
+        if hint:
+            item['hint'] = {'type': 'text', 'html': hint}
+            item['solution'] = {**sol, 'html': rest}
+            n += 1
+    return n
+
+
+def merge_hints_into_solutions(structure: dict) -> int:
+    """Inverse de move_methods_to_hints : remet l'indication en tête de la solution (« Méthode : »)."""
+    n = 0
+    for item in _items(structure):
+        hint, sol = item.get('hint'), item.get('solution')
+        if not isinstance(hint, dict) or not isinstance(sol, dict):
+            continue
+        idee = _re.sub(r'^\s*<p>(.*)</p>\s*$', r'\1', hint.get('html') or '', flags=_re.DOTALL).strip()
+        if idee:
+            item['solution'] = {**sol, 'html': f'<p><strong>Méthode :</strong> {_after_label(idee)}</p>{sol.get("html") or ""}'}
+        item.pop('hint', None)
+        n += 1
+    return n

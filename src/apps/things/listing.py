@@ -14,7 +14,7 @@ from .serializers import ContentListSerializer
 def with_list_relations(queryset, user=None):
     """Ajoute à un queryset de Content tout ce que lit ContentListSerializer."""
     queryset = queryset.select_related(
-        'author', 'author__profile', 'solution', 'subject'
+        'author', 'author__profile', 'solution', 'subject', 'school'
     ).prefetch_related(
         'chapters__class_levels', 'class_levels', 'comments', 'votes', 'theorems', 'subfields', 'completed',
         'subject__class_levels',

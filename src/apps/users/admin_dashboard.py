@@ -379,6 +379,7 @@ def _features():
 # seulement le nombre de fois et les personnes distinctes jour par jour, additionnées.
 TRACKED_ACTIONS = [
     ('voir-solution', 'Voir la solution d’une question'),
+    ('voir-indication', 'Voir l’indication d’une question'),
     ('toutes-solutions', 'Voir toutes les solutions'),
     ('tout-reussi', '« Tout réussi »'),
     ('trouve-apres-solution', '« Tu avais trouvé ? » (sous une solution)'),
@@ -725,3 +726,71 @@ def user_detail(request, pk):
     """Dernières actions d'un membre (fiche dépliée dans Pilotage › Membres)."""
     user = get_object_or_404(User, pk=pk)
     return Response({'id': user.id, 'activity': recent_activity({user.id}, limit=15)})
+
+
+# --------------------------------------------------------------------------- courbe d'un élément
+SERIE_PAS = ('jour', 'semaine')
+SERIE_JOURS = 91  # 13 semaines
+
+
+@api_view(['GET'])
+@permission_classes([IsSuperuser])
+def serie(request):
+    """Évolution d'une ligne du Pilotage (fonctionnalité, geste, filtre ou page), jour par jour ou semaine par
+    semaine, sur 13 semaines : ?source=base|navigateur|filtre|page&cle=…&pas=jour|semaine.
+    Les semaines commencent le lundi ; la dernière (en cours) est incomplète, et le dit."""
+    source = request.query_params.get('source', '')
+    cle = (request.query_params.get('cle') or '')[:80]
+    pas = request.query_params.get('pas') if request.query_params.get('pas') in SERIE_PAS else 'jour'
+    today = timezone.localdate()
+    first = today - timedelta(days=SERIE_JOURS - 1)
+    if pas == 'semaine':
+        first -= timedelta(days=first.weekday())  # lundi
+    since = first
+    per_day, visitors = Counter(), Counter()
+    members = defaultdict(set)  # fonctionnalités en base : qui, chaque jour (personnes distinctes par semaine)
+
+    if source == 'base':
+        feature = next((f for f in _features() if f[0] == cle), None)
+        if feature is None:
+            return Response({'detail': 'Fonctionnalité inconnue.'}, status=400)
+        _, label, qs, field, ufield = feature
+        real_ids = set(_real_users().values_list('id', flat=True))
+        start = timezone.make_aware(datetime.combine(first, time.min))
+        rows = qs.filter(**{f'{ufield}__in': real_ids, f'{field}__gte': start}).values_list(field, ufield)
+        for when, uid in rows:
+            per_day[_day(when)] += 1
+            members[_day(when)].add(uid)
+        visitors = Counter({d: len(u) for d, u in members.items()})
+    elif source in ('navigateur', 'filtre', 'page'):
+        known = dict(TRACKED_ACTIONS if source == 'navigateur' else TRACKED_FILTERS) if source != 'page' else None
+        if known is not None and cle not in known:
+            return Response({'detail': 'Élément inconnu.'}, status=400)
+        label = known[cle] if known else cle
+        kind = UsageDaily.KIND_PAGE if source == 'page' else UsageDaily.KIND_ACTION
+        since = max(first, USAGE_SINCE)
+        for d, c, v in (UsageDaily.objects.filter(kind=kind, name=cle, date__gte=since)
+                        .values_list('date').annotate(c=Sum('count'), v=Sum('visitors')).values_list('date', 'c', 'v')):
+            per_day[d], visitors[d] = c or 0, v or 0
+    else:
+        return Response({'detail': 'source : base, navigateur, filtre ou page.'}, status=400)
+
+    points = []
+    if pas == 'jour':
+        for i in range((today - first).days + 1):
+            d = first + timedelta(days=i)
+            points.append({'debut': d.isoformat(), 'valeur': per_day.get(d, 0), 'personnes': visitors.get(d, 0),
+                           'mesure': d >= since, 'partiel': False})
+    else:
+        d = first
+        while d <= today:
+            days = [d + timedelta(days=k) for k in range(7)]
+            points.append({'debut': d.isoformat(), 'valeur': sum(per_day.get(x, 0) for x in days),
+                           # Personnes distinctes sur la semaine : connues pour les fonctionnalités en base ; les gestes
+                           # du navigateur ne sont dédoublonnés que jour par jour (pas de total juste sur 7 jours).
+                           'personnes': len(set().union(*(members.get(x, set()) for x in days))) if source == 'base' else None,
+                           # Incomplète : la semaine en cours (aujourd'hui n'est pas fini) ou commencée avant les mesures.
+                           'mesure': days[-1] >= since, 'partiel': days[-1] >= today or days[0] < since})
+            d += timedelta(days=7)
+    return Response({'source': source, 'cle': cle, 'libelle': label, 'pas': pas,
+                     'mesure_depuis': since.isoformat(), 'points': points})

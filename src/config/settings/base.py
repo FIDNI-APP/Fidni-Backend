@@ -156,6 +156,12 @@ if DB_ENGINE == 'postgresql':
 else:
     # SQLite - use /app/data for Docker volume persistence
     sqlite_path = os.getenv('SQLITE_PATH', str(BASE_DIR / 'fidni_sqlite_data/db.sqlite3'))
+    # Vérifications (tests/checks/run_all.sh) : une base migrée une seule fois sert de modèle, copiée ici
+    # au lieu de rejouer les ~200 migrations (22 s) dans chaque fichier. Sans cette variable, rien ne change.
+    _modele = os.getenv('FIDNI_CHECK_MODELE')
+    if _modele and os.path.exists(_modele) and not os.path.exists(sqlite_path):
+        import shutil
+        shutil.copyfile(_modele, sqlite_path)
     DATABASES = {
         'default': {
             'ENGINE': 'django.db.backends.sqlite3',

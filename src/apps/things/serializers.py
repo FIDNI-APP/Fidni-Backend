@@ -115,6 +115,7 @@ class ContentSerializer(serializers.ModelSerializer):
     total_points = serializers.IntegerField(read_only=True)
     item_count = serializers.IntegerField(read_only=True)
     section_count = serializers.IntegerField(read_only=True)
+    school = serializers.SerializerMethodField()
     json_content = serializers.JSONField(required=False)
 
     class Meta:
@@ -123,12 +124,17 @@ class ContentSerializer(serializers.ModelSerializer):
             'id', 'display_id', 'type', 'title', 'json_content',
             'difficulty', 'chapters', 'author', 'created_at', 'updated_at',
             'view_count', 'comments', 'solution', 'vote_count', 'like_count', 'dislike_count', 'user_vote',
-            'class_levels', 'subject', 'subfields', 'theorems',
+            'class_levels', 'subject', 'subfields', 'theorems', 'school',
             'user_save', 'user_complete', 'user_timespent',
             'total_points', 'item_count', 'section_count',
             # exam fields
             'is_national_exam', 'national_year', 'duration_minutes',
         ]
+
+    def get_school(self, obj):
+        """Établissement d'origine : nom et ville seulement (rien de privé)."""
+        s = obj.school
+        return {'id': s.id, 'name': s.name, 'city': s.city} if s else None
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
@@ -319,7 +325,7 @@ class ContentCreateSerializer(serializers.ModelSerializer):
         model = Content
         fields = [
             'id', 'type', 'title', 'json_content', 'difficulty',
-            'chapters', 'class_levels', 'subject', 'subfields', 'theorems',
+            'chapters', 'class_levels', 'subject', 'subfields', 'theorems', 'school',
             'solution_content', 'national_date',
             'is_national_exam', 'national_year', 'duration_minutes',
         ]

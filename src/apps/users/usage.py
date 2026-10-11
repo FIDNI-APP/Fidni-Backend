@@ -29,6 +29,7 @@ PAGE_RE = re.compile(r'^/[a-z0-9/:_?-]{0,78}$')
 # Actions mesurées côté navigateur : le reste (auto-évaluations, j'aime, commentaires…) se compte en base.
 ACTIONS = {
     'voir-solution',      # « Voir la solution » d'une question
+    'voir-indication',    # « Indication » d'une question (la méthode, avant la solution)
     'toutes-solutions',   # « Voir les solutions » de tout l'exercice
     'tout-reussi',        # « Tout réussi »
     'trouve-apres-solution',  # « Tu avais trouvé ? » sous une solution ouverte : réponse donnée

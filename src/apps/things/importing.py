@@ -17,6 +17,8 @@ import re
 import unicodedata
 from html.parser import HTMLParser
 
+from .structure_utils import move_methods_to_hints
+
 FORMAT = 'fidni-fiche/1'
 EDITORIAL_USERNAME = 'Fidni'  # auteur des contenus importés (compte éditorial, sans mot de passe)
 TYPES = {'exercice': 'exercise', 'examen': 'exam', 'lecon': 'lesson'}
@@ -414,8 +416,7 @@ def _meta(q: dict) -> dict:
         meta['expected_seconds'] = q['duree_secondes']
     if q.get('erreurs_frequentes'):
         meta['common_mistakes'] = list(q['erreurs_frequentes'])
-    if q.get('indice'):
-        meta['hint'] = q['indice']
+    # `indice` n'est plus une métadonnée : c'est l'indication affichée (champ `hint`, voir to_structure).
     return meta
 
 
@@ -451,6 +452,8 @@ def to_structure(fiche: dict, src_map: dict | None = None) -> dict:
                 block['points'] = _question_points(b)
             if b.get('solution'):
                 block['solution'] = _block(b['solution'], src_map)
+            if b.get('indice') and not b.get('sous_questions'):
+                block['hint'] = _block(b['indice'], src_map)
             if _meta(b) and not b.get('sous_questions'):
                 block['meta'] = _meta(b)
             for j, s in enumerate(b.get('sous_questions') or [], 1):
@@ -459,11 +462,16 @@ def to_structure(fiche: dict, src_map: dict | None = None) -> dict:
                     sq['points'] = s['points']
                 if s.get('solution'):
                     sq['solution'] = _block(s['solution'], src_map)
+                if s.get('indice'):
+                    sq['hint'] = _block(s['indice'], src_map)
                 if _meta(s):
                     sq['meta'] = _meta(s)
                 block['subQuestions'].append(sq)
         blocks.append(block)
-    return _with_credit({'version': '2.1', 'blocks': blocks}, fiche)
+    structure = {'version': '2.1', 'blocks': blocks}
+    # « Méthode : » en tête d'une solution → indication de la question (bouton « Indication » du site).
+    move_methods_to_hints(structure)
+    return _with_credit(structure, fiche)
 
 
 def _with_credit(structure: dict, fiche: dict) -> dict:
@@ -480,13 +488,11 @@ def _with_credit(structure: dict, fiche: dict) -> dict:
 def all_html(structure: dict):
     """Tous les textes HTML d'une structure convertie (pour les vérifications de formules)."""
     for b in structure.get('blocks', []):
-        for part in (b.get('content'), b.get('solution')):
+        for part in (b.get('content'), b.get('hint'), b.get('solution')):
             if part:
                 yield b['id'], part['html']
-        if b.get('meta', {}).get('hint'):
-            yield b['id'] + ' (indice)', b['meta']['hint']
         for sq in b.get('subQuestions', []):
-            for part in (sq.get('content'), sq.get('solution')):
+            for part in (sq.get('content'), sq.get('hint'), sq.get('solution')):
                 if part:
                     yield sq['id'], part['html']
     for s in structure.get('sections', []):

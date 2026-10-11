@@ -100,7 +100,7 @@ Réponds par exactement un bloc ```json :
 {"fonde": "oui" | "non" | "incertain",
  "explication": "ce qui est faux (ou pourquoi ce n'est pas une erreur), en 1 à 4 phrases claires",
  "modifications": [{"bloc": "<id du bloc>", "sous_question": "<id de la sous-question ou null>",
-                    "champ": "enonce" | "solution", "html": "<nouveau HTML complet de ce champ>"}],
+                    "champ": "enonce" | "indication" | "solution", "html": "<nouveau HTML complet de ce champ>"}],
  "doutes": ["…"]}
 Les identifiants « bloc » et « sous_question » sont ceux de l'extrait (attribut id). « modifications » est vide
 si rien n'est à changer. Le HTML suit les règles des consignes (chaque \\ doublé dans le JSON)."""
