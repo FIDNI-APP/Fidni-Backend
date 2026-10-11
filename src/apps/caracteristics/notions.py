@@ -5,11 +5,15 @@ Liste FERMÉE : l'import refuse une notion absente d'ici et l'éditeur ne propos
 que la même notion porte toujours le même identifiant (sinon les statistiques se dispersent entre
 « derivee », « derivation », « derivee-fonction »…).
 
-Rangées par chapitre (nom exact de la taxonomie, backend/tests/base_tables.py) pour que l'éditeur
-propose d'abord celles du chapitre ; une notion reste utilisable dans n'importe quel chapitre.
+Rangées par chapitre (nom exact du programme, apps/caracteristics/programme.py) pour que l'éditeur
+propose d'abord celles du chapitre ; une notion reste utilisable dans n'importe quel chapitre. Le chapitre
+de rangement sert aussi à Ma progression (une question compte pour le chapitre de sa notion).
 
 Ajouter une notion : une ligne ici (identifiant court en minuscules-avec-tirets, libellé). Ne jamais
-renommer un identifiant déjà utilisé : les questions existantes le portent.
+renommer un identifiant déjà utilisé : les questions existantes le portent (un libellé peut changer, une
+notion peut changer de chapitre).
+Programme officiel (11/10/2026) : notions de 1ère passées dans les chapitres propres à la 1ère Bac SM
+(scission des homonymes du Tronc commun), « primitives » dans Fonctions primitives, quelques notions ajoutées.
 """
 
 TRANSVERSAL = 'Méthodes transversales'
@@ -62,9 +66,9 @@ NOTIONS: dict[str, dict[str, str]] = {
     },
     'Calcul trigonométrique': {
         'cercle-trigonometrique': 'Cercle trigonométrique',
-        'formules-trigonometriques': 'Formules trigonométriques',
+        # Sert aux deux niveaux (TC : relations, angles associés ; 1ère : addition, duplication).
+        'formules-trigonometriques': 'Formules trigonométriques (relations, angles associés, addition, duplication)',
         'equations-trigonometriques': 'Équations et inéquations trigonométriques',
-        'a-cos-b-sin': 'Transformation de a cos x + b sin x',
     },
     'Généralités sur les fonctions': {
         'domaine-definition': 'Domaine de définition',
@@ -99,22 +103,19 @@ NOTIONS: dict[str, dict[str, str]] = {
         'produit-scalaire': 'Produit scalaire',
         'orthogonalite': 'Orthogonalité',
         'relations-metriques': 'Relations métriques dans le triangle',
-        'equation-cercle': 'Équation d’un cercle',
-        'distance-point-droite': 'Distance d’un point à une droite',
     },
     'Géométrie dans l\'espace': {
         'positions-espace': 'Positions relatives dans l’espace',
         'parallelisme-espace': 'Parallélisme dans l’espace',
         'orthogonalite-espace': 'Orthogonalité dans l’espace',
-        'representation-parametrique': 'Représentation paramétrique d’une droite',
-        'equation-plan': 'Équation cartésienne d’un plan',
     },
     'Statistiques': {
         'parametres-position': 'Moyenne, médiane, mode',
         'parametres-dispersion': 'Variance et écart type',
     },
 
-    # ─────────────────────────────── 1ère Bac SM
+    # ─────────────────────────────── 1ère Bac SM (Dénombrement, Produit scalaire dans l'espace et Produit vectoriel :
+    #                                 aussi au 2ème Bac PC)
     'Logique mathématique': {
         'connecteurs-logiques': 'Propositions et connecteurs logiques',
         'quantificateurs': 'Quantificateurs',
@@ -132,6 +133,14 @@ NOTIONS: dict[str, dict[str, str]] = {
     'Barycentre dans le plan': {
         'barycentre': 'Barycentre',
         'lignes-niveau': 'Lignes de niveau',
+    },
+    'Étude analytique du produit scalaire dans le plan': {
+        'equation-cercle': 'Équation d’un cercle',
+        'distance-point-droite': 'Distance d’un point à une droite',
+    },
+    'Trigonométrie (formules de transformation)': {
+        'a-cos-b-sin': 'Transformation de a cos x + b sin x',
+        'transformation-somme-produit': 'Transformation de sommes en produits',
     },
     'Rotation dans le plan': {
         'angles-orientes': 'Angles orientés',
@@ -167,6 +176,10 @@ NOTIONS: dict[str, dict[str, str]] = {
         'vecteurs-espace': 'Vecteurs de l’espace',
         'coplanarite': 'Vecteurs coplanaires',
     },
+    'Géométrie analytique de l\'espace': {
+        'representation-parametrique': 'Représentation paramétrique d’une droite',
+        'equation-plan': 'Équation cartésienne d’un plan',
+    },
     'Dénombrement': {
         'principe-multiplicatif': 'Principe multiplicatif',
         'arrangements': 'Arrangements',
@@ -180,8 +193,11 @@ NOTIONS: dict[str, dict[str, str]] = {
         'sphere': 'Sphère',
         'distance-point-plan': 'Distance d’un point à un plan',
     },
+    'Produit vectoriel': {
+        'produit-vectoriel': 'Produit vectoriel',
+    },
 
-    # ─────────────────────────────── 2ème Bac SM
+    # ─────────────────────────────── 2ème Bac SM et 2ème Bac PC (le PC n'a pas de chapitre propre)
     'Limites et continuité': {
         'continuite': 'Continuité',
         'prolongement-continuite': 'Prolongement par continuité',
@@ -201,6 +217,7 @@ NOTIONS: dict[str, dict[str, str]] = {
     'Fonctions logarithmiques': {
         'logarithme': 'Fonction logarithme',
         'limites-logarithme': 'Limites du logarithme',
+        'logarithme-decimal': 'Logarithme décimal',
     },
     'Fonctions exponentielles': {
         'exponentielle': 'Fonction exponentielle',
@@ -211,7 +228,6 @@ NOTIONS: dict[str, dict[str, str]] = {
         'equa-diff-ordre-2': 'Équation y″ + ay′ + by = 0',
     },
     'Calcul intégral': {
-        'primitives': 'Primitives',
         'integrale': 'Intégrale',
         'integration-parties': 'Intégration par parties',
         'aires-volumes': 'Calcul d’aires et de volumes',
@@ -225,11 +241,14 @@ NOTIONS: dict[str, dict[str, str]] = {
         'second-degre-complexe': 'Équations du second degré dans ℂ',
         'racines-n-iemes-complexes': 'Racines n-ièmes d’un complexe',
         'complexes-geometrie': 'Complexes et géométrie',
+        'linearisation': 'Linéarisation',
     },
     'Arithmétique': {
         'bezout': 'Théorème de Bézout',
         'gauss': 'Théorème de Gauss',
         'fermat': 'Petit théorème de Fermat',
+        'numeration': 'Numération dans une base',
+        'z-sur-nz': 'Calcul dans ℤ/nℤ',
     },
     'Structures algébriques': {
         'lois-composition': 'Lois de composition interne',
@@ -248,13 +267,11 @@ NOTIONS: dict[str, dict[str, str]] = {
         'independance': 'Indépendance',
         'variable-aleatoire': 'Variable aléatoire',
         'loi-binomiale': 'Loi binomiale',
+        'fonction-repartition': 'Fonction de répartition',
     },
-    # ─────────────────────────────── 2ème Bac PC (chapitres propres ; les autres sont communs avec le SM)
     'Fonctions primitives': {
+        'primitives': 'Primitives',
         'primitives-usuelles': 'Primitives des fonctions usuelles',
-    },
-    'Produit vectoriel': {
-        'produit-vectoriel': 'Produit vectoriel',
     },
 }
 

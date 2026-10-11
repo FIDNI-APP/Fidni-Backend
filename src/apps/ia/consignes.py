@@ -1,32 +1,66 @@
-"""Consigne système de l'IA : règles du site (consignes.md) + listes fermées tirées de la base (annexes)."""
+"""Consigne système de l'IA : règles du site (consignes.md) + listes fermées tirées de la base (annexes A à C) +
+programme officiel des niveaux du travail (annexe D, apps/caracteristics/programme.py).
+
+Niveaux du travail (11/10/2026) : le niveau imposé par l'administrateur et son niveau précédent dans la filière
+(niveaux_du_travail), « Lu dans le document » → les 4 ; fixés à la création du travail (job.options['niveaux'])
+pour que tous ses appels reçoivent le même texte système (cache de l'API). Ils filtrent les annexes C et D.
+"""
 import os
 
 ICI = os.path.dirname(os.path.abspath(__file__))
 
 
-def _annexes():
+def niveaux_du_travail(niveaux=()):
+    """Noms des niveaux dont l'IA reçoit le programme : ceux donnés (noms ou ClassLevel) et leur niveau précédent
+    dans la filière, dans l'ordre de programme.NIVEAUX ; aucun niveau connu → les 4."""
+    from apps.caracteristics.programme import NIVEAU_PRECEDENT, NIVEAUX
+
+    tous = [n for n, _o in NIVEAUX]
+    par_cle = {n.lower(): n for n in tous}
+    voulus = set()
+    for n in niveaux or ():
+        nom = par_cle.get(str(getattr(n, 'name', n) or '').strip().lower())
+        if nom:
+            voulus.add(nom)
+            if nom in NIVEAU_PRECEDENT:
+                voulus.add(NIVEAU_PRECEDENT[nom])
+    return [n for n in tous if n in voulus] or tous
+
+
+def _annexes(niveaux):
+    from django.db.models import Prefetch
+
     from apps.caracteristics.models import Chapter, ClassLevel, Theorem
     from apps.caracteristics.notions import NOTIONS
+    from apps.caracteristics.programme import MATIERE, ORDRE_NATURE, annexe_d, chapitres_du_niveau
 
-    lignes = ['## Annexe A — Niveaux et chapitres (noms exacts)', '']
-    for lv in ClassLevel.objects.order_by('order'):
-        chap = list(Chapter.objects.filter(class_levels=lv).order_by('subfield__name', 'name').values_list('name', flat=True))
+    lignes = ['## Annexe A — Niveaux et chapitres (noms exacts, dans l\'ordre du programme de chaque niveau)', '']
+    for lv in ClassLevel.objects.order_by('order', 'id'):
+        chap = chapitres_du_niveau(lv, Chapter.objects.select_related('subfield'))
         if chap:
-            lignes.append(f'- **{lv.name}** : ' + ' · '.join(chap))
+            nature = ORDRE_NATURE.get(lv.name)
+            lignes.append(f'- **{lv.name}**' + (f' (ordre : {nature})' if nature else '') + ' : ' + ' · '.join(
+                f'{i}. {ch.name}' + (f' ({ch.subfield.name})' if ch.subfield else '') for i, ch in enumerate(chap, 1)))
     lignes += ['', '## Annexe B — Notions autorisées (`identifiant` (libellé), rangées par chapitre)', '']
     for chapitre, notions in NOTIONS.items():
         lignes.append(f'- {chapitre} : ' + ' · '.join(f'`{k}` ({v})' for k, v in notions.items()))
-    lignes += ['', '## Annexe C — Théorèmes (noms exacts, avec leurs chapitres)', '']
-    for th in Theorem.objects.prefetch_related('chapters').order_by('name'):
+    lignes += ['', f'## Annexe C — Théorèmes de {", ".join(niveaux)} (noms exacts, avec leurs chapitres)', '']
+    theoremes = (Theorem.objects.filter(subject__name=MATIERE, class_levels__name__in=niveaux).distinct()
+                 .prefetch_related(Prefetch('chapters', queryset=Chapter.objects.filter(subject__name=MATIERE)))
+                 .order_by('name'))
+    for th in theoremes:
         chaps = ', '.join(sorted({c.name for c in th.chapters.all()}))
         lignes.append(f'- {th.name}' + (f' — {chaps}' if chaps else ''))
+    lignes += ['', annexe_d(niveaux)]
     return '\n'.join(lignes)
 
 
-def systeme():
+def systeme(niveaux=None):
+    """Consigne système : règles + annexes. `niveaux` : noms des niveaux du travail (niveaux_du_travail), déjà
+    complétés ; None ou vide = les 4."""
     with open(os.path.join(ICI, 'consignes.md'), encoding='utf-8') as fh:
         regles = fh.read()
-    return regles + '\n\n' + _annexes()
+    return regles + '\n\n' + _annexes(list(niveaux) if niveaux else niveaux_du_travail())
 
 
 RELECTURE = """Tu es maintenant le RELECTEUR de cette fiche, avec le document original sous les yeux. Un professeur
@@ -38,7 +72,8 @@ Vérifie, une par une :
 2. Mathématiques : refais chaque calcul des solutions (développements, factorisations, limites, dérivées,
    valeurs numériques, réciproques en réinjectant) ; vérifie que chaque théorème est appliqué avec ses
    hypothèses écrites (continuité, stricte monotonie, intervalle, signes avant d'élever au carré…) ; aucune
-   étape sautée ; méthodes du programme du niveau.
+   étape sautée ; méthodes du programme du niveau, et vérifie qu'aucun résultat de la rubrique « Hors programme »
+   du niveau (annexe D) n'est utilisé (le « périmètre habituel » n'est pas une interdiction).
 3. Forme : premier paragraphe « Méthode : », puis rédaction continue sans intertitre d'étape, dernière phrase
    « Donc … » ; formules KaTeX valides ; lignes centrées pas trop longues ; métadonnées dans les annexes.
 

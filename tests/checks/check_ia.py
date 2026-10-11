@@ -275,5 +275,14 @@ norm, err = pipeline._controler_modif(c.json_content, {'bloc': bloc['id'], 'sous
                                                        'html': '<p>x</p>'}, 1)
 check('solution sur une question à sous-questions refusée', norm is None and err, err)
 
+# Programme officiel envoyé à l'IA (11/10/2026) : niveau du travail + niveau précédent de la filière.
+from apps.ia import consignes as _cons  # noqa: E402
+check('niveaux du travail : 2ème Bac SM → avec la 1ère', _cons.niveaux_du_travail(['2ème Bac SM']) == ['1ère Bac SM', '2ème Bac SM'],
+      _cons.niveaux_du_travail(['2ème Bac SM']))
+check('niveaux du travail : aucun niveau → les 4', len(_cons.niveaux_du_travail([])) == 4)
+_pc, _tous = _cons.systeme(_cons.niveaux_du_travail(['2ème Bac PC'])), _cons.systeme()
+check('consigne : annexe D et règle du hors programme', 'Hors programme' in _pc and 'jamais' in _pc and len(_pc) < len(_tous),
+      (len(_pc), len(_tous)))
+
 print(f'\n{sum(results)}/{len(results)} vérifications réussies')
 sys.exit(0 if all(results) else 1)

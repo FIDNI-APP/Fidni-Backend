@@ -276,5 +276,23 @@ long = anon.post('/api/logs/client-errors/', {'message': 'x' * 5000, 'stack': ['
 check('erreur d’affichage : message tronqué, pile non texte ignorée', long.status_code == 204
       and ErrorLog.objects.filter(message='x' * 500, traceback__isnull=True).exists(), long.status_code)
 
+nul = anon.post('/api/logs/client-errors/', {'message': 'Erreur\x00 avec NUL', 'path': '/a\x00b'}, format='json')
+check('erreur d’affichage : caractère NUL retiré (PostgreSQL le refuse)', nul.status_code == 204
+      and ErrorLog.objects.filter(message='Erreur avec NUL', endpoint='/ab').exists(), nul.status_code)
+# Au plus NEW_PER_HOUR nouvelles lignes par heure pour tout le site ; les erreurs connues restent comptées.
+import apps.logging.client_errors as ce  # noqa: E402
+from django.core.cache import cache  # noqa: E402
+cache.clear()
+ce.NEW_PER_HOUR = 2
+before = ErrorLog.objects.count()
+for i in range(4):
+    APIClient().post('/api/logs/client-errors/', {'message': f'Erreur inventée {i}'}, format='json',
+                     HTTP_CF_CONNECTING_IP=f'10.0.0.{i}')
+check('erreur d’affichage : plafond de nouvelles lignes par heure', ErrorLog.objects.count() - before == 2,
+      ErrorLog.objects.count() - before)
+r = anon.post('/api/logs/client-errors/', {'message': msg}, format='json', HTTP_CF_CONNECTING_IP='10.0.1.1')
+check('erreur d’affichage : une erreur connue reste comptée au-delà du plafond',
+      r.status_code == 204 and ErrorLog.objects.get(message=msg).count == 3, ErrorLog.objects.get(message=msg).count)
+
 print(f'\n{sum(results)}/{len(results)} vérifications réussies')
 sys.exit(0 if all(results) else 1)

@@ -11,6 +11,9 @@ chiffres enregistrés :
 - temps d'étude = journal jour par jour (StudyTimeDay) et objectif quotidien du profil.
 Chaque chapitre porte `hub_url` : sa page d'exercices au niveau de l'élève (/exercises/niveau/2eme-bac-sm/
 limites-et-continuite), où mène « S'entraîner » ; None si le chapitre n'est pas de son niveau.
+Programme officiel (11/10/2026) : carte = programme.chapitres_du_niveau() (ordre d'enseignement) ; une question
+d'un contenu à plusieurs niveaux compte pour le chapitre de sa notion qui existe au niveau de l'élève
+(_question_chapters, `allowed`).
 """
 from bisect import bisect_left
 from collections import Counter, defaultdict
@@ -25,6 +28,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from apps.caracteristics.hubs import hub_url
+from apps.caracteristics.programme import chapitres_du_niveau
 from apps.caracteristics.models import Chapter
 from apps.caracteristics.notions import NOTIONS, TRANSVERSAL, notion_label
 from apps.interactions.models import Complete, QuestionProgress, StudyTimeDay
@@ -45,15 +49,26 @@ NOTION_CHAPTER = {slug: name for name, items in NOTIONS.items() if name != TRANS
 
 
 def _same_chapter(a, b):
-    # « Dérivation » (1ère Bac) et « Dérivation et étude des fonctions » (2ème Bac) : même chapitre.
+    # « Dérivation » (1ère Bac) et « Dérivation et étude des fonctions » (2ème Bac) : même chapitre. Seuls préfixes
+    # restants entre les noms du programme : Arithmétique ⊂ Arithmétique dans ℕ / dans ℤ, Dérivation ⊂ Dérivation
+    # et étude des fonctions.
     a, b = a.lower(), b.lower()
     return a == b or a.startswith(b) or b.startswith(a)
 
 
-def _question_chapters(content_chapters, skills):
-    """Chapitres (ids) d'une question : ceux de ses notions parmi ceux du contenu, sinon tous."""
-    named = {NOTION_CHAPTER[s] for s in skills if s in NOTION_CHAPTER}
-    hit = [cid for cid, name in content_chapters if any(_same_chapter(name, n) for n in named)]
+def _question_chapters(content_chapters, skills, allowed=None):
+    """Chapitres (ids) d'une question : ceux de ses notions parmi ceux du contenu (nom exact d'abord, préfixe
+    seulement à défaut), sinon tous. `allowed` (ids des chapitres du niveau de l'élève) : parmi ceux-là d'abord,
+    sinon les chapitres du contenu qui y sont (contenu TC + 1ère, notion du TC, élève de 1ère : le chapitre de
+    1ère), sinon comme sans niveau."""
+    named = {NOTION_CHAPTER[s].lower() for s in skills if s in NOTION_CHAPTER}
+    hit = [cid for cid, name in content_chapters if name.lower() in named]
+    if not hit:
+        hit = [cid for cid, name in content_chapters if any(_same_chapter(name, n) for n in named)]
+    if allowed is not None:
+        mine = [cid for cid in hit if cid in allowed] or [cid for cid, _ in content_chapters if cid in allowed]
+        if mine:
+            return mine
     return hit or [cid for cid, _ in content_chapters]
 
 
@@ -99,8 +114,9 @@ def _collect(user):
     )
 
 
-def _per_chapter(d):
-    """Par chapitre (réussite des questions, notions, temps, contenus réussis / à revoir) et par notion."""
+def _per_chapter(d, allowed=None):
+    """Par chapitre (réussite des questions, notions, temps, contenus réussis / à revoir) et par notion.
+    `allowed` : ids des chapitres du niveau de l'élève (routage des questions, voir _question_chapters)."""
     chap = defaultdict(lambda: {'n': 0, 'score': 0.0, 'seconds': 0, 'last': None,
                                 'notions': defaultdict(lambda: [0, 0.0]), 'done': set(), 'review': []})
     notions = defaultdict(lambda: {'n': 0, 'score': 0.0, 'chapters': Counter()})
@@ -108,7 +124,7 @@ def _per_chapter(d):
         score = WEIGHT.get(r['status'], 0)
         day = _local(r['assessed_at'])
         skills = d.skills_of.get(r['object_id'], {}).get(r['question_path'], [])
-        mine = _question_chapters(d.chapters_of.get(r['object_id'], []), skills)
+        mine = _question_chapters(d.chapters_of.get(r['object_id'], []), skills, allowed)
         for ch in mine:
             row = chap[ch]
             row['n'] += 1
@@ -182,7 +198,8 @@ def _chapter_entries(chapter_list, chap, quizzes, level):
 def chapter_progress(user, chapters, level=None):
     """Maîtrise de quelques chapitres, même calcul que la carte du programme (plan d'un DS)."""
     d = _collect(user)
-    chap, _ = _per_chapter(d)
+    allowed = {ch.id for ch in chapitres_du_niveau(level)} if level else None
+    chap, _ = _per_chapter(d, allowed)
     return _chapter_entries(chapters, chap, d.quizzes, level)
 
 
@@ -197,12 +214,12 @@ def progression(request):
 
     d = _collect(user)
     qp, completes, time_rows, quizzes, contents, index = d.qp, d.completes, d.time_rows, d.quizzes, d.contents, d.index
-    chap, notions = _per_chapter(d)
-
-    # Le programme : chapitres du niveau (sinon ceux qu'il a travaillés), et combien de contenus chacun.
-    chapter_qs = Chapter.objects.filter(class_levels=level) if level else Chapter.objects.filter(
-        id__in=set(chap) | set(quizzes))
-    chapter_list = list(chapter_qs.select_related('subfield').distinct().order_by('subfield__name', 'name'))
+    # Le programme : chapitres du niveau dans l'ordre d'enseignement (sinon ceux qu'il a travaillés), et combien
+    # de contenus chacun.
+    programme = chapitres_du_niveau(level, Chapter.objects.select_related('subfield')) if level else None
+    chap, notions = _per_chapter(d, {ch.id for ch in programme} if level else None)
+    chapter_list = programme if level else list(
+        Chapter.objects.filter(id__in=set(chap) | set(quizzes)).select_related('subfield').order_by('subfield__name', 'name'))
     chapters = _chapter_entries(chapter_list, chap, quizzes, level)
     by_id = {c['id']: c for c in chapters}
 

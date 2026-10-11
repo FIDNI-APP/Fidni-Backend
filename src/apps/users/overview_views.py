@@ -166,7 +166,8 @@ def dashboard_overview(request):
     notion_stats = defaultdict(lambda: [0, 0, Counter()])
     for r in qp:
         skills = skills_of.get(r['object_id'], {}).get(r['question_path'], [])
-        mine = _question_chapters(chapters_of.get(r['object_id'], []), skills) if skills else []
+        mine = (_question_chapters(chapters_of.get(r['object_id'], []), skills, programme if level else None)
+                if skills else [])
         for slug in skills:
             row = notion_stats[slug]
             row[0] += 1

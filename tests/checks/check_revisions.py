@@ -131,6 +131,16 @@ check('statistiques : réussi / à revoir / pas encore fait', r.data['statuses']
 RevisionListItem.objects.filter(revision_list=quick).exclude(object_id=ex1.id).delete()
 r = c.get('/api/revision-lists/suggestions/')
 check('suggestion retirée une fois dans une liste', [x['id'] for x in r.data['results']] == [ex2.id], r.data)
+# Page « Réviser », section « À refaire » (11/10/2026) : ?tout=1 garde aussi ce qui est déjà rangé, le plus ancien d'abord.
+from datetime import timedelta as _td  # noqa: E402
+from django.utils import timezone as _tz  # noqa: E402
+Complete.objects.filter(user=alice, object_id=str(ex1.id)).update(updated_at=_tz.now() - _td(days=6))
+r = c.get('/api/revision-lists/suggestions/?tout=1')
+rows = {x['id']: x for x in r.data['results']}
+check('à refaire : aussi ce qui est déjà dans une liste', set(rows) == {ex1.id, ex2.id} and rows[ex1.id]['in_list']
+      and not rows[ex2.id]['in_list'], r.data)
+check('à refaire : le plus ancien d’abord, avec « il y a N jours »', [x['id'] for x in r.data['results']][0] == ex1.id
+      and rows[ex1.id]['days_ago'] == 6, r.data)
 
 c.force_authenticate(bob)
 check('bob ne voit pas les listes d’alice', c.get(f'/api/revision-lists/{lid}/').status_code == 404)

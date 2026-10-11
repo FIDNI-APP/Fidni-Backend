@@ -16,7 +16,7 @@ def with_list_relations(queryset, user=None):
     queryset = queryset.select_related(
         'author', 'author__profile', 'solution', 'subject'
     ).prefetch_related(
-        'chapters', 'class_levels', 'comments', 'votes', 'theorems', 'subfields', 'completed',
+        'chapters__class_levels', 'class_levels', 'comments', 'votes', 'theorems', 'subfields', 'completed',
         'subject__class_levels',
     )
     if user is not None and getattr(user, 'is_authenticated', False):
