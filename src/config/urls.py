@@ -6,6 +6,7 @@ from rest_framework.routers import DefaultRouter
 
 from config.sitemap import sitemap as sitemap_view
 from config.seo import content_page as seo_content_page, listing_page as seo_listing_page, hub_page as seo_hub_page
+from config.pages import page_view
 from apps.caracteristics.hubs import hub_view, levels_view, national_years_view
 
 from apps.things.views import ContentViewSet, SolutionViewSet, CommentViewSet, ProposedSolutionViewSet
@@ -87,6 +88,7 @@ urlpatterns = [
     path('seo/hub/<str:section>/<slug:level>/', seo_hub_page, name='seo-hub-level'),
     path('seo/hub/<str:section>/<slug:level>/<slug:chapter>/', seo_hub_page, name='seo-hub-chapter'),
     path('api/hubs/', hub_view, name='hubs'),
+    path('api/pages/<slug:slug>/', page_view, name='pages'),
     path('api/hubs/niveaux/', levels_view, name='hubs-niveaux'),
     path('api/hubs/nationaux/', national_years_view, name='hubs-nationaux'),
 

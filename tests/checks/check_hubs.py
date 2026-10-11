@@ -292,5 +292,33 @@ r = cl.get('/api/contents/', {'type': 'exercise'})
 item = next((x for x in r.json().get('results', []) if x['id'] == e1.id), None) if r.status_code == 200 else None
 check('API contenus : slug des chapitres', item is not None and item['chapters'][0]['slug'] == 'limites-et-continuite', r.status_code)
 
+# ── Programme officiel sur la page d'un chapitre (contenu propre à chaque chapitre)
+from apps.caracteristics.hubs import programme_public  # noqa: E402
+r = cl.get('/api/hubs/', {'section': 'exercises', 'level': '2eme-bac-sm', 'chapter': 'limites-et-continuite'})
+prog = r.json().get('programme') if r.status_code == 200 else None
+check('programme : page d’un chapitre', bool(prog and prog['capacites'] and prog['theoremes']), (r.status_code, prog))
+check('programme : clés publiques seulement',
+      prog is not None and set(prog) == {'periode', 'heures', 'contenus', 'capacites', 'reperes', 'theoremes', 'hors_programme'},
+      prog and sorted(prog))
+r = cl.get('/api/hubs/', {'section': 'exercises', 'level': '2eme-bac-sm'})
+check('programme : absent d’une page de niveau', r.status_code == 200 and r.json().get('programme') is None)
+NOTES = re.compile(r'à vérifier|document|partition|\(\d+(?:\.\d+)+\)|^\d+(?:\.\d+)+', re.I)
+leaks = []
+for lv in ClassLevel.objects.all():
+    for ch in Chapter.objects.filter(class_levels=lv):
+        p = programme_public(lv, ch) or {}
+        leaks += [f'{lv.name} › {ch.name} : {x}' for k in ('contenus', 'capacites', 'reperes', 'theoremes', 'hors_programme')
+                  for x in p.get(k, []) if NOTES.search(x)]
+        if p.get('periode') and NOTES.search(p['periode']):
+            leaks.append(f'{lv.name} › {ch.name} : {p["periode"]}')
+check('programme : aucune note de travail affichée (« à vérifier », renvois au document, numéros)', not leaks, leaks[:5])
+sm1 = ClassLevel.objects.get(name='1ère Bac SM')
+logique = Chapter.objects.filter(class_levels=sm1, name='Logique mathématique').first()
+p1 = programme_public(sm1, logique) if logique else None
+check('programme 1ère : repères indicatifs (pas de capacités officielles)', bool(p1 and p1['reperes'] and not p1['capacites']), p1)
+html_hub = cl.get('/seo/hub/exercises/2eme-bac-sm/limites-et-continuite/').content.decode()
+check('page pré-remplie du chapitre : « Au programme »', 'Au programme – Limites et continuité' in html_hub
+      and 'Ce qu’il faut savoir faire' in html_hub)
+
 print(f'{sum(results)}/{len(results)} vérifications réussies')
 sys.exit(0 if all(results) else 1)

@@ -65,7 +65,9 @@ check('données structurées schema.org', '"@type": "LearningResource"' in page)
 check('énoncé présent dans #root', 'Montrer que $f$ est continue en $0$' in page and '<div id="root"><div class="fd-prerender"><main' in page)
 check('entités décodées puis échappées une seule fois', '&amp; f(0) = 0' in page, page)
 check('titre échappé (pas de balise injectée)', '<script>' not in page.split('<script type="module"')[0].replace('<script type="application/ld+json">', ''))
-check('solution et note interne absentes', 'SECRET-SOLUTION' not in page and 'NOTE-INTERNE' not in page)
+# 11/10/2026 (AdSense, « contenu à faible valeur ») : le corrigé suit l'énoncé ; les notes internes restent absentes.
+check('corrigé après l’énoncé, note interne absente',
+      page.find('Montrer que') < page.find('>Corrigé<') < page.find('SECRET-SOLUTION') and 'NOTE-INTERNE' not in page)
 check('crédit affiché', 'Proposé par M. Haddar' in page)
 check('le script de l’application est conservé', '/assets/app.js' in page)
 r = cl.get(f'/seo/lessons/{c.pk}/')

@@ -20,6 +20,8 @@ Programme officiel (11/10/2026) : les chapitres d'un niveau sont ceux de program
 (ALIAS_SLUGS) : resolve() ne renvoie que {'redirect': nouvelle adresse} (l'API répond 200 avec ce seul champ,
 la page pré-remplie redirige en 301).
 """
+import re
+
 from django.contrib.contenttypes.models import ContentType
 from django.db.models import Count, Max
 from django.utils.text import slugify
@@ -81,6 +83,50 @@ def _plural(n, one, many):
 def _programme(level):
     """{nom de chapitre: entrée de programme.py} du niveau (lecture seule)."""
     return {c['nom']: c for c in programme.PROGRAMME.get(level.name, [])}
+
+
+# Programme affiché sur la page d'un chapitre : seulement ce qui s'adresse aux élèves. Les notes de travail
+# de programme.py (« (à vérifier) », renvois au document officiel, numéros de capacité) sont retirées.
+_NOTE = re.compile(r'\s*\((?:[^()]*?(?:document|partition|titre|vérifier|cadres|capacité|\bch\d|programme de|'
+                   r'anciens programmes|habituellement|nommé|prérequis|BIOF)[^()]*)\)', re.I)
+_NUM_PREFIX = re.compile(r'^\s*\d+(?:\.\d+)+\.?\s*')
+_NUM_PAREN = re.compile(r'\s*\(\d+(?:\.\d+)+\)')
+_HORS = re.compile(r'\s*:\s*hors programme(?: en [^;]+)?', re.I)
+_DROP = re.compile(r'à vérifier|document|partition|\bch\d|cadres|incertaine|^(?:capacités|orientation) habituelle', re.I)
+
+
+def _public_items(items):
+    out = []
+    for item in items or []:
+        text = str(item)
+        if re.search(r'à vérifier', text, re.I):
+            continue
+        text = _HORS.sub('', _NOTE.sub('', _NUM_PAREN.sub('', _NUM_PREFIX.sub('', text))))
+        text = re.sub(r',\s*nommé[^,;]*', '', text).strip().rstrip(' ;.,:').strip()
+        if text and not _DROP.search(text):
+            out.append(text[0].upper() + text[1:])
+    return out
+
+
+def programme_public(level, chapter):
+    """Ce que dit le programme d'un chapitre (page du chapitre et sa version pré-remplie), ou None.
+    1ère Bac SM : le document officiel ne donne que les titres ; ses repères (indicatifs) sont dits comme tels."""
+    entree = programme.chapitre(level.name, chapter.name)
+    if not entree:
+        return None
+    periode = entree.get('periode') or ''
+    data = {
+        'periode': None if re.search(r'document|habituellement', periode, re.I) else (periode or None),
+        'heures': entree.get('heures') or None,
+        'contenus': _public_items(entree.get('contenus')),
+        'capacites': _public_items(entree.get('capacites')),
+        'reperes': [] if entree.get('capacites') else _public_items(entree.get('reperes')),
+        'theoremes': _public_items(entree.get('theoremes')),
+        'hors_programme': _public_items(entree.get('hors_programme')),
+    }
+    if not any(data[k] for k in ('contenus', 'capacites', 'reperes', 'theoremes', 'hors_programme')):
+        return None
+    return data
 
 
 def _aussi(level, chapter):
@@ -299,6 +345,8 @@ def resolve(section, level_slug, chapter_slug=None, user=None):
         'unfiled': (_folder_contents(kind, level).exclude(chapters__class_levels=level).distinct().count()
                     if chapter is None else 0),
         'subject': _subject_name(),
+        # Page d'un chapitre : ce que dit le programme officiel (contenus, capacités, théorèmes, hors programme).
+        'programme': programme_public(level, chapter) if chapter else None,
         # Même niveau (et même chapitre) dans les autres rubriques : cours ↔ exercices ↔ examens.
         'related': [
             {'section': other, 'label': SECTION_LABEL[other], 'count': n, 'url': hub_url(other, level, chapter)}

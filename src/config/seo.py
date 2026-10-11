@@ -9,8 +9,9 @@ l'accueil et les listes /exercises, /lessons, /exams (listing_page). On renvoie 
 index.html que l'application, avec :
 - un <title>, une description, un lien canonique et des balises Open Graph propres au contenu ;
 - des données structurées schema.org (LearningResource) ;
-- l'énoncé en texte brut dans <div id="root"> (React le remplace au démarrage : c'est le même texte
-  que celui que voit l'élève, ce n'est pas du contenu caché). Il est enveloppé dans .fd-prerender, que
+- l'énoncé en texte brut dans <div id="root">, puis le corrigé (exercice, examen) : React le remplace au
+  démarrage ; c'est le même texte que celui que voit l'élève (solutions repliées sous chaque question, aussi
+  présentes dans la page rendue), ce n'est pas du contenu caché. Il est enveloppé dans .fd-prerender, que
   l'index.html rend invisible le temps du chargement (sinon ce texte sans mise en forme, LaTeX compris,
   s'affichait une fraction de seconde) et fait réapparaître si le JavaScript ne démarre pas.
 En cas d'erreur (backend indisponible…), nginx retombe sur l'index.html statique : le site marche.
@@ -28,9 +29,11 @@ SECTIONS = {'exercise': 'exercises', 'lesson': 'lessons', 'exam': 'exams'}
 KIND = {'exercise': 'Exercice', 'lesson': 'Leçon', 'exam': 'Examen'}
 KIND_PLURAL = {'exercise': 'Exercices corrigés', 'lesson': 'Cours', 'exam': 'Devoirs et examens'}
 KIND_BY_SECTION = {v: k for k, v in SECTIONS.items()}
-# Parties du JSON qui ne sont pas l'énoncé affiché d'emblée (solutions repliées, métadonnées d'import).
+# Parties du JSON qui ne sont pas l'énoncé affiché d'emblée (solutions repliées, métadonnées d'import) ;
+# les solutions suivent l'énoncé, dans une section « Corrigé » (_solution_lines).
 SKIP_KEYS = {'solution', 'solutions', 'import', 'meta', 'hint', 'hints', 'indice', 'erreurs_frequentes'}
 MAX_TEXT = 6000
+MAX_SOLUTION = 14000
 
 _index_cache = {'html': None, 'at': 0.0}
 
@@ -74,6 +77,48 @@ def _statement_lines(node, out):
     elif isinstance(node, list):
         for value in node:
             _statement_lines(value, out)
+    return out
+
+
+def _solution_lines(structure):
+    """Corrigé d'un exercice ou d'un examen, question par question, numéroté comme la page et la feuille PDF
+    (1., 2., 2.1 ; chaque partie d'un examen renumérote). Le titre d'une partie n'est repris que si elle a une
+    solution. Les solutions sont repliées sur la page (un clic) : c'est le même texte."""
+    out = []
+    if not isinstance(structure, dict):
+        return out
+    pending, q = None, 0
+
+    def add(label, solution, hint=None):
+        nonlocal pending
+        lines = _to_text(solution.get('html') or '') if isinstance(solution, dict) else []
+        # Indication (« Méthode », bouton « Indication » de la page) : en tête de la solution, comme avant qu'elle
+        # en soit séparée.
+        method = _to_text(hint.get('html') or '') if isinstance(hint, dict) else []
+        if method:
+            lines = [f'Méthode : {method[0]}'] + method[1:] + lines
+        if not lines:
+            return
+        if pending:
+            out.append(('h3', pending))
+            pending = None
+        out.append(f'{label} {lines[0]}' if label else lines[0])
+        out.extend(lines[1:])
+
+    for block in structure.get('blocks') or []:
+        if not isinstance(block, dict):
+            continue
+        if block.get('type') == 'section':
+            q = 0
+            pending = ' '.join(_to_text((block.get('content') or {}).get('html') or '')) or None
+            continue
+        if block.get('type') != 'question':
+            continue
+        q += 1
+        add(f'{q}.', block.get('solution'), block.get('hint'))
+        for i, sq in enumerate(sq for sq in block.get('subQuestions') or [] if isinstance(sq, dict)):
+            add(f'{q}.{i + 1}', sq.get('solution'), sq.get('hint'))
+    add('', structure.get('solution'))  # ancienne solution d'ensemble
     return out
 
 
@@ -140,12 +185,21 @@ def content_page(request, section, pk):
     level = level_objs[0] if level_objs else None
     chapter = _chapter_at_level(content, level)
 
-    lines, total = [], 0
-    for line in _statement_lines(content.json_content or {}, []):
-        if total > MAX_TEXT:
-            break
-        lines.append(line)
-        total += len(line if isinstance(line, str) else line[1])
+    def capped(source, limit):
+        kept, total = [], 0
+        for line in source:
+            if total > limit:
+                break
+            kept.append(line)
+            total += len(line if isinstance(line, str) else line[1])
+        return kept
+
+    lines = capped(_statement_lines(content.json_content or {}, []), MAX_TEXT)
+    # Corrigé (exercice, examen) : la valeur de la page, replié sous chaque question côté élève.
+    if content.type != 'lesson':
+        solution = capped(_solution_lines(content.json_content or {}), MAX_SOLUTION)
+        if solution:
+            lines += [('h2', 'Corrigé')] + solution
     esc = html.escape
     # Fil d'Ariane en liens : rubrique › niveau › chapitre (pages hubs, config/../hubs.py).
     crumb_links = [f'<a href="/{section}">{esc(KIND_PLURAL[content.type])}</a>']
@@ -173,6 +227,7 @@ def content_page(request, section, pk):
             f'<h1 style="font-size:26px">{esc(content.title)}</h1>'
             + (f'<p style="font-size:13px;color:#6b6862">Proposé par {esc(credit)}</p>' if credit else '')
             + ''.join(f'<p>{esc(line)}</p>' if isinstance(line, str)
+                      else f'<h3 style="font-size:17px;margin-top:20px">{esc(line[1])}</h3>' if line[0] == 'h3'
                       else f'<h2 style="font-size:20px;margin-top:28px">{esc(line[1])}</h2>' for line in lines)
             + related_html + '</main>')
 
@@ -293,8 +348,11 @@ def _links_html(section, groups, esc):
 
 
 def _nav_html():
+    from apps.concours.models import ConcoursExam
+    concours = ' · <a href="/concours">Concours</a>' if ConcoursExam.objects.exists() else ''
     return ('<nav><a href="/exercises">Exercices corrigés</a> · <a href="/lessons">Cours</a> · '
-            '<a href="/exams">Devoirs et examens</a> · <a href="/concours">Concours</a></nav>')
+            f'<a href="/exams">Devoirs et examens</a>{concours} · <a href="/a-propos">À propos</a> · '
+            '<a href="/contact">Contact</a></nav>')
 
 
 def _levels_html():
@@ -309,6 +367,28 @@ def _levels_html():
         if links:
             rows.append(f'<li><strong>{html.escape(level.name)}</strong> : {" · ".join(links)}</li>')
     return ('<h2 style="font-size:21px;margin-top:28px">Par niveau</h2><ul>' + ''.join(rows) + '</ul>') if rows else ''
+
+
+PROGRAMME_LISTS = (('contenus', 'Contenus'), ('capacites', 'Ce qu’il faut savoir faire'),
+                   ('reperes', 'Repères habituels (indicatifs)'), ('theoremes', 'Théorèmes et propriétés'),
+                   ('hors_programme', 'Hors programme'))
+
+
+def _programme_html(prog, chapter, level):
+    """Page d'un chapitre : ce que dit le programme officiel (hubs.programme_public), comme la page du site."""
+    esc = html.escape
+    out = [f'<h2 style="font-size:21px;margin-top:28px">Au programme – {esc(chapter)} ({esc(level)})</h2>']
+    when = ' · '.join(filter(None, [prog.get('periode'), f'{prog["heures"]} h' if prog.get('heures') else None]))
+    if when:
+        out.append(f'<p>{esc(when)}</p>')
+    if prog.get('reperes'):
+        out.append('<p>Le programme officiel de ce niveau ne donne que le titre des chapitres : voici les repères '
+                   'habituels de ce chapitre.</p>')
+    for key, label in PROGRAMME_LISTS:
+        if prog.get(key):
+            out.append(f'<h3 style="font-size:17px;margin-top:18px">{label}</h3><ul>'
+                       + ''.join(f'<li>{esc(item)}</li>' for item in prog[key]) + '</ul>')
+    return ''.join(out)
 
 
 def hub_page(request, section, level, chapter=None):
@@ -340,6 +420,8 @@ def hub_page(request, section, level, chapter=None):
              f'<h1 style="font-size:28px">{esc(data["h1"])}</h1>', f'<p>{esc(data["intro"])}</p>']
     if items:
         parts.append('<ul>' + ''.join(f'<li><a href="/{section}/{c.id}">{esc(c.title)}</a></li>' for c in items) + '</ul>')
+    if data.get('programme'):
+        parts.append(_programme_html(data['programme'], data['chapter']['name'], data['level']['name']))
     if data['chapters'] and not data['chapter']:
         parts.append('<h2 style="font-size:21px;margin-top:28px">Par chapitre</h2><ul>' + ''.join(
             f'<li><a href="{ch["url"]}">{esc(ch["name"])}</a> ({ch["count"]})</li>' for ch in data['chapters']) + '</ul>')
@@ -382,6 +464,26 @@ def _site_json_ld(site):
     ]
 
 
+def _static_page(page, site, slug, conf):
+    """À propos, Contact (config/pages.py) : le même texte que la page du site."""
+    esc = html.escape
+    parts = [f'<main style="{BODY_STYLE}"><h1 style="font-size:28px">{esc(conf["h1"])}</h1>', f'<p>{esc(conf["intro"])}</p>']
+    for sec in conf['sections']:
+        parts.append(f'<h2 style="font-size:21px;margin-top:28px">{esc(sec["title"])}</h2>')
+        parts.extend(f'<p>{esc(p)}</p>' for p in sec['paragraphs'])
+        if sec.get('links'):
+            parts.append('<p>' + ' · '.join(f'<a href="{esc(link["href"])}">{esc(link["label"])}</a>'
+                                            for link in sec['links']) + '</p>')
+    parts.append(_nav_html() + '</main>')
+    url = f'{site}/{slug}'
+    json_ld = [{'@context': 'https://schema.org', '@type': 'ContactPage' if slug == 'contact' else 'AboutPage',
+                'name': conf['h1'], 'url': url, 'description': conf['description'], 'inLanguage': 'fr',
+                'isPartOf': {'@type': 'WebSite', 'name': SITE_NAME, 'url': f'{site}/'}},
+               _breadcrumbs([('Accueil', f'{site}/'), (conf['h1'], url)])]
+    return _render(page, title=conf['title'], description=conf['description'], url=url, body=''.join(parts),
+                   json_ld=json_ld)
+
+
 def listing_page(request, name):
     """Accueil (/) et listes (/exercises, /lessons, /exams) pré-remplis pour les moteurs de recherche."""
     from apps.things.models import Content
@@ -409,6 +511,10 @@ def listing_page(request, name):
                 + _nav_html() + _levels_html() + ''.join(blocks) + '</main>')
         return _render(page, title=HOME['title'], description=HOME['description'], url=f'{site}/',
                        body=body, json_ld=_site_json_ld(site))
+
+    from config.pages import PAGES
+    if name in PAGES:
+        return _static_page(page, site, name, PAGES[name])
 
     conf = LISTINGS.get(name)
     if conf is None:
