@@ -122,7 +122,8 @@ class _Migration:
         self.StudyTimeTracker = g('interactions', 'StudyTimeTracker')
         self.TaxonomyTimeSpent = g('interactions', 'TaxonomyTimeSpent')
         self.ConcoursTip, self.ConcoursExam = g('concours', 'ConcoursTip'), g('concours', 'ConcoursExam')
-        self.SimulationSession, self.SimulationAnswer = g('concours', 'SimulationSession'), g('concours', 'SimulationAnswer')
+        self.SimulationSession = g('concours', 'SimulationSession')
+        self.SimulationAnswer = g('concours', 'SimulationAnswer')
         self.SkillQuestion, self.SkillAssessment = g('skilliq', 'SkillQuestion'), g('skilliq', 'SkillAssessment')
         self.Notebook, self.NotebookSection = g('notebooks', 'Notebook'), g('notebooks', 'NotebookSection')
         self.NotebookLessonEntry = g('notebooks', 'NotebookLessonEntry')
@@ -242,8 +243,8 @@ class _Migration:
     def inventaire(self):
         noms = [n for n in self.d['niveaux']]
         hors = []
-        for ch in (self.Chapter.objects.filter(class_levels__name__in=noms).exclude(subject=self.maths)
-                   .select_related('subject').distinct().order_by('subject__name', 'name')):
+        for ch in (self.Chapter.objects.filter(class_levels__name__in=noms, subject__isnull=False)
+                   .exclude(subject=self.maths).select_related('subject').distinct().order_by('subject__name', 'name')):
             hors.append({'matiere': ch.subject.name if ch.subject else None, 'chapitre': ch.name, 'id': ch.id,
                          'niveaux': sorted(set(ch.class_levels.values_list('name', flat=True))),
                          'contenus': len(self.cc.proprietaires(ch.id))})
@@ -307,7 +308,7 @@ class _Migration:
             return {}
         return dict(self.UserProfile.objects.filter(user_id__in=list(user_ids)).values_list('user_id', 'class_level_id'))
 
-    def lignes_par_niveau(self, source, cible, b_ids, k_ids, retirer_si_k=False):
+    def lignes_par_niveau(self, source, cible, b_ids, k_ids):
         """RevisionList et UpcomingTest de `source` : niveau B → remplacer par `cible` ; ambigu → ajouter ;
         côté K → rien."""
         bilan = defaultdict(list)
@@ -779,7 +780,8 @@ class _Migration:
         bilan = defaultdict(int)
         if self.UsageDaily is not None and (self.remplace_ch or self.remplace_th):
             U = self.UsageDaily
-            for row in U.objects.filter(kind='filtre').filter(Q(name__contains=':chapitre:') | Q(name__contains=':theoreme:')).order_by('id'):
+            lignes = U.objects.filter(Q(name__contains=':chapitre:') | Q(name__contains=':theoreme:'), kind='filtre')
+            for row in lignes.order_by('id'):
                 m = FILTRE.match(row.name)
                 if not m:
                     continue
@@ -800,7 +802,8 @@ class _Migration:
                     else:
                         U.objects.filter(pk=autre.pk).update(
                             count=autre.count + row.count, anon_count=autre.anon_count + row.anon_count,
-                            visitors=max(autre.visitors, row.visitors), anon_visitors=max(autre.anon_visitors, row.anon_visitors))
+                            visitors=max(autre.visitors, row.visitors),
+                            anon_visitors=max(autre.anon_visitors, row.anon_visitors))
                         U.objects.filter(pk=row.pk).delete()
                         bilan['usage_additionnees'] += 1
                 self.n += 1
@@ -1020,8 +1023,8 @@ def rendre(r):
     lignes = [f"Programme officiel (caracteristics 0003){' — À BLANC, rien n’est gardé' if r.get('a_blanc') else ''}"]
     hors = r.get('hors_maths') or []
     lignes.append(f'Matières hors Mathématiques rattachées aux niveaux : {len(hors)} chapitre(s)')
-    lignes += [f"  - {h['matiere']} › {h['chapitre']} (#{h['id']}) : {', '.join(h['niveaux'])} ; {h['contenus']} contenu(s)"
-               for h in hors]
+    lignes += [f"  - {h['matiere']} › {h['chapitre']} (#{h['id']}) : {', '.join(h['niveaux'])} ; "
+               f"{h['contenus']} contenu(s)" for h in hors]
     adm = r.get('administrateurs') or {}
     for quoi in ('chapitres', 'theoremes'):
         if adm.get(quoi):
@@ -1036,8 +1039,8 @@ def rendre(r):
     for op in r.get('operations') or []:
         details = ', '.join(f'{k}={v}' for k, v in op.items() if k not in ('op', 'de', 'vers', 'chapitre', 'niveau'))
         titre = op.get('de') or op.get('chapitre') or ''
-        lignes.append(f"[{op['op']}] {titre} → {op.get('vers', '')} {('(' + op['niveau'] + ')') if op.get('niveau') else ''}"
-                      + (f' : {details}' if details else ''))
+        niveau = f" ({op['niveau']})" if op.get('niveau') else ''
+        lignes.append(f"[{op['op']}] {titre} → {op.get('vers', '')}{niveau}" + (f' : {details}' if details else ''))
     for t in r.get('theoremes') or []:
         lignes.append('[théorème] ' + ', '.join(f'{k}={v}' for k, v in t.items()))
     for k in ('temps', 'identifiants', 'cahiers', 'fiches_ia_reecrites', 'suppressions', 'contenus_sans_niveau'):
