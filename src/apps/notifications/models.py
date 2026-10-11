@@ -7,13 +7,16 @@ class Notification(models.Model):
     """Notification d'un membre (élève, enseignant ou admin), affichée sous la cloche de la barre du haut.
 
     - « comment » : nouveau commentaire sur un contenu avec lequel il a interagi (voir services.py) ;
-    - « reply » : réponse à l'un de ses commentaires.
+    - « reply » : réponse à l'un de ses commentaires ;
+    - « report » : son signalement d'erreur a été traité, avec la réponse de l'administrateur (`message`).
     Tant qu'il ne l'a pas lue, les nouveaux commentaires du même contenu s'ajoutent à la même notification
     (`count`) au lieu d'en créer une par commentaire.
     """
     KIND_COMMENT = 'comment'
     KIND_REPLY = 'reply'
-    KIND_CHOICES = [(KIND_COMMENT, 'Nouveau commentaire'), (KIND_REPLY, 'Réponse à son commentaire')]
+    KIND_REPORT = 'report'
+    KIND_CHOICES = [(KIND_COMMENT, 'Nouveau commentaire'), (KIND_REPLY, 'Réponse à son commentaire'),
+                    (KIND_REPORT, 'Signalement traité')]
 
     recipient = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notifications')
     kind = models.CharField(max_length=10, choices=KIND_CHOICES)
@@ -24,6 +27,8 @@ class Notification(models.Model):
     comment_id = models.PositiveIntegerField(null=True, blank=True, help_text='Dernier commentaire regroupé')
     actor = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
     excerpt = models.CharField(max_length=200, blank=True)
+    # Texte complet (réponse à un signalement) ; `excerpt` n'en garde que le début.
+    message = models.TextField(blank=True, default='')
     count = models.PositiveIntegerField(default=1)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(default=timezone.now)

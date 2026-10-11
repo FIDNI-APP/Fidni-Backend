@@ -208,6 +208,9 @@ class ContentReport(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     handled_at = models.DateTimeField(null=True, blank=True)
     handled_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='+')
+    # Réponse de l'administrateur à l'élève (11/10/2026), envoyée par une notification de la cloche.
+    response = models.TextField(blank=True, default='')
+    response_sent_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         db_table = 'things_contentreport'
