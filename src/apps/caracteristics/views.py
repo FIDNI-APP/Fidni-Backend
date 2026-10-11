@@ -5,9 +5,10 @@ from rest_framework.response import Response
 from rest_framework.pagination import PageNumberPagination
 
 
-from django.db.models import Q, Count
+from django.db.models import Case, Count, IntegerField, Q, Value, When
 
 
+from . import programme
 from .models import ClassLevel, Subject, Chapter,Theorem, Subfield, School, school_search_key
 from .serializers import (
     ClassLevelSerializer, SubjectSerializer, ChapterSerializer,
@@ -235,6 +236,15 @@ class ChapterViewSet(viewsets.ReadOnlyModelViewSet):
             if subfield_ids:
                 count_filter &= Q(**{f'{related}__subfields__id__in': subfield_ids})
             queryset = queryset.annotate(content_count=Count(related, filter=count_filter, distinct=True))
+
+        # Un seul niveau : chapitres dans l'ordre du programme officiel (programme.py), hors programme à la fin.
+        if len(set(class_level_ids)) == 1:
+            level = ClassLevel.objects.filter(id=class_level_ids[0]).first()
+            rangs = programme.rang(level) if level else {}
+            if rangs:
+                queryset = queryset.order_by(
+                    Case(*[When(name=nom, then=Value(r)) for nom, r in rangs.items()],
+                         default=Value(programme.RANG_ABSENT), output_field=IntegerField()), 'id')
 
         return queryset
 

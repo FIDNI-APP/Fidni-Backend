@@ -507,13 +507,16 @@ def _match(model_qs, names: list[str], what: str, errors: list[str], **filters):
         else:
             close = difflib.get_close_matches(name, choices, n=3, cutoff=0.5)
             errors.append(f'{what} inconnu : « {name} »' + (f' (proche : {", ".join(close)})' if close else
-                                                          ' — à ajouter dans backend/tests/base_tables.py'))
+                                                          ' — programme : src/apps/caracteristics/programme.py'))
     return found
 
 
 def check_against_db(fiche: dict) -> tuple[list[str], list[str], dict]:
-    """Taxonomie existante, doublons, contenu à mettre à jour. Renvoie (erreurs, avertissements, résolu)."""
+    """Taxonomie existante, doublons, contenu à mettre à jour. Renvoie (erreurs, avertissements, résolu).
+    Anciens noms de chapitres et de théorèmes (avant le programme officiel du 11/10/2026) acceptés : traduits par
+    programme.traduire_noms() selon les niveaux de la fiche, avec un avertissement chacun."""
     from apps.caracteristics.models import Chapter, ClassLevel, Subject, Subfield, Theorem
+    from apps.caracteristics.programme import traduire_noms
     from apps.things.models import Content
 
     errors, warnings = [], []
@@ -522,9 +525,13 @@ def check_against_db(fiche: dict) -> tuple[list[str], list[str], dict]:
     if not subject:
         errors.append(f'matière inconnue : « {subject_name} »')
     levels = _match(ClassLevel.objects.all(), fiche.get('niveaux', []), 'niveau', errors)
-    chapters = _match(Chapter.objects.all(), fiche.get('chapitres', []), 'chapitre', errors,
+    niveaux = fiche.get('niveaux') if isinstance(fiche.get('niveaux'), list) else []
+    noms_chapitres, noms_theoremes, traductions = traduire_noms(
+        fiche.get('chapitres', []), fiche.get('theoremes', []), [str(n) for n in niveaux])
+    warnings += traductions
+    chapters = _match(Chapter.objects.all(), noms_chapitres, 'chapitre', errors,
                       **({'subject': subject} if subject else {}))
-    theorems = _match(Theorem.objects.all(), fiche.get('theoremes', []), 'théorème', errors)
+    theorems = _match(Theorem.objects.all(), noms_theoremes, 'théorème', errors)
     subfields = _match(Subfield.objects.all(), fiche.get('sous_domaines', []), 'sous-domaine', errors)
     # Les sous-domaines se déduisent des chapitres (Limites et continuité → Analyse) : on les
     # ajoute toujours, sinon le filtre « Sous-domaine » du site ne trouve pas le contenu.

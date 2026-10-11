@@ -235,7 +235,11 @@ class ContentListSerializer(serializers.ModelSerializer):
         return data
 
     def get_chapters(self, obj):
-        return [{'id': c.id, 'name': c.name, 'slug': slugify(c.name)} for c in obj.chapters.all()]
+        # `levels` : niveaux du chapitre (programme officiel, 11/10/2026) ; la carte lie au chapitre qui existe au
+        # niveau de la page (« Calcul trigonométrique » au TC, « Trigonométrie (formules…) » en 1ère).
+        # Préchargés par listing.with_list_relations ('chapters__class_levels').
+        return [{'id': c.id, 'name': c.name, 'slug': slugify(c.name), 'levels': [lv.id for lv in c.class_levels.all()]}
+                for c in obj.chapters.all()]
 
     def get_theorems(self, obj):
         return [{'id': t.id, 'name': t.name} for t in obj.theorems.all()]

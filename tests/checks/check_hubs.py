@@ -67,8 +67,11 @@ check('API niveau : 200', r.status_code == 200, r.status_code)
 d = r.json()
 check('niveau : compte et textes', d['count'] == 3 and d['h1'] == 'Exercices corrigés de maths – 2ème Bac SM'
       and '2 Bac SM' in d['title'] and d['indexable'], d)
-check('niveau : chapitres avec contenu seulement, comptés',
-      [(c['name'], c['count']) for c in d['chapters']] == sorted([(lim.name, 2), (suites.name, 1)], key=lambda x: Chapter.objects.get(name=x[0], class_levels=sm2).id), d['chapters'])
+# Ordre du programme officiel du niveau (apps/caracteristics/programme.py), pas l'ordre des id.
+from apps.caracteristics.programme import rang  # noqa: E402
+RANG_SM2 = rang('2ème Bac SM')
+check('niveau : chapitres avec contenu seulement, comptés, dans l’ordre du programme',
+      [(c['name'], c['count']) for c in d['chapters']] == sorted([(lim.name, 2), (suites.name, 1)], key=lambda x: RANG_SM2[x[0]]), d['chapters'])
 check('niveau : lien vers les cours du même niveau', [x['url'] for x in d['related']] == ['/lessons/niveau/2eme-bac-sm'], d['related'])
 
 r = cl.get('/api/hubs/', {'section': 'exercises', 'level': '2eme-bac-sm', 'chapter': 'limites-et-continuite'})
@@ -148,9 +151,26 @@ check('dossiers : contenus comptés, 0 pour un chapitre vide', fold[lim.id]['cou
       and sum(f['count'] == 0 for f in d['folders']) == len(sm2_chapters) - 2, [(f['name'], f['count']) for f in d['folders']])
 check('dossiers : lien, slug, sous-domaine', fold[lim.id]['url'] == '/exercises/niveau/2eme-bac-sm/limites-et-continuite'
       and fold[lim.id]['slug'] == 'limites-et-continuite' and fold[lim.id]['subfield'] == 'Analyse', fold[lim.id])
-rank = ['Analyse', 'Algèbre', 'Géométrie', 'Probabilités', 'Statistiques']
-order = [rank.index(f['subfield']) if f['subfield'] in rank else 99 for f in d['folders']]
-check('dossiers : regroupés par sous-domaine (Analyse d’abord)', order == sorted(order), [f['subfield'] for f in d['folders']])
+ranks = [RANG_SM2[f['name']] for f in d['folders']]
+check('dossiers : dans l’ordre du programme officiel (champ ordre)', ranks == sorted(ranks)
+      and all(f.get('ordre') == RANG_SM2[f['name']] for f in d['folders']), [(f['name'], f.get('ordre')) for f in d['folders']])
+check('dossiers : champ aussi (mots d’un ancien dossier absorbé)', all(isinstance(f.get('aussi'), list) for f in d['folders']),
+      [f.get('aussi') for f in d['folders']])
+r = cl.get('/api/hubs/', {'section': 'exercises', 'level': '2eme-bac-sm', 'chapter': 'denombrement'})
+check('ancienne adresse (Dénombrement en 2ème Bac SM) : redirect seul vers Probabilités',
+      r.status_code == 200 and r.json() == {'redirect': '/exercises/niveau/2eme-bac-sm/probabilites'}, (r.status_code, r.content[:200]))
+r = cl.get('/seo/hub/exercises/2eme-bac-sm/denombrement/')
+check('page pré-remplie d’une ancienne adresse : 301 vers le nouveau dossier',
+      r.status_code == 301 and r['Location'].endswith('/exercises/niveau/2eme-bac-sm/probabilites'), (r.status_code, r.get('Location')))
+r = cl.get('/api/contents/', {'type': 'exercise', 'class_levels': sm2.id})
+rows = r.json().get('results', r.json()) if r.status_code == 200 else []
+check('liste : chaque chapitre d’une carte porte ses niveaux (levels)', bool(rows) and all(
+    isinstance(ch.get('levels'), list) and ch['levels'] for row in rows for ch in row.get('chapters', [])),
+    [row.get('chapters') for row in rows][:2])
+r = cl.get('/api/hubs/', {'section': 'lessons', 'level': '1ere-bac-sm', 'chapter': 'calcul-trigonometrique'})
+check('ancienne adresse de 1ère (chapitre scindé) : redirect vers le nouveau dossier',
+      r.status_code == 200 and r.json() == {'redirect': '/lessons/niveau/1ere-bac-sm/trigonometrie-formules-de-transformation'},
+      (r.status_code, r.content[:200]))
 check('dossiers : pas de « mine » pour un visiteur', all('mine' not in f for f in d['folders']))
 check('dossiers : matière unique nommée', d['subject'] == 'Mathématiques', d.get('subject'))
 eleve_d = User.objects.create_user('eleve_dossiers', 'ed@x.fr', 'x')

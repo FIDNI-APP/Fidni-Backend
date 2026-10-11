@@ -22,7 +22,7 @@ import time
 import urllib.request
 
 from django.conf import settings
-from django.http import HttpResponse
+from django.http import HttpResponse, HttpResponsePermanentRedirect
 
 SECTIONS = {'exercise': 'exercises', 'lesson': 'lessons', 'exam': 'exams'}
 KIND = {'exercise': 'Exercice', 'lesson': 'Leçon', 'exam': 'Examen'}
@@ -113,7 +113,7 @@ def content_page(request, section, pk):
     site = settings.FRONTEND_URL.rstrip('/')
     kind = KIND_BY_SECTION.get(section)
     content = (Content.objects.filter(pk=pk, type=kind).select_related('subject')
-               .prefetch_related('chapters', 'class_levels').first() if kind else None)
+               .prefetch_related('chapters__class_levels', 'class_levels').first() if kind else None)
     if content is None:
         return _render(page, title='Contenu introuvable | Fidni', description='Ce contenu n’existe pas ou a été retiré.',
                        url=f'{site}/{section}/{pk}', body='', status=404, noindex=True)
@@ -138,7 +138,7 @@ def content_page(request, section, pk):
     from apps.caracteristics.hubs import hub_url
     level_objs = sorted(content.class_levels.all(), key=lambda lv: lv.id)
     level = level_objs[0] if level_objs else None
-    chapter = next((ch for ch in content.chapters.all() if level and level in ch.class_levels.all()), None)
+    chapter = _chapter_at_level(content, level)
 
     lines, total = [], 0
     for line in _statement_lines(content.json_content or {}, []):
@@ -201,6 +201,15 @@ def content_page(request, section, pk):
                    json_ld=[json_ld, _breadcrumbs(trail)])
 
 
+def _chapter_at_level(content, level):
+    """Chapitre du contenu rattaché au niveau retenu (le premier par nom, comme les cartes du front), sinon None :
+    jamais de lien vers la page d'un chapitre qui n'existe pas à ce niveau (404)."""
+    if level is None:
+        return None
+    return min((ch for ch in content.chapters.all() if any(lv.id == level.id for lv in ch.class_levels.all())),
+               key=lambda ch: ch.name, default=None)
+
+
 def _breadcrumbs(trail):
     return {'@context': 'https://schema.org', '@type': 'BreadcrumbList', 'itemListElement': [
         {'@type': 'ListItem', 'position': i + 1, 'name': name, 'item': link} for i, (name, link) in enumerate(trail)]}
@@ -249,17 +258,22 @@ BODY_STYLE = ('max-width:860px;margin:40px auto;padding:0 16px;font-family:syste
 
 
 def _grouped(kind):
-    """Contenus d'un type, rangés par niveau puis par chapitre (ordre du programme)."""
+    """Contenus d'un type, rangés par niveau puis par chapitre du niveau (ordre du programme, « Autres » à la fin)."""
+    from apps.caracteristics.programme import rang
     from apps.things.models import Content
-    rows = (Content.objects.filter(type=kind).prefetch_related('class_levels', 'chapters')
+    rows = (Content.objects.filter(type=kind).prefetch_related('class_levels', 'chapters__class_levels')
             .order_by('-updated_at')[:2000])
     groups = {}
     for c in rows:
         level = min(c.class_levels.all(), key=lambda lv: lv.id, default=None)
-        chapter = min(c.chapters.all(), key=lambda ch: ch.name, default=None)
+        chapter = _chapter_at_level(c, level)
         lkey = (level.id if level else 10**9, level.name if level else 'Autres niveaux')
         groups.setdefault(lkey, {}).setdefault(chapter.name if chapter else 'Autres', []).append(c)
-    return [(lname, sorted(chapters.items())) for (_, lname), chapters in sorted(groups.items())]
+    out = []
+    for (_, lname), chapters in sorted(groups.items()):
+        rangs = rang(lname)
+        out.append((lname, sorted(chapters.items(), key=lambda kv: (kv[0] == 'Autres', rangs[kv[0]], kv[0]))))
+    return out
 
 
 def _links_html(section, groups, esc):
@@ -301,10 +315,14 @@ def hub_page(request, section, level, chapter=None):
     """Page par niveau ou par chapitre (/exercises/niveau/2eme-bac-sm[/limites-et-continuite])."""
     from apps.caracteristics.hubs import SECTION_TYPE, _folder_contents, resolve
 
-    page = _index_html()
     site = settings.FRONTEND_URL.rstrip('/')
     esc = html.escape
     data = resolve(section, level, chapter)
+    if data is not None and 'redirect' in data:
+        # Ancienne adresse d'un chapitre (programme officiel, ALIAS_SLUGS) : redirection définitive.
+        query = request.META.get('QUERY_STRING')
+        return HttpResponsePermanentRedirect(site + data['redirect'] + (f'?{query}' if query else ''))
+    page = _index_html()
     if data is None:
         return _render(page, title='Page introuvable | Fidni', description='Cette page n’existe pas.',
                        url=f'{site}/{section}', body='', status=404, noindex=True)

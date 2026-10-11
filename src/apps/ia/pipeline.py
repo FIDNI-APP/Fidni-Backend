@@ -9,6 +9,9 @@ Import d'un document :
 Correction d'un signalement :
   l'IA vérifie le signalement, propose la correction minimale (avant / après) ;
   l'administrateur l'applique ou la rejette.
+
+Programme officiel envoyé à l'IA (annexes C et D) : celui des niveaux du travail, fixés une fois pour toutes dans
+job.options['niveaux'] (_niveaux) — même texte système pour chaque appel du travail, donc en cache.
 """
 import base64
 import json
@@ -51,8 +54,20 @@ def _compter(job, usage):
     job.usage['appels'] = job.usage.get('appels', 0) + 1
 
 
+def _niveaux(job):
+    """Niveaux du travail (consignes.niveaux_du_travail), fixés à la création ; un travail plus ancien les reçoit
+    au premier appel (niveau imposé, ou niveaux du contenu signalé), gardés ensuite."""
+    if not isinstance(job.options.get('niveaux'), list):
+        if job.kind == IAJob.SIGNALEMENT:
+            donnes = list(job.report.content.class_levels.values_list('name', flat=True)) if job.report else []
+        else:
+            donnes = [job.options['niveau']] if job.options.get('niveau') else []
+        job.options['niveaux'] = consignes.niveaux_du_travail(donnes)
+    return job.options['niveaux']
+
+
 def _appeler(job, messages, system=None):
-    texte, usage = client.appeler(system or consignes.systeme(), messages)
+    texte, usage = client.appeler(system or consignes.systeme(_niveaux(job)), messages)
     _compter(job, usage)
     return texte
 
@@ -521,7 +536,8 @@ def traiter_signalement(job):
           'ou l’autre) ; garde les balises <img> telles quelles.\n\n<contenu>\n' + _extrait(content, report.item_path)
         + '\n</contenu>'
     )
-    system = consignes.systeme() + '\n\n# Tâche : correction d’un signalement\n\n' + consignes.SIGNALEMENT
+    # Programme des niveaux du contenu (et de leur niveau précédent) : mêmes règles qu'à l'import.
+    system = consignes.systeme(_niveaux(job)) + '\n\n# Tâche : correction d’un signalement\n\n' + consignes.SIGNALEMENT
     messages = [{'role': 'user', 'content': texte}]
     structure = content.json_content or {}
     for reprise in range(MAX_REPRISES + 1):

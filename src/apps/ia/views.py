@@ -18,7 +18,7 @@ from rest_framework.response import Response
 from apps.things.models import ContentReport
 from apps.users.admin_dashboard import IsSuperuser
 
-from . import client, documents, pipeline
+from . import client, consignes as ia_consignes, documents, pipeline
 from .client import IAErreur
 from .models import IAFile, IAJob
 
@@ -134,7 +134,9 @@ def nouvel_import(request):
     job = IAJob.objects.create(
         kind=IAJob.IMPORT, created_by=request.user,
         options={'origine': origine, 'credit': credit, 'consignes': consignes, 'niveau': niveau[:60],
-                 'type': type_, 'document': ', '.join(n for n, _, _ in lus)[:250]},
+                 'type': type_, 'document': ', '.join(n for n, _, _ in lus)[:250],
+                 # Programme envoyé à l'IA : niveau imposé + niveau précédent (aucun : les 4), fixé pour tout le travail.
+                 'niveaux': ia_consignes.niveaux_du_travail([niveau] if niveau else [])},
     )
     for nom, mime, data in lus:
         IAFile.objects.create(job=job, name=nom[:255], mime=mime, data=data)
@@ -153,8 +155,11 @@ def corriger_signalement(request, pk):
         return Response({'detail': f'{MAX_EN_COURS} travaux sont déjà en cours : attendre qu’ils finissent.'},
                         status=status.HTTP_429_TOO_MANY_REQUESTS)
     instruction = (request.data.get('instruction') or '').strip()[:INSTRUCTION_MAX]
-    job = IAJob.objects.create(kind=IAJob.SIGNALEMENT, created_by=request.user, report=report,
-                               options={'instruction': instruction} if instruction else {})
+    # Programme envoyé à l'IA : niveaux du contenu signalé + leur niveau précédent.
+    options = {'niveaux': ia_consignes.niveaux_du_travail(report.content.class_levels.values_list('name', flat=True))}
+    if instruction:
+        options['instruction'] = instruction
+    job = IAJob.objects.create(kind=IAJob.SIGNALEMENT, created_by=request.user, report=report, options=options)
     lancer(job)
     return Response(_resume(job), status=status.HTTP_201_CREATED)
 

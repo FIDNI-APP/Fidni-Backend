@@ -13,6 +13,12 @@ contenus (« fichiers »). `folders` = TOUS les chapitres du niveau (un chapitre
 marqué vide) ; GET /api/hubs/niveaux/ = les dossiers de niveaux d'une rubrique ; GET /api/hubs/nationaux/ =
 les dossiers par année du Bac national. Les devoirs (rubrique exams) ne comptent pas les sujets du Bac
 national, qui ont leur propre rubrique (même règle que la liste : is_national_exam=false).
+
+Programme officiel (11/10/2026) : les chapitres d'un niveau sont ceux de programme.chapitres_du_niveau()
+(Mathématiques, ordre d'enseignement) partout — dossiers, textes, sitemap. Chaque dossier porte `ordre` et
+`aussi` (mots d'un ancien dossier absorbé, repris dans les textes de la page). Ancienne adresse de chapitre
+(ALIAS_SLUGS) : resolve() ne renvoie que {'redirect': nouvelle adresse} (l'API répond 200 avec ce seul champ,
+la page pré-remplie redirige en 301).
 """
 from django.contrib.contenttypes.models import ContentType
 from django.db.models import Count, Max
@@ -21,6 +27,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 
+from apps.caracteristics import programme
 from apps.caracteristics.models import Chapter, ClassLevel, Subject
 
 SECTION_TYPE = {'exercises': 'exercise', 'lessons': 'lesson', 'exams': 'exam'}
@@ -63,8 +70,29 @@ def _contents(kind, level, chapter=None):
     return qs.distinct()
 
 
+# Au-delà, Google coupe le titre : les mots d'un dossier absorbé n'y entrent que s'il reste court.
+TITLE_MAX = 70
+
+
 def _plural(n, one, many):
     return f'{n} {one if n == 1 else many}'
+
+
+def _programme(level):
+    """{nom de chapitre: entrée de programme.py} du niveau (lecture seule)."""
+    return {c['nom']: c for c in programme.PROGRAMME.get(level.name, [])}
+
+
+def _aussi(level, chapter):
+    entree = _programme(level).get(chapter.name)
+    return list(entree['aussi']) if entree else []
+
+
+def _avec_aussi(nom, aussi):
+    """« Probabilités et dénombrement » : le chapitre suivi des mots de l'ancien dossier qu'il a absorbé."""
+    if not aussi:
+        return nom
+    return nom + (', ' if ' et ' in nom else ' et ') + ', '.join(aussi)
 
 
 def _texts(section, level, chapter, count):
@@ -97,44 +125,51 @@ def _texts(section, level, chapter, count):
                            f'pour le {alias} : barème, durée et corrigé détaillé, programme marocain.')
     else:
         ch = chapter.name
+        # Mots d'un ancien dossier absorbé (« dénombrement » dans Probabilités du 2ème Bac SM) : gardés dans le
+        # H1, l'introduction, la description, et le titre s'il reste court.
+        aussi = _aussi(level, chapter)
+        full = _avec_aussi(ch, aussi)
+        compris = f', {", ".join(aussi)} compris' if aussi else ''
         if section == 'exercises':
             title = f'{ch} – Exercices corrigés {alias} | Fidni'
-            h1 = f'{ch} : exercices corrigés – {lv}'
-            intro = (f'Exercices corrigés sur le chapitre « {ch} » du {lv} ({long}), programme marocain. '
+            title_full = f'{full} – Exercices corrigés {alias} | Fidni'
+            h1 = f'{full} : exercices corrigés – {lv}'
+            intro = (f'Exercices corrigés sur le chapitre « {ch} » du {lv} ({long}){compris}, programme marocain. '
                      f'Énoncés et solutions détaillées, de l’application directe aux exercices de type Bac.')
-            description = (f'{_plural(count, "exercice corrigé", "exercices corrigés")} sur {ch} pour le {alias} : '
+            description = (f'{_plural(count, "exercice corrigé", "exercices corrigés")} sur {full} pour le {alias} : '
                            f'énoncés et solutions détaillées étape par étape, programme marocain. Gratuit.')
         elif section == 'lessons':
             title = f'{ch} – Cours de maths {alias} | Fidni'
-            h1 = f'{ch} : cours – {lv}'
-            intro = (f'Le cours « {ch} » du {lv} ({long}) : définitions, théorèmes, propriétés et méthodes, '
+            title_full = f'{full} – Cours de maths {alias} | Fidni'
+            h1 = f'{full} : cours – {lv}'
+            intro = (f'Le cours « {ch} » du {lv} ({long}){compris} : définitions, théorèmes, propriétés et méthodes, '
                      f'avec des exemples, conformes au programme marocain.')
-            description = (f'Cours de maths sur {ch} pour le {alias} : définitions, théorèmes, propriétés, méthodes '
+            description = (f'Cours de maths sur {full} pour le {alias} : définitions, théorèmes, propriétés, méthodes '
                            f'et exemples, programme marocain. Gratuit.')
         else:
             title = f'{ch} – Devoirs surveillés corrigés {alias} | Fidni'
-            h1 = f'{ch} : devoirs et examens corrigés – {lv}'
-            intro = (f'Devoirs surveillés et examens de mathématiques portant sur « {ch} » au {lv} ({long}), '
+            title_full = f'{full} – Devoirs surveillés corrigés {alias} | Fidni'
+            h1 = f'{full} : devoirs et examens corrigés – {lv}'
+            intro = (f'Devoirs surveillés et examens de mathématiques portant sur « {ch} » au {lv} ({long}){compris}, '
                      f'avec barème et corrigé détaillé.')
-            description = (f'{_plural(count, "devoir corrigé", "devoirs et examens corrigés")} sur {ch} pour le {alias} : '
+            description = (f'{_plural(count, "devoir corrigé", "devoirs et examens corrigés")} sur {full} pour le {alias} : '
                            f'barème, durée et corrigé détaillé, programme marocain.')
+        if aussi and len(title_full) <= TITLE_MAX:
+            title = title_full
     return {'title': title, 'h1': h1, 'intro': intro, 'description': description}
 
 
-def _level_chapters(kind, level):
+def _counts(qs):
+    """{id de chapitre: nombre de contenus} d'un queryset de contenus."""
+    return {r['chapters']: r['n'] for r in qs.order_by().values('chapters').annotate(n=Count('id', distinct=True))
+            if r['chapters'] is not None}
+
+
+def _level_chapters(kind, level, chapters=None):
     """Chapitres du niveau qui ont au moins un contenu de ce type, dans l'ordre du programme."""
-    level_chapters = set(Chapter.objects.filter(class_levels=level).values_list('id', flat=True))
-    counts = {}
-    for content in _folder_contents(kind, level).distinct().prefetch_related('chapters'):
-        for ch in content.chapters.all():
-            if ch.id in level_chapters:
-                counts[ch.id] = counts.get(ch.id, 0) + 1
-    chapters = Chapter.objects.filter(id__in=counts).order_by('id')
-    return [(ch, counts[ch.id]) for ch in chapters]
-
-
-# Ordre des sous-domaines dans les dossiers d'un niveau (puis l'ordre du programme, l'id, dans chacun).
-SUBFIELD_ORDER = ['Analyse', 'Algèbre', 'Géométrie', 'Probabilités', 'Statistiques']
+    chapters = programme.chapitres_du_niveau(level) if chapters is None else chapters
+    counts = _counts(_folder_contents(kind, level))
+    return [(ch, counts[ch.id]) for ch in chapters if ch.id in counts]
 
 
 def _subject_name():
@@ -155,14 +190,13 @@ def _progress(user, content_ids):
     return {int(o): st for o, st in rows if str(o).isdigit()}
 
 
-def _folders(section, level, user=None):
-    """Tous les chapitres du niveau, contenus comptés (0 = dossier vide), et pour un élève connecté ce qu'il a
-    terminé dans chacun (`mine`)."""
+def _folders(section, level, user=None, chapters=None):
+    """Tous les chapitres du niveau dans l'ordre du programme (`ordre`, `aussi`), contenus comptés (0 = dossier
+    vide), et pour un élève connecté ce qu'il a terminé dans chacun (`mine`)."""
     from apps.things.models import Content
     kind = SECTION_TYPE[section]
     qs = _folder_contents(kind, level)
-    counts = {r['chapters']: r['n'] for r in qs.order_by().values('chapters').annotate(n=Count('id', distinct=True))
-              if r['chapters'] is not None}
+    counts = _counts(qs)
     mine = {}
     if user is not None and getattr(user, 'is_authenticated', False):
         ids = list(qs.values_list('id', flat=True).distinct())
@@ -173,13 +207,17 @@ def _folders(section, level, user=None):
                 m = mine.setdefault(chid, {'done': 0, 'success': 0})
                 m['done'] += 1
                 m['success'] += done[cid] == 'success'
-    rank = {name: i for i, name in enumerate(SUBFIELD_ORDER)}
-    chapters = sorted(Chapter.objects.filter(class_levels=level).select_related('subfield'),
-                      key=lambda ch: (rank.get(ch.subfield.name if ch.subfield else '', len(rank)), ch.id))
+    if chapters is None:
+        chapters = programme.chapitres_du_niveau(level, Chapter.objects.select_related('subfield'))
+    prog = _programme(level)
     out = []
     for ch in chapters:
+        entree = prog.get(ch.name)
         folder = {'id': ch.id, 'name': ch.name, 'slug': slug(ch.name), 'url': hub_url(section, level, ch),
-                  'count': counts.get(ch.id, 0), 'subfield': ch.subfield.name if ch.subfield else None}
+                  'count': counts.get(ch.id, 0), 'subfield': ch.subfield.name if ch.subfield else None,
+                  # Rang dans le programme du niveau (None : chapitre hors programme, rangé à la fin).
+                  'ordre': entree['ordre'] if entree else None,
+                  'aussi': list(entree['aussi']) if entree else []}
         if user is not None and getattr(user, 'is_authenticated', False):
             folder['mine'] = mine.get(ch.id, {'done': 0, 'success': 0})
         out.append(folder)
@@ -194,7 +232,7 @@ def levels(section):
     out = []
     for level in ClassLevel.objects.order_by('order', 'id'):
         qs = _folder_contents(kind, level)
-        level_chapters = set(Chapter.objects.filter(class_levels=level).values_list('id', flat=True))
+        level_chapters = {ch.id for ch in programme.chapitres_du_niveau(level)}
         used = set(qs.order_by().values_list('chapters', flat=True).distinct())
         out.append({'id': level.id, 'name': level.name, 'slug': slug(level.name), 'url': hub_url(section, level),
                     'count': qs.distinct().count(), 'chapters_total': len(level_chapters),
@@ -221,17 +259,22 @@ def national_years():
 
 
 def resolve(section, level_slug, chapter_slug=None, user=None):
-    """Tout ce qu'il faut pour afficher un hub, ou None si le niveau ou le chapitre n'existe pas."""
+    """Tout ce qu'il faut pour afficher un hub, ou None si le niveau ou le chapitre n'existe pas.
+    Ancienne adresse d'un chapitre de ce niveau (programme.ALIAS_SLUGS) : {'redirect': nouvelle adresse}, seul champ."""
     kind = SECTION_TYPE.get(section)
     if kind is None:
         return None
     level = next((lv for lv in ClassLevel.objects.all() if slug(lv.name) == level_slug), None)
     if level is None:
         return None
+    chapters = programme.chapitres_du_niveau(level, Chapter.objects.select_related('subfield'))
     chapter = None
     if chapter_slug:
-        chapter = next((ch for ch in Chapter.objects.filter(class_levels=level) if slug(ch.name) == chapter_slug), None)
+        chapter = next((ch for ch in chapters if slug(ch.name) == chapter_slug), None)
         if chapter is None:
+            nouveau = programme.ALIAS_SLUGS.get(slug(level.name), {}).get(chapter_slug)
+            if nouveau and any(slug(ch.name) == nouveau for ch in chapters):
+                return {'redirect': f'/{section}/niveau/{slug(level.name)}/{nouveau}'}
             return None
 
     contents = _contents(kind, level, chapter)
@@ -247,10 +290,10 @@ def resolve(section, level_slug, chapter_slug=None, user=None):
         **_texts(section, level, chapter, count),
         'chapters': [
             {'id': ch.id, 'name': ch.name, 'slug': slug(ch.name), 'count': n, 'url': hub_url(section, level, ch)}
-            for ch, n in _level_chapters(kind, level)
+            for ch, n in _level_chapters(kind, level, chapters)
         ],
         # Dossiers : tous les chapitres du niveau, vides compris (navigation Maths › niveau › chapitre).
-        'folders': _folders(section, level, user),
+        'folders': _folders(section, level, user, chapters),
         # Contenus du niveau rangés dans aucun de ses chapitres : un dossier « Sans chapitre » à part, sinon
         # introuvables depuis les dossiers (liste : /api/contents/?class_levels=<id>&sans_chapitre=true).
         'unfiled': (_folder_contents(kind, level).exclude(chapters__class_levels=level).distinct().count()
@@ -268,10 +311,11 @@ def resolve(section, level_slug, chapter_slug=None, user=None):
 
 
 def all_hubs():
-    """(url, dernière mise à jour) de chaque hub qui a du contenu : pour le sitemap."""
+    """(url, dernière mise à jour) de chaque hub qui a du contenu : pour le sitemap. Chapitres rattachés au niveau
+    seulement, dans l'ordre du programme (jamais une ancienne adresse redirigée)."""
     out = []
     for section, kind in SECTION_TYPE.items():
-        for level in ClassLevel.objects.order_by('id'):
+        for level in ClassLevel.objects.order_by('order', 'id'):
             qs = _folder_contents(kind, level)
             last = qs.aggregate(m=Max('updated_at'))['m']
             if last is None:
@@ -286,7 +330,10 @@ def all_hubs():
 @api_view(['GET'])
 @permission_classes([AllowAny])
 def hub_view(request):
-    """GET /api/hubs/?section=exercises&level=2eme-bac-sm[&chapter=limites-et-continuite]"""
+    """GET /api/hubs/?section=exercises&level=2eme-bac-sm[&chapter=limites-et-continuite]
+
+    Ancienne adresse de chapitre : 200 avec {"redirect": "/exercises/niveau/2eme-bac-sm/probabilites"} seulement
+    (le front remplace l'adresse, filtres compris)."""
     data = resolve(request.query_params.get('section', ''), request.query_params.get('level', ''),
                    request.query_params.get('chapter') or None, user=request.user)
     if data is None:
