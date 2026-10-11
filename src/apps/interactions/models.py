@@ -628,6 +628,9 @@ class UpcomingTest(models.Model):
     mock_started_at = models.DateTimeField(null=True, blank=True)
     mock_done_at = models.DateTimeField(null=True, blank=True)
     mock_seconds = models.PositiveIntegerField(null=True, blank=True)
+    # Réglages du DS blanc choisis par l'élève : durée visée et difficulté ('' = mélangée, comme un vrai DS).
+    mock_minutes = models.PositiveSmallIntegerField(default=60)
+    mock_difficulty = models.CharField(max_length=10, blank=True, default='')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
