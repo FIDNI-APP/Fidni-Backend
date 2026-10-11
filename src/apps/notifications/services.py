@@ -97,6 +97,25 @@ def notify(*, target, title, link, comment_id, author_id, text, participants, re
     return len(active)
 
 
+def notify_report_response(report, message, actor=None):
+    """Prévient l'élève que son signalement a été traité, avec la réponse de l'administrateur (texte libre).
+    Une seule notification par signalement : une nouvelle réponse remplace la précédente et redevient non lue."""
+    from apps.users.account_deletion import DELETED_USERNAME
+
+    user = report.user
+    if not user or not user.is_active or user.username == DELETED_USERNAME:
+        return None
+    content = report.content
+    section = {'exercise': 'exercises', 'lesson': 'lessons', 'exam': 'exams'}.get(content.type, 'exercises')
+    now = timezone.now()
+    n, _ = Notification.objects.update_or_create(
+        recipient=user, kind=Notification.KIND_REPORT, target=f'report:{report.id}',
+        defaults={'title': content.title[:200], 'link': f'/{section}/{content.id}', 'actor': actor,
+                  'excerpt': excerpt(message), 'message': message, 'count': 1, 'updated_at': now, 'read_at': None},
+    )
+    return n
+
+
 def notify_content_comment(comment):
     content = comment.content_item
     parent_author = comment.parent.author_id if comment.parent_id else None

@@ -17,6 +17,7 @@ from apps.users.admin_dashboard import IsSuperuser
 from config.throttling import ContentReportThrottle
 
 DESCRIPTION_MAX = 1000
+RESPONSE_MAX = 2000
 LABEL_MAX = 160
 SECTION_URL = {'exercise': 'exercises', 'lesson': 'lessons', 'exam': 'exams'}
 
@@ -97,6 +98,8 @@ def _serialize(report):
         'created_at': report.created_at.isoformat(),
         'handled_at': report.handled_at.isoformat() if report.handled_at else None,
         'handled_by': report.handled_by.username if report.handled_by else None,
+        'response': report.response,
+        'response_sent_at': report.response_sent_at.isoformat() if report.response_sent_at else None,
         'user': report.user.username if report.user else None,
         'content': {
             'id': content.id, 'type': content.type, 'title': content.title,
@@ -123,15 +126,33 @@ def reports_list(request):
 @api_view(['PATCH'])
 @permission_classes([IsSuperuser])
 def report_update(request, pk):
-    """Marquer un signalement corrigé, sans suite, ou le rouvrir."""
+    """Marquer un signalement corrigé, sans suite, ou le rouvrir.
+
+    Corrigé ou sans suite : `reponse` (texte libre, rédigé par l'administrateur) et `prevenir` (vrai par défaut)
+    envoient la réponse à l'élève dans sa cloche (apps/notifications). Le même statut avec une nouvelle réponse
+    renvoie seulement la réponse (par exemple après une correction faite par l'IA).
+    """
+    from apps.notifications.services import notify_report_response
+
     report = get_object_or_404(ContentReport, pk=pk)
     new_status = request.data.get('status')
     if new_status not in dict(ContentReport.STATUS_CHOICES):
         return Response({'status': 'Statut inconnu.'}, status=status.HTTP_400_BAD_REQUEST)
-    report.status = new_status
+    response = (request.data.get('reponse') or '').strip()
+    if len(response) > RESPONSE_MAX:
+        return Response({'reponse': f'{RESPONSE_MAX} caractères au maximum.'}, status=status.HTTP_400_BAD_REQUEST)
+    notify = request.data.get('prevenir', True) not in (False, 'false', '0', 0)
+
+    fields = ['status', 'handled_at', 'handled_by']
     if new_status == ContentReport.STATUS_OPEN:
         report.handled_at, report.handled_by = None, None
-    else:
+    elif report.status != new_status or not report.handled_at:
         report.handled_at, report.handled_by = timezone.now(), request.user
-    report.save(update_fields=['status', 'handled_at', 'handled_by'])
-    return Response(_serialize(report))
+    report.status = new_status
+    sent = False
+    if new_status != ContentReport.STATUS_OPEN and notify and response:
+        report.response, report.response_sent_at = response, timezone.now()
+        fields += ['response', 'response_sent_at']
+        sent = notify_report_response(report, response, actor=request.user) is not None
+    report.save(update_fields=fields)
+    return Response({**_serialize(report), 'notified': sent})

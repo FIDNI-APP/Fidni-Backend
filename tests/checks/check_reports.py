@@ -103,6 +103,33 @@ check('rouvrir', r.status_code == 200 and r.data['handled_at'] is None, r.data)
 r = c.patch(f"/api/pilotage/signalements/{first['id']}/", {'status': 'dismissed'}, format='json')
 check('un élève ne traite pas les signalements', r.status_code == 403, r.status_code)
 
+# Réponse à l'élève (11/10/2026) : texte libre de l'administrateur, notification « signalement traité ».
+from apps.notifications.models import Notification  # noqa: E402
+msg = 'Bonjour alice ! Merci pour ton signalement : c’est corrigé.\nBonne révision !'
+r = a.patch(f"/api/pilotage/signalements/{first['id']}/", {'status': 'resolved', 'reponse': msg}, format='json')
+check('réponse envoyée : statut corrigé, réponse gardée', r.status_code == 200 and r.data['status'] == 'resolved'
+      and r.data['response'] == msg and r.data['response_sent_at'] and r.data['notified'], r.data)
+n = Notification.objects.filter(recipient=alice, kind='report').first()
+check('notification « signalement traité » pour l’élève', n is not None and n.message == msg and n.read_at is None
+      and n.target == f"report:{first['id']}", n and (n.kind, n.target))
+r = c.get('/api/notifications/')
+row = next((x for x in r.data['results'] if x['kind'] == 'report'), None)
+check('cloche : réponse complète et lien vers le contenu', row is not None and row['message'] == msg
+      and row['url'] == first['content']['url'] and r.data['unread'] >= 1, row)
+c.post('/api/notifications/lues/', {}, format='json')
+r = a.patch(f"/api/pilotage/signalements/{first['id']}/", {'status': 'resolved', 'reponse': 'Nouvelle réponse.'}, format='json')
+check('nouvelle réponse : même notification, de nouveau non lue', Notification.objects.filter(recipient=alice, kind='report').count() == 1
+      and Notification.objects.get(recipient=alice, kind='report').message == 'Nouvelle réponse.'
+      and Notification.objects.get(recipient=alice, kind='report').read_at is None)
+second = r.data
+others = [x for x in a.get('/api/pilotage/signalements/').data['results']]
+if others:
+    r = a.patch(f"/api/pilotage/signalements/{others[0]['id']}/", {'status': 'dismissed', 'reponse': 'Pas d’erreur.', 'prevenir': False}, format='json')
+    check('« ne pas prévenir » : aucune notification', r.status_code == 200 and not r.data['notified']
+          and not Notification.objects.filter(target=f"report:{others[0]['id']}").exists(), r.data)
+    r = a.patch(f"/api/pilotage/signalements/{others[0]['id']}/", {'status': 'dismissed', 'reponse': 'x' * 2001}, format='json')
+    check('réponse trop longue refusée', r.status_code == 400, r.status_code)
+
 # Bandeau « correction à vérifier » : validé par un administrateur depuis le site
 Content.objects.filter(pk=exo.pk).update(json_content={**exo.json_content, 'a_verifier': True})
 r = c.post(f'/api/contents/{exo.id}/verification/', {'verifie': True}, format='json')

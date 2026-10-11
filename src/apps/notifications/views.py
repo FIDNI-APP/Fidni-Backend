@@ -24,6 +24,8 @@ def _avatar(user):
 
 
 def _url(n):
+    if n.kind == Notification.KIND_REPORT:
+        return n.link
     # Page d'un exercice, d'une leçon ou d'un examen : on ouvre la discussion sur le commentaire,
     # avec le champ de réponse prêt (ContentDetail lit « ?commentaire= »).
     if n.target.startswith('content:') and n.comment_id:
@@ -34,6 +36,7 @@ def _url(n):
 def serialize(n):
     return {
         'id': n.id, 'kind': n.kind, 'title': n.title, 'url': _url(n), 'excerpt': n.excerpt, 'count': n.count,
+        'message': n.message,
         'actor': {'username': n.actor.username, 'avatar': _avatar(n.actor)} if n.actor else None,
         'updated_at': n.updated_at, 'read': n.read_at is not None,
     }
