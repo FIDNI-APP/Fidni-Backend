@@ -26,6 +26,7 @@ from apps.users.study_stats_views import get_study_statistics
 from apps.users.overview_views import dashboard_overview
 from apps.users import admin_dashboard, login_diagnostic
 from apps.users import usage as usage_views
+from apps.skilliq import admin_api as quiz_admin
 from apps.users.my_stats import my_stats
 from apps.users.progression import progression
 from apps.things import reports as content_reports
@@ -167,6 +168,10 @@ urlpatterns = [
     path('api/usage/', usage_views.record, name='usage'),
     path('api/pilotage/', admin_dashboard.overview, name='pilotage'),
     path('api/pilotage/serie/', admin_dashboard.serie, name='pilotage-serie'),
+    path('api/pilotage/quiz/', quiz_admin.chapitres, name='pilotage-quiz'),
+    path('api/pilotage/quiz/chapitre/<int:pk>/', quiz_admin.chapitre, name='pilotage-quiz-chapitre'),
+    path('api/pilotage/quiz/chapitre/<int:pk>/publier/', quiz_admin.publier, name='pilotage-quiz-publier'),
+    path('api/pilotage/quiz/question/<int:pk>/', quiz_admin.question, name='pilotage-quiz-question'),
     path('api/pilotage/utilisateurs/', admin_dashboard.users_list, name='pilotage-utilisateurs'),
     path('api/pilotage/utilisateurs/<int:pk>/', admin_dashboard.user_detail, name='pilotage-utilisateur'),
     # « Un membre n'arrive pas à se connecter » : comptes, blocage, journaux d'authentification.
