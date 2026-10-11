@@ -74,11 +74,12 @@ def assess(c, statuses):
 
 # Limites : bien maîtrisé. Dérivation : fragile. Suites : jamais travaillé (quiz disponible).
 lim1 = make('Limites 1', [lim], [q('q1', ['tvi']), q('q2', ['tvi']), q('q3', ['tvi'])])
-lim2 = make('Limites 2 (pas encore ouvert)', [lim], [q('q1', ['tvi'], 600), q('q2', ['tvi'], 900)])
+lim2 = make('Limites 2 (pas encore ouvert)', [lim], [q('q1', ['tvi'], 600), q('q2', ['tvi'], 900), q('q3', ['tvi'], 300)])
 der1 = make('Dérivation 1', [der], [q('q1', ['derivee']), q('q2', ['derivee']), q('q3', ['derivee'])])
-der2 = make('Dérivation 2 (pas encore ouvert)', [der], [q('q1', [])], difficulty='hard')
-der3 = make('Dérivation 3 facile', [der], [q('q1', [])], difficulty='easy')
-sui1 = make('Suites 1', [suites], [q('q1', [])])
+der2 = make('Dérivation 2 (pas encore ouvert)', [der], [q('q1', []), q('q2', []), q('q3', [])], difficulty='hard')
+der3 = make('Dérivation 3 facile', [der], [q('q1', []), {**q('q2', []), 'subQuestions': [{'id': 'a'}, {'id': 'b'}]}], difficulty='easy')
+der4 = make('Dérivation 4 courte (pas encore ouverte)', [der], [q('q1', []), q('q2', [])], difficulty='hard')
+sui1 = make('Suites 1', [suites], [q('q1', []), q('q2', []), q('q3', [])])
 hors = make('Hors programme du DS', [Chapter.objects.filter(class_levels=sm).exclude(id__in=[lim.id, der.id, suites.id]).first()], [q('q1', [])])
 assess(lim1, {'q1': 'success', 'q2': 'success', 'q3': 'success'})
 Complete.objects.create(user=eleve, content_type=ct, object_id=str(lim1.id), status='success')
@@ -122,11 +123,14 @@ check('exercices pour toi : « à retravailler » en tête', p['exercises'][0]['
       p['exercises'][:2])
 mock = p['mock']
 mock_ids = [x['id'] for x in mock['exercises']]
-check('DS blanc : 3 exercices, un par chapitre, le plus fragile d’abord', len(mock_ids) == 3
-      and mock_ids[0] in (der2.id, der3.id) and sui1.id in mock_ids and lim2.id in mock_ids, [x['title'] for x in mock['exercises']])
-check('DS blanc : pas encore ouvert et plutôt moyen/difficile', mock_ids[0] == der2.id, [x['title'] for x in mock['exercises']])
-check('DS blanc : durée (temps cible, sinon difficulté)', next(x for x in mock['exercises'] if x['id'] == lim2.id)['minutes'] == 25
-      and next(x for x in mock['exercises'] if x['id'] == der2.id)['minutes'] == 30 and mock['minutes'] == 25 + 30 + 20, mock)
+# Réglages par défaut : 1 h, difficulté mélangée. Chapitres du plus fragile au plus maîtrisé (Dérivation,
+# Suites, Limites) ; Limites 2 (30 min) ferait dépasser 1 h de plus de 10 min : Dérivation 3 (15 min) à la place.
+titles = [x['title'] for x in mock['exercises']]
+check('DS blanc : réglages par défaut (1 h, mélangée)', mock['settings']['minutes'] == 60 and mock['settings']['difficulty'] == ''
+      and mock['min_questions'] == 3, mock.get('settings'))
+check('DS blanc : le chapitre le plus fragile d’abord, puis un par chapitre jusqu’à la durée', mock_ids == [der2.id, sui1.id, der3.id], titles)
+check('DS blanc : seulement des exercices d’au moins 3 questions (la courte est écartée)', der4.id not in mock_ids, titles)
+check('DS blanc : durée (temps cible, sinon difficulté) proche de l’heure demandée', mock['minutes'] == 30 + 20 + 15, mock['minutes'])
 check('DS blanc : pas d’énoncé dans le plan (léger)', 'structure' not in mock['exercises'][0])
 prep = p['preparation']
 check('préparation au départ', prep['exercises'] == 0 and prep['quizzes'] == 0 and prep['quizzes_total'] == 1 and not prep['mock'], prep)
@@ -150,6 +154,24 @@ new_ids = [x['id'] for x in r.data['exercises']]
 check('un autre DS blanc : d’autres exercices', r.status_code == 200 and new_ids and not set(new_ids) & set(mock_ids)
       and r.data['done_at'] is None and r.data['started_at'] is None, [x['title'] for x in r.data['exercises']])
 check('action inconnue : refusée', c.post(f'/api/devoirs/{test_id}/ds-blanc/', {'action': 'x'}, format='json').status_code == 400)
+
+# ── Réglages du DS blanc : durée et difficulté
+url = f'/api/devoirs/{test_id}/ds-blanc/'
+check('réglages : durée hors choix refusée', c.post(url, {'action': 'settings', 'minutes': 45}, format='json').status_code == 400)
+check('réglages : difficulté inconnue refusée', c.post(url, {'action': 'settings', 'minutes': 60, 'difficulty': 'x'}, format='json').status_code == 400)
+r = c.post(url, {'action': 'settings', 'minutes': 30, 'difficulty': ''}, format='json')
+# (Dérivation 2 a été travaillée plus haut : Dérivation 3, pas encore ouverte, passe devant.)
+check('30 min : chapitre le plus fragile d’abord, durée tenue (± 10 min)', r.status_code == 200
+      and r.data['exercises'][0]['id'] == der3.id and 30 <= r.data['minutes'] <= 40
+      and r.data['settings']['minutes'] == 30 and r.data['started_at'] is None,
+      (r.data.get('minutes'), [x['title'] for x in r.data.get('exercises', [])]))
+r = c.post(url, {'action': 'settings', 'minutes': 60, 'difficulty': 'easy'}, format='json')
+check('facile : seulement des exercices longs faciles', r.status_code == 200 and [x['id'] for x in r.data['exercises']] == [der3.id]
+      and r.data['difficulty_respected'], [x['title'] for x in r.data.get('exercises', [])])
+r = c.post(url, {'action': 'settings', 'minutes': 120, 'difficulty': ''}, format='json')
+check('2 h : plus d’exercices, toujours longs', r.status_code == 200 and len(r.data['exercises']) > 3 and der4.id not in
+      [x['id'] for x in r.data['exercises']] and r.data['minutes'] <= 130, (r.data.get('minutes'), [x['title'] for x in r.data.get('exercises', [])]))
+c.post(url, {'action': 'settings', 'minutes': 60, 'difficulty': ''}, format='json')
 
 # ── Préparation depuis l'annonce : exercices travaillés, quiz passé, DS blanc fait
 SkillAssessment.objects.create(user=eleve, chapter=suites, score=6, max_score=10)

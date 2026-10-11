@@ -154,17 +154,36 @@ def _for_you(user, chapter_ids, names):
     return rows
 
 
-def _pick_mock(user, ordered_chapter_ids, level, exclude=()):
-    """DS blanc : un exercice par chapitre (le plus fragile d'abord), 2 ou 3 en tout.
+MOCK_MINUTES = (30, 60, 90, 120)      # durées proposées pour le DS blanc
+MOCK_DIFFICULTIES = ('', 'easy', 'medium', 'hard')  # '' : mélangée (plutôt moyen, comme un vrai DS)
+MOCK_MIN_QUESTIONS = 3                 # DS blanc : seulement des exercices « longs » (3 questions au moins)
+MOCK_MAX_EXERCISES = 6
 
-    Pas encore ouvert > ouvert > à revoir ; moyen > difficile > facile ; du niveau de l'élève ;
-    puis le plus apprécié. Ce qu'il a réussi ne vient qu'en dernier recours."""
-    want = min(3, max(2, len(ordered_chapter_ids)))
+
+def _question_count(content):
+    """Questions d'un exercice : chaque sous-question compte (1. a) b) c) = 3), une question seule aussi."""
+    return sum(len(b.get('subQuestions') or []) or 1
+               for b in (content.json_content or {}).get('blocks', []) if b.get('type') == 'question')
+
+
+def _pick_mock(user, ordered_chapter_ids, level, exclude=(), minutes=60, difficulty=''):
+    """DS blanc : des exercices d'au moins 3 questions, pris chapitre après chapitre (le plus fragile d'abord)
+    jusqu'à remplir la durée choisie. → (ids, difficulté respectée ?)
+
+    Dans un chapitre : pas encore ouvert > ouvert > à revoir ; la difficulté choisie (sinon moyen > difficile >
+    facile) ; du niveau de l'élève ; puis le plus apprécié. Ce qu'il a réussi ne vient qu'en dernier recours."""
     qs = _exercises_in(ordered_chapter_ids).exclude(id__in=list(exclude))
-    if level is not None and qs.filter(class_levels=level).count() >= want:
+    if level is not None and qs.filter(class_levels=level).exists():
         qs = qs.filter(class_levels=level)
-    likes = dict(qs.annotate(n=Count('votes', filter=Q(votes__value=Vote.UP), distinct=True)).values_list('id', 'n'))
-    contents = {c.id: c for c in qs}
+    contents = {c.id: c for c in qs if _question_count(c) >= MOCK_MIN_QUESTIONS}
+    respected = True
+    if difficulty:
+        same = {i: c for i, c in contents.items() if c.difficulty == difficulty}
+        if same:
+            contents = same
+        else:
+            respected = False  # aucun exercice long de cette difficulté : on garde les autres, et on le dit
+    likes = dict(_likes(contents))
     status_of = _statuses(user, list(contents))
     chapters_of = _chapter_ids_of(list(contents))
     seen_rank = {None: 0, 'seen': 1, 'review': 2, 'success': 9}
@@ -172,22 +191,43 @@ def _pick_mock(user, ordered_chapter_ids, level, exclude=()):
     def key(c):
         return (seen_rank[status_of.get(c.id)], DIFFICULTY_RANK.get(c.difficulty, 1), -likes.get(c.id, 0), -c.id)
 
-    picked = []
-    for _ in range(want):  # tours successifs : un exercice par chapitre, tant qu'il en manque
+    picked, total = [], 0
+    # Tours successifs : le meilleur exercice de chaque chapitre, tant que la durée n'est pas atteinte. S'il
+    # ferait dépasser de plus de 10 minutes, le chapitre passe son tour (pas de repli sur un exercice moins
+    # pertinent, déjà réussi par exemple) ; il en faut au moins un.
+    for _ in range(MOCK_MAX_EXERCISES):
+        added = False
         for ch in ordered_chapter_ids:
-            if len(picked) == want:
+            if len(picked) >= MOCK_MAX_EXERCISES or total >= minutes:
                 break
             pool = sorted((c for c in contents.values() if ch in chapters_of.get(c.id, []) and c.id not in picked), key=key)
-            if pool:
+            if not pool:
+                continue
+            m = _minutes(pool[0])
+            if not picked or total + m <= minutes + 10:
                 picked.append(pool[0].id)
-        if len(picked) == want or len(picked) == len(contents):
+                total += m
+                added = True
+        if not added or total >= minutes:
             break
-    return picked
+    return picked, respected
+
+
+def _likes(contents):
+    """{id: nombre de « j'aime »} des exercices candidats."""
+    from apps.things.models import Content
+    return Content.objects.filter(id__in=list(contents)).annotate(
+        n=Count('votes', filter=Q(votes__value=Vote.UP), distinct=True)).values_list('id', 'n')
 
 
 def _mock_payload(test, user, names, ordered_ids, with_structure=False):
     from apps.things.models import Content
-    ids = list(test.mock_ids) if test.mock_ids else _pick_mock(user, ordered_ids, _level(user, test))
+    respected = True
+    if test.mock_ids:
+        ids = list(test.mock_ids)
+    else:
+        ids, respected = _pick_mock(user, ordered_ids, _level(user, test),
+                                    minutes=test.mock_minutes, difficulty=test.mock_difficulty)
     contents = {c.id: c for c in Content.objects.filter(id__in=ids)}
     chapters_of = _chapter_ids_of(ids)
     rows = []
@@ -206,6 +246,10 @@ def _mock_payload(test, user, names, ordered_ids, with_structure=False):
         'started_at': test.mock_started_at,
         'done_at': test.mock_done_at,
         'seconds': test.mock_seconds,
+        # Réglages de l'élève, et si la difficulté choisie a pu être tenue (sinon : pas assez d'exercices longs).
+        'settings': {'minutes': test.mock_minutes, 'difficulty': test.mock_difficulty, 'choices': list(MOCK_MINUTES)},
+        'difficulty_respected': respected,
+        'min_questions': MOCK_MIN_QUESTIONS,
     }
 
 
@@ -324,7 +368,8 @@ class UpcomingTestViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['get', 'post'], url_path='ds-blanc')
     def ds_blanc(self, request, pk=None):
         """GET : le DS blanc (énoncés compris). POST action=start (fige les exercices et lance l'horloge),
-        finish (seconds), new (en tirer un autre, sans reprendre les mêmes exercices)."""
+        finish (seconds), new (en tirer un autre, sans reprendre les mêmes exercices), settings (minutes,
+        difficulty : enregistre les réglages et tire un nouveau DS blanc)."""
         test = self.get_object()
         entries = _ordered_chapters(test, request.user)
         names = {c['id']: c['name'] for c in entries}
@@ -334,9 +379,11 @@ class UpcomingTestViewSet(viewsets.ModelViewSet):
             now = timezone.now()
             if what == 'start':
                 if not test.mock_ids:
-                    test.mock_ids = _pick_mock(request.user, ordered_ids, _level(request.user, test))
+                    test.mock_ids, _ = _pick_mock(request.user, ordered_ids, _level(request.user, test),
+                                                  minutes=test.mock_minutes, difficulty=test.mock_difficulty)
                 if not test.mock_ids:
-                    return Response({'error': 'Pas encore d’exercices dans ces chapitres.'}, status=status.HTTP_400_BAD_REQUEST)
+                    return Response({'error': 'Pas encore d’exercices assez longs (3 questions au moins) dans ces chapitres.'},
+                                    status=status.HTTP_400_BAD_REQUEST)
                 if test.mock_started_at is None or test.mock_done_at is not None:
                     test.mock_started_at, test.mock_done_at, test.mock_seconds = now, None, None
                 test.save(update_fields=['mock_ids', 'mock_started_at', 'mock_done_at', 'mock_seconds', 'updated_at'])
@@ -352,11 +399,26 @@ class UpcomingTestViewSet(viewsets.ModelViewSet):
                 test.save(update_fields=['mock_seconds', 'mock_done_at', 'updated_at'])
             elif what == 'new':
                 previous = list(test.mock_ids)
-                test.mock_ids = _pick_mock(request.user, ordered_ids, _level(request.user, test), exclude=previous) or previous
+                test.mock_ids = _pick_mock(request.user, ordered_ids, _level(request.user, test), exclude=previous,
+                                           minutes=test.mock_minutes, difficulty=test.mock_difficulty)[0] or previous
                 test.mock_started_at = test.mock_done_at = test.mock_seconds = None
                 test.save(update_fields=['mock_ids', 'mock_started_at', 'mock_done_at', 'mock_seconds', 'updated_at'])
+            elif what == 'settings':
+                try:
+                    minutes = int(request.data.get('minutes', test.mock_minutes))
+                except (TypeError, ValueError):
+                    minutes = -1
+                difficulty = request.data.get('difficulty', test.mock_difficulty) or ''
+                if minutes not in MOCK_MINUTES or difficulty not in MOCK_DIFFICULTIES:
+                    return Response({'error': f'minutes : {list(MOCK_MINUTES)} ; difficulty : easy, medium, hard ou vide.'},
+                                    status=status.HTTP_400_BAD_REQUEST)
+                test.mock_minutes, test.mock_difficulty = minutes, difficulty
+                # Nouveaux réglages : un nouveau DS blanc (celui tiré pour les anciens réglages ne vaut plus).
+                test.mock_ids, test.mock_started_at, test.mock_done_at, test.mock_seconds = [], None, None, None
+                test.save(update_fields=['mock_minutes', 'mock_difficulty', 'mock_ids', 'mock_started_at',
+                                         'mock_done_at', 'mock_seconds', 'updated_at'])
             else:
-                return Response({'error': 'action : start, finish ou new.'}, status=status.HTTP_400_BAD_REQUEST)
+                return Response({'error': 'action : start, finish, new ou settings.'}, status=status.HTTP_400_BAD_REQUEST)
         return Response({
             'test': self.get_serializer(test).data,
             **_mock_payload(test, request.user, names, ordered_ids, with_structure=True),
