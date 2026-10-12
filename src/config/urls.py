@@ -55,6 +55,7 @@ from apps.learningpath.views import (
 )
 from apps.uploads.views import FileAttachmentViewSet
 from apps.notifications import views as notification_views
+from apps.documents.views import DocumentViewSet
 
 router = DefaultRouter()
 router.register(r'contents', ContentViewSet, basename='content')
@@ -75,6 +76,8 @@ router.register(r'chapter-quizzes', ChapterQuizViewSet, basename='chapterquiz')
 router.register(r'revision-lists', RevisionListViewSet, basename='revisionlist')
 router.register(r'devoirs', UpcomingTestViewSet, basename='devoir')
 router.register(r'files', FileAttachmentViewSet, basename='fileattachment')
+# Éditeur de documents « façon Word » (12/10/2026).
+router.register(r'documents', DocumentViewSet, basename='document')
 
 urlpatterns = [
     path('admin/', admin.site.urls),

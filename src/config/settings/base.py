@@ -54,6 +54,7 @@ INSTALLED_APPS = [
     'apps.concours.apps.ConcoursConfig',
     'apps.ia.apps.IaConfig',
     'apps.notifications.apps.NotificationsConfig',
+    'apps.documents.apps.DocumentsConfig',
 ]
 
 MIDDLEWARE = [
