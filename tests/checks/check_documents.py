@@ -93,6 +93,43 @@ check('dupliquer (avec l’en-tête)', r.status_code == 201 and r.data['title'] 
 r = client(bob).post(f'/api/documents/{doc_id}/dupliquer/')
 check('dupliquer le document d’un autre : refusé', r.status_code == 404, r.status_code)
 
+# ── Word (.docx) : export puis réimport (pandoc)
+import io  # noqa: E402
+import re  # noqa: E402
+import zipfile  # noqa: E402
+from django.core.files.uploadedfile import SimpleUploadedFile  # noqa: E402
+
+WORD = ('<h2>Exercice 1</h2><p style="text-align: center">Centré</p><p>Soit $f(x)=\\dfrac{\\ln x}{x}$ et $a &lt; b$.</p>'
+        '<p>$$\\int_0^1 f(x)\\,\\mathrm{d}x=\\frac13\\tag{1}$$</p>'
+        '<div data-callout-type="theorem"><p>Toute suite croissante majorée converge.</p></div>'
+        '<div data-page-break=""></div><ol><li><p>Calculer $\\lim\\limits_{x\\to0^+} f(x)$.</p></li></ol>'
+        '<p>$$%TV{"x":1}\n\\begin{array}{c|ccc} x &amp; 0 &amp; 1 \\\\ \\hline f &amp; - &amp; + \\end{array}$$</p>'
+        '<p><img src="https://evil.example/x.png"></p>')
+d = client(alice).post('/api/documents/', {'title': 'Devoir Word', 'html': WORD, 'orientation': 'paysage',
+                                           'entete': {'actif': True, 'type': 'Devoir n° 2', 'classe': '1 Bac'}},
+                       format='json').data
+r = client(alice).get(f'/api/documents/{d["id"]}/docx/')
+docx = b''.join(r.streaming_content) if getattr(r, 'streaming', False) else r.content
+check('export Word', r.status_code == 200 and docx[:2] == b'PK' and 'devoir-word.docx' in r['Content-Disposition'], r.status_code)
+xml = zipfile.ZipFile(io.BytesIO(docx)).read('word/document.xml').decode()
+check('export : vraies équations Word', xml.count('<m:oMath') >= 4, xml.count('<m:oMath'))
+check('export : saut de page, paysage, en-tête, encadré numéroté',
+      'w:type="page"' in xml and 'w:orient="landscape"' in xml and 'Devoir n° 2' in xml and 'Théorème 1' in xml
+      and 'FIDNI-SAUT' not in xml and 'TV{' not in xml)
+check('export : image extérieure ignorée', 'evil' not in xml and '<pic:pic' not in xml)
+r = client(bob).get(f'/api/documents/{d["id"]}/docx/')
+check('export du document d’un autre : refusé', r.status_code == 404, r.status_code)
+
+r = client(alice).post('/api/documents/importer-docx/', {'fichier': SimpleUploadedFile('DS 2.docx', docx)}, format='multipart')
+h = r.data.get('html', '') if r.status_code == 201 else ''
+check('import Word', r.status_code == 201 and r.data['title'] == 'DS 2', r.data)
+maths = re.findall(r'\$\$?[^$]+\$\$?', h)
+check('import : formules en LaTeX', '$f(x) = \\frac{\\ln x}{x}$' in h.replace('\\dfrac', '\\frac') and '$a &lt; b$' in h
+      and any('\\int' in m for m in maths) and '<h2>Exercice 1</h2>' in h and '<ol' in h, h[:600])
+check('import : pas de style ni de classe', 'class=' not in h and 'style=' not in h and '<span' not in h, h[:300])
+r = client(alice).post('/api/documents/importer-docx/', {'fichier': SimpleUploadedFile('x.docx', b'pas un zip')}, format='multipart')
+check('import : fichier invalide refusé', r.status_code == 400 and '.docx' in r.data['detail'], r.data)
+
 r = client(alice).delete(f'/api/documents/{doc_id}/')
 check('supprimer', r.status_code == 204 and not Document.objects.filter(pk=doc_id).exists(), r.status_code)
 
