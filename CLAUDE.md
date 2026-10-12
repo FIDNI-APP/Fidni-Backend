@@ -33,10 +33,10 @@ backend/
 ├── tests/base_tables.py     ← seeder de taxonomie (pas des tests), lancé par entrypoint, construit depuis programme.py
 └── src/
     ├── config/              ← urls.py racine, wsgi.py, settings/
-    └── apps/                ← 13 apps Django (voir ci-dessous)
+    └── apps/                ← 14 apps Django (voir ci-dessous)
 ```
 
-## Les 13 apps — qui fait quoi
+## Les 14 apps — qui fait quoi
 
 | App | Rôle | Modèles clés |
 |---|---|---|
@@ -53,6 +53,7 @@ backend/
 | `learningpath` | Parcours vidéo | — |
 | `logging` | Logs API/erreurs en base | — |
 | `notifications` | Cloche : nouveau commentaire sur un contenu avec lequel on a interagi, réponse à son commentaire (regroupées par contenu), signalement traité avec la réponse de l'admin (`kind=report`, `message`) | `Notification` |
+| `documents` | Éditeur de documents « façon Word » (page `/documents` du front) : documents privés de chaque membre | `Document` (`html`, `orientation`, `marges`) |
 
 ## Conventions & pièges connus
 
@@ -70,6 +71,7 @@ backend/
 - **Réponse aux signalements** (11/10/2026) : `PATCH /api/pilotage/signalements/<id>/` `{status, reponse, prevenir}` — corrigé ou sans suite + texte libre (prérempli côté front, modifiable) ⇒ `ContentReport.response`/`response_sent_at` et notification `report` dans la cloche de l'élève (`notifications/services.notify_report_response`, une par signalement, redevient non lue à chaque nouvelle réponse).
 - **SEO / AdSense** (11/10/2026, refus « contenu à faible valeur ») : le nginx du front envoie l'accueil, les listes, les dossiers, chaque contenu, `/a-propos` et `/contact` au pré-rendu `config/seo.py` (même `index.html`, texte dans `#root`). Exercices et examens : énoncé PUIS « Corrigé » (`_solution_lines`, numérotation de la page) ; côté React, une solution fermée reste dans le DOM en `hidden` (`FoldedSolution`). À propos / Contact : texte unique `config/pages.py` (API `GET /api/pages/<slug>/` + pré-rendu). Page d'un chapitre : « Au programme officiel » (`hubs.programme_public`, notes de travail de `programme.py` retirées). Visiteurs : pas de dossiers vides ; rubriques vides, recherche, profils, aperçu PDF, page introuvable en `noindex` ; sitemap = pages légales, À propos, Contact, Bac national par année, `/concours` seulement s'il a du contenu. Vérifié par `tests/checks/check_pages_seo.py`.
 - **Bannir un compte** (11/10/2026) : suppression par la modération avec `bannir: true` (`ModerationDeleteAccountView`) ⇒ `apps/users/bans.py ban_user` AVANT `delete_account` : adresse e-mail normalisée (Gmail sans points ni « +… ») et `GoogleAccount.sub` à vie, IP 30 jours (IPv6 : /64) dans `Bannissement`. Seule la CRÉATION de compte est bloquée (`RegisterView`, `GoogleLoginView`, réponse neutre `code: banned`) : un membre existant sur la même IP n'est pas gêné. IP d'un compte : `UserProfile.signup_ip`, `last_ip`, `recent_ips` (30 jours, 10 au plus), remplies par `remember_ip` (inscription, connexion, renouvellement de session). Pilotage › Membres › Comptes bannis : `GET/POST /api/pilotage/bannis/`, `DELETE /api/pilotage/bannis/<id>/` (`bans_views.py`). Pseudos insultants refusés : `apps/authentication/pseudos.py` (`RACINES` cherchées partout, `MOTS` entiers seulement — à compléter), inscription, `PATCH /api/users/me/`, pseudo Google ; comptes existants : `python manage.py pseudos_interdits`. Vérifié par `tests/checks/check_bans.py`.
+- **Éditeur de documents « façon Word »** (12/10/2026, inspiré de wordcraft) : `/api/documents/` (`apps/documents`, ceux du membre connecté seulement ; liste sans HTML avec `excerpt`, `?q=` sur le titre ; `POST …/<id>/dupliquer/` ; 300 documents et 2 Mo de HTML au plus, pas d'image base64). Même format que les contenus : formules `$…$` / `$$…$$` (numéro `\tag{n}` en fin d'équation centrée), images par l'URL stable. Front : `pages/documents/` (liste, éditeur plein écran avec enregistrement automatique) et `components/editor/word/` (ruban, registre de commandes, galeries d'équations portées de wordcraft, champ MathLive). Vérifié par `tests/checks/check_documents.py`.
 - **Bandeau « à évaluer »** de la liste « Pour toi » : `GET /api/contents/a-evaluer/` (`apps/things/catch_up.py`).
 - **Listes en dossiers** (10/10/2026) : Maths › niveau › chapitre, les contenus sont les « fichiers » (`apps/caracteristics/hubs.py`). `GET /api/hubs/niveaux/?section=` = dossiers de niveaux ; `GET /api/hubs/` renvoie `folders` = TOUS les chapitres du niveau (`count: 0` = dossier vide, non cliquable côté front ; `mine {done, success}` pour un élève connecté) ; `GET /api/hubs/nationaux/` = Bac national par année (`national_year=aucune` dans `/api/contents/` et `/api/difficulty-counts/` pour les sujets sans année). Rubrique `exams` = devoirs seulement : les comptes excluent `is_national_exam` (comme la liste). Front : `pages/content/ContentFolders.tsx`, `ContentHub.tsx`.
 - **Erreurs d'affichage du navigateur** : `POST /api/logs/client-errors/` (`apps/logging/client_errors.py`, 30/h par IP) ← `ErrorBoundary` du front ; rangées dans `ErrorLog` (console `/logs`), regroupées par message. Le front refuse au build tout `import.meta` restant (l'obfuscation le casse en production : page blanche du 10/10/2026, `scripts/check-build.mjs`).

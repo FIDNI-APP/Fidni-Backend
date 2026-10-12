@@ -83,6 +83,8 @@ PAGE_PATTERNS = [
     ('/statistiques', 'Mes statistiques (ancienne page)'),
     ('/reviser', 'Réviser'),
     ('/enregistrements', 'Mes enregistrements'),
+    ('/documents', 'Mes documents'),
+    ('/documents/:id', 'Éditeur de documents'),
     ('/notebooks', 'Cahiers'),
     ('/notebooks/:id/pdf', 'Cahier : impression'),
     ('/revision-lists', 'Révisions'),
@@ -113,6 +115,7 @@ PAGE_PATTERNS = [
 PAGES_SINCE_AUDIT = {'/revisions/ds/:id', '/revisions/ds/:id/blanc', '/verify-email', '/reset-password',
                      '/exams/nationaux/:annee',  # dossiers du Bac national par année (10/10/2026)
                      '/reviser', '/enregistrements',  # refonte de l'espace élève (11/10/2026)
+                     '/documents', '/documents/:id',  # éditeur de documents (12/10/2026)
                      '/learning-path/:pathId/chapters/:chapterId/videos/:videoId',
                      '/learning-path/:pathId/chapters/:chapterId/quiz'}
 
