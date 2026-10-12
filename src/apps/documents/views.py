@@ -39,5 +39,5 @@ class DocumentViewSet(viewsets.ModelViewSet):
         if Document.objects.filter(user=request.user).count() >= MAX_DOCUMENTS:
             return Response({'detail': f'{MAX_DOCUMENTS} documents au plus.'}, status=status.HTTP_400_BAD_REQUEST)
         copy = Document.objects.create(user=request.user, title=f'{doc.title} (copie)'[:200], html=doc.html,
-                                       orientation=doc.orientation, marges=doc.marges)
+                                       orientation=doc.orientation, marges=doc.marges, entete=doc.entete)
         return Response(DocumentSerializer(copy).data, status=status.HTTP_201_CREATED)

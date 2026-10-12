@@ -17,6 +17,9 @@ class Document(models.Model):
     # Mise en page (onglet « Mise en page » de l'éditeur).
     orientation = models.CharField(max_length=10, choices=ORIENTATIONS, default='portrait')
     marges = models.CharField(max_length=10, choices=MARGES, default='normale')
+    # En-tête FIDNI de la première page (12/10/2026) : {actif, type, etablissement, professeur, classe,
+    # annee, duree, consignes, nom_prenom}. Vide : pas d'en-tête.
+    entete = models.JSONField(default=dict, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

@@ -79,8 +79,17 @@ check('document trop gros refusé', r.status_code == 400, r.status_code)
 r = client(alice).patch(f'/api/documents/{doc_id}/', {'orientation': 'diagonale'}, format='json')
 check('orientation inconnue refusée', r.status_code == 400, r.status_code)
 
+r = client(alice).patch(f'/api/documents/{doc_id}/', {'entete': {'actif': 1, 'etablissement': ' Lycée Ibn Sina ', 'classe': '2 Bac SM',
+                                                                'pirate': '<script>', 'consignes': 'x' * 900}}, format='json')
+e = r.data.get('entete', {}) if r.status_code == 200 else {}
+check('en-tête : champs connus, nettoyés', r.status_code == 200 and e.get('actif') is True and e.get('etablissement') == 'Lycée Ibn Sina'
+      and 'pirate' not in e and len(e.get('consignes', '')) == 300, r.data)
+r = client(alice).patch(f'/api/documents/{doc_id}/', {'entete': 'n’importe quoi'}, format='json')
+check('en-tête invalide refusé', r.status_code == 400, r.status_code)
+
 r = client(alice).post(f'/api/documents/{doc_id}/dupliquer/')
-check('dupliquer', r.status_code == 201 and r.data['title'] == 'Mon DS (copie)' and r.data['html'] == HTML, r.data)
+check('dupliquer (avec l’en-tête)', r.status_code == 201 and r.data['title'] == 'Mon DS (copie)' and r.data['html'] == HTML
+      and r.data['entete'].get('classe') == '2 Bac SM', r.data)
 r = client(bob).post(f'/api/documents/{doc_id}/dupliquer/')
 check('dupliquer le document d’un autre : refusé', r.status_code == 404, r.status_code)
 
