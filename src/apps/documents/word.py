@@ -2,7 +2,8 @@
 
 - Importer : formules Word (éditeur d'équations, OMML) → LaTeX exact `$…$` / `$$…$$`, images envoyées sur S3
   (URL stable `/api/files/<uuid>/download/`), titres, listes, tableaux, gras/italique/souligné.
-  Les formules MathType (objets OLE) n'ont qu'un aperçu WMF/EMF illisible : elles sont signalées.
+  Formules MathType et « Éditeur d'équations 3.0 » (objets OLE) : lues dans l'objet lui-même (mathtype.py) ;
+  celles qui ne peuvent pas l'être sont signalées.
 - Exporter : `$…$` → vraies équations Word modifiables (OMML), encadrés numérotés, sauts de page, en-tête FIDNI,
   orientation et marges du document, paragraphes centrés ou à droite.
 """
@@ -68,6 +69,73 @@ def _nettoyer_import(h):
     return h.strip()
 
 
+OLE_RE = re.compile(r'<w:object\b.*?</w:object>', re.S)
+PARA_RE = re.compile(r'<w:p(?=[\s>]).*?</w:p>', re.S)
+
+
+def _formules_ole(data):
+    """Objets formule (MathType, Éditeur d'équations 3.0) du .docx → texte `$…$`, avant pandoc.
+    → (octets du .docx, nombre de formules converties, nombre d'échecs)."""
+    from .mathtype import MathTypeErreur, ole_vers_latex
+    with zipfile.ZipFile(io.BytesIO(data)) as z:
+        xml = z.read('word/document.xml').decode('utf-8', 'ignore')
+        if 'Equation.' not in xml:
+            return data, 0, 0
+        try:
+            rels = z.read('word/_rels/document.xml.rels').decode('utf-8', 'ignore')
+        except KeyError:
+            return data, 0, 0
+        cibles = dict(re.findall(r'<Relationship\b[^>]*?Id="([^"]+)"[^>]*?Target="([^"]+)"', rels))
+        cibles.update({i: t for t, i in re.findall(r'<Relationship\b[^>]*?Target="([^"]+)"[^>]*?Id="([^"]+)"', rels)})
+        noms = set(z.namelist())
+        compte = {'ok': 0, 'ko': 0}
+
+        def latex(objet):
+            if not re.search(r'ProgID="Equation\.', objet):
+                return None
+            rid = re.search(r'<o:OLEObject\b[^>]*?r:id="([^"]+)"', objet)
+            cible = cibles.get(rid.group(1), '') if rid else ''
+            chemin = os.path.normpath(os.path.join('word', cible)).replace(os.sep, '/')
+            if not cible or chemin not in noms:
+                compte['ko'] += 1
+                return None
+            try:
+                tex = ole_vers_latex(z.read(chemin))
+            except MathTypeErreur:
+                compte['ko'] += 1
+                return None
+            compte['ok'] += 1
+            return tex
+
+        def paragraphe(m):
+            p = m.group(0)
+            objets = OLE_RE.findall(p)
+            if not objets:
+                return p
+            texte = ''.join(re.findall(r'<w:t(?:\s[^>]*)?>([^<]*)</w:t>', OLE_RE.sub('', p)))
+            seule = len(objets) == 1 and not texte.strip()
+
+            def remplace(o):
+                tex = latex(o.group(0))
+                if tex is None:
+                    return o.group(0)
+                d = '$$' if seule else '$'
+                # MathType affiche ses formules en grand même dans une phrase (fractions, sommes, limites).
+                if not seule and re.search(r'\\(frac|sum|int|iint|prod|lim|bigcup|bigcap|coprod)(?![a-z])', tex):
+                    tex = r'\displaystyle ' + tex
+                return f'<w:t xml:space="preserve">{htmlmod.escape(d + tex + d, quote=False)}</w:t>'
+            return OLE_RE.sub(remplace, p)
+
+        xml = PARA_RE.sub(paragraphe, xml)
+        if not compte['ok']:
+            return data, 0, compte['ko']
+        buf = io.BytesIO()
+        with zipfile.ZipFile(buf, 'w', zipfile.ZIP_DEFLATED) as zout:
+            for item in z.infolist():
+                zout.writestr(item, xml.encode('utf-8') if item.filename == 'word/document.xml' else z.read(item.filename))
+    return buf.getvalue(), compte['ok'], compte['ko']
+
+
 def importer_docx(data, nom, user, request=None):
     """→ (titre, html, avertissements). Les images du document sont enregistrées pour `user`."""
     if len(data) > MAX_DOCX:
@@ -78,7 +146,10 @@ def importer_docx(data, nom, user, request=None):
     except (zipfile.BadZipFile, KeyError):
         raise WordErreur('Ce fichier n’est pas un document Word (.docx). Un .doc doit d’abord être enregistré en .docx.')
     avertissements = []
-    mathtype = len(re.findall(r'ProgID="Equation\.(?:DSMT|3)', xml))
+    try:
+        data, _, mathtype = _formules_ole(data)
+    except (zipfile.BadZipFile, KeyError, ValueError):
+        mathtype = len(re.findall(r'ProgID="Equation\.', xml))
     pypandoc = _pandoc()
     with tempfile.TemporaryDirectory() as d:
         src = os.path.join(d, 'doc.docx')
@@ -113,7 +184,7 @@ def importer_docx(data, nom, user, request=None):
         h = re.sub(r'<img src="([^"]*)"[^>]*/>', image, h)
     if mathtype:
         avertissements.append(
-            f'{mathtype} formule(s) MathType n’ont pas pu être converties (marquées « [image ou formule non convertie] »). '
+            f'{mathtype} formule(s) MathType n’ont pas pu être lues (marquées « [image ou formule non convertie] »). '
             'Dans Word : MathType › Convertir les équations › « Équation Office (OMML) », puis importe à nouveau.')
     elif illisibles:
         avertissements.append(f'{illisibles} image(s) dans un format ancien (WMF/EMF) ou trop lourdes n’ont pas été importées.')

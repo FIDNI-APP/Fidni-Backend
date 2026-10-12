@@ -130,6 +130,67 @@ check('import : pas de style ni de classe', 'class=' not in h and 'style=' not i
 r = client(alice).post('/api/documents/importer-docx/', {'fichier': SimpleUploadedFile('x.docx', b'pas un zip')}, format='multipart')
 check('import : fichier invalide refusé', r.status_code == 400 and '.docx' in r.data['detail'], r.data)
 
+# ── Formules MathType (MTEF v5) et « Éditeur d'équations 3.0 » (MTEF v3) d'un .docx
+from apps.documents import mathtype as MT  # noqa: E402
+
+V5 = (bytes([5, 1, 0, 6, 9]) + b'DSMT6\x00' + bytes([0])
+      + bytes([1, 0,                                   # LINE
+               3, 0, 11, 0, 0,                         # TMPL fraction
+               1, 0, 2, 0, 0x88, 0x31, 0, 0,            # LINE « 1 »
+               1, 0, 2, 0, 0x83, 0x78, 0,               # LINE « x »
+               3, 0, 28, 0, 0, 1, 1, 1, 0, 2, 0, 0x88, 0x32, 0, 0, 0,  # exposant : [vide][2]
+               0,                                      # fin de la ligne du dénominateur
+               0,                                      # fin du gabarit
+               0x02, 0, 0x86, 0x64, 0x22,              # « ≤ »
+               0, 0]))                                 # fin de la ligne, fin de l'équation
+V3 = bytes([3, 1, 1, 3, 10,
+            0x01, 0x02, 0x83, 0x61, 0,                  # LINE, « a »
+            0x03, 13, 0, 0,                             # TMPL racine
+            0x01, 0x02, 0x88, 0x32, 0, 0x00,            # [2]
+            0x11, 0x00,                                 # [index vide], fin du gabarit
+            0x00, 0x00])
+check('MathType v5 → LaTeX', MT.mtef_vers_latex(V5) == r'\frac{1}{x^{2}}\leqslant', MT.mtef_vers_latex(V5))
+check('Éditeur d’équations 3.0 → LaTeX', MT.mtef_vers_latex(V3) == r'a\sqrt{2}', MT.mtef_vers_latex(V3))
+casse = 0
+for i in range(len(V5)):
+    for b in (0, 1, 0x7F, 0xFF):
+        try:
+            MT.mtef_vers_latex(V5[:i] + bytes([b]) + V5[i + 1:])
+        except MT.MathTypeErreur:
+            pass
+        except Exception:
+            casse += 1
+check('MathType : un objet abîmé échoue proprement', casse == 0, casse)
+
+# Un .docx avec des objets formule (le flux OLE est remplacé ici par le MTEF lui-même).
+reel = MT.mtef_de_ole
+MT.mtef_de_ole = lambda octets: octets
+objet = ('<w:r><w:object><v:shape><v:imagedata r:id="rIdI{i}"/></v:shape>'
+         '<o:OLEObject Type="Embed" ProgID="Equation.{p}" r:id="rIdO{i}"/></w:object></w:r>')
+corps = ('<w:p><w:r><w:t xml:space="preserve">On en déduit que </w:t></w:r>' + objet.format(i=0, p='DSMT4')
+         + '<w:r><w:t xml:space="preserve"> et </w:t></w:r>' + objet.format(i=1, p='3') + '</w:p>'
+         + '<w:p>' + objet.format(i=2, p='DSMT4') + '</w:p>' + '<w:p>' + objet.format(i=3, p='DSMT4') + '</w:p>')
+buf = io.BytesIO()
+with zipfile.ZipFile(io.BytesIO(docx)) as zin, zipfile.ZipFile(buf, 'w') as zout:
+    for it in zin.infolist():
+        x = zin.read(it.filename)
+        if it.filename == 'word/document.xml':
+            x = x.decode().replace('<w:body>', '<w:body>' + corps, 1).encode()
+        if it.filename == 'word/_rels/document.xml.rels':
+            x = x.decode().replace('</Relationships>', ''.join(
+                f'<Relationship Id="rIdO{i}" Type="oleObject" Target="embeddings/oleObject{i}.bin"/>' for i in range(4))
+                + '</Relationships>').encode()
+        zout.writestr(it, x)
+    for i, b in enumerate([V5, V3, V5, b'\x09abime']):
+        zout.writestr(f'word/embeddings/oleObject{i}.bin', b)
+r = client(alice).post('/api/documents/importer-docx/', {'fichier': SimpleUploadedFile('mt.docx', buf.getvalue())}, format='multipart')
+MT.mtef_de_ole = reel
+h = r.data.get('html', '') if r.status_code == 201 else ''
+check('import : formules MathType en ligne', r'On en déduit que $\displaystyle \frac{1}{x^{2}}\leqslant$ et $a\sqrt{2}$' in h, h[:400])
+check('import : formule MathType seule = centrée', r'<p>$$\frac{1}{x^{2}}\leqslant$$</p>' in h, h[:500])
+check('import : formule illisible signalée', r.status_code == 201 and any('1 formule' in a for a in r.data['avertissements']),
+      r.data.get('avertissements'))
+
 r = client(alice).delete(f'/api/documents/{doc_id}/')
 check('supprimer', r.status_code == 204 and not Document.objects.filter(pk=doc_id).exists(), r.status_code)
 
