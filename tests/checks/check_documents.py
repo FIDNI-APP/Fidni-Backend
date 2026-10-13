@@ -41,6 +41,15 @@ def client(user=None):
 
 alice = User.objects.create_user('alice', 'alice@x.fr', 'x')
 bob = User.objects.create_user('bob', 'bob@x.fr', 'x')
+# « Mes documents » : enseignants (déclarés) et équipe seulement, pour l'instant (12/10/2026).
+for _u in (alice, bob):
+    _u.profile.user_type = 'teacher'
+    _u.profile.save(update_fields=['user_type'])
+eleve_docs = User.objects.create_user('eleve_docs', 'eleve_docs@x.fr', 'x')
+r = client(eleve_docs).get('/api/documents/')
+check('élève : « Mes documents » refusé (enseignants seulement)', r.status_code == 403, r.status_code)
+r = client(eleve_docs).post('/api/documents/', {'title': 'x', 'html': '<p>x</p>'}, format='json')
+check('élève : création de document refusée', r.status_code == 403, r.status_code)
 
 r = client().get('/api/documents/')
 check('visiteur : refusé', r.status_code == 401, r.status_code)

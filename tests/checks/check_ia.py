@@ -280,7 +280,10 @@ from apps.ia import consignes as _cons  # noqa: E402
 check('niveaux du travail : 2ème Bac SM → avec la 1ère', _cons.niveaux_du_travail(['2ème Bac SM']) == ['1ère Bac SM', '2ème Bac SM'],
       _cons.niveaux_du_travail(['2ème Bac SM']))
 check('niveaux du travail : aucun niveau → les 4', len(_cons.niveaux_du_travail([])) == 4)
-_pc, _tous = _cons.systeme(_cons.niveaux_du_travail(['2ème Bac PC'])), _cons.systeme()
+_pc, _tous = _cons.systeme(_cons.niveaux_du_travail(['2ème Bac PC/SVT'])), _cons.systeme()
+check('niveaux du travail : ancien nom « 2ème Bac PC » et « 2 SVT » acceptés',
+      _cons.niveaux_du_travail(['2ème Bac PC']) == _cons.niveaux_du_travail(['2 SVT']) == ['2ème Bac PC/SVT'],
+      _cons.niveaux_du_travail(['2ème Bac PC']))
 check('consigne : annexe D et règle du hors programme', 'Hors programme' in _pc and 'jamais' in _pc and len(_pc) < len(_tous),
       (len(_pc), len(_tous)))
 

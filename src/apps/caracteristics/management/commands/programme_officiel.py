@@ -2,8 +2,9 @@
 
     python manage.py programme_officiel             écarts entre la base et le programme (lecture seule)
     python manage.py programme_officiel --a-blanc   répétition à blanc de la migration caracteristics/0003 sur cette
-                                                    base : migration (données figées) + seeder + vérifications,
-                                                    rapport imprimé, puis TOUT est annulé (rollback)
+                                                    base : migration (données figées), migrations de données
+                                                    suivantes (0004 : « 2ème Bac PC » → « 2ème Bac PC/SVT ») + seeder
+                                                    + vérifications, rapport imprimé, puis TOUT est annulé (rollback)
 
 À lancer sur la base de production avec la nouvelle image AVANT le déploiement de 0003 ; lire le rapport (matières hors
 Mathématiques, chapitres d'administrateurs, conflits, quiz à réaffecter).
@@ -20,6 +21,8 @@ from apps.caracteristics.programme import ecarts_base
 from apps.caracteristics.programme_migration import appliquer
 
 MIGRATION = ('caracteristics', '0003_programme_officiel')
+# Migrations de données jouées ensuite, avant le seeder (comme `migrate` dans l'entrypoint) : (app, nom), fonction avant().
+SUIVANTES = [('caracteristics', '0004_pc_svt')]
 
 
 class Command(BaseCommand):
@@ -37,6 +40,9 @@ class Command(BaseCommand):
         apps = MigrationExecutor(connection).loader.project_state(MIGRATION).apps
         with transaction.atomic():
             appliquer(apps, donnees, a_blanc=True, log=self.stdout.write)
+            for app, nom in SUIVANTES:
+                importlib.import_module(f'apps.{app}.migrations.{nom}').avant(
+                    MigrationExecutor(connection).loader.project_state((app, nom)).apps, None)
             self.stdout.write('\nSeeder (tests/base_tables.py)…')
             runpy.run_path(str(settings.BASE_DIR / 'tests' / 'base_tables.py'))
             self.stdout.write('\nVérifications après migration et seeder :')

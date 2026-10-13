@@ -66,10 +66,11 @@ from apps.caracteristics import programme as P  # noqa: E402
 from apps.caracteristics.programme_migration import appliquer  # noqa: E402
 
 TC, SM1, SM2, PC = P.TC, P.SM1, P.SM2, P.PC
+PC0 = '2ème Bac PC'  # nom du niveau dans la base « production » (renommé « 2ème Bac PC/SVT » par 0004, 12/10/2026)
 TRIGO, ANA_PS, ANA_ESP = ('Trigonométrie (formules de transformation)', 'Étude analytique du produit scalaire dans le plan',
                           "Géométrie analytique de l'espace")
 TAF_CH, LNEXP = 'Théorème des Accroissements Finis (TAF)', 'Fonctions logarithmiques et exponentielles'
-lv = {n: ClassLevel.objects.get(name=n) for n in (TC, SM1, SM2, PC)}
+lv = {n: ClassLevel.objects.get(name=PC0 if n == PC else n) for n in (TC, SM1, SM2, PC)}
 maths = Subject.objects.get(name='Mathématiques')
 physique = Subject.objects.get(name='Physique')
 check('base ancienne : restes de 2025 présents', Chapter.objects.filter(name=LNEXP).exists()
@@ -280,7 +281,7 @@ UsageDaily.objects.create(date=today, kind='filtre', name=f"lesson:chapitre:{ava
 # Fiches IA en attente (et une publiée, à laisser)
 FICHES = [{'cle': 'a', 'niveaux': [SM1], 'chapitres': ['Calcul trigonométrique'],
            'theoremes': ['Théorème de Moivre', 'Loi des grands nombres']},
-          {'cle': 'b', 'niveaux': [SM2, PC], 'chapitres': ['Dénombrement', TAF_CH], 'theoremes': []},
+          {'cle': 'b', 'niveaux': [SM2, PC0], 'chapitres': ['Dénombrement', TAF_CH], 'theoremes': []},
           {'cle': 'c', 'niveaux': [TC, SM1], 'chapitres': ['Calcul trigonométrique', LNEXP]}]
 job = IAJob.objects.create(kind='import', status='pret', result={'fiches': [dict(f) for f in FICHES], 'doutes': ['x']})
 job_publie = IAJob.objects.create(kind='import', status='publie', result={'fiches': [dict(f) for f in FICHES]})
@@ -322,8 +323,25 @@ check('sans --a-blanc : écarts listés (base ancienne)', 'Dénombrement' in sor
       and 'écart' in sortie.getvalue(), sortie.getvalue()[:500])
 
 # ── Migration, puis nouveau seeder (comme l'entrypoint)
+nb_pc = Notebook.objects.create(user=User.objects.order_by('id').first(), subject=maths, class_level=lv[PC])
+check('cahier : titre généré avec l’ancien nom', nb_pc.title == f'{maths.name} - {PC0}', nb_pc.title)
 call_command('migrate', 'caracteristics', '0003', verbosity=0)
+check('0003 : le niveau garde son ancien nom', ClassLevel.objects.filter(name=PC0).exists()
+      and not ClassLevel.objects.filter(name=PC).exists())
+# 0004 : « 2ème Bac PC » → « 2ème Bac PC/SVT », même ligne (contenus, profils, classes suivent), avant le seeder.
+call_command('migrate', 'caracteristics', '0004', verbosity=0)
+check('0004 : niveau renommé, même id', ClassLevel.objects.get(pk=lv[PC].pk).name == PC
+      and not ClassLevel.objects.filter(name=PC0).exists())
+check('0004 : titre du cahier généré suit', Notebook.objects.get(pk=nb_pc.pk).title == f'{maths.name} - {PC}',
+      Notebook.objects.get(pk=nb_pc.pk).title)
+call_command('migrate', 'caracteristics', '0003', verbosity=0)
+check('0004 réversible', ClassLevel.objects.get(pk=lv[PC].pk).name == PC0
+      and Notebook.objects.get(pk=nb_pc.pk).title == f'{maths.name} - {PC0}')
+call_command('migrate', 'caracteristics', '0004', verbosity=0)
+Notebook.objects.filter(pk=nb_pc.pk).delete()
 runpy.run_path(os.path.join(BACKEND, 'tests', 'base_tables.py'))
+check('seeder après 0004 : pas de niveau en double', ClassLevel.objects.count() == 4,
+      list(ClassLevel.objects.values_list('name', flat=True)))
 
 
 def noms(c):
@@ -471,7 +489,7 @@ check('Pilotage : filtres fusionnés (somme, max des visiteurs), renommés, supp
 fiches = IAJob.objects.get(pk=job.pk).result['fiches']
 attendu = [
     {'cle': 'a', 'niveaux': [SM1], 'chapitres': [TRIGO], 'theoremes': ['Formule de Moivre']},
-    {'cle': 'b', 'niveaux': [SM2, PC], 'chapitres': ['Dénombrement', 'Probabilités', 'Dérivation et étude des fonctions'],
+    {'cle': 'b', 'niveaux': [SM2, PC0], 'chapitres': ['Dénombrement', 'Probabilités', 'Dérivation et étude des fonctions'],
      'theoremes': []},
     {'cle': 'c', 'niveaux': [TC, SM1], 'chapitres': ['Calcul trigonométrique', TRIGO, 'Fonctions logarithmiques',
                                                       'Fonctions exponentielles']}]
@@ -502,6 +520,7 @@ check('rapport : règles primitives et produit vectoriel listées', set(ops[('pr
 snap = instantane()
 apps_0003 = MigrationExecutor(connection).loader.project_state(('caracteristics', '0003_programme_officiel')).apps
 donnees = importlib.import_module('apps.caracteristics.migrations.0003_programme_officiel').DONNEES
+# Base déjà renommée par 0004 : les données figées (ancien nom du niveau) ne trouvent plus ce niveau et n'y écrivent rien.
 r2 = appliquer(apps_0003, donnees, log=silence)
 check('2e passage de la migration : aucune écriture', r2['changements'] == 0, r2.get('changements'))
 check('2e passage : base identique', instantane() == snap)

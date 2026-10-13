@@ -23,7 +23,7 @@ PAGES = {
             {'title': 'Ce que tu trouves sur Fidni', 'paragraphs': [
                 'Des cours, des exercices corrigés pas à pas, des devoirs surveillés et des sujets du Bac national '
                 'avec leur barème, pour le Tronc commun Sciences, la 1ère Bac Sciences mathématiques et le 2ème Bac '
-                'Sciences mathématiques et Sciences physiques (option française).',
+                'Sciences mathématiques, Sciences physiques et SVT (option française).',
                 'Tout est rangé niveau par niveau et chapitre par chapitre, dans l’ordre du programme officiel '
                 'marocain. Pour chaque chapitre, la page rappelle ce que dit le programme : contenus, ce qu’il faut '
                 'savoir faire, théorèmes.',

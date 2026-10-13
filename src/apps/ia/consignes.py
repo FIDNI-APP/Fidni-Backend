@@ -13,13 +13,13 @@ ICI = os.path.dirname(os.path.abspath(__file__))
 def niveaux_du_travail(niveaux=()):
     """Noms des niveaux dont l'IA reçoit le programme : ceux donnés (noms ou ClassLevel) et leur niveau précédent
     dans la filière, dans l'ordre de programme.NIVEAUX ; aucun niveau connu → les 4."""
-    from apps.caracteristics.programme import NIVEAU_PRECEDENT, NIVEAUX
+    from apps.caracteristics.programme import NIVEAU_PRECEDENT, NIVEAUX, nom_niveau_actuel
 
     tous = [n for n, _o in NIVEAUX]
     par_cle = {n.lower(): n for n in tous}
     voulus = set()
     for n in niveaux or ():
-        nom = par_cle.get(str(getattr(n, 'name', n) or '').strip().lower())
+        nom = par_cle.get(nom_niveau_actuel(str(getattr(n, 'name', n) or '')).strip().lower())
         if nom:
             voulus.add(nom)
             if nom in NIVEAU_PRECEDENT:

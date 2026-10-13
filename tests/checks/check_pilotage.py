@@ -294,5 +294,23 @@ r = anon.post('/api/logs/client-errors/', {'message': msg}, format='json', HTTP_
 check('erreur d’affichage : une erreur connue reste comptée au-delà du plafond',
       r.status_code == 204 and ErrorLog.objects.get(message=msg).count == 3, ErrorLog.objects.get(message=msg).count)
 
+# ── Moniteur « en direct » (/api/pilotage/direct/, relu toutes les 30 s)
+c.force_authenticate(alice)
+check('direct : élève refusé', c.get('/api/pilotage/direct/').status_code == 403)
+c.force_authenticate(admin)
+r = c.get('/api/pilotage/direct/')
+live = r.data if r.status_code == 200 else {}
+check('direct : administrateur autorisé', r.status_code == 200, r.status_code)
+ov = c.get('/api/pilotage/?jours=7').data
+last = ov['series'][-1]
+check('direct : aujourd’hui = dernier jour de l’aperçu', all(live.get('today', {}).get(k) == last[k]
+      for k in ('views', 'active', 'signups', 'work')), (live.get('today'), last))
+check('direct : hier présent', set(live.get('yesterday', {})) == {'views', 'active', 'signups', 'work', 'visitors'})
+check('direct : à traiter = celui de l’aperçu', live.get('todo', {}).get('reports_open') == ov['todo']['reports_open']
+      and live['todo']['a_verifier'] == len(ov['todo']['a_verifier']), (live.get('todo'), ov['todo']['reports_open']))
+acts = live.get('activity', [])
+check('direct : activité récente des membres réels (admin exclu)', acts and all(a['username'] != admin.username for a in acts)
+      and any(a['kind'] == 'comment' for a in acts), acts[:3])
+
 print(f'\n{sum(results)}/{len(results)} vérifications réussies')
 sys.exit(0 if all(results) else 1)

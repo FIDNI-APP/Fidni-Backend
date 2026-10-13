@@ -40,12 +40,14 @@ LEVEL_WORDS = {
     'Tronc commun Sciences': ('TCS', 'Tronc commun scientifique, TC BIOF'),
     '1ère Bac SM': ('1 Bac SM', '1ère année Bac Sciences Mathématiques, 1BAC SM BIOF'),
     '2ème Bac SM': ('2 Bac SM', '2ème année Bac Sciences Mathématiques A et B, 2BAC SM BIOF'),
-    '2ème Bac PC': ('2 Bac PC', '2ème année Bac Sciences Physiques, 2BAC PC BIOF'),
+    '2ème Bac PC/SVT': ('2 Bac PC/SVT', '2ème année Bac Sciences Physiques et SVT, 2BAC PC BIOF, 2BAC SVT BIOF'),
 }
 
 
 def slug(name):
-    return slugify(name)
+    """Adresse d'un niveau ou d'un chapitre. « / » sépare comme un espace (« 2ème Bac PC/SVT » → 2eme-bac-pc-svt) ;
+    même règle côté front (lib/api/hubApi.ts slugify) et pour les niveaux de l'API (ClassLevelSerializer)."""
+    return slugify((name or '').replace('/', ' '))
 
 
 def hub_url(section, level, chapter=None):
@@ -306,12 +308,17 @@ def national_years():
 
 def resolve(section, level_slug, chapter_slug=None, user=None):
     """Tout ce qu'il faut pour afficher un hub, ou None si le niveau ou le chapitre n'existe pas.
-    Ancienne adresse d'un chapitre de ce niveau (programme.ALIAS_SLUGS) : {'redirect': nouvelle adresse}, seul champ."""
+    Ancienne adresse d'un chapitre de ce niveau (programme.ALIAS_SLUGS) ou d'un niveau renommé (programme.ALIAS_NIVEAUX) :
+    {'redirect': nouvelle adresse}, seul champ."""
     kind = SECTION_TYPE.get(section)
     if kind is None:
         return None
     level = next((lv for lv in ClassLevel.objects.all() if slug(lv.name) == level_slug), None)
     if level is None:
+        # Ancienne adresse d'un niveau renommé (« 2eme-bac-pc » → « 2eme-bac-pc-svt ») : même chapitre au nouveau niveau.
+        nouveau = programme.ALIAS_NIVEAUX.get(level_slug)
+        if nouveau and any(slug(lv.name) == nouveau for lv in ClassLevel.objects.all()):
+            return {'redirect': f'/{section}/niveau/{nouveau}' + (f'/{chapter_slug}' if chapter_slug else '')}
         return None
     chapters = programme.chapitres_du_niveau(level, Chapter.objects.select_related('subfield'))
     chapter = None

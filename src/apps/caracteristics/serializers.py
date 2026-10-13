@@ -1,4 +1,3 @@
-from django.utils.text import slugify
 from rest_framework import serializers
 from .models import ClassLevel, Subject, Chapter, Subfield, Theorem
 import logging 
@@ -21,7 +20,8 @@ class ClassLevelSerializer(serializers.ModelSerializer):
         fields = ['id', 'name', 'slug', 'order', 'content_count']
 
     def get_slug(self, obj):
-        return slugify(obj.name)
+        from apps.caracteristics.hubs import slug
+        return slug(obj.name)
 
     def get_content_count(self, obj):
         return getattr(obj, 'content_count', None)
@@ -61,7 +61,8 @@ class ChapterSerializer(serializers.ModelSerializer):
         fields = ['id', 'name', 'slug', 'subject', 'class_levels', 'subfield', 'content_count']
 
     def get_slug(self, obj):
-        return slugify(obj.name)
+        from apps.caracteristics.hubs import slug
+        return slug(obj.name)
 
     def get_content_count(self, obj):
         return getattr(obj, 'content_count', None)

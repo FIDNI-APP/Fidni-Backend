@@ -278,8 +278,8 @@ LISTINGS = {
         'type': 'exercise',
         'title': 'Exercices de maths corrigés – Tronc commun, 1ère et 2ème Bac (Maroc) | Fidni',
         'h1': 'Exercices de maths corrigés',
-        'description': ('Exercices de maths corrigés pour le lycée au Maroc : Tronc commun, 1ère Bac SM, 2ème Bac SM '
-                        'et PC (BIOF). Classés par chapitre, avec solutions détaillées. Gratuit.'),
+        'description': ('Exercices de maths corrigés pour le lycée au Maroc : Tronc commun, 1ère Bac SM, 2ème Bac SM, '
+                        'PC et SVT (BIOF). Classés par chapitre, avec solutions détaillées. Gratuit.'),
         'intro': ('Des exercices de mathématiques corrigés pour le programme marocain, du Tronc commun au 2ème Bac, '
                   'classés par niveau et par chapitre. Chaque exercice a sa solution détaillée, étape par étape, '
                   'et tu peux t’auto-évaluer question par question.'),
@@ -298,7 +298,7 @@ LISTINGS = {
         'title': 'Devoirs surveillés et examens de maths corrigés – Bac Maroc | Fidni',
         'h1': 'Devoirs surveillés et examens de maths corrigés',
         'description': ('Devoirs surveillés et sujets d’examen de maths corrigés pour le Bac au Maroc : Tronc commun, '
-                        '1ère Bac SM, 2ème Bac SM et PC. Barème, durée, corrigé détaillé et épreuve chronométrée.'),
+                        '1ère Bac SM, 2ème Bac SM, PC et SVT. Barème, durée, corrigé détaillé et épreuve chronométrée.'),
         'intro': ('Des sujets de devoirs surveillés et d’examens de mathématiques, avec leur barème et un corrigé '
                   'détaillé. Entraîne-toi en conditions réelles avec l’épreuve chronométrée.'),
     },
@@ -306,7 +306,7 @@ LISTINGS = {
 HOME = {
     'title': 'Fidni – Exercices de maths corrigés, cours et examens | Lycée et Bac au Maroc',
     'description': ('Exercices de maths corrigés, cours et devoirs surveillés pour les lycéens marocains : Tronc commun, '
-                    '1ère Bac SM, 2ème Bac SM et PC (BIOF). Solutions détaillées, suivi de progression. Gratuit.'),
+                    '1ère Bac SM, 2ème Bac SM, PC et SVT (BIOF). Solutions détaillées, suivi de progression. Gratuit.'),
 }
 BODY_STYLE = ('max-width:860px;margin:40px auto;padding:0 16px;font-family:system-ui,sans-serif;'
               'line-height:1.6;color:#1a1a1a')
@@ -332,7 +332,7 @@ def _grouped(kind):
 
 
 def _links_html(section, groups, esc):
-    from django.utils.text import slugify
+    from apps.caracteristics.hubs import slug as slugify  # « / » d'un nom de niveau compte comme une séparation
     out = []
     for level, chapters in groups:
         lpath = f'/{section}/niveau/{slugify(level)}'
@@ -505,7 +505,7 @@ def listing_page(request, name):
         body = (f'<main style="{BODY_STYLE}">'
                 '<h1 style="font-size:28px">Fidni : exercices de maths corrigés, cours et examens pour le lycée au Maroc</h1>'
                 '<p>Fidni accompagne les lycéens marocains en mathématiques, du Tronc commun au 2ème Bac '
-                '(Sciences mathématiques et Sciences physiques, option française). Exercices corrigés pas à pas, '
+                '(Sciences mathématiques, Sciences physiques et SVT, option française). Exercices corrigés pas à pas, '
                 'cours clairs, devoirs surveillés et sujets d’examen avec barème, suivi de ta progression, '
                 'listes de révision et quiz pour mesurer ta maîtrise de chaque chapitre.</p>'
                 + _nav_html() + _levels_html() + ''.join(blocks) + '</main>')

@@ -26,7 +26,7 @@ from apps.interactions.serializers import AICorrectionSerializer
 from apps.interactions.views import VoteMixin
 from apps.users.models import ViewHistory
 from rest_framework.permissions import IsAuthenticated, IsAdminUser, AllowAny
-from config.permissions import IsAuthorOrStaffOrReadOnly
+from config.permissions import CanCreateContent, IsAdminMember, IsAuthorOrStaffOrReadOnly
 from config.throttling import PdfParseThrottle, ProposedSolutionThrottle
 
 import hashlib
@@ -271,9 +271,9 @@ class ContentViewSet(VoteMixin, viewsets.ModelViewSet):
     Filter by type: GET /api/contents/?type=exercise
     """
     queryset = Content.objects.all()
-    # Tout utilisateur connecté peut publier ; seul l'auteur (ou le staff) modifie, supprime
-    # ou réécrit la solution. Les autres actions (voter, commenter…) restent ouvertes.
-    permission_classes = [IsAuthorOrStaffOrReadOnly]
+    # Création réservée à l'équipe pour l'instant (12/10/2026, CanCreateContent) ; seul l'auteur (ou le staff)
+    # modifie, supprime ou réécrit la solution. Les autres actions (voter, commenter…) restent ouvertes.
+    permission_classes = [CanCreateContent, IsAuthorOrStaffOrReadOnly]
     author_only_actions = ('update', 'partial_update', 'destroy', 'solution')
     pagination_class = StandardResultsSetPagination
 
@@ -1294,7 +1294,7 @@ class CommentViewSet(VoteMixin, viewsets.ModelViewSet):
 
 
 @api_view(['POST'])
-@perm_classes([IsAuthenticated])
+@perm_classes([IsAdminMember])  # import dans l'assistant de création : équipe seulement, comme la création
 @throttle_classes([PdfParseThrottle])
 def parse_pdf_view(request):
     """

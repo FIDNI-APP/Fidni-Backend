@@ -6,6 +6,8 @@ from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from config.permissions import IsTeacherOrAdmin
+
 from .models import Document
 from .serializers import DocumentListSerializer, DocumentSerializer
 from .word import WordErreur, exporter_docx, importer_docx
@@ -15,8 +17,9 @@ MAX_DOCUMENTS = 300
 
 
 class DocumentViewSet(viewsets.ModelViewSet):
-    """`/api/documents/` : les documents de l'éditeur, ceux du membre connecté seulement."""
-    permission_classes = [IsAuthenticated]
+    """`/api/documents/` : les documents de l'éditeur, ceux du membre connecté seulement. Réservé aux enseignants
+    (déclarés) et à l'équipe pour l'instant (12/10/2026)."""
+    permission_classes = [IsAuthenticated, IsTeacherOrAdmin]
 
     def get_queryset(self):
         qs = Document.objects.filter(user=self.request.user)

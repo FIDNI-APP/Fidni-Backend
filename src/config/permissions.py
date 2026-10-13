@@ -26,3 +26,42 @@ class IsAuthorOrStaffOrReadOnly(BasePermission):
             return True
         user = request.user
         return _is_authenticated(user) and (user.is_staff or getattr(obj, 'author_id', None) == user.id)
+
+
+def is_admin(user) -> bool:
+    """Équipe : superutilisateur ou staff."""
+    return _is_authenticated(user) and bool(user.is_superuser or user.is_staff)
+
+
+def is_teacher_or_admin(user) -> bool:
+    """Enseignant déclaré (profil « enseignant ») ou membre de l'équipe."""
+    if is_admin(user):
+        return True
+    profile = getattr(user, 'profile', None) if _is_authenticated(user) else None
+    return getattr(profile, 'user_type', None) == 'teacher'
+
+
+class CanCreateContent(BasePermission):
+    """Création d'un exercice, d'une leçon ou d'un examen : réservée à l'équipe pour l'instant (12/10/2026).
+    Les autres actions (lire, voter, modifier son propre contenu…) passent aux permissions suivantes."""
+    message = 'La création de contenu est réservée à l’équipe pour l’instant.'
+
+    def has_permission(self, request, view):
+        if getattr(view, 'action', None) != 'create':
+            return True
+        return is_admin(request.user)
+
+
+class IsTeacherOrAdmin(BasePermission):
+    """« Mes documents » : enseignants (déclarés) et équipe seulement, pour l'instant (12/10/2026)."""
+    message = 'Réservé aux enseignants pour l’instant.'
+
+    def has_permission(self, request, view):
+        return is_teacher_or_admin(request.user)
+
+
+class IsAdminMember(BasePermission):
+    """Équipe seulement (superutilisateur ou staff)."""
+
+    def has_permission(self, request, view):
+        return is_admin(request.user)

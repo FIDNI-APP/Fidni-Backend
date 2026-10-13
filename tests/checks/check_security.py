@@ -243,7 +243,10 @@ check('sessions fermées après réinitialisation', not refresh_ok(rf3))
 # 12. Routes retirées et limites ajoutées
 check('api-auth retiré', anon.get('/api-auth/login/').status_code == 404)
 cache.clear()
-codes = [client(carol).post('/api/parse-pdf/', {}, format='multipart').status_code for _ in range(21)]
+# Analyse de PDF (assistant de création) : équipe seulement depuis le 12/10/2026 ; la limite vaut aussi pour elle.
+check('analyse PDF refusée à un membre', client(carol).post('/api/parse-pdf/', {}, format='multipart').status_code == 403)
+cache.clear()
+codes = [client(staff).post('/api/parse-pdf/', {}, format='multipart').status_code for _ in range(21)]
 check('analyse PDF limitée (429)', codes[-1] == 429 and codes[0] != 429, codes[-3:])
 cache.clear()
 codes = [client(carol).post('/api/classrooms/join/', {'code': f'ZZ{i}'}, format='json').status_code for i in range(31)]

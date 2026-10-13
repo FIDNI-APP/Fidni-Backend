@@ -167,6 +167,9 @@ e, w, res = importing.check_against_db({**EXO, 'chapitres': ['Limites et continu
 check('TVI rattaché au chapitre « Limites et continuité »', e == [] and not any('théorème' in x for x in w), (e, w))
 _, w, _ = importing.check_against_db({**EXO, 'theoremes': ['Loi binomiale']})
 check('théorème hors des chapitres indiqués : averti', any('Loi binomiale' in x for x in w), w)
+e, _, res = importing.check_against_db({**EXO, 'niveaux': ['2ème Bac PC'], 'chapitres': ['Limites et continuité']})
+check('ancien nom de niveau « 2ème Bac PC » accepté (→ 2ème Bac PC/SVT)', e == [] and [lv.name for lv in res['levels']]
+      == ['2ème Bac PC/SVT'], (e, [lv.name for lv in res['levels']]))
 
 out = io.StringIO()
 with redirect_stdout(out):
@@ -192,7 +195,7 @@ r = APIClient().get(f'/api/contents/{c.pk}/')
 check('le contenu importé est servi par l’API', r.status_code == 200 and r.data['json_content']['blocks'][1]['points'] == 2, r.status_code)
 names = [lv['name'] for lv in APIClient().get('/api/class-levels/?content_type=exercise').data]
 check('niveaux dans l’ordre du programme, même avec le décompte par type',
-      names[:4] == ['Tronc commun Sciences', '1ère Bac SM', '2ème Bac SM', '2ème Bac PC'], names)
+      names[:4] == ['Tronc commun Sciences', '1ère Bac SM', '2ème Bac SM', '2ème Bac PC/SVT'], names)
 r = APIClient().get('/api/skills/')
 check('/api/skills/ : tout le référentiel, avec libellés', len(r.data) == len(NOTION_INDEX) and all(x['label'] for x in r.data), len(r.data))
 
