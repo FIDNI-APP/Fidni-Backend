@@ -167,6 +167,8 @@ class UserProfile(models.Model):
     last_ip_at = models.DateTimeField(null=True, blank=True)
     # IP distinctes des 30 derniers jours ([{ip, at}], 10 au plus) : une IP mobile change souvent.
     recent_ips = models.JSONField(default=list, blank=True)
+    # Fenêtres « Nouveautés » déjà montrées ({id: date ISO}), une fois par compte (users/nouveautes.py).
+    nouveautes_vues = models.JSONField(default=dict, blank=True)
 
     # Target Subjects (favorite subjects — students)
     target_subjects = models.ManyToManyField(

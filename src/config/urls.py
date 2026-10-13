@@ -30,7 +30,7 @@ from apps.users import usage as usage_views
 from apps.skilliq import admin_api as quiz_admin
 from apps.users.my_stats import my_stats
 from apps.users.progression import apercu as progression_apercu, progression
-from apps.users import tableau
+from apps.users import nouveautes, tableau
 from apps.things import reports as content_reports
 from apps.ia import views as ia_views
 from apps.things.verification import set_verification
@@ -211,6 +211,7 @@ urlpatterns = [
     path('api/stats/apercu/', progression_apercu, name='progression-apercu'),  # accueil : « Où j'en suis »
     path('api/stats/tableau/', tableau.tableau, name='tableau'),  # « Ma progression » : tableau de bord
     path('api/stats/tableau/jour/', tableau.tableau_jour, name='tableau-jour'),
+    path('api/nouveautes/<slug:nid>/vue/', nouveautes.vue, name='nouveaute-vue'),  # fenêtre « Nouveautés » montrée
     path('api/dashboard/learning-path/', get_learning_path_progress, name='learning-path-progress'),
     path('api/dashboard/recommended/', get_recommended_content, name='recommended-content'),
 

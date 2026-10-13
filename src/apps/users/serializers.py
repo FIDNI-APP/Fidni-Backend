@@ -3,6 +3,7 @@ from rest_framework import serializers
 from django.contrib.auth.models import User
 from django.utils import timezone
 from .models import UserProfile, SubjectGrade
+from .nouveautes import a_voir
 from apps.caracteristics.models import ClassLevel, Subject
 
 class SubjectGradeSerializer(serializers.ModelSerializer):
@@ -185,6 +186,8 @@ class UserSerializer(serializers.ModelSerializer):
             data['google_linked'] = instance.google_accounts.exists()
             own_profile = getattr(instance, 'profile', None)
             data['email_verified'] = bool(own_profile is None or own_profile.email_verified)
+            # Fenêtres « Nouveautés » à lui montrer (users/nouveautes.py) : arrivent avec la connexion.
+            data['nouveautes'] = a_voir(instance)
         if is_self or (viewer and getattr(viewer, 'is_staff', False)):
             return data
         profile = getattr(instance, 'profile', None)

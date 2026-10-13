@@ -69,6 +69,10 @@ ACTIONS = {
     'prog-point-faible',  # Ma progression : un point faible ouvert (questions à refaire) ou « S'entraîner »
     'prog-onglet',        # Ma progression : onglet choisi (points faibles, chapitres, temps)
     'quiz-decouvert',     # première ouverture de la page des quiz (sur cet appareil)
+    'nouveautes-vue',     # fenêtre « Nouveautés » (Ma progression) montrée à la connexion
+    'nouveautes-finie',   # fenêtre « Nouveautés » : dernière étape atteinte
+    'nouveautes-cta',     # fenêtre « Nouveautés » : « Voir ma progression »
+    'nouveautes-passee',  # fenêtre « Nouveautés » : fermée avant la dernière étape
     'mode-revision',      # liste de révision ouverte en mode révision
     'barre-mobile',       # barre d'onglets en bas sur téléphone
     'visite-auto', 'visite-passee', 'visite-finie',  # visites guidées
