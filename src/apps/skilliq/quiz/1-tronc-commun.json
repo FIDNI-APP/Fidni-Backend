@@ -1,0 +1,500 @@
+{
+ "niveau": "Tronc commun Sciences",
+ "chapitres": [
+  {
+   "chapitre": "Ensembles de nombres ℕ, ℤ, 𝔻, ℚ et ℝ",
+   "questions": [
+    {
+     "question": "Pour tous réels $a \\geq 0$ et $b \\geq 0$, laquelle de ces égalités est toujours vraie ?",
+     "bonne": "$\\sqrt{ab} = \\sqrt{a}\\,\\sqrt{b}$",
+     "distracteurs": [
+      "$\\sqrt{a+b} = \\sqrt{a} + \\sqrt{b}$",
+      "$\\sqrt{a^2 + b^2} = a + b$",
+      "$\\sqrt{a-b} = \\sqrt{a} - \\sqrt{b}$"
+     ],
+     "explication": "Seul le produit « passe » sous la racine. La racine ne se distribue ni sur une somme ($\\sqrt{9+16} = 5$ alors que $\\sqrt{9} + \\sqrt{16} = 7$) ni sur une différence.",
+     "difficulte": "medium",
+     "cible": "Programme : propriétés des racines carrées (erreur classique : racine d’une somme).",
+     "theoremes": [
+      "Propriétés des racines carrées"
+     ]
+    },
+    {
+     "question": "Laquelle de ces affirmations est vraie pour tout réel $x$ ?",
+     "bonne": "$\\sqrt{x^2} = |x|$",
+     "distracteurs": [
+      "$\\sqrt{x^2} = x$",
+      "$\\left(\\sqrt{x}\\right)^2 = x$",
+      "$\\sqrt{x^2} = \\left(\\sqrt{x}\\right)^2$"
+     ],
+     "explication": "Pour $x = -3$ : $\\sqrt{(-3)^2} = \\sqrt{9} = 3 = |-3|$. L’égalité $\\sqrt{x^2} = x$ n’est vraie que pour $x \\geq 0$, et $\\sqrt{x}$ n’a de sens que pour $x \\geq 0$.",
+     "difficulte": "medium",
+     "cible": "Programme : racine carrée d’un carré (piège du signe).",
+     "theoremes": [
+      "Propriétés des racines carrées"
+     ]
+    },
+    {
+     "question": "Soit $n \\in \\mathbb{N}^*$ et $x = \\sqrt{n^2 + n}$. Sachant que $n^2 < n^2 + n < (n+1)^2$, quel raisonnement prouve que $x \\notin \\mathbb{N}$ ?",
+     "bonne": "La racine carrée est strictement croissante, donc $n < x < n+1$ : $x$ est strictement entre deux entiers consécutifs.",
+     "distracteurs": [
+      "La racine carrée est strictement croissante, donc $n \\leq x \\leq n+1$ : $x$ est entre deux entiers consécutifs.",
+      "$n^2 + n = n(n+1)$ est pair, et la racine carrée d’un nombre pair n’est jamais un entier.",
+      "$n^2 < x < (n+1)^2$ : $x$ est strictement entre deux carrés d’entiers consécutifs."
+     ],
+     "explication": "Un réel strictement compris entre deux entiers consécutifs n’est pas entier. Avec des inégalités larges, $x$ pourrait valoir $n$ ou $n+1$. La parité ne conclut pas ($\\sqrt{4} = 2$), et c’est $x^2$, pas $x$, qui est entre $n^2$ et $(n+1)^2$.",
+     "difficulte": "hard",
+     "cible": "38 % et 50 % de réussite aux questions « montrer que $x \\notin \\mathbb{N}$ » des DS (encadrement strict entre deux entiers consécutifs).",
+     "theoremes": [
+      "Propriétés des racines carrées"
+     ]
+    },
+    {
+     "question": "Quelle est la factorisation de $A = (2x+1)^2 - 9(x-2)^2$ ?",
+     "bonne": "$A = (7 - x)(5x - 5)$",
+     "distracteurs": [
+      "$A = (3 - x)(5x - 1)$",
+      "$A = (-x - 5)(5x - 5)$",
+      "$A = (19 - 7x)(11x - 17)$"
+     ],
+     "explication": "$9(x-2)^2 = \\left[3(x-2)\\right]^2 = (3x-6)^2$, puis $a^2 - b^2 = (a-b)(a+b)$ avec $a = 2x+1$ et $b = 3x - 6$. Pièges : écrire $3x - 2$ au lieu de $3x - 6$, oublier de changer le signe de $-6$ dans $a - b$, ou garder $9$ au lieu de $3 = \\sqrt{9}$.",
+     "difficulte": "medium",
+     "cible": "38 % de réussite à la factorisation de $(2x+1)^2 - 9(x-2)^2$ (DS 2019).",
+     "theoremes": [
+      "Identités remarquables"
+     ]
+    },
+    {
+     "question": "Pour tous réels $a$ et $b$, laquelle de ces égalités est vraie ?",
+     "bonne": "$(a-b)^2 = a^2 - 2ab + b^2$",
+     "distracteurs": [
+      "$(a-b)^2 = a^2 - b^2$",
+      "$(a-b)^2 = a^2 + 2ab - b^2$",
+      "$(a-b)^2 = a^2 - 2ab - b^2$"
+     ],
+     "explication": "$(a-b)^2 = (a-b)(a-b) = a^2 - ab - ba + b^2$. Le carré $b^2$ est toujours positif, et le double produit $-2ab$ ne disparaît pas.",
+     "difficulte": "easy",
+     "cible": "Programme : identités remarquables.",
+     "theoremes": [
+      "Identités remarquables"
+     ]
+    },
+    {
+     "question": "Pour tous réels $a$ et $b$, à quoi est égal $a^4 + 4b^4$ ?",
+     "bonne": "$(a^2 - 2ab + 2b^2)(a^2 + 2ab + 2b^2)$",
+     "distracteurs": [
+      "$(a^2 + 2b^2)^2$",
+      "$(a^2 - 2b^2)(a^2 + 2b^2)$",
+      "$(a^2 - ab + 2b^2)(a^2 + ab + 2b^2)$"
+     ],
+     "explication": "On complète le carré : $a^4 + 4b^4 = (a^2 + 2b^2)^2 - 4a^2b^2 = (a^2+2b^2)^2 - (2ab)^2$, puis on factorise la différence de deux carrés. $(a^2+2b^2)^2$ oublie $-4a^2b^2$, et $(a^2-2b^2)(a^2+2b^2) = a^4 - 4b^4$.",
+     "difficulte": "hard",
+     "cible": "33 % de réussite à « $a^4 + 4b^4$ n’est pas premier » (DS 2023) : la factorisation clé.",
+     "theoremes": [
+      "Identités remarquables"
+     ]
+    },
+    {
+     "question": "Pour tout réel $a \\neq 0$ et tous entiers $n$ et $m$, laquelle de ces égalités est vraie ?",
+     "bonne": "$\\left(a^n\\right)^m = a^{nm}$",
+     "distracteurs": [
+      "$a^n \\times a^m = a^{nm}$",
+      "$a^n + a^m = a^{n+m}$",
+      "$\\left(a^n\\right)^m = a^{n+m}$"
+     ],
+     "explication": "Élever à la puissance $m$ multiplie les exposants : $\\left(a^n\\right)^m = a^{nm}$. C’est le produit $a^n \\times a^m$ qui additionne les exposants ; une somme $a^n + a^m$ ne se simplifie pas.",
+     "difficulte": "medium",
+     "cible": "Programme : propriétés des puissances (confusion produit / puissance de puissance).",
+     "theoremes": [
+      "Propriétés des puissances"
+     ]
+    },
+    {
+     "question": "Que vaut $\\dfrac{2^{10} \\times 4^{3}}{8^{5}}$ ?",
+     "bonne": "$2$",
+     "distracteurs": [
+      "$1$",
+      "$2^{8}$",
+      "$\\dfrac{1}{2}$"
+     ],
+     "explication": "$4^3 = (2^2)^3 = 2^6$ et $8^5 = (2^3)^5 = 2^{15}$, donc le quotient vaut $2^{10+6-15} = 2^1 = 2$. Pièges : $4^3 = 2^5$ (on obtient $1$), $8^5 = 2^{3+5}$ (on obtient $2^8$).",
+     "difficulte": "medium",
+     "cible": "40 % de réussite à un calcul de puissances et de racines (DS 2024).",
+     "theoremes": [
+      "Propriétés des puissances"
+     ]
+    },
+    {
+     "question": "Pour tout réel $a$ et tout entier naturel $n$, laquelle de ces égalités est vraie ?",
+     "bonne": "$(-a)^{2n} = a^{2n}$",
+     "distracteurs": [
+      "$(-a)^{2n+1} = a^{2n+1}$",
+      "$-a^{2n} = (-a)^{2n}$",
+      "$(-a)^{n} = -a^{n}$"
+     ],
+     "explication": "$(-a)^{2n} = \\left((-a)^2\\right)^n = \\left(a^2\\right)^n = a^{2n}$ : un exposant pair efface le signe. Avec un exposant impair, $(-a)^{2n+1} = -a^{2n+1}$. Attention : $-a^{2n}$ signifie $-\\left(a^{2n}\\right)$.",
+     "difficulte": "hard",
+     "cible": "Programme : puissance d’un nombre négatif (parité de l’exposant).",
+     "theoremes": [
+      "Propriétés des puissances"
+     ]
+    },
+    {
+     "question": "Dans la preuve par l’absurde de $\\sqrt{2} \\notin \\mathbb{Q}$, on écrit $\\sqrt{2} = \\dfrac{p}{q}$. Quelle hypothèse sur $p$ et $q$ rend la contradiction possible ?",
+     "bonne": "$p$ et $q$ sont des entiers non nuls premiers entre eux.",
+     "distracteurs": [
+      "$p$ et $q$ sont des entiers non nuls, avec $p$ pair.",
+      "$p$ et $q$ sont des entiers non nuls, avec $q$ impair.",
+      "$p$ et $q$ sont des entiers non nuls distincts."
+     ],
+     "explication": "De $p^2 = 2q^2$, on tire que $p$ puis $q$ sont pairs. Ce n’est contradictoire que si l’on a supposé la fraction irréductible ($p$ et $q$ premiers entre eux). Les autres hypothèses ne sont contredites par rien.",
+     "difficulte": "medium",
+     "cible": "Programme : irrationalité de $\\sqrt{2}$ (rôle de la fraction irréductible).",
+     "theoremes": [
+      "Irrationalité de √2"
+     ]
+    },
+    {
+     "question": "Sachant que $\\sqrt{2} \\notin \\mathbb{Q}$, laquelle de ces affirmations est vraie ?",
+     "bonne": "$1 + \\sqrt{2} \\notin \\mathbb{Q}$",
+     "distracteurs": [
+      "$\\sqrt{2} \\times \\sqrt{2} \\notin \\mathbb{Q}$",
+      "$\\sqrt{8} \\in \\mathbb{Q}$",
+      "$\\sqrt{2} + \\left(1 - \\sqrt{2}\\right) \\notin \\mathbb{Q}$"
+     ],
+     "explication": "Si $1 + \\sqrt{2} = r \\in \\mathbb{Q}$, alors $\\sqrt{2} = r - 1 \\in \\mathbb{Q}$ : impossible. Mais un produit ou une somme d’irrationnels peut être rationnel : $\\sqrt{2} \\times \\sqrt{2} = 2$ et $\\sqrt{2} + (1 - \\sqrt{2}) = 1$. Enfin $\\sqrt{8} = 2\\sqrt{2} \\notin \\mathbb{Q}$.",
+     "difficulte": "hard",
+     "cible": "Programme : rationnels et irrationnels (somme, produit).",
+     "theoremes": [
+      "Irrationalité de √2"
+     ]
+    },
+    {
+     "question": "Pour montrer que $x = 3 - 2\\sqrt{2}$ n’est pas rationnel, quel argument est correct ?",
+     "bonne": "Si $x \\in \\mathbb{Q}$, alors $\\sqrt{2} = \\dfrac{3 - x}{2} \\in \\mathbb{Q}$ : contradiction.",
+     "distracteurs": [
+      "Si $x \\in \\mathbb{Q}$, alors $\\sqrt{2} = \\dfrac{x - 3}{2} \\in \\mathbb{Q}$ : contradiction.",
+      "$x^2 = 17 - 12\\sqrt{2}$ n’est pas un entier, donc $x \\notin \\mathbb{Q}$.",
+      "$x$ s’écrit avec une racine carrée, donc $x \\notin \\mathbb{Q}$."
+     ],
+     "explication": "De $x = 3 - 2\\sqrt{2}$ on tire $\\sqrt{2} = \\dfrac{3 - x}{2}$, rationnel si $x$ l’est. L’égalité avec $x - 3$ est fausse (signe). « Pas entier » n’implique pas « irrationnel », et $\\sqrt{4} = 2$ s’écrit avec une racine.",
+     "difficulte": "hard",
+     "cible": "17 % de réussite à « montrer que $2\\sqrt{7} - 7\\sqrt{2} \\notin \\mathbb{Q}$ » : raisonnement par l’absurde.",
+     "theoremes": [
+      "Irrationalité de √2"
+     ]
+    }
+   ]
+  },
+  {
+   "chapitre": "Arithmétique dans ℕ",
+   "questions": [
+    {
+     "question": "Soit $n \\in \\mathbb{N}$. Laquelle de ces affirmations est toujours vraie ?",
+     "bonne": "$n(n+1)$ est pair.",
+     "distracteurs": [
+      "$n(n+2)$ est pair.",
+      "$n^2 + n + 1$ est pair.",
+      "$n + (n+2)$ est impair."
+     ],
+     "explication": "$n$ et $n+1$ sont consécutifs : l’un des deux est pair, donc leur produit l’est. Pour $n$ impair, $n(n+2)$ est impair ; $n^2 + n + 1 = n(n+1) + 1$ est toujours impair ; $n + (n+2) = 2n + 2$ est pair.",
+     "difficulte": "easy",
+     "cible": "Programme : parité d’un produit de deux entiers consécutifs.",
+     "theoremes": [
+      "Parité de la somme et du produit"
+     ]
+    },
+    {
+     "question": "Soit $n \\in \\mathbb{N}$. On écrit $n^4 - n^2 + 12n = n^2(n-1)(n+1) + 12n$. Pourquoi ce nombre est-il divisible par $4$ ?",
+     "bonne": "Si $n$ est pair, $4 \\mid n^2$ ; si $n$ est impair, $n-1$ et $n+1$ sont pairs, donc $4 \\mid (n-1)(n+1)$ ; et $4 \\mid 12n$.",
+     "distracteurs": [
+      "$(n-1)n(n+1)$ est un produit de trois entiers consécutifs, donc il est divisible par $4$ ; et $4 \\mid 12n$.",
+      "Si $n$ est pair, $2 \\mid n^2$ ; si $n$ est impair, $n+1$ est pair ; donc $4 \\mid n^2(n-1)(n+1)$.",
+      "$n^2$ et $n^2 - 1$ n’ont pas la même parité, donc leur produit est divisible par $4$ ; et $4 \\mid 12n$."
+     ],
+     "explication": "Il faut deux facteurs $2$ dans les deux cas : $n = 2k$ donne $n^2 = 4k^2$ ; $n$ impair donne deux pairs $n-1$ et $n+1$. Trois entiers consécutifs garantissent $2$ et $3$, pas $4$ ($1 \\times 2 \\times 3 = 6$) ; des parités différentes ne garantissent qu’un facteur $2$.",
+     "difficulte": "hard",
+     "cible": "17 % de réussite à « montrer que $n^4 - n^2 + 12n$ est divisible par $4$ » (DS 2023) : disjonction des cas.",
+     "theoremes": [
+      "Parité de la somme et du produit"
+     ]
+    },
+    {
+     "question": "Soient $a$ et $b$ deux entiers naturels avec $a \\geq b$. Si $a + b$ est impair, alors :",
+     "bonne": "$a - b$ est impair et $ab$ est pair.",
+     "distracteurs": [
+      "$a - b$ est pair et $ab$ est pair.",
+      "$a - b$ est impair et $ab$ est impair.",
+      "$a - b$ est pair et $ab$ est impair."
+     ],
+     "explication": "$a + b$ impair signifie que l’un est pair et l’autre impair. Alors $a - b$ est impair (car $(a+b) + (a-b) = 2a$ est pair) et le produit, qui contient un facteur pair, est pair.",
+     "difficulte": "medium",
+     "cible": "31 % de réussite sur la disjonction des cas (parité) dans ce chapitre.",
+     "theoremes": [
+      "Parité de la somme et du produit"
+     ]
+    },
+    {
+     "question": "Un entier naturel est divisible par $9$ si et seulement si :",
+     "bonne": "la somme de ses chiffres est divisible par $9$.",
+     "distracteurs": [
+      "son chiffre des unités est divisible par $9$.",
+      "il est divisible par $3$ et la somme de ses chiffres est divisible par $3$.",
+      "le nombre formé par ses deux derniers chiffres est divisible par $9$."
+     ],
+     "explication": "C’est le critère de divisibilité par $9$ (comme par $3$, mais avec $9$). Divisible par $3$ ne suffit pas ($12$), et les deux derniers chiffres servent au critère de divisibilité par $4$.",
+     "difficulte": "easy",
+     "cible": "Programme : critères de divisibilité.",
+     "theoremes": [
+      "Critères de divisibilité"
+     ]
+    },
+    {
+     "question": "Un entier naturel est divisible par $4$ et par $6$. Est-il forcément divisible par $24$ ?",
+     "bonne": "Non : $12$ est divisible par $4$ et par $6$, mais pas par $24$.",
+     "distracteurs": [
+      "Oui, car $4 \\times 6 = 24$.",
+      "Oui, car $4$ et $6$ divisent tous les deux $24$.",
+      "Non, sauf s’il est pair : alors il est divisible par $24$."
+     ],
+     "explication": "Être divisible par $4$ et par $6$, c’est être multiple de leur PPCM, $12$, pas de leur produit. Le produit ne convient que si les deux nombres sont premiers entre eux. $12$ est pair et pourtant non divisible par $24$.",
+     "difficulte": "medium",
+     "cible": "Programme : divisibilité (contre-exemple au lieu d’une « règle » fausse).",
+     "theoremes": [
+      "Critères de divisibilité"
+     ]
+    },
+    {
+     "question": "Soit $p$ un nombre premier tel que $p > 3$. Quels sont les restes possibles de la division euclidienne de $p$ par $6$ ?",
+     "bonne": "$1$ ou $5$",
+     "distracteurs": [
+      "$1$, $3$ ou $5$",
+      "$1$, $2$, $3$ ou $5$",
+      "$5$ seulement"
+     ],
+     "explication": "$p = 6q + r$ avec $0 \\leq r \\leq 5$. Si $r \\in \\{0, 2, 4\\}$, $p$ est pair et $p > 2$ : impossible. Si $r = 3$, $3 \\mid p$ et $p > 3$ : impossible. Il reste $1$ ($p = 7$) et $5$ ($p = 5$, $p = 11$).",
+     "difficulte": "hard",
+     "cible": "33 % de réussite à « restes possibles de $p$ premier par $6$ » (exercice 58) et à « $3 \\mid p^2 - 1$ ».",
+     "theoremes": [
+      "Critères de divisibilité"
+     ]
+    },
+    {
+     "question": "Quelle est la décomposition de $360$ en produit de facteurs premiers ?",
+     "bonne": "$2^3 \\times 3^2 \\times 5$",
+     "distracteurs": [
+      "$2^2 \\times 3^2 \\times 10$",
+      "$2^3 \\times 3 \\times 15$",
+      "$2^4 \\times 3^2 \\times 5$"
+     ],
+     "explication": "$360 = 2 \\times 180 = 2^2 \\times 90 = 2^3 \\times 45 = 2^3 \\times 3^2 \\times 5$. Les deux écritures avec $10$ et $15$ valent bien $360$, mais $10$ et $15$ ne sont pas premiers ; $2^4 \\times 3^2 \\times 5 = 720$.",
+     "difficulte": "medium",
+     "cible": "Programme : décomposition en produit de facteurs premiers.",
+     "theoremes": [
+      "Décomposition en facteurs premiers"
+     ]
+    },
+    {
+     "question": "Soient $a = 2^3 \\times 5$ et $b = 2^4 \\times 3 \\times 5^2$. Laquelle de ces affirmations est vraie ?",
+     "bonne": "$a$ divise $b$ : chaque facteur premier de $a$ figure dans $b$ avec un exposant au moins égal.",
+     "distracteurs": [
+      "$a$ ne divise pas $b$ : $3$ figure dans $b$ mais pas dans $a$.",
+      "$a$ ne divise pas $b$ : l’exposant de $2$ n’est pas le même dans $a$ et dans $b$.",
+      "$a$ divise $b$ : $a$ et $b$ ont exactement les mêmes facteurs premiers."
+     ],
+     "explication": "$b = a \\times (2 \\times 3 \\times 5)$. Pour que $a \\mid b$, chaque premier de $a$ doit apparaître dans $b$ avec un exposant au moins égal ; $b$ peut avoir d’autres facteurs. Ici $b$ contient aussi $3$, donc ils n’ont pas les mêmes facteurs premiers.",
+     "difficulte": "medium",
+     "cible": "Programme : divisibilité lue sur la décomposition en facteurs premiers.",
+     "theoremes": [
+      "Décomposition en facteurs premiers"
+     ]
+    },
+    {
+     "question": "Laquelle de ces affirmations sur les nombres premiers est vraie ?",
+     "bonne": "Tout entier $n \\geq 2$ admet au moins un diviseur premier.",
+     "distracteurs": [
+      "Tout entier $n \\geq 2$ est le produit d’au moins deux nombres premiers.",
+      "La décomposition en facteurs premiers d’un entier $n \\geq 2$ n’est unique que si $n$ est pair.",
+      "$1$ est premier, car ses seuls diviseurs sont $1$ et lui-même."
+     ],
+     "explication": "Le plus petit diviseur $d \\geq 2$ de $n$ est premier. Un nombre premier est son propre produit (un seul facteur) ; la décomposition est unique pour tout $n \\geq 2$ ; $1$ n’a qu’un seul diviseur, il n’est pas premier.",
+     "difficulte": "medium",
+     "cible": "Programme : nombres premiers et décomposition.",
+     "theoremes": [
+      "Décomposition en facteurs premiers"
+     ]
+    },
+    {
+     "question": "Soient $a = 2^3 \\times 3^2 \\times 5$ et $b = 2^2 \\times 3^3 \\times 7$. Que vaut $\\mathrm{PGCD}(a, b)$ ?",
+     "bonne": "$2^2 \\times 3^2$",
+     "distracteurs": [
+      "$2^3 \\times 3^3$",
+      "$2^2 \\times 3^2 \\times 5 \\times 7$",
+      "$2^3 \\times 3^3 \\times 5 \\times 7$"
+     ],
+     "explication": "Le PGCD est le produit des facteurs premiers communs, chacun avec le plus petit exposant : $2^2 \\times 3^2 = 36$. $2^3 \\times 3^3 \\times 5 \\times 7$ est le PPCM (tous les facteurs, plus grand exposant).",
+     "difficulte": "medium",
+     "cible": "33 % de réussite à « déterminer le PGCD de $a$ et $b$ » (DS 2019).",
+     "theoremes": [
+      "PGCD et PPCM par la décomposition en facteurs premiers"
+     ]
+    },
+    {
+     "question": "Pour tous entiers naturels non nuls $a$ et $b$, laquelle de ces égalités est vraie ?",
+     "bonne": "$\\mathrm{PGCD}(a, b) \\times \\mathrm{PPCM}(a, b) = ab$",
+     "distracteurs": [
+      "$\\mathrm{PGCD}(a, b) + \\mathrm{PPCM}(a, b) = a + b$",
+      "$\\mathrm{PPCM}(a, b) = ab$",
+      "$\\mathrm{PGCD}(a, b) \\times \\mathrm{PPCM}(a, b) = a + b$"
+     ],
+     "explication": "Exemple : $a = 6$, $b = 8$ : $\\mathrm{PGCD} = 2$, $\\mathrm{PPCM} = 24$ et $2 \\times 24 = 48 = 6 \\times 8$. $\\mathrm{PPCM}(a, b) = ab$ seulement si $a$ et $b$ sont premiers entre eux ($\\mathrm{PPCM}(6, 8) = 24 \\neq 48$).",
+     "difficulte": "medium",
+     "cible": "Programme : relation entre PGCD et PPCM.",
+     "theoremes": [
+      "PGCD et PPCM par la décomposition en facteurs premiers"
+     ]
+    },
+    {
+     "question": "Soient $a$ et $b$ deux entiers naturels non nuls tels que $a \\mid b$. Alors :",
+     "bonne": "$\\mathrm{PGCD}(a, b) = a$ et $\\mathrm{PPCM}(a, b) = b$",
+     "distracteurs": [
+      "$\\mathrm{PGCD}(a, b) = b$ et $\\mathrm{PPCM}(a, b) = a$",
+      "$\\mathrm{PGCD}(a, b) = a$ et $\\mathrm{PPCM}(a, b) = ab$",
+      "$\\mathrm{PGCD}(a, b) = 1$ et $\\mathrm{PPCM}(a, b) = b$"
+     ],
+     "explication": "Si $a \\mid b$, $a$ est un diviseur commun et aucun diviseur de $a$ ne le dépasse : $\\mathrm{PGCD} = a$. $b$ est un multiple commun et tout multiple commun est un multiple de $b$ : $\\mathrm{PPCM} = b$. Exemple : $\\mathrm{PGCD}(8, 24) = 8$.",
+     "difficulte": "hard",
+     "cible": "Programme : PGCD et PPCM quand l’un divise l’autre.",
+     "theoremes": [
+      "PGCD et PPCM par la décomposition en facteurs premiers"
+     ]
+    }
+   ]
+  },
+  {
+   "chapitre": "Calcul vectoriel dans le plan",
+   "questions": [
+    {
+     "question": "Pour tous points $A$, $B$ et $C$ du plan, laquelle de ces égalités est vraie ?",
+     "bonne": "$\\overrightarrow{AB} + \\overrightarrow{BC} = \\overrightarrow{AC}$",
+     "distracteurs": [
+      "$\\overrightarrow{AB} + \\overrightarrow{AC} = \\overrightarrow{BC}$",
+      "$\\overrightarrow{AB} - \\overrightarrow{AC} = \\overrightarrow{BC}$",
+      "$\\overrightarrow{AB} + \\overrightarrow{CB} = \\overrightarrow{AC}$"
+     ],
+     "explication": "Chasles : l’extrémité du premier vecteur est l’origine du second. $\\overrightarrow{AB} - \\overrightarrow{AC} = \\overrightarrow{AB} + \\overrightarrow{CA} = \\overrightarrow{CB}$, pas $\\overrightarrow{BC}$.",
+     "difficulte": "easy",
+     "cible": "Programme : relation de Chasles.",
+     "theoremes": [
+      "Relation de Chasles"
+     ]
+    },
+    {
+     "question": "Pour tous points $A$, $B$ et $M$, que vaut $\\overrightarrow{MA} - \\overrightarrow{MB} + \\overrightarrow{AB}$ ?",
+     "bonne": "$\\vec{0}$",
+     "distracteurs": [
+      "$2\\,\\overrightarrow{AB}$",
+      "$2\\,\\overrightarrow{MA}$",
+      "$\\overrightarrow{MB}$"
+     ],
+     "explication": "$\\overrightarrow{MA} - \\overrightarrow{MB} = \\overrightarrow{MA} + \\overrightarrow{BM} = \\overrightarrow{BA}$, puis $\\overrightarrow{BA} + \\overrightarrow{AB} = \\vec{0}$. Le piège : écrire $\\overrightarrow{MA} - \\overrightarrow{MB} = \\overrightarrow{AB}$ (on obtient alors $2\\,\\overrightarrow{AB}$).",
+     "difficulte": "medium",
+     "cible": "Programme : relation de Chasles avec une différence.",
+     "theoremes": [
+      "Relation de Chasles"
+     ]
+    },
+    {
+     "question": "$I$ est le milieu de $[AB]$ et $M$ un point quelconque. Laquelle de ces égalités est vraie ?",
+     "bonne": "$\\overrightarrow{MA} + \\overrightarrow{MB} = 2\\,\\overrightarrow{MI}$",
+     "distracteurs": [
+      "$\\overrightarrow{MA} + \\overrightarrow{MB} = \\overrightarrow{MI}$",
+      "$\\overrightarrow{MA} + \\overrightarrow{MB} = 2\\,\\overrightarrow{IM}$",
+      "$\\overrightarrow{MA} - \\overrightarrow{MB} = 2\\,\\overrightarrow{MI}$"
+     ],
+     "explication": "Avec Chasles : $\\overrightarrow{MA} + \\overrightarrow{MB} = 2\\,\\overrightarrow{MI} + \\overrightarrow{IA} + \\overrightarrow{IB}$, et $\\overrightarrow{IA} + \\overrightarrow{IB} = \\vec{0}$ car $I$ est le milieu. $\\overrightarrow{IM}$ a le sens opposé.",
+     "difficulte": "medium",
+     "cible": "Programme : caractérisation vectorielle du milieu.",
+     "theoremes": [
+      "Relation de Chasles"
+     ]
+    },
+    {
+     "question": "Soit $G$ le point tel que $\\overrightarrow{GA} + 2\\,\\overrightarrow{GB} = \\vec{0}$. Alors :",
+     "bonne": "$\\overrightarrow{AG} = \\dfrac{2}{3}\\,\\overrightarrow{AB}$",
+     "distracteurs": [
+      "$\\overrightarrow{AG} = \\dfrac{1}{3}\\,\\overrightarrow{AB}$",
+      "$\\overrightarrow{AG} = 2\\,\\overrightarrow{AB}$",
+      "$\\overrightarrow{AG} = -\\dfrac{2}{3}\\,\\overrightarrow{AB}$"
+     ],
+     "explication": "On écrit $\\overrightarrow{GB} = \\overrightarrow{GA} + \\overrightarrow{AB}$ : $3\\,\\overrightarrow{GA} + 2\\,\\overrightarrow{AB} = \\vec{0}$, d’où $\\overrightarrow{AG} = \\dfrac{2}{3}\\,\\overrightarrow{AB}$. $G$ est plus proche de $B$, qui a le plus grand coefficient.",
+     "difficulte": "hard",
+     "cible": "Programme : construire un point défini par une égalité vectorielle.",
+     "theoremes": [
+      "Relation de Chasles"
+     ]
+    },
+    {
+     "question": "Deux vecteurs $\\vec{u}$ et $\\vec{v}$, avec $\\vec{v} \\neq \\vec{0}$, sont colinéaires si et seulement si :",
+     "bonne": "il existe un réel $k$ tel que $\\vec{u} = k\\,\\vec{v}$.",
+     "distracteurs": [
+      "il existe un réel $k$ non nul tel que $\\vec{u} = k\\,\\vec{v}$.",
+      "pour tout réel $k$, $\\vec{u} = k\\,\\vec{v}$.",
+      "$\\vec{u}$ et $\\vec{v}$ ont la même longueur."
+     ],
+     "explication": "Le vecteur nul est colinéaire à tout vecteur : il correspond à $k = 0$. Exiger $k \\neq 0$ l’exclurait. Deux vecteurs de même longueur peuvent avoir des directions différentes.",
+     "difficulte": "easy",
+     "cible": "Programme : définition de la colinéarité (le cas $k = 0$).",
+     "theoremes": [
+      "Condition de colinéarité de deux vecteurs"
+     ]
+    },
+    {
+     "question": "Soient $\\vec{u} = 2\\,\\overrightarrow{AB} - \\overrightarrow{AC}$ et $\\vec{v} = \\overrightarrow{AC} - 2\\,\\overrightarrow{AB}$. Alors :",
+     "bonne": "$\\vec{v} = -\\vec{u}$ : ils sont colinéaires, quels que soient $A$, $B$ et $C$.",
+     "distracteurs": [
+      "$\\vec{v} = \\vec{u}$ : ils sont égaux, quels que soient $A$, $B$ et $C$.",
+      "Ils ne sont colinéaires que si $A$, $B$ et $C$ sont alignés.",
+      "Ils ne sont colinéaires que si $\\overrightarrow{AB} = \\overrightarrow{AC}$."
+     ],
+     "explication": "$\\vec{v} = -(2\\,\\overrightarrow{AB} - \\overrightarrow{AC}) = -\\vec{u}$ : c’est vrai pour tous points. Deux vecteurs opposés sont colinéaires ($k = -1$).",
+     "difficulte": "medium",
+     "cible": "Programme : reconnaître deux vecteurs colinéaires sans figure.",
+     "theoremes": [
+      "Condition de colinéarité de deux vecteurs"
+     ]
+    },
+    {
+     "question": "Trois points distincts $A$, $B$ et $C$ sont alignés si et seulement si :",
+     "bonne": "$\\overrightarrow{AB}$ et $\\overrightarrow{AC}$ sont colinéaires.",
+     "distracteurs": [
+      "$\\overrightarrow{AB}$ et $\\overrightarrow{AC}$ ont la même longueur.",
+      "$\\overrightarrow{AB} + \\overrightarrow{AC} = \\vec{0}$.",
+      "$\\overrightarrow{AB}$ et $\\overrightarrow{BC}$ sont égaux."
+     ],
+     "explication": "Alignés équivaut à $\\overrightarrow{AC} = k\\,\\overrightarrow{AB}$. $\\overrightarrow{AB} + \\overrightarrow{AC} = \\vec{0}$ (ou $\\overrightarrow{AB} = \\overrightarrow{BC}$) caractérise un milieu : c’est un cas particulier, pas une condition nécessaire.",
+     "difficulte": "medium",
+     "cible": "Programme : alignement et colinéarité.",
+     "theoremes": [
+      "Condition de colinéarité de deux vecteurs"
+     ]
+    },
+    {
+     "question": "Laquelle de ces conditions garantit que les droites $(AB)$ et $(CD)$ sont parallèles ?",
+     "bonne": "$\\overrightarrow{CD} = -3\\,\\overrightarrow{AB}$",
+     "distracteurs": [
+      "$AB = CD$",
+      "$\\overrightarrow{AC}$ et $\\overrightarrow{BD}$ sont colinéaires.",
+      "$\\overrightarrow{AB} + \\overrightarrow{CD} = \\overrightarrow{AD}$"
+     ],
+     "explication": "$(AB) \\parallel (CD)$ équivaut à $\\overrightarrow{AB}$ et $\\overrightarrow{CD}$ colinéaires ; un coefficient négatif convient. Des longueurs égales ne disent rien de la direction. $\\overrightarrow{AB} + \\overrightarrow{CD} = \\overrightarrow{AD}$ revient à $C = B$, sans parallélisme imposé.",
+     "difficulte": "hard",
+     "cible": "Programme : parallélisme de droites et colinéarité.",
+     "theoremes": [
+      "Condition de colinéarité de deux vecteurs"
+     ]
+    }
+   ]
+  }
+ ]
+}

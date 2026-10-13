@@ -22,7 +22,7 @@ class SkillAssessmentSerializer(serializers.ModelSerializer):
     class Meta:
         model = SkillAssessment
         fields = ['id', 'chapter', 'chapter_name', 'subject_name', 'score', 'max_score', 'level', 'time_spent',
-                  'previous_score', 'previous_max', 'attempts', 'hub_url', 'completed_at']
+                  'previous_score', 'previous_max', 'attempts', 'hub_url', 'par_theoreme', 'completed_at']
 
     def get_subject_name(self, obj):
         if obj.chapter and obj.chapter.subject:

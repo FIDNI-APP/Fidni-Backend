@@ -838,6 +838,7 @@ def live(request):
     (signalements, corrections à vérifier, travaux de l'IA) et l'activité récente de tous les membres réels.
     """
     from apps.ia.models import IAJob
+    from apps.skilliq.models import SkillQuestion
     today = timezone.localdate()
     yesterday = today - timedelta(days=1)
     since = timezone.make_aware(datetime.combine(yesterday, time.min))
@@ -870,6 +871,8 @@ def live(request):
             'a_verifier': Content.objects.filter(json_content__a_verifier=True).count(),
             'ia_en_cours': IAJob.objects.filter(status__in=[IAJob.EN_ATTENTE, IAJob.EN_COURS]).count(),
             'ia_a_relire': IAJob.objects.filter(status=IAJob.PRET).count(),
+            # Questions de quiz rédigées par l'IA, invisibles des élèves tant qu'elles ne sont pas validées.
+            'quiz_a_relire': SkillQuestion.objects.filter(a_relire=True).count(),
         },
         'activity': recent_activity(real_ids, 20),
     })

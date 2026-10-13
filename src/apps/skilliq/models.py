@@ -26,6 +26,17 @@ class SkillQuestion(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     is_active = models.BooleanField(default=True)
 
+    # Questions importées (13/10/2026, commande quiz_importer) : brouillon « à relire », jamais montré aux
+    # élèves tant que l'administrateur ne l'a pas validé ; `motif` dit pourquoi elle a été écrite (admin seulement).
+    SOURCE_CHOICES = [('', 'Administrateur'), ('claude', 'Rédigée par Claude')]
+    source = models.CharField(max_length=8, choices=SOURCE_CHOICES, blank=True, default='')
+    a_relire = models.BooleanField(default=False)
+    motif = models.TextField(blank=True, default='')
+    # Théorèmes (ou propriétés) qu'évalue la question (13/10/2026) : bilan « maîtrisé / à revoir » par théorème à
+    # la fin du quiz, tirage qui couvre chaque théorème, et filtre de niveau (un théorème hors programme du niveau
+    # de l'élève — arc tangente en PC/SVT — écarte la question).
+    theorems = models.ManyToManyField('caracteristics.Theorem', blank=True, related_name='skill_questions')
+
     class Meta:
         app_label = 'skilliq'
         ordering = ['difficulty', 'id']
@@ -62,6 +73,9 @@ class SkillAssessment(models.Model):
     previous_score = models.PositiveSmallIntegerField(null=True, blank=True)
     previous_max = models.PositiveSmallIntegerField(null=True, blank=True)
     attempts = models.PositiveSmallIntegerField(default=1)
+    # Bilan du dernier passage par théorème (13/10/2026) : [{id, name, justes, total, pct}], du moins maîtrisé
+    # au mieux maîtrisé ; « non_evalues » à part. Vide pour les passages plus anciens.
+    par_theoreme = models.JSONField(default=dict, blank=True)
 
     completed_at = models.DateTimeField(auto_now=True)
     created_at = models.DateTimeField(auto_now_add=True)
