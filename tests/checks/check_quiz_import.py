@@ -285,5 +285,28 @@ check('admin : changer le théorème d’une question', r.status_code == 200
 check('admin : théorème d’un autre chapitre refusé', cl.patch(f'/api/pilotage/quiz/question/{deux.id}/',
                                                              {'theoremes': [autre.id]}, format='json').status_code == 400)
 
+# ---------------------------------------------------------------- correction après chaque question, minuteur
+r = el.get(f'/api/skill-assessments/quiz/{lim.id}/')
+check('minuteur : 1 min par question', r.data.get('duree_secondes') == 60 * len(r.data['questions']), r.data.get('duree_secondes'))
+check('la bonne réponse n’est jamais dans le quiz lui-même', all('correct_answer' not in x for x in r.data['questions']))
+une = SkillQuestion.objects.get(pk=r.data['questions'][0]['id'])
+r = el.post(f'/api/skill-assessments/verifier/{une.id}/', {'answer': 1}, format='json')
+check('correction d’une question : bonne réponse, explication, théorèmes', r.status_code == 200
+      and r.data['correct_answer'] == 0 and r.data['is_correct'] is False and r.data['theoremes'], r.data)
+check('correction : réponse hors des choix refusée',
+      el.post(f'/api/skill-assessments/verifier/{une.id}/', {'answer': 7}, format='json').status_code == 400)
+check('correction : réservée aux connectés',
+      APIClient().post(f'/api/skill-assessments/verifier/{une.id}/', {'answer': 0}, format='json').status_code in (401, 403))
+SkillQuestion.objects.filter(pk=une.pk).update(a_relire=True)
+check('correction : jamais une question à relire',
+      el.post(f'/api/skill-assessments/verifier/{une.id}/', {'answer': 0}, format='json').status_code == 404)
+SkillQuestion.objects.filter(pk=une.pk).update(a_relire=False)
+servies = tires(el)
+reponses = {str(x.id): 0 for x in servies[:4]} | {str(x.id): -1 for x in servies[4:]}
+r = el.post(f'/api/skill-assessments/submit/{lim.id}/', {'answers': reponses, 'time_spent': 600}, format='json')
+check('temps écoulé : les questions sans réponse (-1) comptent comme fausses', r.status_code == 200
+      and sum(c['is_correct'] for c in r.data['correction']) == 4 and len(r.data['correction']) == 10
+      and r.data['score'] < r.data['max_score'], (r.status_code, r.data.get('score')))
+
 print(f'\n{sum(results)}/{len(results)} vérifications réussies')
 sys.exit(0 if all(results) else 1)

@@ -48,7 +48,7 @@ class SkillAssessmentSerializer(serializers.ModelSerializer):
 class QuizSubmissionSerializer(serializers.Serializer):
     """Serializer for quiz submission"""
     answers = serializers.DictField(
-        child=serializers.IntegerField(min_value=0),
+        child=serializers.IntegerField(min_value=-1),  # -1 : sans réponse (temps écoulé)
         help_text="Question ID -> selected option index"
     )
     time_spent = serializers.IntegerField(min_value=0, required=False, default=0)

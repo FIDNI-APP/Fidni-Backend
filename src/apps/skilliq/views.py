@@ -13,6 +13,8 @@ from .serializers import (
     QuizSubmissionSerializer
 )
 
+SECONDES_PAR_QUESTION = 60  # minuteur du quiz (côté élève, en pause pendant la correction de chaque question)
+
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
@@ -39,7 +41,9 @@ def get_quiz(request, chapter_id):
     serializer = SkillQuestionSerializer(questions, many=True)
     return Response({
         'chapter_id': chapter_id,
-        'questions': serializer.data
+        'questions': serializer.data,
+        # Minuteur façon concours (13/10/2026) : 1 min par question, en pause pendant la correction de chacune.
+        'duree_secondes': SECONDES_PAR_QUESTION * len(questions),
     })
 
 
@@ -112,6 +116,22 @@ def submit_quiz(request, chapter_id):
         for q in questions
     ]
     return Response(result)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def check_answer(request, question_id):
+    """Correction d'une question dès que l'élève a répondu (13/10/2026) : {"answer": i} → bonne réponse, explication,
+    théorèmes. Le score reste calculé à l'envoi du quiz (submit_quiz) ; une question à relire n'est jamais corrigée ici."""
+    q = SkillQuestion.objects.filter(pk=question_id, is_active=True, a_relire=False).prefetch_related('theorems').first()
+    if q is None:
+        return Response({'error': 'Question introuvable'}, status=status.HTTP_404_NOT_FOUND)
+    answer = request.data.get('answer')
+    if not isinstance(answer, int) or isinstance(answer, bool) or not 0 <= answer < len(q.options):
+        return Response({'answer': 'Réponse invalide'}, status=status.HTTP_400_BAD_REQUEST)
+    return Response({'id': q.id, 'your_answer': answer, 'correct_answer': q.correct_answer,
+                     'is_correct': answer == q.correct_answer, 'explanation': q.explanation,
+                     'theoremes': [th.name for th in q.theorems.all()]})
 
 
 @api_view(['GET'])
