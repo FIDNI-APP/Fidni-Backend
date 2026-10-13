@@ -62,6 +62,12 @@ ACTIONS = {
     'quiz-dernier-resultat',  # dernier résultat d'un quiz rouvert (correction comprise)
     'quiz-repris',        # quiz commencé, repris là où on s'était arrêté
     'quiz-bandeau',       # accueil : « Essayer » du bandeau « Nouveau · Quiz par chapitre »
+    'prog-periode',       # Ma progression (tableau de bord) : période choisie
+    'prog-tuile',         # Ma progression : tuile choisie (graphique affiché)
+    'prog-jour',          # Ma progression : détail d'un jour ouvert
+    'prog-temps-detail',  # Ma progression : « Mon temps » déplié (chapitre ou contenu)
+    'prog-point-faible',  # Ma progression : un point faible ouvert (questions à refaire) ou « S'entraîner »
+    'prog-onglet',        # Ma progression : onglet choisi (points faibles, chapitres, temps)
     'quiz-decouvert',     # première ouverture de la page des quiz (sur cet appareil)
     'mode-revision',      # liste de révision ouverte en mode révision
     'barre-mobile',       # barre d'onglets en bas sur téléphone
