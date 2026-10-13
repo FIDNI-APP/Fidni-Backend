@@ -6,14 +6,15 @@ chiffres enregistrés :
   = ½), à partir de 3 questions ; avec un quiz Skill IQ du chapitre : 60 % auto-évaluation, 40 %
   quiz (le quiz seul s'il n'y a pas assez de questions). État : maîtrisé (≥ 80 %), en bonne voie
   (≥ 60 %), à renforcer (< 60 %), commencé (pas encore assez de données), pas commencé ;
-- points forts / à renforcer = notions des questions (≥ 3 évaluées) et chapitres du Skill IQ ;
+- points forts / à renforcer = théorèmes des questions (≥ 3 évaluées, meta.theorems depuis le 13/10/2026) et
+  chapitres du Skill IQ ;
 - évolution = questions réussies et exercices réussis cumulés depuis le début, notes d'examen ;
 - temps d'étude = journal jour par jour (StudyTimeDay) et objectif quotidien du profil.
 Chaque chapitre porte `hub_url` : sa page d'exercices au niveau de l'élève (/exercises/niveau/2eme-bac-sm/
 limites-et-continuite), où mène « S'entraîner » ; None si le chapitre n'est pas de son niveau.
 Programme officiel (11/10/2026) : carte = programme.chapitres_du_niveau() (ordre d'enseignement) ; une question
-d'un contenu à plusieurs niveaux compte pour le chapitre de sa notion qui existe au niveau de l'élève
-(_question_chapters, `allowed`).
+d'un contenu à plusieurs chapitres compte pour les chapitres de ses théorèmes (13/10/2026 : plus les notions), au
+niveau de l'élève (_question_chapters, `allowed`).
 """
 from bisect import bisect_left
 from collections import Counter, defaultdict
@@ -30,7 +31,7 @@ from rest_framework.response import Response
 from apps.caracteristics.hubs import hub_url
 from apps.caracteristics.programme import chapitres_du_niveau
 from apps.caracteristics.models import Chapter
-from apps.caracteristics.notions import NOTIONS, TRANSVERSAL, notion_label
+from apps.caracteristics import theoremes as TH
 from apps.interactions.models import AssessmentEvent, Complete, QuestionProgress, StudyTimeDay
 from apps.skilliq.models import SkillAssessment, SkillQuestion
 from apps.things.models import Content
@@ -43,28 +44,13 @@ MIN_QUESTIONS = 3          # en dessous, pas encore de pourcentage de maîtrise 
 MASTERED, GOOD = 80, 60    # seuils des états
 SELF_WEIGHT = 0.6          # auto-évaluation face au quiz Skill IQ
 TIME_DAYS = 28             # barres « jour par jour » (4 semaines)
-# Chapitre de chaque notion (référentiel rangé par chapitre) : une question d'un examen à plusieurs
-# chapitres compte pour celui de sa notion, pas pour tous.
-NOTION_CHAPTER = {slug: name for name, items in NOTIONS.items() if name != TRANSVERSAL for slug in items}
-
-
-def _same_chapter(a, b):
-    # « Dérivation » (1ère Bac) et « Dérivation et étude des fonctions » (2ème Bac) : même chapitre. Seuls préfixes
-    # restants entre les noms du programme : Arithmétique ⊂ Arithmétique dans ℕ / dans ℤ, Dérivation ⊂ Dérivation
-    # et étude des fonctions.
-    a, b = a.lower(), b.lower()
-    return a == b or a.startswith(b) or b.startswith(a)
-
-
-def _question_chapters(content_chapters, skills, allowed=None):
-    """Chapitres (ids) d'une question : ceux de ses notions parmi ceux du contenu (nom exact d'abord, préfixe
-    seulement à défaut), sinon tous. `allowed` (ids des chapitres du niveau de l'élève) : parmi ceux-là d'abord,
-    sinon les chapitres du contenu qui y sont (contenu TC + 1ère, notion du TC, élève de 1ère : le chapitre de
-    1ère), sinon comme sans niveau."""
-    named = {NOTION_CHAPTER[s].lower() for s in skills if s in NOTION_CHAPTER}
-    hit = [cid for cid, name in content_chapters if name.lower() in named]
-    if not hit:
-        hit = [cid for cid, name in content_chapters if any(_same_chapter(name, n) for n in named)]
+def _question_chapters(content_chapters, theoremes, allowed=None):
+    """Chapitres (ids) d'une question : ceux du contenu où ses théorèmes sont au programme (une question d'un
+    examen à plusieurs chapitres compte pour celui de ses théorèmes, pas pour tous), sinon tous. `allowed` (ids des
+    chapitres du niveau de l'élève) : parmi ceux-là d'abord, sinon les chapitres du contenu qui y sont, sinon comme
+    sans niveau."""
+    des_th = TH.chapitres(theoremes) if theoremes else set()
+    hit = [cid for cid, _name in content_chapters if cid in des_th]
     if allowed is not None:
         mine = [cid for cid in hit if cid in allowed] or [cid for cid, _ in content_chapters if cid in allowed]
         if mine:
@@ -111,40 +97,42 @@ def _collect(user, journal=False):
     contents = {c.id: c for c in Content.objects.filter(id__in=ids).only('id', 'type', 'title', 'updated_at', 'difficulty')
                 .prefetch_related('chapters')}
     full = question_full(contents.values())
-    index = {cid: [(path, points, skills) for path, points, skills, _lvl in rows] for cid, rows in full.items()}
+    index = {cid: [(path, points, noms) for path, points, noms, _lvl in rows] for cid, rows in full.items()}
     return SimpleNamespace(
         qp=qp, completes=completes, time_rows=time_rows, quizzes=quizzes, contents=contents, index=index,
         chapters_of={cid: [(ch.id, ch.name) for ch in c.chapters.all()] for cid, c in contents.items()},
-        skills_of={cid: {path: skills for path, _, skills in index.get(cid, [])} for cid in contents},
+        theoremes_of={cid: {path: noms for path, _, noms in index.get(cid, [])} for cid in contents},
         levels_of={cid: {path: lvl for path, _pts, _sk, lvl in rows} for cid, rows in full.items()},
         events=events,
     )
 
 
 def _per_chapter(d, allowed=None):
-    """Par chapitre (réussite des questions, notions, temps, contenus réussis / à revoir) et par notion.
+    """Par chapitre (réussite des questions, théorèmes, temps, contenus réussis / à revoir) et par théorème.
     `allowed` : ids des chapitres du niveau de l'élève (routage des questions, voir _question_chapters)."""
     chap = defaultdict(lambda: {'n': 0, 'score': 0.0, 'seconds': 0, 'last': None,
-                                'notions': defaultdict(lambda: [0, 0.0]), 'done': set(), 'review': []})
-    notions = defaultdict(lambda: {'n': 0, 'score': 0.0, 'chapters': Counter()})
+                                'theoremes': defaultdict(lambda: [0, 0.0]), 'done': set(), 'review': []})
+    theoremes = defaultdict(lambda: {'n': 0, 'score': 0.0, 'chapters': Counter()})
     for r in d.qp:
         score = WEIGHT.get(r['status'], 0)
         day = _local(r['assessed_at'])
-        skills = d.skills_of.get(r['object_id'], {}).get(r['question_path'], [])
-        mine = _question_chapters(d.chapters_of.get(r['object_id'], []), skills, allowed)
+        noms = d.theoremes_of.get(r['object_id'], {}).get(r['question_path'], [])  # théorèmes de la question
+        mine = _question_chapters(d.chapters_of.get(r['object_id'], []), noms, allowed)
         for ch in mine:
             row = chap[ch]
             row['n'] += 1
             row['score'] += score
             row['last'] = max(day, row['last']) if row['last'] else day
-        for slug in skills:
-            nrow = notions[slug]
+        for nom in noms:
+            nrow = theoremes[nom]
             nrow['n'] += 1
             nrow['score'] += score
             for ch in mine:
+                if not TH.du_chapitre(nom, ch):
+                    continue  # théorème d'un autre chapitre du contenu
                 nrow['chapters'][ch] += 1
-                chap[ch]['notions'][slug][0] += 1
-                chap[ch]['notions'][slug][1] += score
+                chap[ch]['theoremes'][nom][0] += 1
+                chap[ch]['theoremes'][nom][1] += score
     for r in d.time_rows:
         for ch, _ in d.chapters_of.get(r['object_id'], []):
             chap[ch]['seconds'] += r['seconds']
@@ -158,11 +146,11 @@ def _per_chapter(d, allowed=None):
                 chap[ch]['done'].add(c.id)
             elif r['status'] == 'review' and len(chap[ch]['review']) < 3:
                 chap[ch]['review'].append({'id': c.id, 'title': c.title, 'url': f'/{TYPE_PATH.get(c.type, "exercises")}/{c.id}'})
-    return chap, notions
+    return chap, theoremes
 
 
 def _chapter_entries(chapter_list, chap, quizzes, level):
-    """Une entrée par chapitre : état, maîtrise, notions les mieux / moins réussies, quiz, contenus."""
+    """Une entrée par chapitre : état, maîtrise, théorèmes les mieux / moins réussis, quiz, contenus."""
     counts = Counter(Content.chapters.through.objects.filter(
         chapter_id__in=[c.id for c in chapter_list], content__type__in=('exercise', 'exam'),
         **({'content__class_levels': level} if level else {})).values_list('chapter_id', flat=True))
@@ -182,10 +170,10 @@ def _chapter_entries(chapter_list, chap, quizzes, level):
         else:
             mastery = self_pct if self_pct is not None else quiz_pct
         touched = bool(row and (row['n'] or row['seconds'] or row['done'])) or quiz is not None
-        ranked = sorted(((slug, n, _pct(s, n)) for slug, (n, s) in (row['notions'].items() if row else []) if n >= 2),
+        ranked = sorted(((nom, n, _pct(s, n)) for nom, (n, s) in (row['theoremes'].items() if row else []) if n >= 2),
                         key=lambda x: (-x[2], -x[1]))
-        best = [{'label': notion_label(s), 'pct': p, 'questions': n} for s, n, p in ranked if p >= GOOD][:3]
-        worst = [{'label': notion_label(s), 'pct': p, 'questions': n} for s, n, p in reversed(ranked) if p < GOOD][:3]
+        best = [{'label': s, 'pct': p, 'questions': n} for s, n, p in ranked if p >= GOOD][:3]
+        worst = [{'label': s, 'pct': p, 'questions': n} for s, n, p in reversed(ranked) if p < GOOD][:3]
         chapters.append({
             'id': ch.id, 'name': ch.name, 'subfield': ch.subfield.name if ch.subfield else 'Autres',
             'status': _status(mastery, touched), 'mastery': mastery, 'self_pct': self_pct,
@@ -195,7 +183,7 @@ def _chapter_entries(chapter_list, chap, quizzes, level):
             'seconds': row['seconds'] if row else 0,
             'contents': counts.get(ch.id, 0), 'done': len(row['done']) if row else 0,
             'review': row['review'] if row else [],
-            'notions': {'best': best, 'worst': worst},
+            'theoremes': {'best': best, 'worst': worst},  # théorèmes les mieux / moins réussis du chapitre
             'last_at': row['last'].isoformat() if row and row['last'] else None,
             'hub_url': hub_url('exercises', level, ch) if ch.id in in_level else None,
         })
@@ -236,10 +224,10 @@ def progression(request):
     coeur = maitrise.evaluer(user, level, d)
     chapters = coeur['chapters']
     programme = chapitres_du_niveau(level) if level else None
-    chap, notions = _per_chapter(d, {ch.id for ch in programme} if level else None)
+    chap, theoremes = _per_chapter(d, {ch.id for ch in programme} if level else None)
     by_id = {c['id']: c for c in chapters}
 
-    # ── Points forts / à renforcer : notions (≥ 3 questions), puis chapitres du Skill IQ sans notions.
+    # ── Points forts / à renforcer : théorèmes (≥ 3 questions), puis chapitres du Skill IQ sans auto-évaluation.
     def item(label, pct, chapter_id, source, questions=None):
         ch = by_id.get(chapter_id)
         return {'label': label, 'pct': pct, 'chapter_id': chapter_id if ch else None,
@@ -247,10 +235,10 @@ def progression(request):
                 'url': f'/exercises?chapters={chapter_id}' if chapter_id else '/exercises',
                 'hub_url': ch['hub_url'] if ch else None}
     rated = []
-    for slug, row in notions.items():
+    for nom, row in theoremes.items():
         if row['n'] >= MIN_QUESTIONS:
             main = row['chapters'].most_common(1)[0][0] if row['chapters'] else None
-            rated.append(item(notion_label(slug), _pct(row['score'], row['n']), main, 'notion', row['n']))
+            rated.append(item(nom, _pct(row['score'], row['n']), main, 'theoreme', row['n']))
     for ch_id, quiz in quizzes.items():
         if ch_id in by_id and by_id[ch_id]['self_pct'] is None and quiz.max_score:
             rated.append(item(by_id[ch_id]['name'], _pct(quiz.score, quiz.max_score), ch_id, 'skilliq'))

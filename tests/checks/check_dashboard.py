@@ -47,9 +47,9 @@ u.profile.save()
 ct = ContentType.objects.get_for_model(Content)
 
 
-def exo(title, n_questions, skills):
+def exo(title, n_questions, theoremes):
     blocks = [{'id': f'q{i}', 'type': 'question', 'content': {'type': 'text', 'html': 'Q'},
-               'meta': {'skills': skills}} for i in range(1, n_questions + 1)]
+               'meta': {'theorems': theoremes}} for i in range(1, n_questions + 1)]
     c = Content.objects.create(type='exercise', title=title, author=u, subject=subject,
                                json_content={'version': '2.1', 'blocks': blocks})
     c.class_levels.add(level)
@@ -57,8 +57,8 @@ def exo(title, n_questions, skills):
     return c
 
 
-a = exo('Commencé', 4, ['tvi'])
-b = exo('À revoir', 2, ['arctan'])
+a = exo('Commencé', 4, ['Théorème des valeurs intermédiaires (TVI)'])
+b = exo('À revoir', 2, ['Fonction arc tangente'])
 now = timezone.now()
 
 
@@ -101,11 +101,13 @@ check('page de niveau des exercices', d['level_hub_url'] == '/exercises/niveau/2
 lim = next(c for c in d['chapters'] if c['name'] == 'Limites et continuité')
 check('chapitre : 4 questions, 25 % réussies, 4 contenus', (lim['assessed'], lim['success_pct'], lim['contents']) == (4, 25, 4), lim)
 check('couverture : 1 chapitre sur 13 (programme du 2ème Bac SM)', d['coverage'] == {'total': 13, 'touched': 1}, d['coverage'])
-check('notions faibles avec libellés (arctan 0 %, tvi 50 %)',
-      [(n['slug'], n['label'], n['mastery_pct']) for n in d['weak_notions']]
-      == [('arctan', 'Fonction arc tangente', 0), ('tvi', 'Théorème des valeurs intermédiaires', 50)], d['weak_notions'])
-check('notions faibles : chapitre de la notion (lien vers Ma progression)',
-      all(n['chapter_id'] == limites.id for n in d['weak_notions']), d['weak_notions'])
+check('théorèmes faibles (arc tangente 0 %, TVI 50 %)',
+      [(n['name'], n['label'], n['mastery_pct']) for n in d['weak_theorems']]
+      == [('Fonction arc tangente', 'Fonction arc tangente', 0), ('Théorème des valeurs intermédiaires (TVI)', 'Théorème des valeurs intermédiaires (TVI)', 50)],
+      d['weak_theorems'])
+check('théorèmes faibles : chapitre du théorème (lien vers Ma progression)',
+      all(n['chapter_id'] == limites.id for n in d['weak_theorems']), d['weak_theorems'])
+check('plus de « weak_notions »', 'weak_notions' not in d, list(d))
 check('un visiteur n’y a pas accès', APIClient().get('/api/dashboard/overview/').status_code in (401, 403))
 other = User.objects.create_user('autre', 'o@x.fr', 'Motdepasse-solide-42')
 cl2 = APIClient()
@@ -144,20 +146,20 @@ check('Skill IQ : score précédent relu (mes quiz, quiz du chapitre)', len(mine
       and mine[0]['attempts'] == 2 and mine[0]['hub_url'] and again['previous_max'] == 3 and again['attempts'] == 2,
       (mine, again))
 
-# Notion travaillée dans un chapitre hors de son programme : pas de lien vers Ma progression.
+# Théorème travaillé dans un chapitre hors de son programme : pas de lien vers Ma progression.
 tcs = ClassLevel.objects.get(name='Tronc commun Sciences')
 hors = Chapter.objects.filter(class_levels=tcs).exclude(class_levels=level).first()
 x = Content.objects.create(type='exercise', title='Hors programme', author=u, subject=subject,
                            json_content={'version': '2.1', 'blocks': [
                                {'id': f'q{i}', 'type': 'question', 'content': {'type': 'text', 'html': 'Q'},
-                                'meta': {'skills': ['notion-hors']}} for i in (1, 2)]})
+                                'meta': {'theorems': ['Critères de divisibilité']}} for i in (1, 2)]})
 x.class_levels.add(tcs)
 x.chapters.add(hors)
 assess(x, 'q1', 'failed', 0)
 assess(x, 'q2', 'failed', 0)
 cache.clear()
-hors_notion = next(n for n in cl.get('/api/dashboard/overview/').data['weak_notions'] if n['slug'] == 'notion-hors')
-check('notion hors programme : pas de chapitre', hors_notion['chapter_id'] is None, hors_notion)
+hors_th = next(n for n in cl.get('/api/dashboard/overview/').data['weak_theorems'] if n['name'] == 'Critères de divisibilité')
+check('théorème hors programme : pas de chapitre', hors_th['chapter_id'] is None, hors_th)
 
 # ── « Pour toi » de l'accueil (things/for_you.py) : ni réussis ni autre niveau, « à revoir » gardés,
 # raison de chaque choix ; un DS dans les 14 jours : seulement ses chapitres.

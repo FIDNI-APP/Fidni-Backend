@@ -44,7 +44,7 @@ Rien d'autre que ce bloc : pas de commentaire avant ni après.
 | `titre` | oui | ≤ 200 caractères, texte brut sans `$`. Exercice : titre **descriptif** du contenu (« Domaine de définition et prolongement par continuité en −3 »), jamais « Exercice 3 ». Devoir : « Devoir surveillé n° 1 — 2ème Bac SM (octobre 2024) ». |
 | `niveaux` | oui | liste de noms exacts de l'annexe A |
 | `chapitres` | oui | au moins un, noms exacts du niveau choisi (annexe A) |
-| `theoremes` | non | noms exacts de l'annexe C, seulement ceux réellement utilisés |
+| `theoremes` | non | noms exacts de l'annexe C utilisés par le contenu (ceux des questions s'y ajoutent d'eux-mêmes) |
 | `difficulte` | exercice, examen | `"facile"`, `"moyen"`, `"difficile"` |
 | `examen` | examen | `{"national": false, "duree_minutes": 120}` (durée si elle est indiquée ; sinon 120 pour un devoir surveillé et signale-le dans `doutes`) ; examen national : `{"national": true, "annee": 2023, "duree_minutes": 180}` |
 | `blocs` | exercice, examen | voir ci-dessous |
@@ -56,10 +56,10 @@ Ne mets **pas** les champs `source`, `credit`, `a_verifier`, `doublon_ok` : le s
 
 - `{"type": "partie", "titre": "Exercice 1", "points": 4}` — examen seulement ; la numérotation des questions repart à 1 dans chaque partie ; `points` facultatif mais, s'il est donné, il doit **égaler la somme** des points des questions de la partie.
 - `{"type": "contexte", "html": "…"}` — énoncé, données, figure, texte entre deux questions.
-- `{"type": "question", "html": "…", "points": 1.5, "solution": "…", "notions": ["…"]}`
-- avec sous-questions : `{"type": "question", "html": "…", "points": 3, "sous_questions": [{"html": "…", "points": 1, "solution": "…", "notions": ["…"]}, …]}` — alors **pas** de `solution` sur la question elle-même ; son `html` peut être vide si le document n'a que « 1) a- … b- … » ; son `points` (facultatif) égale la somme des sous-questions.
+- `{"type": "question", "html": "…", "points": 1.5, "solution": "…", "theoremes": ["…"]}`
+- avec sous-questions : `{"type": "question", "html": "…", "points": 3, "sous_questions": [{"html": "…", "points": 1, "solution": "…", "theoremes": ["…"]}, …]}` — alors **pas** de `solution` sur la question elle-même ; son `html` peut être vide si le document n'a que « 1) a- … b- … » ; son `points` (facultatif) égale la somme des sous-questions.
 
-Champs facultatifs d'une question sans sous-questions ou d'une sous-question : `notions` (1 à 3 identifiants de l'annexe B), `difficulte`, `indice` (HTML court), `erreurs_frequentes` (liste de textes). **Examen** : `difficulte` est attendue sur **chaque** question sans sous-questions et sur chaque sous-question ; le serveur en déduit le label de l'examen, pondéré par les points (voir §8).
+Champs facultatifs d'une question sans sous-questions ou d'une sous-question : `theoremes` (noms exacts de l'annexe C que la solution de cette question utilise ; liste vide pour une question de pur calcul), `difficulte`, `indice` (HTML court), `erreurs_frequentes` (liste de textes). **Examen** : `difficulte` est attendue sur **chaque** question sans sous-questions et sur chaque sous-question ; le serveur en déduit le label de l'examen, pondéré par les points (voir §8).
 
 Au moins une question par fiche. Un devoir noté sur 20 doit totaliser 20 points (sinon garde les points du document et signale-le dans `doutes`).
 
@@ -116,8 +116,8 @@ Forme exigée, **comme une copie d'élève excellent** :
 - **Chapitres** : noms **exacts** de l'annexe A, pour le niveau choisi (les homonymes comme « Suites numériques » existent dans plusieurs niveaux : c'est le niveau qui distingue). Choisis le chapitre dont les capacités (annexe D) correspondent à ce que la question fait travailler : en 2ème Bac SM, une loi de composition, un groupe, un anneau → « Structures algébriques », un sous-espace vectoriel, une base → « Espaces vectoriels », un calcul de primitives → « Fonctions primitives », un dénombrement au service d'une probabilité → « Probabilités » ; en 1ère Bac SM, cercle, distance d'un point à une droite → « Étude analytique du produit scalaire dans le plan », formules d'addition ou de transformation → « Trigonométrie (formules de transformation) », repère de l'espace → « Géométrie analytique de l'espace », produit vectoriel → « Produit vectoriel ».
 - **Difficulté** : à juger **par rapport à un élève du niveau qui découvre le chapitre** (pas pour un professeur, ni pour un élève qui a déjà tout révisé). `facile` (application directe du cours ; les exercices d'application d'un cours sont toujours `facile`), `moyen` (plusieurs étapes, une idée), `difficile` (raisonnement long ou astucieux, niveau Bac / concours).
 - **Examen** : donne aussi la `difficulte` de **chaque question** (même échelle). Le label de l'examen en est déduit, pondéré par les points : au moins 35 % des points en `difficile` → `difficile` ; au moins 60 % en `facile` → `facile` ; sinon `moyen`. Mets dans `difficulte` de la fiche le label que donne cette règle.
-- **Notions** : identifiants **exacts** de l'annexe B (liste fermée ; toute autre valeur est refusée). Choisis ce que la question fait réellement travailler.
-- **Théorèmes** : noms exacts de l'annexe C. Le chapitre d'un théorème utilisé doit figurer dans `chapitres`.
+- **Théorèmes d'une question** : noms **exacts** de l'annexe C (liste fermée ; toute autre valeur est refusée), seulement ceux que la solution de **cette** question utilise réellement (souvent 0 à 2) ; ne devine pas un théorème que la solution n'emploie pas. Ils remplacent les anciennes « notions » (le champ `notions` est refusé).
+- **Théorèmes du contenu** (`theoremes` de la fiche) : noms exacts de l'annexe C ; ceux des questions s'y ajoutent. Le chapitre d'un théorème utilisé doit figurer dans `chapitres`.
 
 ## 9. Figures
 
@@ -139,6 +139,6 @@ Mets dans `doutes` : texte, indice ou exposant illisible ; figure illisible ou a
 - Chaque `$` a son partenaire ; aucune balise dans une formule ; pas de `\(` ni `\[`.
 - Barème cohérent ; une solution par question ou sous-question ; chaque calcul revérifié.
 - Aucun résultat « Hors programme » du niveau (annexe D) ; outil hors programme imposé par l'énoncé : signalé dans `doutes`.
-- Niveaux, chapitres, notions, théorèmes : valeurs exactes des annexes.
+- Niveaux, chapitres, théorèmes (du contenu et de chaque question) : valeurs exactes des annexes.
 - Titres descriptifs, clés au bon format.
 - `doutes` complet.

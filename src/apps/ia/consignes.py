@@ -31,7 +31,6 @@ def _annexes(niveaux):
     from django.db.models import Prefetch
 
     from apps.caracteristics.models import Chapter, ClassLevel, Theorem
-    from apps.caracteristics.notions import NOTIONS
     from apps.caracteristics.programme import MATIERE, ORDRE_NATURE, annexe_d, chapitres_du_niveau
 
     lignes = ['## Annexe A — Niveaux et chapitres (noms exacts, dans l\'ordre du programme de chaque niveau)', '']
@@ -41,9 +40,7 @@ def _annexes(niveaux):
             nature = ORDRE_NATURE.get(lv.name)
             lignes.append(f'- **{lv.name}**' + (f' (ordre : {nature})' if nature else '') + ' : ' + ' · '.join(
                 f'{i}. {ch.name}' + (f' ({ch.subfield.name})' if ch.subfield else '') for i, ch in enumerate(chap, 1)))
-    lignes += ['', '## Annexe B — Notions autorisées (`identifiant` (libellé), rangées par chapitre)', '']
-    for chapitre, notions in NOTIONS.items():
-        lignes.append(f'- {chapitre} : ' + ' · '.join(f'`{k}` ({v})' for k, v in notions.items()))
+    # Annexe B (notions) supprimée le 13/10/2026 : chaque question porte ses théorèmes, pris dans l'annexe C.
     lignes += ['', f'## Annexe C — Théorèmes de {", ".join(niveaux)} (noms exacts, avec leurs chapitres)', '']
     theoremes = (Theorem.objects.filter(subject__name=MATIERE, class_levels__name__in=niveaux).distinct()
                  .prefetch_related(Prefetch('chapters', queryset=Chapter.objects.filter(subject__name=MATIERE)))

@@ -48,7 +48,7 @@ EXO = {
     'source': {'document': 'serie.pdf', 'pages': '1', 'origine': 'original'},
     'blocs': [
         {'type': 'contexte', 'html': '<p>Soit $f(x) = \\dfrac{x^2}{x-1}$ pour $x<1$ ou $x>1$.</p><p><img src="figures/courbe.png" alt="Courbe de f"></p>'},
-        {'type': 'question', 'html': '<p>Calculer $f\'(x)$.</p>', 'points': 2, 'notions': ['Dérivée'],
+        {'type': 'question', 'html': '<p>Calculer $f\'(x)$.</p>', 'points': 2, 'theoremes': ["dérivée d'une fonction composée"],
          'solution': '<p>$$f\'(x) = \\dfrac{x(x-2)}{(x-1)^2}$$</p>'},
         {'type': 'question', 'html': '<p>Étudier $f$.</p>', 'sous_questions': [
             {'html': '<p>Signe de $f\'$.</p>', 'points': 1.5, 'solution': '<p>Tableau de signes.</p>'},
@@ -139,15 +139,21 @@ check('mention de l’auteur trop longue refusée', 'credit' in errs(lambda f: f
 check('correction « à vérifier » conservée', importing.to_structure({**EXO, 'a_verifier': True}).get('a_verifier') is True
       and 'a_verifier' not in importing.to_structure(EXO))
 check('a_verifier : booléen exigé', 'a_verifier' in errs(lambda f: f.update(a_verifier='oui')))
-check('notions converties en identifiants', st['blocks'][1]['meta']['skills'] == ['derivee'], st['blocks'][1].get('meta'))
-check('notion hors référentiel refusée, avec la plus proche',
-      'derivee' in errs(lambda f: f['blocs'][1].update(notions=['derivation'])),
-      errs(lambda f: f['blocs'][1].update(notions=['derivation'])))
-from apps.caracteristics.models import Chapter  # noqa: E402
-from apps.caracteristics.notions import NOTION_INDEX  # noqa: E402
-unknown_chapters = {e['chapter'] for e in NOTION_INDEX.values() if e['chapter']} - set(Chapter.objects.values_list('name', flat=True))
-check('référentiel : chaque notion est rangée dans un chapitre de la taxonomie (ou transversale)',
-      not unknown_chapters and all(e['label'] for e in NOTION_INDEX.values()), sorted(unknown_chapters))
+check('théorèmes de la question : nom exact du programme (casse ignorée)',
+      st['blocks'][1]['meta']['theorems'] == ["Dérivée d'une fonction composée"] and 'skills' not in st['blocks'][1]['meta'],
+      st['blocks'][1].get('meta'))
+check('question sans théorème (calcul) : pas de clé theorems', 'theorems' not in (st['blocks'][2]['subQuestions'][0].get('meta') or {}))
+check('théorème inconnu refusé, avec le plus proche',
+      'Théorème des valeurs intermédiaires (TVI)' in errs(lambda f: f['blocs'][1].update(theoremes=['Theoreme des valeurs intermediaires'])),
+      errs(lambda f: f['blocs'][1].update(theoremes=['Theoreme des valeurs intermediaires'])))
+check('ancien nom de théorème accepté et traduit',
+      importing.to_structure({**EXO, 'blocs': [{**EXO['blocs'][1], 'theoremes': ['Théorème de Moivre']}]})['blocks'][0]['meta']['theorems']
+      == ['Formule de Moivre'] and not errs(lambda f: f['blocs'][1].update(theoremes=['Théorème de Moivre'])))
+check('« notions » refusé (remplacé par « theoremes »)', 'n’existe plus' in errs(lambda f: f['blocs'][1].update(notions=['derivee'])))
+check('theoremes : liste de noms exigée', 'liste de noms' in errs(lambda f: f['blocs'][1].update(theoremes='TVI')))
+from apps.caracteristics.models import Theorem  # noqa: E402
+manquants = set(importing.theoremes_programme().values()) - set(Theorem.objects.values_list('name', flat=True))
+check('chaque théorème du programme existe dans la base', not manquants, sorted(manquants))
 
 # ---------------------------------------------------------------- base de données et import
 work = tempfile.mkdtemp()
@@ -164,7 +170,9 @@ check('sous-domaine déduit du chapitre (Dérivation → Analyse)', [sf.name for
       [sf.name for sf in res['subfields']])
 e, w, res = importing.check_against_db({**EXO, 'chapitres': ['Limites et continuité'],
                                         'theoremes': ['Théorème des valeurs intermédiaires (TVI)']})
-check('TVI rattaché au chapitre « Limites et continuité »', e == [] and not any('théorème' in x for x in w), (e, w))
+check('TVI rattaché au chapitre « Limites et continuité »', e == [] and not any('TVI' in x for x in w), (e, w))
+check('théorème d’une question hors des chapitres indiqués : averti aussi',
+      any("Dérivée d'une fonction composée" in x for x in w), w)
 _, w, _ = importing.check_against_db({**EXO, 'theoremes': ['Loi binomiale']})
 check('théorème hors des chapitres indiqués : averti', any('Loi binomiale' in x for x in w), w)
 e, _, res = importing.check_against_db({**EXO, 'niveaux': ['2ème Bac PC'], 'chapitres': ['Limites et continuité']})
@@ -196,8 +204,9 @@ check('le contenu importé est servi par l’API', r.status_code == 200 and r.da
 names = [lv['name'] for lv in APIClient().get('/api/class-levels/?content_type=exercise').data]
 check('niveaux dans l’ordre du programme, même avec le décompte par type',
       names[:4] == ['Tronc commun Sciences', '1ère Bac SM', '2ème Bac SM', '2ème Bac PC/SVT'], names)
-r = APIClient().get('/api/skills/')
-check('/api/skills/ : tout le référentiel, avec libellés', len(r.data) == len(NOTION_INDEX) and all(x['label'] for x in r.data), len(r.data))
+check('/api/skills/ supprimé (plus de notions)', APIClient().get('/api/skills/').status_code == 404)
+check('import : théorèmes des questions ajoutés aux théorèmes du contenu', c.theorems.filter(name="Dérivée d'une fonction composée").exists(),
+      list(c.theorems.values_list('name', flat=True)))
 
 pk, display_id, old_att = c.pk, c.display_id, att.id
 EXO2 = copy.deepcopy(EXO)

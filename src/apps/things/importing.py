@@ -352,18 +352,18 @@ def _validate_blocks(blocks, kind, errors, warnings, images):
 
 
 def _validate_meta(q, where, errors):
-    notions = q.get('notions', [])
-    if not isinstance(notions, list) or any(not isinstance(x, str) or not x.strip() for x in notions):
-        errors.append(f'{where} : notions = liste de textes')
+    # Théorèmes de la question (13/10/2026, à la place des « notions ») : noms exacts du programme officiel
+    # (programme.py, annexe C de l'IA), anciens noms acceptés ; aucun pour une question purement calculatoire.
+    if 'notions' in q:
+        errors.append(f'{where} : « notions » n’existe plus, mets les théorèmes utilisés dans « theoremes »')
+    theoremes = q.get('theoremes', [])
+    if not isinstance(theoremes, list) or any(not isinstance(x, str) or not x.strip() for x in theoremes):
+        errors.append(f'{where} : theoremes = liste de noms de théorèmes')
     else:
-        # Référentiel fermé (apps/caracteristics/notions.py) : même notion = même identifiant partout.
-        from apps.caracteristics.notions import NOTION_INDEX, closest_notions
-        for n in notions:
-            if slugify(n) not in NOTION_INDEX:
-                close = closest_notions(n)
-                errors.append(f'{where} : notion inconnue « {n} »'
-                              + (f' (proche : {", ".join(close)})' if close else
-                                 ' — à ajouter dans backend/src/apps/caracteristics/notions.py'))
+        for nom in _theoremes_inconnus(theoremes):
+            close = difflib.get_close_matches(nom, list(theoremes_programme().values()), n=3, cutoff=0.5)
+            errors.append(f'{where} : théorème inconnu « {nom} »'
+                          + (f' (proche : {", ".join(close)})' if close else ' — liste : programme officiel (annexe C)'))
     if q.get('difficulte') is not None and q['difficulte'] not in DIFFICULTIES:
         errors.append(f'{where} : difficulte {sorted(DIFFICULTIES)}')
     if q.get('duree_secondes') is not None and not (isinstance(q['duree_secondes'], int) and q['duree_secondes'] > 0):
@@ -406,10 +406,52 @@ def _block(html: str, src_map: dict) -> dict:
     return {'type': 'text', 'html': escape_math_in_html(html)}
 
 
+def theoremes_programme():
+    """{nom en minuscules: nom exact} des théorèmes du programme officiel (sans la base)."""
+    from apps.caracteristics.theoremes import noms_programme
+    return noms_programme()
+
+
+def _theoremes_exacts(noms):
+    """Noms exacts du programme (casse ignorée, anciens noms traduits, retirés ôtés), sans doublon."""
+    from apps.caracteristics.programme import ALIAS_THEOREMES
+    from apps.caracteristics.theoremes import cle
+    prog = theoremes_programme()
+    alias = {cle(a): v for a, v in ALIAS_THEOREMES.items()}
+    out = []
+    for nom in noms or []:
+        for n in ([nom] if cle(nom) in prog else list(alias.get(cle(nom), ()))):
+            exact = prog.get(cle(n))
+            if exact and exact not in out:
+                out.append(exact)
+    return out
+
+
+def _theoremes_inconnus(noms):
+    from apps.caracteristics.programme import ALIAS_THEOREMES
+    from apps.caracteristics.theoremes import cle
+    prog, alias = theoremes_programme(), {cle(a) for a in ALIAS_THEOREMES}
+    return [n for n in noms if cle(n) not in prog and cle(n) not in alias]
+
+
+def theoremes_des_questions(fiche: dict) -> list:
+    """Tous les théorèmes des questions d'une fiche (noms exacts), dans l'ordre."""
+    out = []
+    for b in fiche.get('blocs') or []:
+        if not isinstance(b, dict):
+            continue
+        for q in [b] + list(b.get('sous_questions') or []):
+            for nom in _theoremes_exacts(q.get('theoremes') if isinstance(q, dict) else None):
+                if nom not in out:
+                    out.append(nom)
+    return out
+
+
 def _meta(q: dict) -> dict:
     meta = {}
-    if q.get('notions'):
-        meta['skills'] = [slugify(x) for x in q['notions']]
+    theoremes = _theoremes_exacts(q.get('theoremes'))
+    if theoremes:
+        meta['theorems'] = theoremes
     if q.get('difficulte'):
         meta['difficulty'] = DIFFICULTIES[q['difficulte']]
     if q.get('duree_secondes'):
@@ -534,8 +576,12 @@ def check_against_db(fiche: dict) -> tuple[list[str], list[str], dict]:
     niveaux = [nom_niveau_actuel(n) if isinstance(n, str) else n for n in fiche.get('niveaux') or []] \
         if isinstance(fiche.get('niveaux'), list) else []
     levels = _match(ClassLevel.objects.all(), niveaux, 'niveau', errors)
+    # Théorèmes du contenu = ceux de la fiche ∪ ceux de ses questions (13/10/2026 : le filtre « Théorème » des listes
+    # trouve un exercice par les théorèmes de ses questions).
+    th_fiche = fiche.get('theoremes', []) if isinstance(fiche.get('theoremes'), list) else []
+    th_fiche = th_fiche + [n for n in theoremes_des_questions(fiche) if n not in th_fiche]
     noms_chapitres, noms_theoremes, traductions = traduire_noms(
-        fiche.get('chapitres', []), fiche.get('theoremes', []), [str(n) for n in niveaux])
+        fiche.get('chapitres', []), th_fiche, [str(n) for n in niveaux])
     warnings += traductions
     chapters = _match(Chapter.objects.all(), noms_chapitres, 'chapitre', errors,
                       **({'subject': subject} if subject else {}))

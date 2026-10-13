@@ -48,10 +48,12 @@ lim = Chapter.objects.filter(name='Limites et continuité', class_levels=sm).fir
 der = Chapter.objects.filter(name__startswith='Dérivation', class_levels=sm).first()
 autre, vierge = list(Chapter.objects.filter(class_levels=sm).exclude(id__in=[lim.id, der.id])[:2])
 ct = ContentType.objects.get_for_model(Content)
+TVI, TAF = 'Théorème des valeurs intermédiaires (TVI)', 'Théorème des accroissements finis (TAF)'
+PROL = 'Prolongement par continuité'
 
 
-def q(qid, skills, points=None):
-    b = {'id': qid, 'type': 'question', 'content': {'html': '<p>?</p>'}, 'meta': {'skills': skills}}
+def q(qid, theoremes, points=None):
+    b = {'id': qid, 'type': 'question', 'content': {'html': '<p>?</p>'}, 'meta': {'theorems': theoremes}}
     if points is not None:
         b['points'] = points
     return b
@@ -71,10 +73,10 @@ def assess(c, statuses, days=0):
         assessed_at=timezone.now() - timedelta(days=days), created_at=timezone.now() - timedelta(days=days))
 
 
-ex_lim = make('Limites 1', [lim], [q('q1', ['tvi']), q('q2', ['tvi']), q('q3', ['tvi']), q('q4', ['limites-usuelles'])])
-ex_der = make('Dérivation 1', [der], [q('q1', ['derivee']), q('q2', ['derivee']), q('q3', ['derivee'])])
+ex_lim = make('Limites 1', [lim], [q('q1', [TVI]), q('q2', [TVI]), q('q3', [TVI]), q('q4', [PROL])])
+ex_der = make('Dérivation 1', [der], [q('q1', [TAF]), q('q2', [TAF]), q('q3', [TAF])])
 make('Dérivation 2 (pas encore fait)', [der], [q('q1', [])])
-exam = make('Examen blanc', [lim, der], [q('q1', ['tvi'], 10), q('q2', ['derivee'], 10)], kind='exam')
+exam = make('Examen blanc', [lim, der], [q('q1', [TVI], 10), q('q2', [TAF], 10)], kind='exam')
 assess(ex_lim, {'q1': 'success', 'q2': 'success', 'q3': 'success', 'q4': 'success'}, days=40)
 assess(ex_der, {'q1': 'success', 'q2': 'review', 'q3': 'partial'}, days=1)
 assess(exam, {'q1': 'success', 'q2': 'review'}, days=2)
@@ -106,8 +108,11 @@ check('chapitre maîtrisé : auto-évaluation + Skill IQ', L['status'] == 'maste
 check('chapitre à renforcer', D['status'] == 'weak' and D['mastery'] == 38 and D['questions'] == 4, (D['status'], D['mastery']))
 check('détail : contenus réussis / à revoir', L['done'] == 1 and L['contents'] == 2 and D['contents'] == 3
       and [x['title'] for x in D['review']] == ['Dérivation 1'], (L['done'], L['contents'], D['contents'], D['review']))
-check('détail : notions les mieux et les moins réussies', L['notions']['best'][0]['label'] and D['notions']['worst']
-      and D['notions']['worst'][0]['pct'] < 60, (L['notions'], D['notions']))
+check('détail : théorèmes les mieux et les moins réussis', L['theoremes']['best'][0]['label'] == TVI
+      and D['theoremes']['worst'] and D['theoremes']['worst'][0]['label'] == TAF and D['theoremes']['worst'][0]['pct'] < 60,
+      (L['theoremes'], D['theoremes']))
+check('détail : un théorème compte seulement dans son chapitre (examen à 2 chapitres)',
+      all(x['label'] != TAF for x in L['theoremes']['best'] + L['theoremes']['worst']), L['theoremes'])
 check('Skill IQ seul : compte aussi', A['status'] == 'weak' and A['mastery'] == 30 and A['self_pct'] is None, A)
 check('pas commencé, quiz disponible', V['status'] == 'todo' and V['quiz_ready'] and V['mastery'] is None, V)
 from apps.caracteristics.hubs import slug  # noqa: E402
@@ -117,10 +122,11 @@ check('« S’entraîner » : page du chapitre à son niveau', L['hub_url'] == '
 s = d['summary']['chapters']
 check('résumé des états', s['mastered'] == 1 and s['weak'] == 2 and s['todo'] == s['total'] - 3, s)
 
-check('points forts : la notion la mieux réussie', d['strengths'] and d['strengths'][0]['pct'] == 100
+check('points forts : le théorème le mieux réussi', d['strengths'] and d['strengths'][0]['pct'] == 100
+      and d['strengths'][0]['label'] == TVI and d['strengths'][0]['source'] == 'theoreme'
       and d['strengths'][0]['chapter_id'] == lim.id, d['strengths'])
 weak = {x['label']: x for x in d['weaknesses']}
-check('à renforcer : notion ratée et chapitre du Skill IQ', any(x['source'] == 'notion' for x in d['weaknesses'])
+check('à renforcer : théorème raté et chapitre du Skill IQ', any(x['source'] == 'theoreme' and x['label'] == TAF for x in d['weaknesses'])
       and autre.name in weak and weak[autre.name]['source'] == 'skilliq'
       and weak[autre.name]['url'] == f'/exercises?chapters={autre.id}'
       and weak[autre.name]['hub_url'] == f'/exercises/niveau/2eme-bac-sm/{slug(autre.name)}', d['weaknesses'])

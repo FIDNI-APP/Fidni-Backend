@@ -2,11 +2,11 @@
 
 Pas de vecteurs ni d'IA : avec quelques centaines de contenus bien étiquetés, les métadonnées disent
 mieux que le texte ce qu'un contenu fait travailler. Score de similarité (cosinus sur des ensembles) :
-  notions des questions ×4 (le plus précis ; une notion rare pèse plus qu'une notion présente partout,
-  pondération IDF), chapitres ×3, théorèmes ×2,
+  théorèmes des questions ×4 (meta.theorems, 13/10/2026 : à la place des notions ; le plus précis ; un théorème
+  rare pèse plus qu'un théorème présent partout, pondération IDF), chapitres ×3, théorèmes du contenu ×2,
   sous-domaines ×0,5, difficulté voisine ±0,4, un peu de popularité pour départager.
 Toujours le même niveau (un élève de TC ne reçoit pas un sujet de 2ème Bac). Pour un élève connecté,
-ce qu'il a déjà réussi passe après le reste. Chaque recommandation dit pourquoi (« Mêmes notions : … »).
+ce qu'il a déjà réussi passe après le reste. Chaque recommandation dit pourquoi (« Mêmes théorèmes : … »).
 
 « Exercice suivant » après le résultat (`apres`) : après « À revoir », rien de plus difficile et le cours du
 chapitre d'abord ; après « Réussi », rien de plus facile. Ce qui ne respecte pas la règle passe en dernier
@@ -16,19 +16,17 @@ import math
 
 from django.core.cache import cache
 
-INDEX_KEY = 'similar_index_v1'
+from apps.caracteristics.theoremes import des_questions
+
+INDEX_KEY = 'similar_index_v3'
 INDEX_TTL = 600  # s : un contenu publié apparaît dans les recommandations au plus 10 min après
 DIFF = {'easy': 1, 'medium': 2, 'hard': 3}
 QUOTA_SAME_TYPE, QUOTA_OTHER_TYPE, LIMIT = 4, 2, 6
 
 
-def _skills(structure):
-    out = set()
-    for b in (structure or {}).get('blocks') or []:
-        out.update((b.get('meta') or {}).get('skills') or [])
-        for sq in b.get('subQuestions') or []:
-            out.update((sq.get('meta') or {}).get('skills') or [])
-    return out
+def _theoremes_questions(structure):
+    """Théorèmes des questions du contenu (noms)."""
+    return set(des_questions(structure))
 
 
 def _index():
@@ -46,7 +44,7 @@ def _index():
             'chapters': {x.id: x.name for x in c.chapters.all()},
             'theorems': {x.id: x.name for x in c.theorems.all()},
             'subfields': {x.id for x in c.subfields.all()},
-            'skills': _skills(c.json_content),
+            'q_th': _theoremes_questions(c.json_content),
         }
     cache.set(INDEX_KEY, idx, INDEX_TTL)
     return idx
@@ -65,14 +63,13 @@ def _weighted_cos(a, b, w):
 
 
 def _reason(src, c, w, apres=None):
-    from apps.caracteristics.notions import notion_label
     if apres == 'review' and c['type'] == 'lesson':
         ch = [c['chapters'][i] for i in src['chapters'] if i in c['chapters']]
         if ch:
             return 'Revois le cours : ' + ch[0]
-    common = sorted(src['skills'] & c['skills'], key=lambda x: (-w[x], x))  # les plus rares d'abord
+    common = sorted(src['q_th'] & c['q_th'], key=lambda x: (-w[x], x))  # les plus rares d'abord
     if common:
-        return 'Mêmes notions : ' + ', '.join(notion_label(s) for s in common[:2]) + (' …' if len(common) > 2 else '')
+        return 'Mêmes théorèmes : ' + ', '.join(common[:2]) + (' …' if len(common) > 2 else '')
     ch = [c['chapters'][i] for i in src['chapters'] if i in c['chapters']]
     if ch:
         return 'Même chapitre : ' + ch[0]
@@ -96,7 +93,7 @@ def similar(content_id, user=None, apres=None):
         done = dict(Complete.objects.filter(user=user, content_type=ct).values_list('object_id', 'status'))
     df = {}
     for c in idx.values():
-        for x in c['skills']:
+        for x in c['q_th']:
             df[x] = df.get(x, 0) + 1
     w = {x: math.log((len(idx) + 1) / (n + 1)) + 1 for x, n in df.items()}
     scored = []
@@ -105,11 +102,11 @@ def similar(content_id, user=None, apres=None):
             continue
         if src['levels'] and not (src['levels'] & c['levels']):
             continue  # autre niveau
-        notions, chapters = _weighted_cos(src['skills'], c['skills'], w), _cos(src['chapters'], c['chapters'])
+        questions, chapters = _weighted_cos(src['q_th'], c['q_th'], w), _cos(src['chapters'], c['chapters'])
         theorems = _cos(src['theorems'], c['theorems'])
-        if not (notions or chapters or theorems):
+        if not (questions or chapters or theorems):
             continue  # rien de commun de précis : pas une recommandation
-        s = 4 * notions + 3 * chapters + 2 * theorems + 0.5 * _cos(src['subfields'], c['subfields'])
+        s = 4 * questions + 3 * chapters + 2 * theorems + 0.5 * _cos(src['subfields'], c['subfields'])
         if src['diff'] and c['diff']:
             s += {0: 0.4, 1: 0.0, 2: -0.4}[abs(src['diff'] - c['diff'])]
         s += 0.3 * math.log1p(c['views']) / math.log(1000)

@@ -203,7 +203,8 @@ def _walk_questions_meta(structure):
 
     `path` est aligné sur QuestionProgress.question_path tel que produit par le
     renderer front : l'id du bloc, et `<block_id>.<sub_id>` pour les sous-questions.
-    `label` est lisible (Q1, Q2a…). `meta` = block.meta (schéma v2.1), {} si absent.
+    `label` est lisible (Q1, Q2a…). `meta` = block.meta (schéma v2.1 : theorems, difficulty, expected_seconds…), {} si
+    absent.
     """
     qnum = 0
     for block in (structure or {}).get('blocks', []):
@@ -217,51 +218,6 @@ def _walk_questions_meta(structure):
                 yield (f"{bid}.{sub.get('id')}", f"Q{qnum}{chr(ord('a') + i)}", sub.get('meta') or {})
         else:
             yield (str(bid), f"Q{qnum}", block.get('meta') or {})
-
-
-@api_view(['GET'])
-@perm_classes([AllowAny])
-def skill_suggestions(request):
-    """Référentiel des notions (liste fermée, apps/caracteristics/notions.py) pour l'éditeur.
-
-    GET /api/skills/?chapter=<id>&q=<recherche>
-    Renvoie {slug, label, chapter, count} : d'abord les notions du chapitre demandé, puis les
-    transversales, puis les autres ; « count » = nombre de questions qui l'emploient déjà.
-    """
-    import unicodedata
-    from collections import Counter
-    from apps.caracteristics.models import Chapter
-    from apps.caracteristics.notions import NOTION_INDEX
-
-    def fold(text):
-        return unicodedata.normalize('NFKD', text).encode('ascii', 'ignore').decode().lower()
-
-    chapter_id = request.query_params.get('chapter')
-    query = fold((request.query_params.get('q') or '').strip())
-    chapter_name = Chapter.objects.filter(pk=chapter_id).values_list('name', flat=True).first() if chapter_id and chapter_id.isdigit() else None
-
-    counts = cache.get('skill_usage_counts')
-    if counts is None:
-        counter = Counter()
-        for jc in Content.objects.exclude(json_content={}).values_list('json_content', flat=True).iterator():
-            for _, _, meta in _walk_questions_meta(jc):
-                for slug in (meta.get('skills') or []):
-                    counter[slug] += 1
-        counts = dict(counter)
-        cache.set('skill_usage_counts', counts, 300)
-
-    def rank(item):
-        slug, entry = item
-        group = 0 if chapter_name and entry['chapter'] == chapter_name else 1 if entry['chapter'] is None else 2
-        return (group, -counts.get(slug, 0), entry['label'])
-
-    results = [
-        {'slug': slug, 'label': entry['label'], 'chapter': entry['chapter'], 'count': counts.get(slug, 0)}
-        for slug, entry in sorted(NOTION_INDEX.items(), key=rank)
-        if not query or query in slug or query in fold(entry['label'])
-    ]
-    # Liste complète (~160 notions) : l'éditeur la garde en cache et filtre lui-même.
-    return Response(results)
 
 
 # =====================
@@ -1120,7 +1076,6 @@ class ContentViewSet(VoteMixin, viewsets.ModelViewSet):
             qp = all_qp.exclude(user_id__in=house)
             questions_meta = list(_walk_questions_meta(item.json_content or {}))
             path_label = {path: label for path, label, _ in questions_meta}
-            path_skills = {path: (meta.get('skills') or []) for path, _, meta in questions_meta}
 
             by_path = {}
             for row in qp.exclude(status='').values('question_path', 'status'):
@@ -1149,25 +1104,7 @@ class ContentViewSet(VoteMixin, viewsets.ModelViewSet):
             candidates = [q for q in per_question if q['total'] >= 3]
             trap_question = min(candidates, key=lambda q: q['success_pct']) if candidates else None
 
-            # ── Maîtrise par notion (schéma v2.1 : meta.skills par question)
-            from apps.caracteristics.notions import notion_label
-            per_skill = []
-            if is_auth and user_statuses:
-                skill_agg = {}  # slug -> {done, success}
-                for path, st in user_statuses.items():
-                    for skill in path_skills.get(path, []):
-                        a = skill_agg.setdefault(skill, {'done': 0, 'success': 0})
-                        a['done'] += 1
-                        if st == 'success':
-                            a['success'] += 1
-                for slug, a in sorted(skill_agg.items()):
-                    per_skill.append({
-                        'skill': slug,
-                        'label': notion_label(slug),
-                        'assessed': a['done'],
-                        'mastery_pct': int(a['success'] / a['done'] * 100) if a['done'] else 0,
-                    })
-
+            # Plus de maîtrise par notion (13/10/2026) : les théorèmes des questions ne sont pas montrés aux élèves.
             # Gate de réciprocité : l'utilisateur a-t-il évalué quelque chose ici ?
             user_assessed = bool(user_statuses) or user_completed is not None
 
@@ -1190,7 +1127,6 @@ class ContentViewSet(VoteMixin, viewsets.ModelViewSet):
                 'time_histogram': time_histogram,
                 'per_question': per_question,
                 'trap_question': trap_question,
-                'per_skill': per_skill,
                 'user_assessed': user_assessed,
             }
             cache.set(cache_key, data, 300)

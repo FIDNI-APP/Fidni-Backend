@@ -6,7 +6,7 @@ Uniquement des chiffres enregistrés :
   moitié, à revoir / échoué = 0), ramenée sur 20 et calculée sur la partie corrigée ; un examen compte
   dès que la moitié de son barème est corrigée. Sa date = la dernière auto-évaluation ;
 - réussite = part des questions auto-évaluées « réussi » ;
-- difficultés = notions (étiquettes des questions) les moins réussies, au moins 3 questions ;
+- difficultés = théorèmes des questions (meta.theorems, 13/10/2026) les moins réussis, au moins 3 questions ;
 - temps d'étude = journal jour par jour (StudyTimeDay).
 """
 from collections import Counter, defaultdict
@@ -18,7 +18,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from apps.caracteristics.notions import notion_label
+from apps.caracteristics.theoremes import de_la_question
 from apps.interactions.models import Complete, QuestionProgress, StudyTimeDay
 from apps.things.models import Content
 from apps.things.question_index import question_index
@@ -27,7 +27,7 @@ PERIODS = {'7': 7, '30': 30, '90': 90, '365': 365, 'all': None}
 WEIGHT = {'success': 1.0, 'partial': 0.5}
 TYPE_PATH = {'exercise': 'exercises', 'exam': 'exams', 'lesson': 'lessons'}
 MONTHS = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.']
-MIN_NOTION_QUESTIONS = 3
+MIN_THEOREME_QUESTIONS = 3
 WEAK_BELOW = 70
 
 
@@ -39,8 +39,9 @@ DIFFICULTES = ('easy', 'medium', 'hard')
 
 
 def _questions_full(structure):
-    """(chemin, points, notions, difficulté | None) de chaque question, chemins alignés sur
-    QuestionProgress.question_path. Difficulté : meta.difficulty de la sous-question, sinon de la question."""
+    """(chemin, points, théorèmes, difficulté | None) de chaque question, chemins alignés sur
+    QuestionProgress.question_path. Théorèmes : noms exacts de la base (meta.theorems, apps/caracteristics/
+    theoremes.py) ; difficulté : meta.difficulty de la sous-question, sinon de la question."""
     for block in (structure or {}).get('blocks', []):
         if block.get('type') != 'question':
             continue
@@ -50,16 +51,16 @@ def _questions_full(structure):
         if subs:
             for sub in subs:
                 sm = sub.get('meta') or {}
-                yield (f"{block.get('id')}.{sub.get('id')}", float(sub.get('points') or 0), sm.get('skills') or [],
+                yield (f"{block.get('id')}.{sub.get('id')}", float(sub.get('points') or 0), de_la_question(sm),
                        sm.get('difficulty') if sm.get('difficulty') in DIFFICULTES else level)
         else:
-            yield str(block.get('id')), float(block.get('points') or 0), meta.get('skills') or [], level
+            yield str(block.get('id')), float(block.get('points') or 0), de_la_question(meta), level
 
 
 def _questions(structure):
-    """(chemin, points, notions) de chaque question, chemins alignés sur QuestionProgress.question_path."""
-    for path, points, skills, _level in _questions_full(structure):
-        yield path, points, skills
+    """(chemin, points, théorèmes) de chaque question, chemins alignés sur QuestionProgress.question_path."""
+    for path, points, theoremes, _level in _questions_full(structure):
+        yield path, points, theoremes
 
 
 def _bucketing(days):
@@ -210,23 +211,23 @@ def my_stats(request):
                        'exams': len(v['notes']), 'questions': v['questions'],
                        'success_rate': _pct(v['success'], v['questions']), 'minutes': round(v['seconds'] / 60)})
 
-    # ── Difficultés : notions les moins réussies sur la période
-    skills_of = {cid: {path: skills for path, _, skills in index.get(cid, [])} for cid in contents}
-    notion_rows = defaultdict(lambda: {'n': 0, 'ok': 0, 'chapters': Counter()})
+    # ── Difficultés : théorèmes les moins réussis sur la période
+    theoremes_of = {cid: {path: th for path, _, th in index.get(cid, [])} for cid in contents}
+    th_rows = defaultdict(lambda: {'n': 0, 'ok': 0, 'chapters': Counter()})
     for r in q_now:
         c = contents[r['object_id']]
-        for slug in skills_of.get(r['object_id'], {}).get(r['question_path'], []):
-            row = notion_rows[slug]
+        for nom in theoremes_of.get(r['object_id'], {}).get(r['question_path'], []):
+            row = th_rows[nom]
             row['n'] += 1
             row['ok'] += r['status'] == 'success'
             for ch in c.chapters.all():
                 row['chapters'][(ch.id, ch.name)] += 1
     weak = []
-    for slug, row in notion_rows.items():
+    for nom, row in th_rows.items():
         rate = _pct(row['ok'], row['n'])
-        if row['n'] >= MIN_NOTION_QUESTIONS and rate < WEAK_BELOW:
+        if row['n'] >= MIN_THEOREME_QUESTIONS and rate < WEAK_BELOW:
             chapter = row['chapters'].most_common(1)[0][0] if row['chapters'] else None
-            weak.append({'slug': slug, 'label': notion_label(slug), 'questions': row['n'], 'success_rate': rate,
+            weak.append({'slug': nom, 'label': nom, 'questions': row['n'], 'success_rate': rate,
                          'chapter': chapter[1] if chapter else None,
                          'url': f'/exercises?chapters={chapter[0]}' if chapter else '/exercises'})
     weak.sort(key=lambda x: (x['success_rate'], -x['questions']))
