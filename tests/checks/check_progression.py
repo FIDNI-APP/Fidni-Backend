@@ -171,6 +171,8 @@ check('nouvel élève : rien à montrer, pas d\'erreur', r.status_code == 200 an
       and r.data['evolution']['points'] == [] and r.data['time']['total_seconds'] == 0, r.status_code)
 # Sans niveau : pas de page de niveau où l'envoyer (l'ancien lien sert alors).
 SkillAssessment.objects.create(user=nouveau, chapter=lim, score=5, max_score=10)
+from apps.users.maitrise import forget  # noqa: E402
+forget(nouveau.id)  # écrit en base directement : la vue du quiz (submit_quiz) efface ce cache d'elle-même
 r = c.get('/api/stats/progression/')
 check('sans niveau : pas de hub_url', [x['hub_url'] for x in r.data['chapters']] == [None], r.data['chapters'])
 

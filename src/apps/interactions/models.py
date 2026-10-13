@@ -3,6 +3,7 @@ from django.contrib.auth.models import User
 from django.contrib.contenttypes.fields import GenericForeignKey, GenericRelation
 from django.contrib.contenttypes.models import ContentType
 from datetime import timedelta
+from django.utils import timezone
 import logging
 
 logger = logging.getLogger('django')
@@ -525,6 +526,56 @@ class QuestionProgress(models.Model):
 
     def __str__(self):
         return f"{self.user.username} - {self.content_object} [{self.question_path}]: {self.status}"
+
+
+class AssessmentEvent(models.Model):
+    """Journal des auto-évaluations (13/10/2026) : on n'y fait qu'ajouter, QuestionProgress garde l'état courant.
+    Sert à « Ma progression » (apps/users/maitrise.py) : évolution réelle, maîtrise durable, autonomie.
+    Écrit seulement par apps/interactions/journal.py.
+
+    aide : None = inconnue (événement repris de l'existant, avant le journal), '' = aucune aide enregistrée,
+    'indice' ou 'solution' = ouverte avant l'évaluation. Une aide inconnue n'est jamais comptée comme « sans aide ».
+    """
+    AIDE_CHOICES = [('', 'Sans aide'), ('indice', 'Indication'), ('solution', 'Solution')]
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='assessment_events')
+    object_id = models.PositiveIntegerField()  # Content.id
+    question_path = models.CharField(max_length=100)
+    # NULL = évaluation retirée.
+    status = models.CharField(max_length=10, choices=QuestionProgress.ASSESSMENT_CHOICES, null=True, blank=True)
+    previous = models.CharField(max_length=10, null=True, blank=True)
+    source = models.CharField(max_length=16, choices=QuestionProgress.SOURCE_CHOICES, default='question')
+    aide = models.CharField(max_length=10, choices=AIDE_CHOICES, null=True, blank=True)
+    reprise = models.BooleanField(default=False)  # créé par la reprise de l'existant (migration 0024)
+    at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        app_label = 'interactions'
+        indexes = [
+            models.Index(fields=['user', 'at'], name='assessevent_user_at'),
+            models.Index(fields=['user', 'object_id', 'question_path'], name='assessevent_user_q'),
+        ]
+
+
+class QuestionHelp(models.Model):
+    """Indication ou solution ouverte par un élève, par question et par jour (13/10/2026). question_path '*' =
+    « toutes les solutions » ou solution d'ensemble du contenu. Lu par journal.record (champ aide des événements)."""
+    KIND_CHOICES = [('indice', 'Indication'), ('solution', 'Solution')]
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='question_helps')
+    object_id = models.PositiveIntegerField()  # Content.id
+    question_path = models.CharField(max_length=100)
+    kind = models.CharField(max_length=10, choices=KIND_CHOICES)
+    day = models.DateField()
+    first_at = models.DateTimeField()
+    last_at = models.DateTimeField()
+    count = models.PositiveSmallIntegerField(default=1)
+
+    class Meta:
+        app_label = 'interactions'
+        constraints = [models.UniqueConstraint(fields=['user', 'object_id', 'question_path', 'kind', 'day'],
+                                               name='questionhelp_unique_day')]
+        indexes = [models.Index(fields=['user', 'object_id'], name='questionhelp_user_content')]
 
 
 #----------------------------AI CORRECTION-------------------------------

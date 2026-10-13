@@ -35,17 +35,31 @@ def _pct(part, whole):
     return round(part * 100 / whole) if whole else None
 
 
-def _questions(structure):
-    """(chemin, points, notions) de chaque question, chemins alignés sur QuestionProgress.question_path."""
+DIFFICULTES = ('easy', 'medium', 'hard')
+
+
+def _questions_full(structure):
+    """(chemin, points, notions, difficulté | None) de chaque question, chemins alignés sur
+    QuestionProgress.question_path. Difficulté : meta.difficulty de la sous-question, sinon de la question."""
     for block in (structure or {}).get('blocks', []):
         if block.get('type') != 'question':
             continue
+        meta = block.get('meta') or {}
+        level = meta.get('difficulty') if meta.get('difficulty') in DIFFICULTES else None
         subs = block.get('subQuestions') or []
         if subs:
             for sub in subs:
-                yield f"{block.get('id')}.{sub.get('id')}", float(sub.get('points') or 0), (sub.get('meta') or {}).get('skills') or []
+                sm = sub.get('meta') or {}
+                yield (f"{block.get('id')}.{sub.get('id')}", float(sub.get('points') or 0), sm.get('skills') or [],
+                       sm.get('difficulty') if sm.get('difficulty') in DIFFICULTES else level)
         else:
-            yield str(block.get('id')), float(block.get('points') or 0), (block.get('meta') or {}).get('skills') or []
+            yield str(block.get('id')), float(block.get('points') or 0), meta.get('skills') or [], level
+
+
+def _questions(structure):
+    """(chemin, points, notions) de chaque question, chemins alignés sur QuestionProgress.question_path."""
+    for path, points, skills, _level in _questions_full(structure):
+        yield path, points, skills
 
 
 def _bucketing(days):
@@ -92,7 +106,7 @@ def my_stats(request):
     ct = ContentType.objects.get_for_model(Content)
 
     # ── Tout ce que l'élève a touché, une fois
-    qp = list(QuestionProgress.objects.filter(user=user, content_type=ct)
+    qp = list(QuestionProgress.objects.filter(user=user, content_type=ct).exclude(status='')  # sans statut : pas une évaluation
               .values('object_id', 'question_path', 'status', 'assessed_at'))
     time_rows = list(StudyTimeDay.objects.filter(user=user).values('object_id', 'date', 'seconds'))
     completes = [r for r in Complete.objects.filter(user=user, content_type=ct).values('object_id', 'status', 'updated_at')

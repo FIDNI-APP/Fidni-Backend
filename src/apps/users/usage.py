@@ -54,6 +54,10 @@ ACTIONS = {
     'recherche-vide',     # recherche sans résultat
     'accueil-reprendre', 'accueil-pour-toi', 'annoncer-ds',  # accueil connecté
     'prog-entrainer', 'prog-cours', 'prog-quiz',  # Ma progression › chapitre
+    # Ma progression refondue (13/10/2026) : objectif, exercices proposés, fiche, chapitre, « comment c'est calculé ».
+    'prog-objectif', 'prog-objectif-exercice', 'prog-fiche', 'prog-chapitre', 'prog-chapitre-action', 'prog-calcul',
+    'prog-activite-detail',
+    'accueil-objectif', 'accueil-progression',  # accueil : bloc « Où j'en suis »
     'quiz-refait',        # quiz de chapitre repassé
     'mode-revision',      # liste de révision ouverte en mode révision
     'barre-mobile',       # barre d'onglets en bas sur téléphone
@@ -74,7 +78,10 @@ FILTER_RE = re.compile(
     r'^(exercise|exam|lesson):(niveau|matiere|sous-domaine|chapitre|theoreme|difficulte|statut|national|date|tri)'
     r':[A-Za-z0-9_-]{1,40}$'
     # Porte d'entrée de la fenêtre d'inscription (10/10/2026) : « auth:porte:vote », « auth:porte:bandeau »…
-    r'|^auth:porte:[a-z0-9-]{1,30}$')
+    r'|^auth:porte:[a-z0-9-]{1,30}$'
+    # « Ce diagnostic te semble juste ? » de Ma progression (13/10/2026) : « prog:avis:a_consolider:oui »,
+    # « prog:avis:objectif-verifier:non » (état d'un chapitre ou type d'objectif).
+    r'|^prog:avis:[a-z_-]{1,30}:(oui|non)$')
 
 
 class UsageAnonThrottle(AnonRateThrottle):

@@ -22,6 +22,7 @@ from .serializers import ContentSerializer, ContentListSerializer, ContentCreate
 from . import for_you
 from .listing import in_order, serialize_content_list, with_list_relations
 from apps.interactions.models import Save, Complete, TimeSession, SolutionView, SolutionMatch, QuestionProgress, AICorrection
+from apps.interactions import journal
 from apps.interactions.serializers import AICorrectionSerializer
 from apps.interactions.views import VoteMixin
 from apps.users.models import ViewHistory
@@ -66,6 +67,12 @@ class RessentiThrottle(UserRateThrottle):
     """Ressenti sur la difficulté : un geste par contenu, largement assez pour un élève (comme les signalements)."""
     scope = 'ressenti'
     rate = '60/hour'
+
+
+class AideThrottle(UserRateThrottle):
+    """Indications et solutions ouvertes (journal de « Ma progression ») : envoyées une fois par question et par jour."""
+    scope = 'aide'
+    rate = '300/hour'
 
 
 def _digits(value):
@@ -183,6 +190,12 @@ def _forget_stats(content_id, user_id):
     """Onglet « Activité » : les statistiques sont en cache 5 min ; une auto-évaluation doit s'y voir tout de suite."""
     cache.delete(f'content_stats_{content_id}_user_{user_id}')
     cache.delete(f'content_stats_{content_id}_user_None')
+
+
+def _forget_maitrise(user_id):
+    """« Ma progression » est en cache 10 min (apps/users/maitrise.py) : un « Réussi » doit s'y voir tout de suite."""
+    from apps.users.maitrise import forget
+    forget(user_id)
 
 
 def _walk_questions_meta(structure):
@@ -553,6 +566,7 @@ class ContentViewSet(VoteMixin, viewsets.ModelViewSet):
         )
         cache.delete(f'content_stats_{item.id}_user_{request.user.id}')
         cache.delete(f'content_stats_{item.id}_user_None')
+        _forget_maitrise(request.user.id)
         return Response({'id': progress.id, 'status': progress.status,
                          'created_at': progress.created_at, 'updated_at': progress.updated_at})
 
@@ -566,6 +580,7 @@ class ContentViewSet(VoteMixin, viewsets.ModelViewSet):
         if deleted:
             cache.delete(f'content_stats_{item.id}_user_{request.user.id}')
             cache.delete(f'content_stats_{item.id}_user_None')
+            _forget_maitrise(request.user.id)
             return Response(status=status.HTTP_204_NO_CONTENT)
         return Response({'error': 'No progress record found'}, status=status.HTTP_404_NOT_FOUND)
 
@@ -640,11 +655,16 @@ class ContentViewSet(VoteMixin, viewsets.ModelViewSet):
         source = request.data.get('source') or 'question'
         if not isinstance(source, str) or source not in ASSESS_SOURCES:
             return Response({'error': 'Invalid source'}, status=status.HTTP_400_BAD_REQUEST)
+        if not isinstance(question_path, str) or len(question_path) > 100:
+            return Response({'error': 'Invalid question_path'}, status=status.HTTP_400_BAD_REQUEST)
         ct = ContentType.objects.get_for_model(Content)
-        progress, _ = QuestionProgress.objects.update_or_create(
-            user=request.user, content_type=ct, object_id=item.id,
-            question_path=question_path, defaults={'status': assessment_status, 'source': source}
-        )
+        mine = dict(user=request.user, content_type=ct, object_id=item.id, question_path=question_path)
+        with transaction.atomic():
+            prev = QuestionProgress.objects.filter(**mine).values_list('status', flat=True).first()
+            progress, _ = QuestionProgress.objects.update_or_create(
+                defaults={'status': assessment_status, 'source': source}, **mine)
+            # Journal de « Ma progression » (apps/interactions/journal.py).
+            journal.record(request.user, item.id, {question_path: assessment_status}, {question_path: prev}, source)
         _forget_stats(item.id, request.user.id)
         return Response({'question_path': progress.question_path, 'status': progress.status,
                          'assessed_at': progress.assessed_at})
@@ -659,7 +679,7 @@ class ContentViewSet(VoteMixin, viewsets.ModelViewSet):
         if not isinstance(assessments, dict) or not assessments or len(assessments) > 300:
             return Response({'error': 'assessments required'}, status=status.HTTP_400_BAD_REQUEST)
         for path, st in assessments.items():
-            if not isinstance(path, str) or not path or len(path) > 255 or st not in (None, 'success', 'partial', 'review', 'failed'):
+            if not isinstance(path, str) or not path or len(path) > 100 or st not in (None, 'success', 'partial', 'review', 'failed'):
                 return Response({'error': 'Invalid assessment'}, status=status.HTTP_400_BAD_REQUEST)
         completion = request.data.get('completion', 'unchanged')
         if completion not in ('unchanged', None, 'success', 'review'):
@@ -684,6 +704,7 @@ class ContentViewSet(VoteMixin, viewsets.ModelViewSet):
                 Complete.objects.filter(**mine).delete()
             elif completion != 'unchanged':
                 Complete.objects.update_or_create(defaults={'status': completion}, **mine)
+            journal.record(request.user, item.id, assessments, before, source)
         _forget_stats(item.id, request.user.id)
         progress = {r.question_path: {'status': r.status, 'solution_validation': r.solution_validation,
                                       'assessed_at': r.assessed_at}
@@ -698,9 +719,13 @@ class ContentViewSet(VoteMixin, viewsets.ModelViewSet):
         if not question_path:
             return Response({'error': 'question_path required'}, status=status.HTTP_400_BAD_REQUEST)
         ct = ContentType.objects.get_for_model(Content)
-        deleted, _ = QuestionProgress.objects.filter(
-            user=request.user, content_type=ct, object_id=item.id, question_path=question_path
-        ).delete()
+        mine = QuestionProgress.objects.filter(user=request.user, content_type=ct, object_id=item.id,
+                                               question_path=question_path)
+        with transaction.atomic():
+            prev = mine.values_list('status', flat=True).first()
+            deleted, _ = mine.delete()
+            if deleted:
+                journal.record(request.user, item.id, {question_path: None}, {question_path: prev})
         _forget_stats(item.id, request.user.id)
         return Response({'deleted': deleted > 0})
 
@@ -714,13 +739,37 @@ class ContentViewSet(VoteMixin, viewsets.ModelViewSet):
         if validation and validation not in ['compatible', 'different', 'not-understood']:
             return Response({'error': 'Invalid validation'}, status=status.HTTP_400_BAD_REQUEST)
         ct = ContentType.objects.get_for_model(Content)
-        progress, _ = QuestionProgress.objects.update_or_create(
-            user=request.user, content_type=ct, object_id=item.id,
-            question_path=question_path, defaults={'solution_validation': validation}
-        )
-        return Response({'question_path': progress.question_path,
-                         'solution_validation': progress.solution_validation,
+        # Sur une question déjà évaluée seulement : créer une ligne sans statut la comptait comme un échec
+        # (« Ma progression », statistiques), 13/10/2026.
+        progress = QuestionProgress.objects.filter(user=request.user, content_type=ct, object_id=item.id,
+                                                   question_path=question_path).exclude(status='').first()
+        if progress is None:
+            return Response({'error': 'Évalue d’abord la question.'}, status=status.HTTP_404_NOT_FOUND)
+        QuestionProgress.objects.filter(pk=progress.pk).update(solution_validation=validation)
+        return Response({'question_path': progress.question_path, 'solution_validation': validation,
                          'assessed_at': progress.assessed_at})
+
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated],
+            throttle_classes=[AideThrottle], url_path='aide')
+    def aide(self, request, pk=None):
+        """Indication ou solution ouverte : {path, kind: indice | solution} (journal de « Ma progression », pour
+        savoir si une réussite a été obtenue sans aide). path '*' : toutes les solutions ou solution d'ensemble."""
+        item = self.get_object()
+        if item.type not in (Content.TYPE_EXERCISE, Content.TYPE_EXAM):
+            return Response({'error': 'Exercices et examens seulement.'}, status=status.HTTP_400_BAD_REQUEST)
+        kind = request.data.get('kind')
+        path = request.data.get('path')
+        if kind not in journal.AIDES:
+            return Response({'error': 'kind : indice ou solution'}, status=status.HTTP_400_BAD_REQUEST)
+        if kind == 'solution' and path in (None, '', 'solution', journal.TOUT):
+            path = journal.TOUT
+        from apps.users.my_stats import _questions
+        if not isinstance(path, str) or (path != journal.TOUT and path not in {p for p, _pts, _sk in _questions(item.json_content)}):
+            return Response({'error': 'Question inconnue.'}, status=status.HTTP_400_BAD_REQUEST)
+        journal.record_help(request.user, item, path, kind)
+        if kind == 'solution':
+            _forget_stats(item.id, request.user.id)  # « solution vue » : onglet Activité du contenu
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
     @action(detail=True, methods=['get'], permission_classes=[IsAuthenticated])
     def question_progress(self, request, pk=None):
