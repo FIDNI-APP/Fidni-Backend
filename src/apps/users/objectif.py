@@ -56,8 +56,10 @@ def _objectif_chapitre(c, level):
     e, d, pct, n = c['etat'], c['durable'], c['pct'], c['reussite']['questions']
     chapitre = {'id': c['id'], 'name': c['name'], 'hub_url': c['hub_url'], 'etat': e, 'en_progres': c['en_progres'],
                 'quiz_ready': c['quiz_ready']}
-    worst = (c.get('notions') or {}).get('worst') or []
-    surtout = f'Surtout : {worst[0]["label"]} ({worst[0]["pct"]} %).' if worst else None
+    # Théorèmes les moins réussis du chapitre : jamais nommés à l'élève (13/10/2026), ils font passer en premier les
+    # exercices qui les utilisent.
+    faibles_th = [w['label'] for w in ((c.get('theoremes') or {}).get('worst') or [])][:2]
+    surtout = 'Les exercices proposés reprennent d’abord ce qui t’a posé le plus de difficultés.' if faibles_th else None
     review_ids = [r['id'] for r in c.get('review') or []]
     base = {'chapitre': chapitre, 'ds': None, 'secondaire': None}
 
@@ -81,7 +83,8 @@ def _objectif_chapitre(c, level):
                 'phrase': 'Revois la méthode dans le cours, puis refais des exercices ciblés.',
                 'pourquoi': pourquoi, 'action': {'kind': 'entrainer', 'difficulte': cible_diff[0]},
                 'secondaire': {'kind': 'cours'},
-                'cible': {'difficultes': cible_diff, 'n': S.OBJECTIF_EXERCICES, 'prefer': review_ids}}
+                'cible': {'difficultes': cible_diff, 'n': S.OBJECTIF_EXERCICES, 'prefer': review_ids,
+                          'prefer_theoremes': faibles_th}}
 
     if e == 'a_renforcer':
         pourquoi = [f'{pct} % de réussite sur {n} questions : les erreurs reviennent souvent.']
@@ -91,7 +94,8 @@ def _objectif_chapitre(c, level):
                 'phrase': 'Relis le cours, puis fais des exercices faciles avant de monter en difficulté.',
                 'pourquoi': pourquoi, 'action': {'kind': 'cours'},
                 'secondaire': {'kind': 'entrainer', 'difficulte': 'easy'},
-                'cible': {'difficultes': ['easy', 'medium'], 'n': S.OBJECTIF_EXERCICES, 'prefer': review_ids}}
+                'cible': {'difficultes': ['easy', 'medium'], 'n': S.OBJECTIF_EXERCICES, 'prefer': review_ids,
+                          'prefer_theoremes': faibles_th}}
 
     if e == 'bonne_voie' and d['etat'] == 'a_verifier' and d['due']:
         reussis = [lvl for lvl in ('medium', 'easy', 'hard') if (c['reussite']['par_difficulte'].get(lvl) or {}).get('pct')]
@@ -118,9 +122,9 @@ def _objectif_chapitre(c, level):
         elif cle == 'synthese':
             cible['difficultes'] = ['hard', 'medium']
             phrase = 'Essaie un exercice difficile, où tu choisis toi-même la méthode.'
-        elif cle == 'notions':
-            cible['notions'] = c['notions_couvertes']['manquantes'][:3]
-            phrase = 'Travaille les notions que tu n’as pas encore réussies.'
+        elif cle == 'theoremes':
+            cible['theoremes'] = c['theoremes_couverts']['manquants'][:3]
+            phrase = 'Travaille les théorèmes du chapitre que tu n’as pas encore utilisés avec succès.'
         elif cle == 'autonomie':
             phrase = 'Refais des exercices sans ouvrir l’indice ni la solution.'
         elif cle == 'durable' and d['etat'] == 'a_verifier':
@@ -191,15 +195,18 @@ def exercices(user, obj, level):
     from apps.interactions.devoirs import _for_you
     if not obj or not obj.get('cible') or not obj.get('chapitre'):
         return []
-    from apps.users.maitrise import _notions_dispo
+    from apps.users.maitrise import _theoremes_dispo
     cible, ch = obj['cible'], obj['chapitre']
     names = {ch['id']: ch['name']}
     common = dict(level=level, exclude_seen=bool(cible.get('exclure_vus')), prefer_ids=cible.get('prefer') or (),
                   exclude_ids=_tout_reussi(user))
     only = None
-    if cible.get('notions'):
-        dispo = _notions_dispo(level).get(ch['id'], {})
-        only = {cid for sk in cible['notions'] for cid in dispo.get(sk, [])} or None
+    if cible.get('theoremes') or cible.get('prefer_theoremes'):
+        dispo = _theoremes_dispo(level).get(ch['id'], {})
+        if cible.get('theoremes'):
+            only = {cid for nom in cible['theoremes'] for cid in dispo.get(nom, [])} or None
+        # À difficulté égale : les exercices des théorèmes les moins réussis d'abord.
+        common['soon_ids'] = {cid for nom in cible.get('prefer_theoremes') or [] for cid in dispo.get(nom, [])}
     n = cible.get('n') or S.OBJECTIF_EXERCICES
     if cible.get('evaluer'):
         # Point de départ : 1 facile + 2 moyens, complétés au besoin.

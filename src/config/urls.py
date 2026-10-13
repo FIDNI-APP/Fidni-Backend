@@ -33,7 +33,7 @@ from apps.users.progression import apercu as progression_apercu, progression
 from apps.things import reports as content_reports
 from apps.ia import views as ia_views
 from apps.things.verification import set_verification
-from apps.things.views import get_content_recommendations, parse_pdf_view, skill_suggestions
+from apps.things.views import get_content_recommendations, parse_pdf_view
 from apps.caracteristics.views import (
     ClassLevelViewSet, SubjectViewSet, ChapterViewSet, SubfieldViewSet, TheoremViewSet,
     difficulty_counts, school_search,
@@ -218,7 +218,6 @@ urlpatterns = [
 
     # Filter counts
     path('api/difficulty-counts/', difficulty_counts, name='difficulty-counts'),
-    path('api/skills/', skill_suggestions, name='skill-suggestions'),
 
     # Recommendations
     path('api/contents/<int:content_id>/recommendations/', get_content_recommendations, name='content-recommendations'),

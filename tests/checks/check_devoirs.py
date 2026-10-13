@@ -50,10 +50,11 @@ suites = Chapter.objects.filter(class_levels=sm, name__icontains='suite').exclud
     or Chapter.objects.filter(class_levels=sm).exclude(id__in=[lim.id, der.id]).first()
 maths = lim.subject
 ct = ContentType.objects.get_for_model(Content)
+TVI, TAF = 'Théorème des valeurs intermédiaires (TVI)', 'Théorème des accroissements finis (TAF)'
 
 
-def q(qid, skills, seconds=None):
-    meta = {'skills': skills}
+def q(qid, theoremes, seconds=None):
+    meta = {'theorems': theoremes}
     if seconds:
         meta['expected_seconds'] = seconds
     return {'id': qid, 'type': 'question', 'content': {'html': '<p>?</p>'}, 'meta': meta}
@@ -73,9 +74,9 @@ def assess(c, statuses):
 
 
 # Limites : bien maîtrisé. Dérivation : fragile. Suites : jamais travaillé (quiz disponible).
-lim1 = make('Limites 1', [lim], [q('q1', ['tvi']), q('q2', ['tvi']), q('q3', ['tvi'])])
-lim2 = make('Limites 2 (pas encore ouvert)', [lim], [q('q1', ['tvi'], 600), q('q2', ['tvi'], 900), q('q3', ['tvi'], 300)])
-der1 = make('Dérivation 1', [der], [q('q1', ['derivee']), q('q2', ['derivee']), q('q3', ['derivee'])])
+lim1 = make('Limites 1', [lim], [q('q1', [TVI]), q('q2', [TVI]), q('q3', [TVI])])
+lim2 = make('Limites 2 (pas encore ouvert)', [lim], [q('q1', [TVI], 600), q('q2', [TVI], 900), q('q3', [TVI], 300)])
+der1 = make('Dérivation 1', [der], [q('q1', [TAF]), q('q2', [TAF]), q('q3', [TAF])])
 der2 = make('Dérivation 2 (pas encore ouvert)', [der], [q('q1', []), q('q2', []), q('q3', [])], difficulty='hard')
 der3 = make('Dérivation 3 facile', [der], [q('q1', []), {**q('q2', []), 'subQuestions': [{'id': 'a'}, {'id': 'b'}]}], difficulty='easy')
 der4 = make('Dérivation 4 courte (pas encore ouverte)', [der], [q('q1', []), q('q2', [])], difficulty='hard')

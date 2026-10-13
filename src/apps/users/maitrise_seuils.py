@@ -15,7 +15,7 @@ SEUIL_RENFORCER = 40          # % : en dessous, « À renforcer » (sauf résult
 MIN_QUESTIONS_MAITRISE = 6
 MIN_EXERCICES_MAITRISE = 2    # exercices différents réussis
 EXERCICE_REUSSI = 60          # % de réussite d'un exercice (sur ses questions du chapitre) pour le compter réussi
-MAX_NOTIONS_EXIGEES = 3       # notions différentes réussies : min(3, notions présentes dans les exercices)
+MAX_THEOREMES_EXIGES = 3      # théorèmes du chapitre utilisés avec succès : min(3, théorèmes présents dans ses exercices)
 AUTONOMIE_SUFFISANTE = 60     # % de réussites sans aide (quand l'aide est connue)
 
 # ── Résultats récents et tendance

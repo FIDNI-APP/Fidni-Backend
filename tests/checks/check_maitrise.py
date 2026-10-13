@@ -30,8 +30,7 @@ from django.db import connection  # noqa: E402
 from django.test.utils import CaptureQueriesContext  # noqa: E402
 from django.utils import timezone  # noqa: E402
 from rest_framework.test import APIClient  # noqa: E402
-from apps.caracteristics.models import Chapter, ClassLevel  # noqa: E402
-from apps.caracteristics.notions import NOTIONS  # noqa: E402
+from apps.caracteristics.models import Chapter, ClassLevel, Theorem  # noqa: E402
 from apps.interactions.models import (AssessmentEvent, QuestionHelp, QuestionProgress, SolutionView,  # noqa: E402
                                       UpcomingTest)
 from apps.things.models import Content  # noqa: E402
@@ -55,7 +54,8 @@ author = User.objects.create_user('Fidni', 'f@x.fr', None)
 sm = ClassLevel.objects.get(name='2ème Bac SM')
 CH = {name: Chapter.objects.filter(name=name, class_levels=sm).first()
       for name in ('Limites et continuité', 'Suites numériques', 'Nombres complexes', 'Probabilités', 'Calcul intégral')}
-NOT = {name: list(NOTIONS[name])[:4] for name in CH}
+# Théorèmes de chaque chapitre (ceux de la base, comme meta.theorems des questions)
+NOT = {name: list(Theorem.objects.filter(chapters=ch).order_by('id').values_list('name', flat=True))[:4] for name, ch in CH.items()}
 
 
 def eleve(username, level=sm, teacher=False):
@@ -67,8 +67,8 @@ def eleve(username, level=sm, teacher=False):
     return u
 
 
-def q(qid, skills=(), difficulty=None):
-    b = {'id': qid, 'type': 'question', 'content': {'html': '<p>?</p>'}, 'meta': {'skills': list(skills)}}
+def q(qid, theoremes=(), difficulty=None):
+    b = {'id': qid, 'type': 'question', 'content': {'html': '<p>?</p>'}, 'meta': {'theorems': list(theoremes)}}
     if difficulty:
         b['meta']['difficulty'] = difficulty
     return b
@@ -111,8 +111,8 @@ def stats(**kw):
     base = dict(n=10, self_pct=90, pct=90, quiz_pct=None, recents_pct=None, recents_n=0, tendance=None,
                 durable={'etat': 'confirmee', 'le': today - timedelta(days=2), 'a_partir_du': None, 'due': False},
                 autonomie={'pct': 80, 'suivies': 6, 'sans_aide': 5, 'min': 5}, exercices_reussis=3,
-                niveaux_reussis={'easy', 'medium', 'hard'}, synthese=True, notions_reussies=3, notions_dispo=4,
-                notions_manquantes=[])
+                niveaux_reussis={'easy', 'medium', 'hard'}, synthese=True, theoremes_reussis=3, theoremes_dispo=4,
+                theoremes_manquants=[])
     base.update(kw)
     return SimpleNamespace(**base)
 
@@ -151,7 +151,7 @@ for cle, kw, attendu in [
     ('difficultes', {'niveaux_reussis': {'easy'}}, 'a_faire'),
     ('difficultes', {'niveaux_reussis': {'medium'}}, 'a_faire'),
     ('synthese', {'synthese': False}, 'a_faire'),
-    ('notions', {'notions_reussies': 1, 'notions_dispo': 4}, 'a_faire'),
+    ('theoremes', {'theoremes_reussis': 1, 'theoremes_dispo': 4}, 'a_faire'),
     ('durable', {'durable': {'etat': 'a_verifier', 'le': None, 'a_partir_du': today + timedelta(days=2), 'due': False}},
      'en_attente'),
     ('autonomie', {'autonomie': {'pct': 40, 'suivies': 8, 'sans_aide': 3, 'min': 5}}, 'a_faire'),
@@ -159,8 +159,11 @@ for cle, kw, attendu in [
     r = etat(**kw)
     check(f'table : critère « {cle} » manquant → pas Maîtrisé ({attendu})', r[0] == 'bonne_voie'
           and crit(r, cle)['etat'] == attendu, (r[0], crit(r, cle)))
-check('table : une seule notion présente dans les exercices, réussie → critère rempli',
-      crit(etat(notions_reussies=1, notions_dispo=1), 'notions')['etat'] == 'ok')
+r = etat(theoremes_reussis=1, theoremes_dispo=4, theoremes_manquants=['Théorème de Rolle'])
+check('table : théorèmes manquants jamais nommés à l’élève (pas affichés)', 'Rolle' not in crit(r, 'theoremes')['texte']
+      and '3 théorèmes' in crit(r, 'theoremes')['texte'], crit(r, 'theoremes'))
+check('table : un seul théorème présent dans les exercices, réussi → critère rempli',
+      crit(etat(theoremes_reussis=1, theoremes_dispo=1), 'theoremes')['etat'] == 'ok')
 check('table : autonomie inconnue mais vérification réussie sans aide → critère rempli',
       crit(etat(autonomie={'pct': None, 'suivies': 2, 'sans_aide': 2, 'min': 5}), 'autonomie')['etat'] == 'ok'
       and etat(autonomie={'pct': None, 'suivies': 2, 'sans_aide': 2, 'min': 5})[0] == 'maitrise')
@@ -393,13 +396,14 @@ check('historique repris à 100 % → En bonne voie, « à revérifier », jamai
       and x['pct'] == 100 and x['a_confirmer'] and crit((0, 0, x['criteres']), 'durable')['etat'] == 'en_attente'
       and x['autonomie']['seul']['suivies'] == 0, (x['etat'], x['durable'], x['autonomie']))
 
-# h) Réussite par difficulté et notions.
+# h) Réussite par difficulté et théorèmes.
 x = chap(evaluer(f), 'Suites numériques')
 pdiff = x['reussite']['par_difficulte']
 check('réussite par difficulté : facile, moyen, difficile (meta de la question sinon du contenu)',
       set(pdiff) == {'easy', 'medium', 'hard'} and pdiff['hard']['questions'] == 2, pdiff)
-check('notions couvertes : réussies et présentes dans les exercices', x['notions_couvertes']['reussies'] >= 3
-      and x['notions_couvertes']['dispo'] >= 4, x['notions_couvertes'])
+check('théorèmes couverts : réussis et présents dans les exercices', x['theoremes_couverts']['reussis'] >= 3
+      and x['theoremes_couverts']['dispo'] >= 4 and set(x['theoremes_couverts']['manquants']) <= set(NOT['Suites numériques']),
+      x['theoremes_couverts'])
 
 # i) Autonomie : « je m'en passe de plus en plus » (transfert).
 tr = eleve('transfert')

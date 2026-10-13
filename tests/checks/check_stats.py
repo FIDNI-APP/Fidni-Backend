@@ -50,8 +50,11 @@ alice = User.objects.create_user('alice', 'alice@x.fr', 'Motdepasse-solide-42')
 bob = User.objects.create_user('bob', 'bob@x.fr', 'Motdepasse-solide-42')
 
 
-def q(i, pts, skills):
-    return {'id': f'q{i}', 'type': 'question', 'points': pts, 'meta': {'skills': skills},
+GEND, PROL = 'Théorème des gendarmes', 'Prolongement par continuité'
+
+
+def q(i, pts, theoremes):
+    return {'id': f'q{i}', 'type': 'question', 'points': pts, 'meta': {'theorems': theoremes},
             'content': {'html': '<p>?</p>'}, 'subQuestions': []}
 
 
@@ -68,21 +71,21 @@ def assess(c, path, status, days_ago):
 
 
 # Examen A (il y a 3 jours) : 10 pts, réussi 6 + partiel 4 → 8/10 → 16/20
-A = exam('DS A', sm, [q(1, 6, ['limites']), q(2, 4, ['limites'])])
+A = exam('DS A', sm, [q(1, 6, [GEND]), q(2, 4, [GEND])])
 assess(A, 'q1', 'success', 3)
 assess(A, 'q2', 'partial', 3)
 # Examen B (il y a 10 jours) : 20 pts, réussi 5, échoué 15 → 5/20 → 5/20
-B = exam('DS B', sm, [q(1, 5, ['continuite']), q(2, 15, ['continuite'])])
+B = exam('DS B', sm, [q(1, 5, [PROL]), q(2, 15, [PROL])])
 assess(B, 'q1', 'success', 10)
 assess(B, 'q2', 'failed', 10)
 # Examen C (il y a 40 jours, période précédente) : 10/10 → 20/20
-C = exam('DS C', sm, [q(1, 10, ['continuite'])])
+C = exam('DS C', sm, [q(1, 10, [PROL])])
 assess(C, 'q1', 'success', 40)
 # Examen D : moins de la moitié du barème corrigé → ne compte pas
-D = exam('DS D', sm, [q(1, 2, ['limites']), q(2, 18, ['limites'])])
+D = exam('DS D', sm, [q(1, 2, [GEND]), q(2, 18, [GEND])])
 assess(D, 'q1', 'success', 2)
 # Examen de Tronc commun (filtre de niveau) : 4/4 → 20/20, il y a 1 jour
-T = exam('DS TC', tc, [q(1, 4, ['identites-remarquables'])])
+T = exam('DS TC', tc, [q(1, 4, ['Relation de Chasles'])])
 assess(T, 'q1', 'success', 1)
 # Temps : 30 min aujourd'hui sur A, 20 min il y a 40 jours sur C
 StudyTimeDay.objects.create(user=alice, object_id=A.id, date=today, seconds=1800)
@@ -103,9 +106,9 @@ check('réussite aux questions (30 j) : 4 réussies sur 6', d['questions']['coun
 check('temps (30 j) : 1800 s ; période précédente : 1200 s', d['time']['seconds'] == 1800 and d['time']['previous_seconds'] == 1200, d['time'])
 check('temps par chapitre vide sans chapitre', d['time']['by_theme']['chapter'] == [], d['time']['by_theme'])
 check('courbe hebdomadaire sur 30 j', d['period']['granularity'] == 'week' and 4 <= len(d['series']) <= 6, d['series'])
-check('difficultés : continuité (1 réussie sur 2 → moins de 3 questions, exclue)', all(x['slug'] != 'continuite' for x in d['difficulties']), d['difficulties'])
-lim = next((x for x in d['difficulties'] if x['slug'] == 'limites'), None)
-check('difficultés : limites (3 questions, 2 réussies → 67 %)', lim and lim['questions'] == 3 and lim['success_rate'] == 67, d['difficulties'])
+check('difficultés : prolongement par continuité (1 réussie sur 2 → moins de 3 questions, exclue)', all(x['slug'] != PROL for x in d['difficulties']), d['difficulties'])
+lim = next((x for x in d['difficulties'] if x['slug'] == GEND and x['label'] == GEND), None)
+check('difficultés : théorème des gendarmes (3 questions, 2 réussies → 67 %)', lim and lim['questions'] == 3 and lim['success_rate'] == 67, d['difficulties'])
 check('filtres : niveaux travaillés', {x['name'] for x in d['filters']['levels']} == {'2ème Bac SM', 'Tronc commun Sciences'}, d['filters'])
 r = c.get(f'/api/stats/me/?period=30&level={sm.id}')
 check('filtre niveau 2ème Bac SM : 2 examens, moyenne 10,5', r.data['results']['count'] == 2 and r.data['results']['average'] == 10.5, r.data['results'])

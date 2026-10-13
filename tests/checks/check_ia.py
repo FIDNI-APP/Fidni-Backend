@@ -60,7 +60,7 @@ def faux_appeler(system, messages, **kw):
 ia_client.appeler = faux_appeler
 
 
-def fiche_json(cle='test-ia-ex1', notion='Dérivée', solution=r'<p>$f(x)=\frac{1}{x}$ donc $f\'(x)=-\dfrac{1}{x^2}$.</p>'):
+def fiche_json(cle='test-ia-ex1', theoreme="Dérivée d'une fonction composée", solution=r'<p>$f(x)=\frac{1}{x}$ donc $f\'(x)=-\dfrac{1}{x^2}$.</p>'):
     # Écrit comme le ferait l'IA, y compris une barre oblique non doublée (« \frac ») à réparer.
     return ('Voici les fiches.\n```json\n{"fiches": [{"cle": "' + cle + '", "type": "exercice", '
             '"titre": "Dérivée de la fonction inverse", "niveaux": ["2ème Bac SM"], '
@@ -68,7 +68,7 @@ def fiche_json(cle='test-ia-ex1', notion='Dérivée', solution=r'<p>$f(x)=\frac{
             '"a_verifier": false, "blocs": [{"type": "contexte", "html": "<p>Soit $f(x)=\\\\dfrac{1}{x}$.</p>'
             '<p><img src=\\"figures/courbe.png\\" alt=\\"Courbe de f\\"></p>"}, '
             '{"type": "question", "html": "", "sous_questions": ['
-            '{"html": "<p>Calculer $f\'(x)$.</p>", "points": 2, "notions": ["' + notion + '"], "solution": "'
+            '{"html": "<p>Calculer $f\'(x)$.</p>", "points": 2, "theoremes": ["' + theoreme + '"], "solution": "'
             + solution.replace('"', '\\"') + '"}, '
             '{"html": "<p>En déduire les variations de $f$.</p>", "points": 1, "solution": "<p>Méthode : signe de la dérivée.</p>'
             '<p>Donc $f$ est décroissante sur chaque intervalle.</p>"}]}]}], '
@@ -119,15 +119,15 @@ check('document accepté, travail en attente', r.status_code == 201 and r.data['
 job = IAJob.objects.get(pk=r.data['id'])
 check('document gardé en base (privé)', IAFile.objects.filter(job=job).count() == 1)
 
-# Réponses : 1) fiche avec une notion inconnue → 2) reprise corrigée → 3) relecture (un point à vérifier).
-REPONSES[:] = [fiche_json(notion='notion-inventee'), fiche_json(),
+# Réponses : 1) fiche avec un théorème inconnu → 2) reprise corrigée → 3) relecture (un point à vérifier).
+REPONSES[:] = [fiche_json(theoreme='Théorème inventé'), fiche_json(),
                '```json\n{"problemes": [{"gravite": "a_verifier", "ou": "Question 1", "description": "Barème à confirmer."}],'
                ' "fiches": null}\n```']
 pipeline.traiter(job.pk)
 job.refresh_from_db()
 check('brouillon prêt', job.status == 'pret', (job.status, job.error))
 check('3 appels : rédaction, reprise, relecture', len(APPELS) == 3, len(APPELS))
-check('la reprise cite l’erreur du contrôle', 'notion inconnue' in APPELS[1]['messages'][-1]['content'])
+check('la reprise cite l’erreur du contrôle', 'théorème inconnu « Théorème inventé »' in APPELS[1]['messages'][-1]['content'])
 check('champs du serveur jamais remontrés à l’IA', all('"credit"' not in m['content'] and '"source"' not in m['content']
       for m in APPELS[2]['messages'] if m['role'] == 'assistant'))
 check('consigne : règles + annexes de la base', 'Annexe A' in APPELS[0]['system'] and '2ème Bac SM' in APPELS[0]['system']
@@ -181,6 +181,10 @@ check('auteur éditorial, bandeau « à vérifier », trace IA',
       and c.json_content['import']['ia']['travail'] == job.pk and c.json_content.get('credit', '').startswith('M. Haddar'))
 check('niveau, chapitre, difficulté', list(c.class_levels.values_list('name', flat=True)) == ['2ème Bac SM']
       and c.chapters.count() == 1 and c.difficulty == 'medium')
+sq = c.json_content['blocks'][1]['subQuestions']
+check('théorèmes de la question publiés (meta.theorems), aucun pour la question de calcul ; ajoutés au contenu',
+      sq[0]['meta'].get('theorems') == ["Dérivée d'une fonction composée"] and 'theorems' not in (sq[1].get('meta') or {})
+      and c.theorems.filter(name="Dérivée d'une fonction composée").exists(), (sq[0].get('meta'), sq[1].get('meta')))
 check('figure publiée', FileAttachment.objects.filter(object_id=c.pk).count() == 1
       and '/api/files/' in str(c.json_content['blocks'][0]))
 ancien.refresh_from_db()

@@ -43,9 +43,9 @@ lim = Chapter.objects.filter(name='Limites et continuité', class_levels=sm).fir
 der = Chapter.objects.filter(name__startswith='Dérivation', class_levels=sm).first()
 
 
-def make(title, kind='exercise', level=sm, chapters=(), skills=(), difficulty='medium'):
+def make(title, kind='exercise', level=sm, chapters=(), theoremes=(), difficulty='medium'):
     js = {'version': '2.1', 'blocks': [{'id': 'b1', 'type': 'question', 'content': {'html': '<p>x</p>'},
-                                         'meta': {'skills': list(skills)}}]}
+                                         'meta': {'theorems': list(theoremes)}}]}
     c = Content.objects.create(type=kind, title=title, author=author, json_content=js,
                                difficulty=difficulty if kind != 'lesson' else None)
     c.class_levels.set([level])
@@ -53,32 +53,33 @@ def make(title, kind='exercise', level=sm, chapters=(), skills=(), difficulty='m
     return c
 
 
-src = make('Source', chapters=[lim], skills=['tvi', 'limites-usuelles'])
-proche = make('Mêmes notions', chapters=[lim], skills=['tvi', 'limites-usuelles'])
-chapitre = make('Même chapitre', chapters=[lim], skills=['bijection'])
-autre = make('Autre chapitre', chapters=[der], skills=['derivee'])
-niveau = make('Autre niveau', level=tc, chapters=[lim], skills=['tvi', 'limites-usuelles'])
+TVI, PROL = 'Théorème des valeurs intermédiaires (TVI)', 'Prolongement par continuité'
+src = make('Source', chapters=[lim], theoremes=[TVI, PROL])
+proche = make('Mêmes théorèmes', chapters=[lim], theoremes=[TVI, PROL])
+chapitre = make('Même chapitre', chapters=[lim], theoremes=['Théorème de la bijection'])
+autre = make('Autre chapitre', chapters=[der], theoremes=['Théorème des accroissements finis (TAF)'])
+niveau = make('Autre niveau', level=tc, chapters=[lim], theoremes=[TVI, PROL])
 lecon = make('Cours des limites', kind='lesson', chapters=[lim])
-cache.delete('similar_index_v1')
+cache.delete('similar_index_v3')
 
 c = APIClient()
 r = c.get(f'/api/contents/{src.id}/recommendations/')
 titles = [x['title'] for x in r.data['items']]
 check('réponse', r.status_code == 200, r.status_code)
-check('mêmes notions en tête', titles[:1] == ['Mêmes notions'], titles)
+check('mêmes théorèmes en tête', titles[:1] == ['Mêmes théorèmes'], titles)
 check('même chapitre ensuite, leçon du chapitre proposée', 'Même chapitre' in titles and 'Cours des limites' in titles, titles)
 check('rien de commun : absent', 'Autre chapitre' not in titles, titles)
 check('autre niveau : absent', 'Autre niveau' not in titles, titles)
 check('jamais le contenu lui-même', 'Source' not in titles, titles)
 reasons = {x['title']: x['reason'] for x in r.data['items']}
-check('raison lisible', reasons['Mêmes notions'].startswith('Mêmes notions :')
+check('raison lisible', reasons['Mêmes théorèmes'].startswith('Mêmes théorèmes :')
       and reasons['Cours des limites'].startswith('Même chapitre :'), reasons)
 
 Complete.objects.create(user=eleve, content_type=ContentType.objects.get_for_model(Content), object_id=str(proche.id),
                         status='success')
 c.force_authenticate(eleve)
 titles = [x['title'] for x in c.get(f'/api/contents/{src.id}/recommendations/').data['items']]
-check('déjà réussi : passe derrière', titles.index('Mêmes notions') > titles.index('Même chapitre'), titles)
+check('déjà réussi : passe derrière', titles.index('Mêmes théorèmes') > titles.index('Même chapitre'), titles)
 check('contenu inconnu : 404', c.get('/api/contents/999999/recommendations/').status_code == 404)
 
 print(f'\n{sum(results)}/{len(results)} vérifications réussies')

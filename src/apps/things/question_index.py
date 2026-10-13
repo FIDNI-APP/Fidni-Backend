@@ -1,4 +1,5 @@
-"""Index des questions d'un contenu, en cache : [(chemin, points, notions)] (08/10/2026) ; avec la difficulté de
+"""Index des questions d'un contenu, en cache : [(chemin, points, théorèmes)] (08/10/2026 ; théorèmes de la base au
+lieu des notions depuis le 13/10/2026) ; avec la difficulté de
 chaque question depuis le 13/10/2026 (question_levels, pour « Ma progression » : réussite par difficulté).
 
 Les statistiques (Ma progression, plan d'un DS, profil) n'ont besoin que de ça, pas de l'énoncé entier.
@@ -12,11 +13,11 @@ TIMEOUT = 24 * 3600
 
 
 def _key(content_id, updated_at):
-    return f'qidx2:{content_id}:{updated_at.isoformat() if updated_at else "-"}'
+    return f'qidx3:{content_id}:{updated_at.isoformat() if updated_at else "-"}'
 
 
 def question_index(contents):
-    """{id: [(chemin, points, notions)]} pour des contenus (objets avec id et updated_at)."""
+    """{id: [(chemin, points, théorèmes)]} pour des contenus (objets avec id et updated_at)."""
     return {cid: [(path, points, skills) for path, points, skills, _level in rows]
             for cid, rows in _index(contents).items()}
 
@@ -27,7 +28,7 @@ def question_levels(contents):
 
 
 def question_full(contents):
-    """{id: [(chemin, points, notions, difficulté)]}."""
+    """{id: [(chemin, points, théorèmes, difficulté)]}."""
     return _index(contents)
 
 
@@ -43,7 +44,7 @@ def _index(contents):
     missing = [cid for cid in keys if cid not in out]
     if missing:
         for cid, structure in Content.objects.filter(id__in=missing).values_list('id', 'json_content'):
-            out[cid] = [(path, points, list(skills), level) for path, points, skills, level in _questions_full(structure)]
+            out[cid] = [(path, points, list(th), level) for path, points, th, level in _questions_full(structure)]
             fresh[keys[cid]] = out[cid]
         cache.set_many(fresh, TIMEOUT)
     return out

@@ -2,7 +2,7 @@
 
 L'élève annonce son devoir : matière, date, chapitres au programme. Le plan, recalculé à chaque visite :
 - les chapitres du DS, les plus fragiles d'abord, avec la même maîtrise que « Ma progression »
-  (users/progression.py) : notions à renforcer, contenus à revoir, quiz Skill IQ ;
+  (users/progression.py) : théorèmes à renforcer, contenus à revoir, quiz Skill IQ ;
 - des exercices « Pour toi » de ces chapitres (things/for_you.py), jamais ceux déjà réussis ;
 - un DS blanc : 2 ou 3 exercices de ces chapitres, un par chapitre en commençant par le plus fragile,
   pas encore ouverts de préférence, avec une durée (temps cible des questions, sinon la difficulté) ;
@@ -141,11 +141,12 @@ def _minutes(content):
 
 
 def _for_you(user, chapter_ids, names, difficulties=None, limit=FOR_YOU, level=None, exclude_seen=False,
-             prefer_ids=(), only_ids=None, exclude_ids=()):
+             prefer_ids=(), only_ids=None, exclude_ids=(), soon_ids=()):
     """Exercices « Pour toi » des chapitres (plan d'un DS, objectif de « Ma progression »), jamais ceux déjà réussis.
     difficulties : difficultés voulues, dans l'ordre de préférence (les autres viennent après) ; level : ceux du niveau
     s'il en a ; exclude_seen : seulement des exercices jamais ouverts ni évalués (vérification « sur d'autres
-    questions ») ; prefer_ids : en premier (les « à revoir ») ; only_ids : parmi ceux-là (une notion à travailler)."""
+    questions ») ; prefer_ids : en premier (les « à revoir ») ; only_ids : parmi ceux-là (un théorème à travailler) ;
+    soon_ids : à difficulté égale, ceux-là d'abord (les théorèmes les moins réussis)."""
     from apps.things import for_you
     likes = Count('votes', filter=Q(votes__value=Vote.UP), distinct=True)
     dislikes = Count('votes', filter=Q(votes__value=Vote.DOWN), distinct=True)
@@ -159,10 +160,13 @@ def _for_you(user, chapter_ids, names, difficulties=None, limit=FOR_YOU, level=N
     status_of = _statuses(user, [cid for cid, _ in ranked])
     skip = {'success', 'review', 'seen'} if exclude_seen else {'success'}
     ranked = [(cid, label) for cid, label in ranked if status_of.get(cid) not in skip]
+    soon = set(soon_ids)
     if difficulties:
         level_of = dict(base.filter(id__in=[cid for cid, _ in ranked]).values_list('id', 'difficulty'))
         order = {d: i for i, d in enumerate(difficulties)}
-        ranked.sort(key=lambda x: order.get(level_of.get(x[0]), len(order)))
+        ranked.sort(key=lambda x: (order.get(level_of.get(x[0]), len(order)), x[0] not in soon))
+    elif soon:
+        ranked.sort(key=lambda x: x[0] not in soon)
     if prefer_ids:
         first = {cid: i for i, cid in enumerate(prefer_ids)}
         ranked.sort(key=lambda x: first.get(x[0], len(first)))

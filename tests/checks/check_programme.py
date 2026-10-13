@@ -24,7 +24,7 @@ runpy.run_path(os.path.join(BACKEND, 'tests', 'base_tables.py'))
 from apps.caracteristics import programme as P  # noqa: E402
 from apps.caracteristics.hubs import slug  # noqa: E402
 from apps.caracteristics.models import Chapter, ClassLevel, Subject, Subfield, Theorem  # noqa: E402
-from apps.caracteristics.notions import NOTIONS, TRANSVERSAL  # noqa: E402
+from apps.caracteristics import theoremes as TH  # noqa: E402
 
 results = []
 
@@ -164,9 +164,21 @@ print(f'     tailles de l\'annexe D (niveau + niveau précédent) : {tailles} ; 
 check('annexe D : au plus 30 000 caractères pour un niveau et son niveau précédent', max(tailles.values()) <= 30000, tailles)
 check('annexe D : au plus 45 000 caractères pour les 4 niveaux (repères de 1ère compris)', len(d) <= 45000, len(d))
 
-# ── Notions rangées sous des chapitres du programme
-check('notions : chaque rubrique est un chapitre du programme', set(NOTIONS) - {TRANSVERSAL} <= set(P.DOMAINE_CHAPITRE),
-      set(NOTIONS) - {TRANSVERSAL} - set(P.DOMAINE_CHAPITRE))
+# ── Théorèmes des questions (meta.theorems, 13/10/2026 : à la place des notions) : ceux de la base
+TH.oublier()
+idx = TH.index()
+check('théorèmes : chacun du programme est dans la base, rangé dans au moins un chapitre',
+      all(TH.cle(n) in idx and idx[TH.cle(n)]['chapters'] for n in P.DOMAINE_THEOREME),
+      [n for n in P.DOMAINE_THEOREME if TH.cle(n) not in idx or not idx[TH.cle(n)]['chapters']])
+check('théorèmes : casse ignorée, ancien nom traduit, retiré ôté, inconnu signalé',
+      TH.traduire(['formule de moivre', 'Théorème de Moivre', 'Loi des grands nombres', 'Inventé'])
+      == (['Formule de Moivre'], ['Inventé']), TH.traduire(['formule de moivre', 'Théorème de Moivre', 'Loi des grands nombres', 'Inventé']))
+tvi = Chapter.objects.get(name='Limites et continuité')
+check('théorèmes : chapitres d’un théorème', TH.chapitres(['Théorème des valeurs intermédiaires (TVI)']) == {tvi.id}
+      and TH.du_chapitre('Théorème des valeurs intermédiaires (TVI)', tvi.id)
+      and not TH.du_chapitre('Formule de Moivre', tvi.id))
+check('théorèmes d’une question : chaînes non vides seulement',
+      TH.de_la_question({'theorems': ['TVI', '', None, 3]}) == ['TVI'] and TH.de_la_question(None) == [])
 
 # ── Migration 0003 : données figées d'accord avec le programme au moment de l'écrire
 m = importlib.import_module('apps.caracteristics.migrations.0003_programme_officiel')

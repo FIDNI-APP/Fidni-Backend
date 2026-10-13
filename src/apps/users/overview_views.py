@@ -5,8 +5,8 @@ Uniquement des chiffres enregistrés (aucune estimation) :
   enregistrées, quiz Skill IQ. Le temps d'étude automatique n'a pas d'historique par jour (une ligne
   cumulée par contenu) : il n'entre donc pas dans le calendrier ;
 - maîtrise = part des questions auto-évaluées « réussi » ;
-- notions = étiquettes des questions (référentiel apps/caracteristics/notions.py), chacune avec son
-  chapitre (`chapter_id`, pour ouvrir « Ma progression » sur ce chapitre) ;
+- théorèmes à retravailler (`weak_theorems`) = théorèmes des questions (meta.theorems, depuis le 13/10/2026 à la
+  place des notions), chacun avec son chapitre (`chapter_id`, pour ouvrir « Ma progression » sur ce chapitre) ;
 - à revoir = contenus marqués « à revoir » depuis au moins 2 jours (le refaire tout de suite n'apprend
   rien), du plus ancien au plus récent, avec `days_ago` (« raté il y a 5 j ») ;
 - `level_hub_url` = page de niveau des exercices de l'élève (/exercises/niveau/2eme-bac-sm).
@@ -22,7 +22,6 @@ from rest_framework.response import Response
 
 from apps.caracteristics.hubs import hub_url
 from apps.caracteristics.models import Chapter
-from apps.caracteristics.notions import notion_label
 from apps.interactions.models import Complete, QuestionProgress, TimeSession
 from apps.skilliq.models import SkillAssessment
 from apps.things.models import Content
@@ -102,13 +101,13 @@ def dashboard_overview(request):
                                | {timezone.localtime(r['created_at']).date() for r in completes if in_week(r['created_at'], a, b)}),
         }
 
-    # ── Contenus concernés (une seule requête) et chemin → notions
+    # ── Contenus concernés (une seule requête) et chemin → théorèmes de la question
     content_ids = {r['object_id'] for r in qp} | {int(r['object_id']) for r in completes if str(r['object_id']).isdigit()}
     # Sans l'énoncé : l'index des questions vient du cache (things/question_index.py), mêmes chemins.
     contents = {c.id: c for c in Content.objects.filter(id__in=content_ids).defer('json_content').prefetch_related('chapters')}
     index = question_index(contents.values())
     questions_of = {cid: len(index.get(cid, [])) for cid in contents}
-    skills_of = {cid: {path: skills for path, _, skills in index.get(cid, [])} for cid in contents}
+    theoremes_of = {cid: {path: noms for path, _, noms in index.get(cid, [])} for cid in contents}
 
     def brief(c, **extra):
         chapter = next(iter(c.chapters.all()), None)
@@ -157,29 +156,29 @@ def dashboard_overview(request):
             'contents': Content.objects.filter(chapters=ch, **({'class_levels': level} if level else {})).count(),
         })
 
-    # ── Notions à retravailler (au moins 2 questions évaluées, moins de 60 % réussies), avec le chapitre
-    # où il les a le plus travaillées (celui de la notion parmi ceux du contenu, comme Ma progression)
+    # ── Théorèmes à retravailler (au moins 2 questions évaluées, moins de 60 % réussies), avec le chapitre
+    # où il les a le plus travaillés (celui du théorème parmi ceux du contenu, comme Ma progression)
     # et qui est dans son programme : le lien ouvre ce chapitre dans Ma progression.
     from apps.users.progression import _question_chapters  # progression importe ce module
     chapters_of = {cid: [(ch.id, ch.name) for ch in c.chapters.all()] for cid, c in contents.items()}
     programme = {c['id'] for c in chapters}
-    notion_stats = defaultdict(lambda: [0, 0, Counter()])
+    th_stats = defaultdict(lambda: [0, 0, Counter()])
     for r in qp:
-        skills = skills_of.get(r['object_id'], {}).get(r['question_path'], [])
-        mine = (_question_chapters(chapters_of.get(r['object_id'], []), skills, programme if level else None)
-                if skills else [])
-        for slug in skills:
-            row = notion_stats[slug]
+        noms = theoremes_of.get(r['object_id'], {}).get(r['question_path'], [])
+        mine = (_question_chapters(chapters_of.get(r['object_id'], []), noms, programme if level else None)
+                if noms else [])
+        for nom in noms:
+            row = th_stats[nom]
             row[0] += 1
             row[1] += r['status'] == 'success'
             row[2].update(mine)
 
-    def notion_chapter(counter):
+    def th_chapter(counter):
         return next((ch for ch, _ in counter.most_common() if ch in programme), None)
 
-    weak = sorted(({'slug': s, 'label': notion_label(s), 'assessed': n, 'mastery_pct': _pct(ok, n),
-                    'chapter_id': notion_chapter(where)}
-                   for s, (n, ok, where) in notion_stats.items() if n >= 2 and _pct(ok, n) < 60),
+    weak = sorted(({'name': s, 'label': s, 'assessed': n, 'mastery_pct': _pct(ok, n),
+                    'chapter_id': th_chapter(where)}
+                   for s, (n, ok, where) in th_stats.items() if n >= 2 and _pct(ok, n) < 60),
                   key=lambda x: (x['mastery_pct'], -x['assessed']))
 
     return Response({
@@ -200,5 +199,5 @@ def dashboard_overview(request):
         'review': review[:4],
         'chapters': chapters,
         'coverage': {'total': len(chapters), 'touched': sum(1 for c in chapters if c['assessed'])},
-        'weak_notions': weak[:4],
+        'weak_theorems': weak[:4],
     })

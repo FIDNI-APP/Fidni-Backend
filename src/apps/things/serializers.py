@@ -3,6 +3,7 @@ from rest_framework import serializers
 from .models import ProposedSolution, Solution, Comment, Content
 from apps.interactions.models import Vote
 from apps.caracteristics.models import ClassLevel, Chapter, Subfield, Theorem
+from apps.caracteristics.theoremes import ajouter_au_contenu
 from apps.users.serializers import AuthorSerializer
 from apps.caracteristics.serializers import ChapterSerializer, ClassLevelSerializer, SubjectSerializer, SubfieldSerializer, TheoremSerializer
 from apps.uploads.serializers import FileAttachmentSerializer
@@ -374,6 +375,7 @@ class ContentCreateSerializer(serializers.ModelSerializer):
         if json_content is not None:
             item.json_content = json_content or {}
             item.save(update_fields=['json_content'])
+            ajouter_au_contenu(item)  # théorèmes des questions (meta.theorems) → théorèmes du contenu
 
         if solution_content:
             Solution.objects.create(
@@ -407,6 +409,8 @@ class ContentCreateSerializer(serializers.ModelSerializer):
         if json_content is not None:
             instance.json_content = json_content or {}
         instance.save()
+        if json_content is not None:
+            ajouter_au_contenu(instance)  # théorèmes des questions (meta.theorems) → théorèmes du contenu
 
         if solution_content is not None:
             sol, _ = Solution.objects.get_or_create(

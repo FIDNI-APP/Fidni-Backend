@@ -197,7 +197,7 @@ check('bandeau sur la page d’un chapitre : ce chapitre seulement',
 
 # ── recommendations ?apres
 lecon = make('Cours des limites', kind='lesson', json_content={'sections': []})
-cache.delete('similar_index_v1')
+cache.delete('similar_index_v3')
 
 
 def recos(src, apres=None):

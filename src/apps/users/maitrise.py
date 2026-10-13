@@ -27,7 +27,7 @@ from django.db.models import Count, Max
 from django.utils import timezone
 
 from apps.caracteristics.models import Chapter
-from apps.caracteristics.notions import notion_label
+from apps.caracteristics import theoremes as TH
 from apps.caracteristics.programme import chapitres_du_niveau
 from apps.interactions.models import QuestionHelp
 from apps.things.models import Content
@@ -35,8 +35,7 @@ from apps.things.question_index import question_full
 from apps.users import maitrise_seuils as S
 from apps.users.my_stats import WEIGHT
 from apps.users.overview_views import _streaks
-from apps.users.progression import (NOTION_CHAPTER, _chapter_entries, _collect, _local, _pct, _per_chapter,
-                                    _question_chapters, _same_chapter)
+from apps.users.progression import _chapter_entries, _collect, _local, _pct, _per_chapter, _question_chapters
 
 CACHE_TTL = 600
 VERSION = 'v1'
@@ -103,14 +102,14 @@ def criteres_maitrise(s):
         add('synthese', 'a_faire', 'Réussis un exercice de synthèse, où tu choisis toi-même la méthode : '
                                    'une question difficile, ou un exercice de DS ou du Bac')
 
-    exigees = min(S.MAX_NOTIONS_EXIGEES, s.notions_dispo)
-    if exigees == 0 or s.notions_reussies >= exigees:
-        add('notions', 'ok', f'{_plural(s.notions_reussies, "notion")} du chapitre réussie{"s" if s.notions_reussies > 1 else ""}'
-            if s.notions_reussies else 'Notions du chapitre : rien de plus à couvrir')
+    exigees = min(S.MAX_THEOREMES_EXIGES, s.theoremes_dispo)
+    if exigees == 0 or s.theoremes_reussis >= exigees:
+        add('theoremes', 'ok', f'{_plural(s.theoremes_reussis, "théorème")} du chapitre utilisé{"s" if s.theoremes_reussis > 1 else ""} '
+            'avec succès' if s.theoremes_reussis else 'Théorèmes du chapitre : rien de plus à couvrir')
     else:
-        reste = (' : ' + ', '.join(s.notions_manquantes[:3])) if s.notions_manquantes else ''
-        add('notions', 'a_faire', f'Réussis des questions sur {exigees} notions différentes '
-                                  f'({s.notions_reussies} pour l’instant){reste}')
+        # Sans nommer les théorèmes (pas affichés aux élèves) : les exercices de l'objectif les font travailler.
+        add('theoremes', 'a_faire', f'Réussis des questions qui font appel à {exigees} théorèmes différents du chapitre '
+                                    f'({s.theoremes_reussis} pour l’instant)')
 
     d = s.durable
     if d['etat'] == 'confirmee':
@@ -173,15 +172,16 @@ def etat_du_chapitre(s):
 
 # ── Données ────────────────────────────────────────────────────────────────────────────────────────────────────
 
-def _notions_dispo(level):
-    """{chapter_id: {notion: [content ids]}} des exercices et examens (du niveau), en cache 6 h. Sert au critère
-    « notions couvertes » et aux exercices ciblés sur une notion pas encore réussie (objectif.py)."""
+def _theoremes_dispo(level):
+    """{chapter_id: {théorème: [content ids]}} des exercices et examens (du niveau) : théorèmes de leurs questions au
+    programme du chapitre, en cache 6 h. Sert au critère « théorèmes couverts » et aux exercices ciblés sur un
+    théorème pas encore réussi (objectif.py)."""
     qs = Content.objects.filter(type__in=('exercise', 'exam'))
     if level:
         qs = qs.filter(class_levels=level)
     # Un contenu publié ou modifié change la clé : jamais de liste périmée.
     stamp = qs.aggregate(n=Count('id'), m=Max('updated_at'))
-    key = f'maitrise:notions:{level.id if level else "tous"}:{stamp["n"]}:{stamp["m"].isoformat() if stamp["m"] else "-"}'
+    key = f'maitrise:theoremes:{level.id if level else "tous"}:{stamp["n"]}:{stamp["m"].isoformat() if stamp["m"] else "-"}'
     hit = cache.get(key)
     if hit is not None:
         return hit
@@ -189,16 +189,13 @@ def _notions_dispo(level):
     full = question_full(contents)
     out = defaultdict(lambda: defaultdict(set))
     for c in contents:
-        chapters = [(ch.id, ch.name) for ch in c.chapters.all()]
-        for _path, _pts, skills, _lvl in full.get(c.id, []):
-            for sk in skills:
-                home = NOTION_CHAPTER.get(sk)
-                if not home:
-                    continue
-                for ch_id, name in chapters:
-                    if _same_chapter(name, home):
-                        out[ch_id][sk].add(c.id)
-    data = {ch: {sk: sorted(ids) for sk, ids in notions.items()} for ch, notions in out.items()}
+        chapters = [ch.id for ch in c.chapters.all()]
+        for _path, _pts, theoremes, _lvl in full.get(c.id, []):
+            for nom in theoremes:
+                for ch_id in chapters:
+                    if TH.du_chapitre(nom, ch_id):
+                        out[ch_id][nom].add(c.id)
+    data = {ch: {nom: sorted(ids) for nom, ids in noms.items()} for ch, noms in out.items()}
     cache.set(key, data, 6 * 3600)
     return data
 
@@ -249,8 +246,8 @@ def calculer(user, level, d, today):
     def route(cid, path):
         key = (cid, path)
         if key not in routes:
-            skills = d.skills_of.get(cid, {}).get(path, [])
-            routes[key] = [ch for ch in _question_chapters(d.chapters_of.get(cid, []), skills, allowed) if ch in ids]
+            noms = d.theoremes_of.get(cid, {}).get(path, [])
+            routes[key] = [ch for ch in _question_chapters(d.chapters_of.get(cid, []), noms, allowed) if ch in ids]
         return routes[key]
 
     def niveau(cid, path):
@@ -290,7 +287,7 @@ def calculer(user, level, d, today):
         return {ch: _pct(sc, n) for ch, (n, sc) in acc.items() if n >= S.MIN_QUESTIONS}
 
     avant = pcts_a(snaps[j30])
-    dispo = _notions_dispo(level)
+    dispo = _theoremes_dispo(level)
     chapters = []
     for e in entries:
         st = _stats_chapitre(e, cur.get(e['id'], []), par_chap.get(e['id'], []), d, today, avant, dispo, niveau,
@@ -309,8 +306,8 @@ def calculer(user, level, d, today):
             'exercices_reussis': st.exercices_reussis,
             'travailles': st.travailles,
             'derniere_evaluation': _iso(st.derniere),
-            'notions_couvertes': {'reussies': st.notions_reussies, 'dispo': st.notions_dispo,
-                                  'manquantes': st.notions_manquantes_slugs},
+            'theoremes_couverts': {'reussis': st.theoremes_reussis, 'dispo': st.theoremes_dispo,
+                                   'manquants': st.theoremes_manquants[:5]},
             'commence': st.commence,
             'ordre': ordre[e['id']],
         })
@@ -329,7 +326,7 @@ def _iso(d):
 
 
 def _stats_chapitre(entry, rows, evs, d, today, avant, dispo, niveau, est_examen, done_ids=()):
-    ch_id, name = entry['id'], entry['name']
+    ch_id = entry['id']
     n = len(rows)
     score = sum(WEIGHT.get(st, 0) for _c, _p, st, _l in rows)
     self_pct = _pct(score, n) if n >= S.MIN_QUESTIONS else None
@@ -342,7 +339,7 @@ def _stats_chapitre(entry, rows, evs, d, today, avant, dispo, niveau, est_examen
 
     par_lvl = defaultdict(lambda: [0, 0.0])
     par_cid = defaultdict(lambda: [0, 0.0, False])
-    niveaux_reussis, synthese, notions_ok = set(), False, set()
+    niveaux_reussis, synthese, theoremes_ok = set(), False, set()
     for cid, path, st, lvl in rows:
         if lvl:
             par_lvl[lvl][0] += 1
@@ -356,17 +353,16 @@ def _stats_chapitre(entry, rows, evs, d, today, avant, dispo, niveau, est_examen
                 niveaux_reussis.add(lvl)
             if lvl == 'hard' or est_examen(cid):
                 synthese = True
-            for sk in d.skills_of.get(cid, {}).get(path, []):
-                home = NOTION_CHAPTER.get(sk)
-                if home and _same_chapter(name, home):
-                    notions_ok.add(sk)
+            for nom in d.theoremes_of.get(cid, {}).get(path, []):  # théorèmes de la question
+                if TH.du_chapitre(nom, ch_id):
+                    theoremes_ok.add(nom)
     par_difficulte = {lvl: {'questions': par_lvl[lvl][0], 'pct': _pct(par_lvl[lvl][1], par_lvl[lvl][0])}
                       for lvl in ('easy', 'medium', 'hard') if par_lvl[lvl][0]}
     exercices_reussis = sum(1 for nq, sc, ok in par_cid.values() if ok and sc * 100 >= S.EXERCICE_REUSSI * nq)
 
-    # Notions présentes dans les exercices du chapitre, et celles pas encore réussies.
-    chap_notions = dispo.get(ch_id, {})
-    manquantes = sorted((sk for sk in chap_notions if sk not in notions_ok), key=lambda sk: -len(chap_notions[sk]))
+    # Théorèmes du chapitre présents dans ses exercices, et ceux pas encore utilisés avec succès.
+    chap_th = dispo.get(ch_id, {})
+    manquants = sorted((nom for nom in chap_th if nom not in theoremes_ok), key=lambda nom: (-len(chap_th[nom]), nom))
 
     # Résultats récents : les 10 dernières questions évaluées des 30 derniers jours.
     depuis = today - timedelta(days=S.RECENTS_JOURS)
@@ -381,8 +377,7 @@ def _stats_chapitre(entry, rows, evs, d, today, avant, dispo, niveau, est_examen
         exercices_evalues=len(par_cid), exercices_reussis=exercices_reussis,
         travailles=len(set(par_cid) | set(done_ids)),  # parcours : contenus évalués ou réussis
         niveaux_reussis=niveaux_reussis, synthese=synthese,
-        notions_reussies=len(notions_ok), notions_dispo=len(chap_notions),
-        notions_manquantes=[notion_label(sk) for sk in manquantes], notions_manquantes_slugs=manquantes[:5],
+        theoremes_reussis=len(theoremes_ok), theoremes_dispo=len(chap_th), theoremes_manquants=manquants,
         recents_pct=recents_pct, recents_n=len(recents), tendance=tendance,
         durable=_durable(evs, niveau, today), autonomie=_autonomie(evs), transfert=_transfert(evs),
         derniere=max((_local(e[0]) for e in evs if e[3] is not None), default=None),
