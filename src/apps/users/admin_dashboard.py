@@ -263,6 +263,7 @@ def overview(request):
         'members_total': len(real_ids),
         'funnel': _funnel(start, real),
         'auth_doors': _auth_doors(first),
+        'avis_diagnostics': _avis_diagnostics(first),
         'todo': {
             'reports_open': ContentReport.objects.filter(status=ContentReport.STATUS_OPEN).count(),
             'a_verifier': [_content_ref(c) for c in Content.objects.filter(json_content__a_verifier=True)
@@ -318,6 +319,29 @@ def _auth_doors(first):
     out = [{'source': r['name'][len(AUTH_DOOR_PREFIX):], 'count': r['c'] or 0, 'visits': r['v'] or 0,
             'anon': r['a'] or 0} for r in rows]
     out.sort(key=lambda x: (-x['count'], x['source']))
+    return out
+
+
+AVIS_PREFIX = 'prog:avis:'
+
+
+def _avis_diagnostics(first):
+    """« Ce diagnostic te semble juste ? » (Ma progression, 13/10/2026) : accord par état de chapitre et par type
+    d'objectif, pour ajuster les seuils (apps/users/maitrise_seuils.py)."""
+    rows = (UsageDaily.objects.filter(kind=UsageDaily.KIND_FILTER, name__startswith=AVIS_PREFIX, date__gte=first)
+            .values('name').annotate(c=Sum('count')))
+    par = {}
+    for r in rows:
+        sujet, _, avis = r['name'][len(AVIS_PREFIX):].rpartition(':')
+        row = par.setdefault(sujet, {'sujet': sujet, 'oui': 0, 'non': 0})
+        if avis in ('oui', 'non'):
+            row[avis] += r['c'] or 0
+    out = list(par.values())
+    for row in out:
+        total = row['oui'] + row['non']
+        row['total'] = total
+        row['accord'] = round(row['oui'] * 100 / total) if total else None
+    out.sort(key=lambda x: (-x['total'], x['sujet']))
     return out
 
 
@@ -409,6 +433,15 @@ TRACKED_ACTIONS = [
     ('prog-entrainer', 'Ma progression : « S’entraîner »'),
     ('prog-cours', 'Ma progression : « Le cours »'),
     ('prog-quiz', 'Ma progression : « Quiz »'),
+    ('prog-objectif', 'Ma progression : bouton de l’objectif'),
+    ('prog-objectif-exercice', 'Ma progression : exercice proposé par l’objectif'),
+    ('prog-fiche', 'Ma progression : « En faire une fiche »'),
+    ('prog-chapitre', 'Ma progression : détail d’un chapitre ouvert'),
+    ('prog-chapitre-action', 'Ma progression : action d’un chapitre'),
+    ('prog-calcul', 'Ma progression : « Comment c’est calculé ? »'),
+    ('prog-activite-detail', 'Ma progression : « Mon activité »'),
+    ('accueil-objectif', 'Accueil : bouton « Où j’en suis »'),
+    ('accueil-progression', 'Accueil : « Ma progression › »'),
     ('quiz-refait', 'Quiz de chapitre repassé'),
     ('mode-revision', 'Liste de révision en mode révision'),
     ('barre-mobile', 'Barre d’onglets (téléphone)'),

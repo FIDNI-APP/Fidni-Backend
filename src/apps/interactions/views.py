@@ -198,9 +198,13 @@ class RevisionListViewSet(viewsets.ModelViewSet):
                           .prefetch_related('class_levels', 'chapters'), key=lambda c: ids.index(c.id))
         if not contents:
             return Response({'error': 'Contenu introuvable.'}, status=status.HTTP_404_NOT_FOUND)
+        # `name` (facultatif, 13/10/2026) : « En faire une fiche » de « Ma progression » range les exercices de
+        # l'objectif dans « Objectif : <chapitre> » plutôt que dans « À revoir ».
+        name = request.data.get('name')
+        name = name.strip()[:100] if isinstance(name, str) and name.strip() else self.QUICK_LIST_NAME
         revision_list, created_list = RevisionList.objects.get_or_create(
-            user=request.user, name=self.QUICK_LIST_NAME,
-            defaults={'description': self.QUICK_LIST_DESCRIPTION})
+            user=request.user, name=name,
+            defaults={'description': self.QUICK_LIST_DESCRIPTION if name == self.QUICK_LIST_NAME else ''})
         ct = ContentType.objects.get_for_model(Content)
         already = set(revision_list.items.filter(content_type=ct, object_id__in=[c.pk for c in contents])
                       .values_list('object_id', flat=True))

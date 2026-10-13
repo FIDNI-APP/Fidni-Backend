@@ -95,6 +95,8 @@ def submit_quiz(request, chapter_id):
             assessment.answers, assessment.time_spent = answers, time_spent
             assessment.save()
 
+    from apps.users.maitrise import forget
+    forget(request.user.id)  # « Ma progression » : le quiz compte dans la maîtrise du chapitre
     result = SkillAssessmentSerializer(assessment, context={'request': request}).data
     # Correction question par question, envoyée seulement APRÈS la soumission (la bonne réponse
     # n'est jamais dans le quiz lui-même) : l'élève voit ses erreurs et l'explication.

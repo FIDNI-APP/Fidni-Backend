@@ -29,6 +29,8 @@ MAX_CHAPTERS = 12
 SOON_DAYS = 14         # rappel sur l'accueil : le prochain DS dans les 2 semaines
 FOR_YOU = 6            # exercices proposés
 STATUS_RANK = {'weak': 0, 'todo': 1, 'started': 2, 'good': 3, 'mastered': 4}
+# États de « Ma progression » (apps/users/maitrise.py) : les plus à travailler d'abord, comme sur la page.
+ETAT_RANK = {'a_renforcer': 0, 'a_consolider': 0, 'bonne_voie': 3, 'maitrise': 4}
 MINUTES = {'easy': 15, 'medium': 20, 'hard': 30}   # durée d'un exercice sans temps cible
 DIFFICULTY_RANK = {'medium': 0, 'hard': 1, 'easy': 2}  # DS blanc : comme en vrai, plutôt moyen
 
@@ -97,6 +99,12 @@ def _chapter_ids_of(content_ids):
     return out
 
 
+def _forget_maitrise(user):
+    """Un DS annoncé oriente l'objectif de « Ma progression » (apps/users/objectif.py) : recalcul."""
+    from apps.users.maitrise import forget
+    forget(user.id)
+
+
 def _exercises_in(chapter_ids):
     from apps.things.models import Content
     ids = Content.chapters.through.objects.filter(chapter_id__in=chapter_ids).values('content_id')
@@ -132,16 +140,34 @@ def _minutes(content):
     return MINUTES.get(content.difficulty, 20)
 
 
-def _for_you(user, chapter_ids, names):
-    """Exercices « Pour toi » des chapitres du DS, jamais ceux déjà réussis."""
+def _for_you(user, chapter_ids, names, difficulties=None, limit=FOR_YOU, level=None, exclude_seen=False,
+             prefer_ids=(), only_ids=None, exclude_ids=()):
+    """Exercices « Pour toi » des chapitres (plan d'un DS, objectif de « Ma progression »), jamais ceux déjà réussis.
+    difficulties : difficultés voulues, dans l'ordre de préférence (les autres viennent après) ; level : ceux du niveau
+    s'il en a ; exclude_seen : seulement des exercices jamais ouverts ni évalués (vérification « sur d'autres
+    questions ») ; prefer_ids : en premier (les « à revoir ») ; only_ids : parmi ceux-là (une notion à travailler)."""
     from apps.things import for_you
     likes = Count('votes', filter=Q(votes__value=Vote.UP), distinct=True)
     dislikes = Count('votes', filter=Q(votes__value=Vote.DOWN), distinct=True)
-    qs = _exercises_in(chapter_ids).annotate(like_count_annotation=likes, dislike_count_annotation=dislikes)
+    base = _exercises_in(chapter_ids).exclude(id__in=list(exclude_ids))
+    if level is not None and base.filter(class_levels=level).exists():
+        base = base.filter(class_levels=level)
+    if only_ids is not None:
+        base = base.filter(id__in=list(only_ids))
+    qs = base.annotate(like_count_annotation=likes, dislike_count_annotation=dislikes)
     ranked = for_you.rank(qs, user)
     status_of = _statuses(user, [cid for cid, _ in ranked])
-    picked = [(cid, label) for cid, label in ranked if status_of.get(cid) != 'success'][:FOR_YOU]
-    contents = {c.id: c for c in _exercises_in(chapter_ids).filter(id__in=[cid for cid, _ in picked])}
+    skip = {'success', 'review', 'seen'} if exclude_seen else {'success'}
+    ranked = [(cid, label) for cid, label in ranked if status_of.get(cid) not in skip]
+    if difficulties:
+        level_of = dict(base.filter(id__in=[cid for cid, _ in ranked]).values_list('id', 'difficulty'))
+        order = {d: i for i, d in enumerate(difficulties)}
+        ranked.sort(key=lambda x: order.get(level_of.get(x[0]), len(order)))
+    if prefer_ids:
+        first = {cid: i for i, cid in enumerate(prefer_ids)}
+        ranked.sort(key=lambda x: first.get(x[0], len(first)))
+    picked = ranked[:limit]
+    contents = {c.id: c for c in base.filter(id__in=[cid for cid, _ in picked])}
     chapters_of = _chapter_ids_of([cid for cid, _ in picked])
     rows = []
     for cid, label in picked:
@@ -150,7 +176,8 @@ def _for_you(user, chapter_ids, names):
             continue
         chapter = next((names[ch] for ch in chapters_of.get(cid, []) if ch in names), None)
         rows.append({'id': c.id, 'title': c.title, 'difficulty': c.difficulty, 'chapter': chapter,
-                     'status': status_of.get(cid), 'reason': label, 'minutes': _minutes(c)})
+                     'status': status_of.get(cid), 'reason': label, 'minutes': _minutes(c),
+                     'url': f'/exercises/{c.id}'})
     return rows
 
 
@@ -258,8 +285,17 @@ def _ordered_chapters(test, user):
     from apps.users.progression import chapter_progress
     chapters = list(test.chapters.select_related('subfield'))
     entries = chapter_progress(user, chapters, _level(user, test))
-    entries.sort(key=lambda c: (STATUS_RANK.get(c['status'], 2), c['mastery'] if c['mastery'] is not None else 101, c['name']))
+    entries.sort(key=lambda c: (_rank(c), c['mastery'] if c['mastery'] is not None else 101, c['name']))
     return entries
+
+
+def _rank(c):
+    """Rang d'un chapitre du DS : l'état de « Ma progression » ; pas encore évalué (moins de 4 questions) : l'ancien
+    état, qui distingue déjà « 3 questions ratées » de « 3 questions réussies »."""
+    etat = c.get('etat')
+    if etat and etat != 'non_evalue':
+        return ETAT_RANK.get(etat, 2)
+    return STATUS_RANK.get(c['status'], 2)
 
 
 def _readiness(entries):
@@ -333,6 +369,7 @@ class UpcomingTestViewSet(viewsets.ModelViewSet):
             raise serializers.ValidationError({'detail': 'Tu as déjà beaucoup de DS enregistrés : supprime les anciens.'})
         level = serializer.validated_data.get('class_level') or _level(user)
         serializer.save(user=user, class_level=level)
+        _forget_maitrise(user)
 
     def perform_update(self, serializer):
         # Chapitres changés : le DS blanc tiré pour les anciens chapitres ne vaut plus.
@@ -340,6 +377,11 @@ class UpcomingTestViewSet(viewsets.ModelViewSet):
             serializer.save(mock_ids=[], mock_started_at=None, mock_done_at=None, mock_seconds=None)
         else:
             serializer.save()
+        _forget_maitrise(self.request.user)
+
+    def perform_destroy(self, instance):
+        instance.delete()
+        _forget_maitrise(self.request.user)
 
     @action(detail=False, methods=['get'], url_path='prochain')
     def prochain(self, request):
@@ -397,6 +439,7 @@ class UpcomingTestViewSet(viewsets.ModelViewSet):
                 test.mock_seconds = max(0, min(seconds, 6 * 3600))
                 test.mock_done_at = now
                 test.save(update_fields=['mock_seconds', 'mock_done_at', 'updated_at'])
+                _forget_maitrise(request.user)
             elif what == 'new':
                 previous = list(test.mock_ids)
                 test.mock_ids = _pick_mock(request.user, ordered_ids, _level(request.user, test), exclude=previous,

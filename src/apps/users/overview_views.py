@@ -63,7 +63,7 @@ def dashboard_overview(request):
     profile = getattr(user, 'profile', None)
     level = getattr(profile, 'class_level', None)
 
-    qp = list(QuestionProgress.objects.filter(user=user, content_type=ct)
+    qp = list(QuestionProgress.objects.filter(user=user, content_type=ct).exclude(status='')  # sans statut : pas une évaluation
               .values('object_id', 'question_path', 'status', 'created_at', 'assessed_at'))
     completes = list(Complete.objects.filter(user=user, content_type=ct).values('object_id', 'status', 'created_at', 'updated_at'))
     sessions = list(TimeSession.objects.filter(user=user, content_type=ct).values('object_id', 'session_duration', 'created_at'))
