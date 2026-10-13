@@ -70,71 +70,65 @@ def criteres_maitrise(s):
     def add(cle, etat, texte):
         out.append({'cle': cle, 'etat': etat, 'texte': texte})
 
+    # Textes courts (13/10/2026, « trop de blabla ») : un repère et un chiffre, lus d'un coup d'œil ; ils servent aussi de
+    # raison « Pour passer « Maîtrisé » : … » (première lettre en minuscule).
     if s.n >= S.MIN_QUESTIONS_MAITRISE and s.self_pct is not None and s.self_pct >= S.SEUIL_MAITRISE:
-        add('resultats', 'ok', f'{s.self_pct} % de réussite sur {_plural(s.n, "question")}')
+        add('resultats', 'ok', f'{s.self_pct} % sur {_plural(s.n, "question")}')
     elif s.n < S.MIN_QUESTIONS_MAITRISE:
-        add('resultats', 'a_faire', f'Au moins {S.MIN_QUESTIONS_MAITRISE} questions évaluées et {S.SEUIL_MAITRISE} % '
-                                    f'de réussite (tu en as {s.n})')
+        add('resultats', 'a_faire', f'{S.MIN_QUESTIONS_MAITRISE} questions à {S.SEUIL_MAITRISE} % (tu en as {s.n})')
     else:
-        add('resultats', 'a_faire', f'Au moins {S.SEUIL_MAITRISE} % de réussite ({s.self_pct} % sur '
-                                    f'{_plural(s.n, "question")} pour l’instant)')
+        add('resultats', 'a_faire', f'{S.SEUIL_MAITRISE} % de réussite ({s.self_pct} % pour l’instant)')
 
     if s.exercices_reussis >= S.MIN_EXERCICES_MAITRISE:
-        add('exercices', 'ok', f'{s.exercices_reussis} exercices différents réussis')
+        add('exercices', 'ok', f'{s.exercices_reussis} exercices réussis')
     else:
-        add('exercices', 'a_faire', f'Réussis au moins {S.MIN_EXERCICES_MAITRISE} exercices différents '
-                                    f'({s.exercices_reussis} pour l’instant)')
+        add('exercices', 'a_faire', f'{S.MIN_EXERCICES_MAITRISE} exercices réussis ({s.exercices_reussis} pour l’instant)')
 
     niveaux = [n for n in ('easy', 'medium', 'hard') if n in s.niveaux_reussis]
     if len(niveaux) >= 2 and ('medium' in niveaux or 'hard' in niveaux):
         add('difficultes', 'ok', 'Réussi en ' + ' et en '.join(NIVEAU_LABEL[n] for n in niveaux))
     elif not niveaux:
-        add('difficultes', 'a_faire', 'Réussis des questions à deux niveaux de difficulté, dont un moyen ou difficile')
+        add('difficultes', 'a_faire', 'Deux niveaux de difficulté, dont moyen ou difficile')
     elif 'medium' not in niveaux and 'hard' not in niveaux:
-        add('difficultes', 'a_faire', 'Réussis aussi un exercice moyen ou difficile (seulement facile pour l’instant)')
+        add('difficultes', 'a_faire', 'Un exercice moyen ou difficile')
     else:
-        add('difficultes', 'a_faire', f'Réussis à un deuxième niveau de difficulté (seulement '
-                                      f'{NIVEAU_LABEL[niveaux[0]]} pour l’instant)')
+        autres = [NIVEAU_LABEL[n] for n in ('easy', 'medium', 'hard') if n not in niveaux]
+        add('difficultes', 'a_faire', f'Un exercice {" ou ".join(autres)}')
 
     if s.synthese:
-        add('synthese', 'ok', 'Un exercice de synthèse réussi (question difficile, ou exercice de DS ou du Bac)')
+        add('synthese', 'ok', 'Un exercice de synthèse réussi')
     else:
-        add('synthese', 'a_faire', 'Réussis un exercice de synthèse, où tu choisis toi-même la méthode : '
-                                   'une question difficile, ou un exercice de DS ou du Bac')
+        add('synthese', 'a_faire', 'Un exercice de synthèse (difficile, DS ou Bac)')
 
     exigees = min(S.MAX_THEOREMES_EXIGES, s.theoremes_dispo)
     if exigees == 0 or s.theoremes_reussis >= exigees:
-        add('theoremes', 'ok', f'{_plural(s.theoremes_reussis, "théorème")} du chapitre utilisé{"s" if s.theoremes_reussis > 1 else ""} '
-            'avec succès' if s.theoremes_reussis else 'Théorèmes du chapitre : rien de plus à couvrir')
+        add('theoremes', 'ok', f'{_plural(s.theoremes_reussis, "théorème")} du chapitre' if s.theoremes_reussis
+            else 'Théorèmes du chapitre')
     else:
         # Sans nommer les théorèmes (pas affichés aux élèves) : les exercices de l'objectif les font travailler.
-        add('theoremes', 'a_faire', f'Réussis des questions qui font appel à {exigees} théorèmes différents du chapitre '
-                                    f'({s.theoremes_reussis} pour l’instant)')
+        add('theoremes', 'a_faire', f'{exigees} théorèmes du chapitre ({s.theoremes_reussis} pour l’instant)')
 
     d = s.durable
     if d['etat'] == 'confirmee':
-        add('durable', 'ok', f'Revérifié sans aide le {_jm(d["le"])}, sur d’autres questions')
+        add('durable', 'ok', f'Revérifié sans aide le {_jm(d["le"])}')
     elif d['etat'] == 'n_a_pas_tenu':
-        add('durable', 'a_faire', f'Lors de la vérification du {_jm(d["le"])}, ça n’a pas tenu : à retravailler')
+        add('durable', 'a_faire', f'Vérification du {_jm(d["le"])} à refaire')
     elif d['etat'] == 'a_verifier':
-        if d['due']:
-            add('durable', 'en_attente', 'À revérifier maintenant, sans aide, sur d’autres questions')
-        else:
-            add('durable', 'en_attente', f'À revérifier sans aide sur d’autres questions à partir du {_jm(d["a_partir_du"])}')
+        add('durable', 'en_attente', 'À revérifier sans aide' if d['due']
+            else f'À revérifier sans aide dès le {_jm(d["a_partir_du"])}')
     else:
-        add('durable', 'a_faire', 'Réussis d’abord quelques questions, puis revérifie quelques jours plus tard')
+        add('durable', 'a_faire', 'Revérifier quelques jours plus tard')
 
     a = s.autonomie
     if a['pct'] is not None:
         if a['pct'] >= S.AUTONOMIE_SUFFISANTE:
-            add('autonomie', 'ok', f'{a["pct"]} % de tes réussites sans indice ni solution')
+            add('autonomie', 'ok', f'{a["pct"]} % réussi sans aide')
         else:
-            add('autonomie', 'a_faire', f'Réussis plus souvent sans indice ni solution ({a["pct"]} % pour l’instant)')
+            add('autonomie', 'a_faire', f'Plus de réussites sans aide ({a["pct"]} % pour l’instant)')
     elif d['etat'] == 'confirmee':
-        add('autonomie', 'ok', 'Réussi sans aide lors de la vérification')
+        add('autonomie', 'ok', 'Réussi sans aide à la vérification')
     else:
-        add('autonomie', 'en_attente', f'Pas encore assez de recul sur l’autonomie ({a["suivies"]}/{S.MIN_AUTONOMIE} '
-                                       'réussites suivies)')
+        add('autonomie', 'en_attente', f'Autonomie à mesurer ({a["suivies"]}/{S.MIN_AUTONOMIE})')
     return out
 
 
@@ -145,29 +139,24 @@ def etat_du_chapitre(s):
     pct, n = s.pct, s.n
     if n < S.MIN_QUESTIONS and s.quiz_pct is None:
         raison = ('Pas encore commencé.' if n == 0 else
-                  f'Pas encore assez de questions évaluées ({n}/{S.MIN_QUESTIONS}) pour établir ton point de départ.')
+                  f'Encore {S.MIN_QUESTIONS - n} question{"s" if S.MIN_QUESTIONS - n > 1 else ""} pour ton point de départ.')
         return 'non_evalue', raison, criteres, False, False
     if s.durable['etat'] == 'n_a_pas_tenu':
-        return ('a_consolider', f'Tu l’avais réussi, mais pas lors de la vérification du {_jm(s.durable["le"])} : '
-                'les acquis ne sont pas encore stables.', criteres, False, False)
+        return ('a_consolider', f'Réussi, mais pas à la vérification du {_jm(s.durable["le"])}.', criteres, False, False)
     recents_bons = s.recents_pct is not None and s.recents_pct >= S.SEUIL_BONNE_VOIE
     if pct is not None and pct < S.SEUIL_RENFORCER:
         if recents_bons:
-            return ('bonne_voie', f'En progrès : {pct} % en tout, {s.recents_pct} % sur tes '
-                    f'{s.recents_n} dernières questions.', criteres, True, False)
-        return ('a_renforcer', f'{pct} % de réussite sur {_plural(n, "question")} : reprends les bases avant de '
-                'continuer.', criteres, False, False)
+            return ('bonne_voie', f'{pct} % en tout, {s.recents_pct} % récemment.', criteres, True, False)
+        return ('a_renforcer', f'{pct} % de réussite : reprends les bases.', criteres, False, False)
     if manque is None:
-        return ('maitrise', f'Tous les critères sont remplis, maîtrise confirmée le {_jm(s.durable["le"])}.',
-                criteres, False, False)
+        return ('maitrise', f'Confirmé le {_jm(s.durable["le"])}.', criteres, False, False)
     hausse = s.tendance is not None and s.tendance >= S.HAUSSE_MIN
     if (pct is not None and pct >= S.SEUIL_BONNE_VOIE) or hausse or recents_bons:
         en_progres = hausse or (recents_bons and (pct is None or pct < S.SEUIL_BONNE_VOIE))
-        prefixe = f'En hausse (+{s.tendance} pts en 30 jours). ' if hausse else ''
-        return ('bonne_voie', f'{prefixe}Pour passer « Maîtrisé » : {manque["texte"][0].lower()}{manque["texte"][1:]}.',
+        prefixe = f'+{s.tendance} pts en 30 jours. ' if hausse else ''
+        return ('bonne_voie', f'{prefixe}Prochaine étape : {manque["texte"][0].lower()}{manque["texte"][1:]}.',
                 criteres, en_progres, pct is not None and pct >= S.SEUIL_MAITRISE)
-    return ('a_consolider', f'Réussite partielle ({pct} % sur {_plural(n, "question")}) : revois la méthode et refais '
-            'des exercices ciblés.', criteres, False, False)
+    return ('a_consolider', f'Réussite partielle : {pct} %.', criteres, False, False)
 
 
 # ── Données ────────────────────────────────────────────────────────────────────────────────────────────────────

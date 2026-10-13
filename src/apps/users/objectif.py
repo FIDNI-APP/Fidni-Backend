@@ -59,14 +59,14 @@ def _objectif_chapitre(c, level):
     # Théorèmes les moins réussis du chapitre : jamais nommés à l'élève (13/10/2026), ils font passer en premier les
     # exercices qui les utilisent.
     faibles_th = [w['label'] for w in ((c.get('theoremes') or {}).get('worst') or [])][:2]
-    surtout = 'Les exercices proposés reprennent d’abord ce qui t’a posé le plus de difficultés.' if faibles_th else None
+    surtout = 'Exercices choisis sur tes points faibles.' if faibles_th else None
     review_ids = [r['id'] for r in c.get('review') or []]
     base = {'chapitre': chapitre, 'ds': None, 'secondaire': None}
 
     if not c.get('contents'):
         return {**base, 'type': 'decouvrir', 'titre': f'Découvre « {c["name"]} »',
-                'phrase': 'Pas encore d’exercice sur ce chapitre : commence par le cours.',
-                'pourquoi': ['Aucun exercice n’est encore publié pour ce chapitre à ton niveau.'],
+                'phrase': 'Commence par le cours.',
+                'pourquoi': ['Pas encore d’exercice publié pour ce chapitre.'],
                 'action': {'kind': 'cours'}, 'cible': None}
 
     if e == 'a_consolider':
@@ -76,22 +76,22 @@ def _objectif_chapitre(c, level):
         cible_diff = faibles[:1] + [x for x in ('easy', 'medium') if x not in faibles[:1]] if faibles else ['medium', 'easy']
         pourquoi = [c['raison']]
         if pct is not None:
-            pourquoi.append(f'{pct} % de réussite sur {n} questions.')
+            pourquoi.append(f'{pct} % sur {n} questions.')
         if surtout:
             pourquoi.append(surtout)
         return {**base, 'type': 'consolider', 'titre': f'Consolide « {c["name"]} »',
-                'phrase': 'Revois la méthode dans le cours, puis refais des exercices ciblés.',
+                'phrase': 'Le cours, puis des exercices ciblés.',
                 'pourquoi': pourquoi, 'action': {'kind': 'entrainer', 'difficulte': cible_diff[0]},
                 'secondaire': {'kind': 'cours'},
                 'cible': {'difficultes': cible_diff, 'n': S.OBJECTIF_EXERCICES, 'prefer': review_ids,
                           'prefer_theoremes': faibles_th}}
 
     if e == 'a_renforcer':
-        pourquoi = [f'{pct} % de réussite sur {n} questions : les erreurs reviennent souvent.']
+        pourquoi = [f'{pct} % sur {n} questions.']
         if surtout:
             pourquoi.append(surtout)
         return {**base, 'type': 'renforcer', 'titre': f'Reprends les bases de « {c["name"]} »',
-                'phrase': 'Relis le cours, puis fais des exercices faciles avant de monter en difficulté.',
+                'phrase': 'Le cours, puis des exercices faciles.',
                 'pourquoi': pourquoi, 'action': {'kind': 'cours'},
                 'secondaire': {'kind': 'entrainer', 'difficulte': 'easy'},
                 'cible': {'difficultes': ['easy', 'medium'], 'n': S.OBJECTIF_EXERCICES, 'prefer': review_ids,
@@ -100,11 +100,9 @@ def _objectif_chapitre(c, level):
     if e == 'bonne_voie' and d['etat'] == 'a_verifier' and d['due']:
         reussis = [lvl for lvl in ('medium', 'easy', 'hard') if (c['reussite']['par_difficulte'].get(lvl) or {}).get('pct')]
         return {**base, 'type': 'verifier', 'titre': f'Vérifie que « {c["name"]} » est acquis',
-                'phrase': f'Fais {S.VERIFIER_EXERCICES} exercices que tu n’as jamais faits, sans indice ni solution.',
-                'pourquoi': [f'Tu as réussi ce chapitre ({pct} % sur {n} questions).' if pct is not None else
-                             'Tu as réussi des questions de ce chapitre.',
-                             'Pas encore revérifié sans aide sur d’autres questions, quelques jours plus tard : '
-                             'c’est ce qui montre que c’est vraiment acquis.'],
+                'phrase': f'{S.VERIFIER_EXERCICES} exercices nouveaux, sans aide.',
+                'pourquoi': [f'Réussi : {pct} % sur {n} questions.' if pct is not None else 'Des questions réussies.',
+                             'Pas encore revérifié quelques jours plus tard.'],
                 'action': {'kind': 'entrainer', 'difficulte': reussis[0] if reussis else 'medium'},
                 'cible': {'difficultes': (reussis[:1] or ['medium']) + ['medium', 'hard'], 'n': S.VERIFIER_EXERCICES,
                           'exclure_vus': True}}
@@ -113,22 +111,22 @@ def _objectif_chapitre(c, level):
         m = _manque(c)
         cle = m['cle'] if m else ''
         cible = {'difficultes': ['medium', 'hard', 'easy'], 'n': S.OBJECTIF_EXERCICES}
-        phrase = 'Continue avec des exercices du chapitre.'
+        phrase = 'Des exercices du chapitre.'
         if cle == 'difficultes':
             niveaux = c['reussite']['par_difficulte']
             manquant = next((lvl for lvl in ('medium', 'hard') if not (niveaux.get(lvl) or {}).get('pct')), 'medium')
             cible['difficultes'] = [manquant, 'hard' if manquant == 'medium' else 'medium']
-            phrase = f'Essaie des exercices {"moyens" if manquant == "medium" else "difficiles"}.'
+            phrase = f'Des exercices {"moyens" if manquant == "medium" else "difficiles"}.'
         elif cle == 'synthese':
             cible['difficultes'] = ['hard', 'medium']
-            phrase = 'Essaie un exercice difficile, où tu choisis toi-même la méthode.'
+            phrase = 'Un exercice difficile.'
         elif cle == 'theoremes':
             cible['theoremes'] = c['theoremes_couverts']['manquants'][:3]
-            phrase = 'Travaille les théorèmes du chapitre que tu n’as pas encore utilisés avec succès.'
+            phrase = 'Des exercices variés du chapitre.'
         elif cle == 'autonomie':
-            phrase = 'Refais des exercices sans ouvrir l’indice ni la solution.'
+            phrase = 'Des exercices, sans aide.'
         elif cle == 'durable' and d['etat'] == 'a_verifier':
-            phrase = f'Continue ; tu pourras le revérifier à partir du {_jm(d["a_partir_du"])}.'
+            phrase = f'À revérifier dès le {_jm(d["a_partir_du"])}.'
         pourquoi = [c['raison']]
         if c.get('recents') and c['en_progres']:
             pourquoi.append(f'{c["recents"]["pct"]} % sur tes {c["recents"]["questions"]} dernières questions.')
@@ -139,10 +137,8 @@ def _objectif_chapitre(c, level):
     if e == 'non_evalue':
         quiz = c['quiz_ready']
         return {**base, 'type': 'evaluer', 'titre': f'Évalue-toi sur « {c["name"]} »',
-                'phrase': ('Passe le quiz du chapitre pour établir ton point de départ.' if quiz else
-                           f'Fais {S.EVALUER_EXERCICES} exercices et dis pour chaque question si tu l’as réussie.'),
-                'pourquoi': [c['raison'], 'Pas encore évalué ne veut pas dire en difficulté : il faut juste quelques '
-                             'résultats pour savoir où tu en es.'],
+                'phrase': ('Le quiz du chapitre.' if quiz else f'{S.EVALUER_EXERCICES} exercices, chaque question notée.'),
+                'pourquoi': [c['raison']],
                 'action': {'kind': 'quiz' if quiz else 'entrainer', 'difficulte': 'easy'},
                 'secondaire': {'kind': 'entrainer', 'difficulte': 'easy'} if quiz else {'kind': 'cours'},
                 'cible': {'difficultes': ['easy', 'medium'], 'n': S.EVALUER_EXERCICES, 'evaluer': True}}
@@ -150,7 +146,7 @@ def _objectif_chapitre(c, level):
     # Maîtrisé : aller plus loin.
     deuxieme = bool(level and level.name.startswith('2ème'))
     return {**base, 'type': 'approfondir', 'titre': f'Va plus loin sur « {c["name"]} »',
-            'phrase': 'Entraîne-toi sur des exercices difficiles, des devoirs ou des sujets du Bac.',
+            'phrase': 'Exercices difficiles, devoirs, Bac.',
             'pourquoi': [c['raison']], 'action': {'kind': 'entrainer', 'difficulte': 'hard'},
             'secondaire': {'kind': 'nationaux' if deuxieme else 'devoirs'},
             'cible': {'difficultes': ['hard', 'medium'], 'n': S.OBJECTIF_EXERCICES}}
@@ -174,8 +170,8 @@ def choisir(user, chapters, level, today):
         ds = {'id': test.id, 'date': test.date.isoformat(), 'jours': jours,
               'quand': 'aujourd’hui' if jours == 0 else 'demain' if jours == 1 else f'{JOURS[test.date.weekday()]}'}
         if dans and all(c['etat'] == 'maitrise' for c in dans):
-            return {'type': 'ds_blanc', 'titre': 'Ton DS approche : fais un DS blanc',
-                    'phrase': 'Tous les chapitres du DS sont maîtrisés : entraîne-toi en conditions réelles.',
+            return {'type': 'ds_blanc', 'titre': 'Fais un DS blanc',
+                    'phrase': 'Tous les chapitres du DS sont maîtrisés.',
                     'pourquoi': [f'DS {ds["quand"]} ({len(dans)} chapitres, tous maîtrisés).'],
                     'chapitre': None, 'action': {'kind': 'ds_blanc', 'test_id': test.id}, 'secondaire': None,
                     'ds': ds, 'cible': None}
@@ -183,9 +179,8 @@ def choisir(user, chapters, level, today):
             c = min(dans, key=_rang)
             obj = _objectif_chapitre(c, level)
             obj['ds'] = ds
-            obj['titre'] = f'Pour ton DS de {ds["quand"]} : {obj["titre"][0].lower()}{obj["titre"][1:]}' \
-                if jours > 1 else f'DS {ds["quand"]} : {obj["titre"][0].lower()}{obj["titre"][1:]}'
-            obj['pourquoi'] = [f'« {c["name"]} » est le chapitre du DS le plus à travailler.'] + obj['pourquoi']
+            # Le titre ne répète pas le DS : l'étiquette « DS samedi » (`ds`) le dit.
+            obj['pourquoi'] = ['Le chapitre du DS le plus à travailler.'] + obj['pourquoi']
             return obj
     return _objectif_chapitre(order[0], level)
 

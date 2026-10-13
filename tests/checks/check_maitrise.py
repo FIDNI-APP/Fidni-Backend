@@ -160,6 +160,12 @@ for cle, kw, attendu in [
     check(f'table : critère « {cle} » manquant → pas Maîtrisé ({attendu})', r[0] == 'bonne_voie'
           and crit(r, cle)['etat'] == attendu, (r[0], crit(r, cle)))
 r = etat(theoremes_reussis=1, theoremes_dispo=4, theoremes_manquants=['Théorème de Rolle'])
+longs = [(c['cle'], c['texte']) for kw in ({}, {'n': 3, 'self_pct': None, 'pct': None}, {'self_pct': 50, 'pct': 50},
+          {'exercices_reussis': 1, 'synthese': False, 'niveaux_reussis': {'easy'}, 'theoremes_reussis': 0},
+          {'autonomie': {'pct': None, 'suivies': 2, 'sans_aide': 2, 'min': 5},
+           'durable': {'etat': 'a_verifier', 'le': None, 'a_partir_du': today + timedelta(days=2), 'due': False}})
+         for c in etat(**kw)[2] if len(c['texte']) > 50]
+check('table : critères courts (50 caractères au plus, « trop de blabla »)', not longs, longs)
 check('table : théorèmes manquants jamais nommés à l’élève (pas affichés)', 'Rolle' not in crit(r, 'theoremes')['texte']
       and '3 théorèmes' in crit(r, 'theoremes')['texte'], crit(r, 'theoremes'))
 check('table : un seul théorème présent dans les exercices, réussi → critère rempli',
@@ -319,7 +325,7 @@ check('… autonomie : 0 % sans aide, affichée (8 réussites suivies)', x['auto
       and x['autonomie']['seul']['suivies'] == 8 and crit((0, 0, x['criteres']), 'autonomie')['etat'] == 'a_faire',
       x['autonomie'])
 ob = db['objectif']
-check('… objectif : vérifier sans indice ni solution', ob and ob['type'] == 'verifier' and 'sans indice ni solution' in ob['phrase']
+check('… objectif : vérifier sans aide', ob and ob['type'] == 'verifier' and 'sans aide' in ob['phrase']
       and ob['chapitre']['id'] == SUI.id, ob and (ob['type'], ob['phrase']))
 ex_b = objectif.exercices(b, ob, sm)
 check('… exercices de vérification : jamais faits, 3 au plus', 0 < len(ex_b) <= S.VERIFIER_EXERCICES
@@ -369,7 +375,7 @@ t = UpcomingTest.objects.create(user=e, kind='ds', class_level=sm, date=today + 
 t.chapters.set([SUI, PRO])
 de = evaluer(e)
 check('scénario « DS dans 3 jours » → objectif sur un chapitre du DS', de['objectif']['ds'] and de['objectif']['ds']['id'] == t.id
-      and de['objectif']['chapitre']['id'] in (SUI.id, PRO.id) and 'DS' in de['objectif']['titre'],
+      and de['objectif']['chapitre']['id'] in (SUI.id, PRO.id) and 'DS' not in de['objectif']['titre'],
       (de['objectif']['titre'], de['objectif']['chapitre']))
 check('… sans DS, le chapitre À renforcer passe d’abord', objectif.choisir(e, [dict(c) for c in de['chapters']], sm, today + timedelta(days=30))['chapitre']['id'] == CPX.id)
 
