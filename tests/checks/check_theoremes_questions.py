@@ -177,5 +177,16 @@ check('à difficulté égale : exercice du théorème faible d’abord ; la diff
       ordre.index(faciles[2]) == min(ordre.index(f) for f in faciles) and ordre.index(moyen.id) > max(ordre.index(f) for f in faciles),
       ordre)
 
+# ── Fichier d'étiquetage des contenus en ligne (data/theoremes_questions.json) : noms exacts du programme
+from apps.caracteristics.theoremes import cle, noms_programme  # noqa: E402
+from apps.things.management.commands.questions_theoremes import DEFAUT  # noqa: E402
+fichier = json.loads(DEFAUT.read_text(encoding='utf-8'))
+prog = noms_programme()
+mauvais = sorted({n for c in fichier['contenus'].values() for ns in c['questions'].values() for n in ns
+                  if prog.get(cle(n)) != n})
+check('fichier d’étiquetage : chaque nom est un théorème exact du programme', fichier['contenus'] and not mauvais, mauvais[:5])
+check('fichier d’étiquetage : chaque contenu a un titre et ses questions', all(c.get('titre') and isinstance(c.get('questions'), dict)
+      for c in fichier['contenus'].values()))
+
 print(f'\n{sum(results)}/{len(results)} vérifications réussies')
 sys.exit(0 if all(results) else 1)

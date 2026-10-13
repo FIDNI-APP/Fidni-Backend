@@ -1,0 +1,3993 @@
+{
+ "description": "Théorèmes de chaque question des contenus en ligne (13/10/2026), à la place des anciennes notions : étiquetage question par question (énoncé et solution lus), noms exacts de la base. Appliqué par : python manage.py questions_theoremes --appliquer",
+ "contenus": {
+  "10": {
+   "titre": "Domaine de définition et prolongement par continuité en −3",
+   "questions": {
+    "limites-continuite-ex1-b2": [],
+    "limites-continuite-ex1-b3": [
+     "Prolongement par continuité"
+    ]
+   }
+  },
+  "11": {
+   "titre": "Fonction réciproque de f(x) = √(x² − 1) − x",
+   "questions": {
+    "limites-continuite-ex2-b2": [],
+    "limites-continuite-ex2-b3": [
+     "Théorème de la bijection",
+     "Image d'un intervalle par une fonction continue"
+    ],
+    "limites-continuite-ex2-b4": [
+     "Théorème de la bijection"
+    ]
+   }
+  },
+  "12": {
+   "titre": "Bijection et réciproque de f(x) = 1/√(x³ + 1)",
+   "questions": {
+    "limites-continuite-ex3-b2": [],
+    "limites-continuite-ex3-b3": [
+     "Théorème de la bijection",
+     "Image d'un intervalle par une fonction continue"
+    ],
+    "limites-continuite-ex3-b4": [
+     "Théorème de la bijection",
+     "Fonction racine n-ième et puissance rationnelle"
+    ]
+   }
+  },
+  "13": {
+   "titre": "Équation avec arctan : existence, encadrement et résolution",
+   "questions": {
+    "limites-continuite-ex4-b2": [
+     "Théorème de la bijection",
+     "Théorème des valeurs intermédiaires (TVI)",
+     "Fonction arc tangente"
+    ],
+    "limites-continuite-ex4-b3": [
+     "Fonction arc tangente"
+    ]
+   }
+  },
+  "15": {
+   "titre": "Devoir surveillé n° 1 — 2ème Bac SM (Sanaa - 2023)",
+   "questions": {
+    "ds1-2sm-2023-b3": [],
+    "ds1-2sm-2023-b4": [
+     "Fonction arc tangente",
+     "Fonction racine n-ième et puissance rationnelle"
+    ],
+    "ds1-2sm-2023-b5": [
+     "Fonction racine n-ième et puissance rationnelle"
+    ],
+    "ds1-2sm-2023-b6": [
+     "Fonction racine n-ième et puissance rationnelle"
+    ],
+    "ds1-2sm-2023-b9": [],
+    "ds1-2sm-2023-b10": [],
+    "ds1-2sm-2023-b11": [
+     "Fonction racine n-ième et puissance rationnelle"
+    ],
+    "ds1-2sm-2023-b13": [
+     "Théorème de la bijection",
+     "Théorème des valeurs intermédiaires (TVI)"
+    ],
+    "ds1-2sm-2023-b16.ds1-2sm-2023-b16-1": [
+     "Limite et continuité d'une fonction composée",
+     "Fonction arc tangente"
+    ],
+    "ds1-2sm-2023-b16.ds1-2sm-2023-b16-2": [
+     "Fonction arc tangente"
+    ],
+    "ds1-2sm-2023-b17.ds1-2sm-2023-b17-1": [
+     "Fonction arc tangente"
+    ],
+    "ds1-2sm-2023-b17.ds1-2sm-2023-b17-2": [
+     "Fonction arc tangente"
+    ],
+    "ds1-2sm-2023-b19.ds1-2sm-2023-b19-1": [
+     "Théorème de la bijection"
+    ],
+    "ds1-2sm-2023-b19.ds1-2sm-2023-b19-2": [
+     "Fonction arc tangente"
+    ],
+    "ds1-2sm-2023-b21": [
+     "Fonction racine n-ième et puissance rationnelle"
+    ]
+   }
+  },
+  "16": {
+   "titre": "Devoir surveillé n° 1 — 2ème Bac SM (Sanaa - 2024)",
+   "questions": {
+    "ds1-2sm-2024-b3": [],
+    "ds1-2sm-2024-b4": [
+     "Fonction arc tangente"
+    ],
+    "ds1-2sm-2024-b5": [
+     "Fonction racine n-ième et puissance rationnelle"
+    ],
+    "ds1-2sm-2024-b8.ds1-2sm-2024-b8-1": [],
+    "ds1-2sm-2024-b8.ds1-2sm-2024-b8-2": [
+     "Limite et continuité d'une fonction composée"
+    ],
+    "ds1-2sm-2024-b9.ds1-2sm-2024-b9-1": [],
+    "ds1-2sm-2024-b9.ds1-2sm-2024-b9-2": [
+     "Théorème de la bijection",
+     "Image d'un intervalle par une fonction continue"
+    ],
+    "ds1-2sm-2024-b9.ds1-2sm-2024-b9-3": [
+     "Théorème de la bijection"
+    ],
+    "ds1-2sm-2024-b10": [
+     "Continuité de la fonction réciproque",
+     "Limite et continuité d'une fonction composée"
+    ],
+    "ds1-2sm-2024-b12": [
+     "Théorème de la bijection",
+     "Théorème des valeurs intermédiaires (TVI)"
+    ],
+    "ds1-2sm-2024-b14": [
+     "Fonction racine n-ième et puissance rationnelle"
+    ],
+    "ds1-2sm-2024-b17": [
+     "Limite et continuité d'une fonction composée"
+    ],
+    "ds1-2sm-2024-b18": [
+     "Fonction arc tangente",
+     "Fonction racine n-ième et puissance rationnelle"
+    ],
+    "ds1-2sm-2024-b19.ds1-2sm-2024-b19-1": [
+     "Théorème des valeurs intermédiaires (TVI)"
+    ],
+    "ds1-2sm-2024-b19.ds1-2sm-2024-b19-2": [
+     "Fonction arc tangente"
+    ]
+   }
+  },
+  "17": {
+   "titre": "Devoir surveillé n° 1 — 2ème Bac SM (Sanaa - 2025)",
+   "questions": {
+    "ds1-2sm-2025-b3": [],
+    "ds1-2sm-2025-b4": [
+     "Théorème des gendarmes"
+    ],
+    "ds1-2sm-2025-b5": [
+     "Fonction racine n-ième et puissance rationnelle"
+    ],
+    "ds1-2sm-2025-b8": [
+     "Fonction racine n-ième et puissance rationnelle"
+    ],
+    "ds1-2sm-2025-b9": [],
+    "ds1-2sm-2025-b11": [
+     "Théorème des valeurs intermédiaires (TVI)"
+    ],
+    "ds1-2sm-2025-b14.ds1-2sm-2025-b14-1": [
+     "Fonction racine n-ième et puissance rationnelle"
+    ],
+    "ds1-2sm-2025-b14.ds1-2sm-2025-b14-2": [
+     "Fonction racine n-ième et puissance rationnelle"
+    ],
+    "ds1-2sm-2025-b15.ds1-2sm-2025-b15-1": [
+     "Théorème de la bijection",
+     "Théorème des valeurs intermédiaires (TVI)"
+    ],
+    "ds1-2sm-2025-b15.ds1-2sm-2025-b15-2": [],
+    "ds1-2sm-2025-b18": [
+     "Limite et continuité d'une fonction composée"
+    ],
+    "ds1-2sm-2025-b19.ds1-2sm-2025-b19-1": [
+     "Fonction arc tangente",
+     "Fonction racine n-ième et puissance rationnelle"
+    ],
+    "ds1-2sm-2025-b19.ds1-2sm-2025-b19-2": [
+     "Théorème de la bijection",
+     "Image d'un intervalle par une fonction continue"
+    ],
+    "ds1-2sm-2025-b20": [
+     "Théorème de la bijection",
+     "Fonction arc tangente"
+    ],
+    "ds1-2sm-2025-b22": [
+     "Théorème des valeurs intermédiaires (TVI)"
+    ]
+   }
+  },
+  "18": {
+   "titre": "Continuité en 0 avec la partie entière : 1 − xE(1/x)",
+   "questions": {
+    "serie-continuite-reciproque-ex01-b2": [
+     "Théorème des gendarmes"
+    ]
+   }
+  },
+  "19": {
+   "titre": "Continuité de E(x) + (x − E(x))² sur ℝ",
+   "questions": {
+    "serie-continuite-reciproque-ex02-b2": [],
+    "serie-continuite-reciproque-ex02-b3": []
+   }
+  },
+  "20": {
+   "titre": "Existence d’un réel α tel que f(α + 1/2) = 2 + f(α)",
+   "questions": {
+    "serie-continuite-reciproque-ex03-b2": [
+     "Théorème des valeurs intermédiaires (TVI)"
+    ]
+   }
+  },
+  "21": {
+   "titre": "Équation fonctionnelle f(x + y) = f(x) + f(y) − xy et continuité",
+   "questions": {
+    "serie-continuite-reciproque-ex04-b2": []
+   }
+  },
+  "22": {
+   "titre": "Si f∘f(a) = a, alors f a un point fixe",
+   "questions": {
+    "serie-continuite-reciproque-ex05-b2": [
+     "Théorème des valeurs intermédiaires (TVI)"
+    ]
+   }
+  },
+  "23": {
+   "titre": "Existence de α tel que 5f(α) = 2f(a) + 3f(b)",
+   "questions": {
+    "serie-continuite-reciproque-ex06-b2": [
+     "Théorème des valeurs intermédiaires (TVI)"
+    ]
+   }
+  },
+  "24": {
+   "titre": "Existence de c tel que f(c) = 1/(a − c) + 1/(b − c)",
+   "questions": {
+    "serie-continuite-reciproque-ex07-b2": [
+     "Théorème des valeurs intermédiaires (TVI)"
+    ]
+   }
+  },
+  "25": {
+   "titre": "Étude de x√x/(x + 1) et équation f(x) = 1",
+   "questions": {
+    "serie-continuite-reciproque-ex08-b2": [],
+    "serie-continuite-reciproque-ex08-b3": [],
+    "serie-continuite-reciproque-ex08-b4": [
+     "Théorème des valeurs intermédiaires (TVI)"
+    ]
+   }
+  },
+  "26": {
+   "titre": "Point fixe d’une fonction continue de [a, b] dans [a, b]",
+   "questions": {
+    "serie-continuite-reciproque-ex09-b2": [
+     "Théorème des valeurs intermédiaires (TVI)"
+    ]
+   }
+  },
+  "27": {
+   "titre": "Une fonction continue qui ne s’annule pas garde un signe constant",
+   "questions": {
+    "serie-continuite-reciproque-ex10-b2": [
+     "Théorème des valeurs intermédiaires (TVI)"
+    ]
+   }
+  },
+  "28": {
+   "titre": "Étude du polynôme x⁴/4 − 3x²/2 + 4x et de ses racines",
+   "questions": {
+    "serie-continuite-reciproque-ex11-b2": [],
+    "serie-continuite-reciproque-ex11-b3.serie-continuite-reciproque-ex11-b3-1": [
+     "Théorème des valeurs intermédiaires (TVI)"
+    ],
+    "serie-continuite-reciproque-ex11-b3.serie-continuite-reciproque-ex11-b3-2": [
+     "Méthode de dichotomie"
+    ],
+    "serie-continuite-reciproque-ex11-b4": [
+     "Image d'un intervalle par une fonction continue"
+    ],
+    "serie-continuite-reciproque-ex11-b5.serie-continuite-reciproque-ex11-b5-1": [],
+    "serie-continuite-reciproque-ex11-b5.serie-continuite-reciproque-ex11-b5-2": [],
+    "serie-continuite-reciproque-ex11-b5.serie-continuite-reciproque-ex11-b5-3": [
+     "Théorème des valeurs intermédiaires (TVI)"
+    ]
+   }
+  },
+  "29": {
+   "titre": "Étude de fₙ(x) = xⁿ⁺¹ − 2xⁿ + 1 et signe",
+   "questions": {
+    "serie-continuite-reciproque-ex12-b2": [],
+    "serie-continuite-reciproque-ex12-b3": [],
+    "serie-continuite-reciproque-ex12-b4.serie-continuite-reciproque-ex12-b4-1": [
+     "Théorème des valeurs intermédiaires (TVI)"
+    ],
+    "serie-continuite-reciproque-ex12-b4.serie-continuite-reciproque-ex12-b4-2": [
+     "Théorème de la bijection",
+     "Image d'un intervalle par une fonction continue"
+    ]
+   }
+  },
+  "30": {
+   "titre": "Théorème de la corde universelle : f(α) = f(α + 1/n)",
+   "questions": {
+    "serie-continuite-reciproque-ex13-b2": [
+     "Théorème des valeurs intermédiaires (TVI)"
+    ],
+    "serie-continuite-reciproque-ex13-b4.serie-continuite-reciproque-ex13-b4-1": [],
+    "serie-continuite-reciproque-ex13-b4.serie-continuite-reciproque-ex13-b4-2": [
+     "Théorème des valeurs intermédiaires (TVI)"
+    ]
+   }
+  },
+  "31": {
+   "titre": "Égalités avec la fonction arctan",
+   "questions": {
+    "serie-continuite-reciproque-ex14-b2": [
+     "Fonction arc tangente"
+    ],
+    "serie-continuite-reciproque-ex14-b3": [
+     "Fonction arc tangente"
+    ],
+    "serie-continuite-reciproque-ex14-b4": [
+     "Fonction arc tangente"
+    ],
+    "serie-continuite-reciproque-ex14-b5": [
+     "Fonction arc tangente"
+    ],
+    "serie-continuite-reciproque-ex14-b6": [
+     "Fonction arc tangente"
+    ],
+    "serie-continuite-reciproque-ex14-b7": [
+     "Fonction arc tangente"
+    ],
+    "serie-continuite-reciproque-ex14-b8": [
+     "Fonction arc tangente"
+    ],
+    "serie-continuite-reciproque-ex14-b9": [
+     "Fonction arc tangente"
+    ]
+   }
+  },
+  "32": {
+   "titre": "Réciproque de arctan((x + 1)/x) sur ]0, +∞[",
+   "questions": {
+    "serie-continuite-reciproque-ex15-b2": [],
+    "serie-continuite-reciproque-ex15-b4.serie-continuite-reciproque-ex15-b4-1": [
+     "Théorème de la bijection",
+     "Image d'un intervalle par une fonction continue"
+    ],
+    "serie-continuite-reciproque-ex15-b4.serie-continuite-reciproque-ex15-b4-2": [
+     "Fonction arc tangente"
+    ]
+   }
+  },
+  "33": {
+   "titre": "Bijection de tan²x − 2√3 tan x sur [2π, 7π/3]",
+   "questions": {
+    "serie-continuite-reciproque-ex16-b2": [
+     "Théorème de la bijection",
+     "Image d'un intervalle par une fonction continue"
+    ],
+    "serie-continuite-reciproque-ex16-b3": [
+     "Théorème de la bijection",
+     "Fonction arc tangente"
+    ]
+   }
+  },
+  "34": {
+   "titre": "La fonction x − sin x et sa réciproque",
+   "questions": {
+    "serie-continuite-reciproque-ex17-b2": [
+     "Théorème de la bijection"
+    ],
+    "serie-continuite-reciproque-ex17-b3": [
+     "Théorème de la bijection"
+    ],
+    "serie-continuite-reciproque-ex17-b4": [
+     "Théorème de la bijection"
+    ],
+    "serie-continuite-reciproque-ex17-b5.serie-continuite-reciproque-ex17-b5-1": [
+     "Théorème de la bijection"
+    ],
+    "serie-continuite-reciproque-ex17-b5.serie-continuite-reciproque-ex17-b5-2": [
+     "Continuité de la fonction réciproque",
+     "Limite et continuité d'une fonction composée"
+    ],
+    "serie-continuite-reciproque-ex17-b5.serie-continuite-reciproque-ex17-b5-3": [
+     "Continuité de la fonction réciproque",
+     "Limite et continuité d'une fonction composée"
+    ],
+    "serie-continuite-reciproque-ex17-b5.serie-continuite-reciproque-ex17-b5-4": [
+     "Théorème de la bijection"
+    ]
+   }
+  },
+  "35": {
+   "titre": "Calculs de limites avec racines n-ièmes et arctan",
+   "questions": {
+    "serie-continuite-reciproque-ex18-b2": [
+     "Fonction racine n-ième et puissance rationnelle"
+    ],
+    "serie-continuite-reciproque-ex18-b3": [
+     "Fonction racine n-ième et puissance rationnelle"
+    ],
+    "serie-continuite-reciproque-ex18-b4": [
+     "Fonction racine n-ième et puissance rationnelle"
+    ],
+    "serie-continuite-reciproque-ex18-b5": [
+     "Fonction racine n-ième et puissance rationnelle"
+    ],
+    "serie-continuite-reciproque-ex18-b6": [
+     "Fonction arc tangente",
+     "Fonction racine n-ième et puissance rationnelle"
+    ],
+    "serie-continuite-reciproque-ex18-b7": [
+     "Fonction racine n-ième et puissance rationnelle"
+    ],
+    "serie-continuite-reciproque-ex18-b8": [
+     "Fonction racine n-ième et puissance rationnelle"
+    ],
+    "serie-continuite-reciproque-ex18-b9": [
+     "Fonction racine n-ième et puissance rationnelle"
+    ]
+   }
+  },
+  "36": {
+   "titre": "Somme d’arctangentes et équation f(x) = π/4",
+   "questions": {
+    "serie-continuite-reciproque-ex19-b1.serie-continuite-reciproque-ex19-b1-1": [
+     "Fonction arc tangente"
+    ],
+    "serie-continuite-reciproque-ex19-b1.serie-continuite-reciproque-ex19-b1-2": [
+     "Fonction arc tangente"
+    ],
+    "serie-continuite-reciproque-ex19-b3.serie-continuite-reciproque-ex19-b3-1": [
+     "Théorème de la bijection",
+     "Fonction arc tangente"
+    ],
+    "serie-continuite-reciproque-ex19-b3.serie-continuite-reciproque-ex19-b3-2": [
+     "Fonction arc tangente"
+    ],
+    "serie-continuite-reciproque-ex19-b3.serie-continuite-reciproque-ex19-b3-3": [
+     "Théorème de la bijection"
+    ]
+   }
+  },
+  "37": {
+   "titre": "Réciproque de arctan(√(1 + x²) − x)",
+   "questions": {
+    "serie-continuite-reciproque-ex20-b2": [
+     "Limite et continuité d'une fonction composée"
+    ],
+    "serie-continuite-reciproque-ex20-b3": [
+     "Limite et continuité d'une fonction composée",
+     "Fonction arc tangente"
+    ],
+    "serie-continuite-reciproque-ex20-b4": [
+     "Fonction arc tangente"
+    ],
+    "serie-continuite-reciproque-ex20-b5.serie-continuite-reciproque-ex20-b5-1": [
+     "Théorème de la bijection",
+     "Image d'un intervalle par une fonction continue"
+    ],
+    "serie-continuite-reciproque-ex20-b5.serie-continuite-reciproque-ex20-b5-2": [
+     "Théorème de la bijection",
+     "Fonction arc tangente"
+    ]
+   }
+  },
+  "38": {
+   "titre": "Racine cubique de x − 2√x : bijection et équation",
+   "questions": {
+    "serie2-continuite-arctan-ex01-b2": [
+     "Fonction racine n-ième et puissance rationnelle"
+    ],
+    "serie2-continuite-arctan-ex01-b3.serie2-continuite-arctan-ex01-b3-1": [
+     "Théorème de la bijection",
+     "Image d'un intervalle par une fonction continue",
+     "Fonction racine n-ième et puissance rationnelle"
+    ],
+    "serie2-continuite-arctan-ex01-b3.serie2-continuite-arctan-ex01-b3-2": [
+     "Théorème de la bijection"
+    ],
+    "serie2-continuite-arctan-ex01-b4": [
+     "Fonction racine n-ième et puissance rationnelle"
+    ]
+   }
+  },
+  "39": {
+   "titre": "Fonction x/√(x + 1) : réciproque et équation f⁻¹(x) = f(x)",
+   "questions": {
+    "serie2-continuite-arctan-ex02-b2": [],
+    "serie2-continuite-arctan-ex02-b3": [
+     "Théorème de la bijection",
+     "Image d'un intervalle par une fonction continue"
+    ],
+    "serie2-continuite-arctan-ex02-b4.serie2-continuite-arctan-ex02-b4-1": [
+     "Théorème de la bijection"
+    ],
+    "serie2-continuite-arctan-ex02-b4.serie2-continuite-arctan-ex02-b4-2": [
+     "Théorème de la bijection"
+    ]
+   }
+  },
+  "40": {
+   "titre": "Équations avec des racines n-ièmes",
+   "questions": {
+    "serie2-continuite-arctan-ex03-b2": [
+     "Fonction racine n-ième et puissance rationnelle"
+    ],
+    "serie2-continuite-arctan-ex03-b3": [
+     "Fonction racine n-ième et puissance rationnelle"
+    ]
+   }
+  },
+  "41": {
+   "titre": "Limites avec des racines n-ièmes",
+   "questions": {
+    "serie2-continuite-arctan-ex04-b2": [
+     "Fonction racine n-ième et puissance rationnelle",
+     "Théorème des gendarmes"
+    ],
+    "serie2-continuite-arctan-ex04-b3": [
+     "Fonction racine n-ième et puissance rationnelle"
+    ],
+    "serie2-continuite-arctan-ex04-b4": [
+     "Fonction racine n-ième et puissance rationnelle"
+    ],
+    "serie2-continuite-arctan-ex04-b5": [
+     "Fonction racine n-ième et puissance rationnelle"
+    ],
+    "serie2-continuite-arctan-ex04-b6": [
+     "Fonction racine n-ième et puissance rationnelle"
+    ]
+   }
+  },
+  "42": {
+   "titre": "Calculs exacts avec arctan",
+   "questions": {
+    "serie2-continuite-arctan-ex05-b1.serie2-continuite-arctan-ex05-b1-1": [
+     "Fonction arc tangente"
+    ],
+    "serie2-continuite-arctan-ex05-b1.serie2-continuite-arctan-ex05-b1-2": [
+     "Fonction arc tangente"
+    ],
+    "serie2-continuite-arctan-ex05-b2": [
+     "Fonction arc tangente"
+    ]
+   }
+  },
+  "43": {
+   "titre": "Limites avec arctan",
+   "questions": {
+    "serie2-continuite-arctan-ex06-b2": [
+     "Limite et continuité d'une fonction composée"
+    ],
+    "serie2-continuite-arctan-ex06-b3": [
+     "Limite et continuité d'une fonction composée",
+     "Fonction arc tangente"
+    ],
+    "serie2-continuite-arctan-ex06-b4": [
+     "Fonction arc tangente"
+    ],
+    "serie2-continuite-arctan-ex06-b5": [
+     "Fonction arc tangente"
+    ]
+   }
+  },
+  "44": {
+   "titre": "Simplification de arctan((1 − x)/(1 + x))",
+   "questions": {
+    "serie2-continuite-arctan-ex07-b2": [
+     "Fonction arc tangente"
+    ]
+   }
+  },
+  "45": {
+   "titre": "Deux identités avec arctan",
+   "questions": {
+    "serie2-continuite-arctan-ex08-b1": [
+     "Fonction arc tangente"
+    ],
+    "serie2-continuite-arctan-ex08-b2": [
+     "Fonction arc tangente"
+    ]
+   }
+  },
+  "46": {
+   "titre": "Équations avec arctan",
+   "questions": {
+    "serie2-continuite-arctan-ex09-b1": [
+     "Fonction arc tangente"
+    ],
+    "serie2-continuite-arctan-ex09-b2": [
+     "Fonction arc tangente"
+    ]
+   }
+  },
+  "47": {
+   "titre": "Étude de arctan(x + √(1 + x²))",
+   "questions": {
+    "serie2-continuite-arctan-ex10-b2.serie2-continuite-arctan-ex10-b2-1": [],
+    "serie2-continuite-arctan-ex10-b2.serie2-continuite-arctan-ex10-b2-2": [],
+    "serie2-continuite-arctan-ex10-b4.serie2-continuite-arctan-ex10-b4-1": [
+     "Théorème de la bijection",
+     "Fonction arc tangente"
+    ],
+    "serie2-continuite-arctan-ex10-b4.serie2-continuite-arctan-ex10-b4-2": [
+     "Théorème de la bijection",
+     "Fonction arc tangente"
+    ],
+    "serie2-continuite-arctan-ex10-b5": [
+     "Fonction arc tangente"
+    ],
+    "serie2-continuite-arctan-ex10-b6.serie2-continuite-arctan-ex10-b6-1": [
+     "Théorème des valeurs intermédiaires (TVI)"
+    ],
+    "serie2-continuite-arctan-ex10-b6.serie2-continuite-arctan-ex10-b6-2": [
+     "Fonction arc tangente"
+    ]
+   }
+  },
+  "48": {
+   "titre": "Devoir surveillé n° 1 — Tronc commun Sciences (novembre 2021)",
+   "questions": {
+    "ds1-tcs-2021-b3": [
+     "Parité de la somme et du produit"
+    ],
+    "ds1-tcs-2021-b4": [
+     "Parité de la somme et du produit"
+    ],
+    "ds1-tcs-2021-b7": [
+     "Décomposition en facteurs premiers"
+    ],
+    "ds1-tcs-2021-b8": [
+     "PGCD et PPCM par la décomposition en facteurs premiers"
+    ],
+    "ds1-tcs-2021-b9": [
+     "Décomposition en facteurs premiers",
+     "Propriétés des racines carrées"
+    ],
+    "ds1-tcs-2021-b11": [],
+    "ds1-tcs-2021-b14": [
+     "Identités remarquables",
+     "Propriétés des racines carrées"
+    ],
+    "ds1-tcs-2021-b17": [
+     "Identités remarquables"
+    ],
+    "ds1-tcs-2021-b18": [
+     "Identités remarquables"
+    ],
+    "ds1-tcs-2021-b19": [
+     "Identités remarquables"
+    ],
+    "ds1-tcs-2021-b22": [],
+    "ds1-tcs-2021-b23": [
+     "Relation de Chasles"
+    ],
+    "ds1-tcs-2021-b24": [
+     "Condition de colinéarité de deux vecteurs"
+    ],
+    "ds1-tcs-2021-b25": [
+     "Relation de Chasles"
+    ],
+    "ds1-tcs-2021-b27": []
+   }
+  },
+  "49": {
+   "titre": "Devoir surveillé n° 1 — Tronc commun Sciences (octobre 2022)",
+   "questions": {
+    "ds1-tcs-2022-b3": [
+     "Parité de la somme et du produit"
+    ],
+    "ds1-tcs-2022-b4.ds1-tcs-2022-b4-1": [
+     "Parité de la somme et du produit"
+    ],
+    "ds1-tcs-2022-b4.ds1-tcs-2022-b4-2": [
+     "Identités remarquables"
+    ],
+    "ds1-tcs-2022-b4.ds1-tcs-2022-b4-3": [],
+    "ds1-tcs-2022-b7": [
+     "Décomposition en facteurs premiers"
+    ],
+    "ds1-tcs-2022-b8": [
+     "PGCD et PPCM par la décomposition en facteurs premiers"
+    ],
+    "ds1-tcs-2022-b9": [
+     "Décomposition en facteurs premiers",
+     "Propriétés des racines carrées"
+    ],
+    "ds1-tcs-2022-b11": [
+     "Parité de la somme et du produit"
+    ],
+    "ds1-tcs-2022-b12": [
+     "Parité de la somme et du produit"
+    ],
+    "ds1-tcs-2022-b15": [
+     "Propriétés des puissances"
+    ],
+    "ds1-tcs-2022-b18": [
+     "Identités remarquables"
+    ],
+    "ds1-tcs-2022-b19": [
+     "Identités remarquables"
+    ],
+    "ds1-tcs-2022-b20": [
+     "Identités remarquables"
+    ],
+    "ds1-tcs-2022-b23": [
+     "Ordre et opérations"
+    ]
+   }
+  },
+  "50": {
+   "titre": "Devoir surveillé n° 1 — Tronc commun Sciences (Sanaa - 2023)",
+   "questions": {
+    "ds1-tcs-2023-b3": [
+     "Parité de la somme et du produit"
+    ],
+    "ds1-tcs-2023-b4.ds1-tcs-2023-b4-1": [
+     "Parité de la somme et du produit"
+    ],
+    "ds1-tcs-2023-b4.ds1-tcs-2023-b4-2": [
+     "Identités remarquables"
+    ],
+    "ds1-tcs-2023-b4.ds1-tcs-2023-b4-3": [],
+    "ds1-tcs-2023-b6": [
+     "Décomposition en facteurs premiers",
+     "PGCD et PPCM par la décomposition en facteurs premiers"
+    ],
+    "ds1-tcs-2023-b7": [
+     "PGCD et PPCM par la décomposition en facteurs premiers"
+    ],
+    "ds1-tcs-2023-b10": [],
+    "ds1-tcs-2023-b11": [],
+    "ds1-tcs-2023-b13": [
+     "Parité de la somme et du produit"
+    ],
+    "ds1-tcs-2023-b16": [
+     "Identités remarquables"
+    ],
+    "ds1-tcs-2023-b17": [
+     "Ordre et opérations"
+    ],
+    "ds1-tcs-2023-b19": [
+     "Identités remarquables"
+    ]
+   }
+  },
+  "51": {
+   "titre": "Devoir surveillé n° 1 — Tronc commun Sciences (octobre 2024)",
+   "questions": {
+    "ds1-tcs-2024-b3.ds1-tcs-2024-b3-1": [],
+    "ds1-tcs-2024-b3.ds1-tcs-2024-b3-2": [
+     "Parité de la somme et du produit"
+    ],
+    "ds1-tcs-2024-b3.ds1-tcs-2024-b3-3": [
+     "Identités remarquables"
+    ],
+    "ds1-tcs-2024-b4.ds1-tcs-2024-b4-1": [
+     "Propriétés des puissances"
+    ],
+    "ds1-tcs-2024-b4.ds1-tcs-2024-b4-2": [
+     "Propriétés des puissances"
+    ],
+    "ds1-tcs-2024-b7": [
+     "Décomposition en facteurs premiers"
+    ],
+    "ds1-tcs-2024-b8": [
+     "PGCD et PPCM par la décomposition en facteurs premiers"
+    ],
+    "ds1-tcs-2024-b9": [
+     "Décomposition en facteurs premiers",
+     "Propriétés des racines carrées"
+    ],
+    "ds1-tcs-2024-b12": [],
+    "ds1-tcs-2024-b13": [],
+    "ds1-tcs-2024-b15": [
+     "Parité de la somme et du produit"
+    ],
+    "ds1-tcs-2024-b17.ds1-tcs-2024-b17-1": [
+     "Propriétés des puissances"
+    ],
+    "ds1-tcs-2024-b17.ds1-tcs-2024-b17-2": [
+     "Propriétés des racines carrées",
+     "Identités remarquables"
+    ],
+    "ds1-tcs-2024-b17.ds1-tcs-2024-b17-3": [
+     "Identités remarquables",
+     "Propriétés des racines carrées"
+    ],
+    "ds1-tcs-2024-b20": [
+     "Identités remarquables"
+    ],
+    "ds1-tcs-2024-b21": [
+     "Identités remarquables"
+    ],
+    "ds1-tcs-2024-b22": [
+     "Identités remarquables"
+    ],
+    "ds1-tcs-2024-b25": [
+     "Propriétés des puissances",
+     "Propriétés des racines carrées"
+    ]
+   }
+  },
+  "52": {
+   "titre": "Devoir surveillé n° 1 — Tronc commun Sciences (octobre 2025)",
+   "questions": {
+    "ds1-tcs-2025-b3.ds1-tcs-2025-b3-1": [],
+    "ds1-tcs-2025-b3.ds1-tcs-2025-b3-2": [
+     "Parité de la somme et du produit"
+    ],
+    "ds1-tcs-2025-b3.ds1-tcs-2025-b3-3": [
+     "Identités remarquables"
+    ],
+    "ds1-tcs-2025-b4.ds1-tcs-2025-b4-1": [
+     "Propriétés des puissances"
+    ],
+    "ds1-tcs-2025-b4.ds1-tcs-2025-b4-2": [
+     "Propriétés des puissances"
+    ],
+    "ds1-tcs-2025-b7": [
+     "Décomposition en facteurs premiers"
+    ],
+    "ds1-tcs-2025-b8": [
+     "PGCD et PPCM par la décomposition en facteurs premiers"
+    ],
+    "ds1-tcs-2025-b9": [
+     "Décomposition en facteurs premiers",
+     "Propriétés des racines carrées"
+    ],
+    "ds1-tcs-2025-b12": [],
+    "ds1-tcs-2025-b13": [],
+    "ds1-tcs-2025-b15": [
+     "Identités remarquables"
+    ],
+    "ds1-tcs-2025-b16": [
+     "Propriétés des racines carrées"
+    ],
+    "ds1-tcs-2025-b18.ds1-tcs-2025-b18-1": [
+     "Propriétés des puissances"
+    ],
+    "ds1-tcs-2025-b18.ds1-tcs-2025-b18-2": [
+     "Identités remarquables",
+     "Propriétés des racines carrées"
+    ],
+    "ds1-tcs-2025-b18.ds1-tcs-2025-b18-3": [
+     "Identités remarquables",
+     "Propriétés des racines carrées"
+    ],
+    "ds1-tcs-2025-b20": [
+     "Identités remarquables"
+    ],
+    "ds1-tcs-2025-b21.ds1-tcs-2025-b21-1": [
+     "Identités remarquables"
+    ],
+    "ds1-tcs-2025-b21.ds1-tcs-2025-b21-2": [
+     "Identités remarquables"
+    ],
+    "ds1-tcs-2025-b21.ds1-tcs-2025-b21-3": [
+     "Identités remarquables"
+    ],
+    "ds1-tcs-2025-b23": []
+   }
+  },
+  "53": {
+   "titre": "Devoir surveillé n° 1 — 1ère Bac SM (novembre 2021)",
+   "questions": {
+    "ds1-1sm-2021-b3": [
+     "Lois de De Morgan"
+    ],
+    "ds1-1sm-2021-b4": [
+     "Raisonnement par l'absurde"
+    ],
+    "ds1-1sm-2021-b7": [],
+    "ds1-1sm-2021-b8": [],
+    "ds1-1sm-2021-b9": [
+     "Raisonnement par contraposée"
+    ],
+    "ds1-1sm-2021-b10": [
+     "Raisonnement par l'absurde"
+    ],
+    "ds1-1sm-2021-b13": [
+     "Raisonnement par récurrence"
+    ],
+    "ds1-1sm-2021-b16": [
+     "Raisonnement par l'absurde"
+    ],
+    "ds1-1sm-2021-b17": [
+     "Raisonnement par l'absurde"
+    ],
+    "ds1-1sm-2021-b18.ds1-1sm-2021-b18-1": [],
+    "ds1-1sm-2021-b18.ds1-1sm-2021-b18-2": [],
+    "ds1-1sm-2021-b20": [],
+    "ds1-1sm-2021-b21.ds1-1sm-2021-b21-1": [],
+    "ds1-1sm-2021-b21.ds1-1sm-2021-b21-2": [
+     "Application réciproque d'une bijection"
+    ],
+    "ds1-1sm-2021-b21.ds1-1sm-2021-b21-3": [
+     "Application réciproque d'une bijection"
+    ]
+   }
+  },
+  "54": {
+   "titre": "Devoir surveillé n° 1 — 1ère Bac SM (octobre 2022)",
+   "questions": {
+    "ds1-1sm-2022-b2": [],
+    "ds1-1sm-2022-b3.ds1-1sm-2022-b3-1": [],
+    "ds1-1sm-2022-b3.ds1-1sm-2022-b3-2": [],
+    "ds1-1sm-2022-b5": [],
+    "ds1-1sm-2022-b8": [],
+    "ds1-1sm-2022-b9": [],
+    "ds1-1sm-2022-b10": [
+     "Raisonnement par contraposée",
+     "Lois de De Morgan"
+    ],
+    "ds1-1sm-2022-b11": [
+     "Raisonnement par l'absurde",
+     "Lois de De Morgan"
+    ],
+    "ds1-1sm-2022-b14": [
+     "Raisonnement par récurrence"
+    ],
+    "ds1-1sm-2022-b15": [
+     "Raisonnement par récurrence"
+    ],
+    "ds1-1sm-2022-b17": [],
+    "ds1-1sm-2022-b19": []
+   }
+  },
+  "55": {
+   "titre": "Devoir surveillé n° 1 — 1ère Bac SM (octobre 2023)",
+   "questions": {
+    "ds1-1sm-2023-b3": [],
+    "ds1-1sm-2023-b4": [],
+    "ds1-1sm-2023-b6": [],
+    "ds1-1sm-2023-b9": [],
+    "ds1-1sm-2023-b10": [],
+    "ds1-1sm-2023-b11": [
+     "Raisonnement par contraposée",
+     "Lois de De Morgan"
+    ],
+    "ds1-1sm-2023-b12.ds1-1sm-2023-b12-1": [
+     "Raisonnement par l'absurde"
+    ],
+    "ds1-1sm-2023-b12.ds1-1sm-2023-b12-2": [
+     "Raisonnement par l'absurde"
+    ],
+    "ds1-1sm-2023-b15": [
+     "Raisonnement par récurrence"
+    ],
+    "ds1-1sm-2023-b16": [
+     "Raisonnement par récurrence"
+    ],
+    "ds1-1sm-2023-b18": [
+     "Raisonnement par l'absurde"
+    ],
+    "ds1-1sm-2023-b20": [
+     "Raisonnement par récurrence"
+    ]
+   }
+  },
+  "56": {
+   "titre": "Devoir surveillé n° 1 — 1ère Bac SM (octobre 2024)",
+   "questions": {
+    "ds1-1sm-2024-b3": [],
+    "ds1-1sm-2024-b4": [],
+    "ds1-1sm-2024-b6": [],
+    "ds1-1sm-2024-b9": [],
+    "ds1-1sm-2024-b10": [],
+    "ds1-1sm-2024-b11": [
+     "Raisonnement par contraposée"
+    ],
+    "ds1-1sm-2024-b12": [
+     "Raisonnement par l'absurde"
+    ],
+    "ds1-1sm-2024-b15": [
+     "Raisonnement par récurrence"
+    ],
+    "ds1-1sm-2024-b16": [
+     "Raisonnement par récurrence"
+    ],
+    "ds1-1sm-2024-b19": [],
+    "ds1-1sm-2024-b20.ds1-1sm-2024-b20-1": [],
+    "ds1-1sm-2024-b20.ds1-1sm-2024-b20-2": [],
+    "ds1-1sm-2024-b20.ds1-1sm-2024-b20-3": [],
+    "ds1-1sm-2024-b21": [
+     "Opérations sur les ensembles et lois de De Morgan"
+    ],
+    "ds1-1sm-2024-b23": []
+   }
+  },
+  "57": {
+   "titre": "Devoir surveillé n° 1 — 1ère Bac SM (octobre 2025)",
+   "questions": {
+    "ds1-1sm-2025-b2.ds1-1sm-2025-b2-1": [],
+    "ds1-1sm-2025-b2.ds1-1sm-2025-b2-2": [],
+    "ds1-1sm-2025-b3": [],
+    "ds1-1sm-2025-b6": [],
+    "ds1-1sm-2025-b7": [],
+    "ds1-1sm-2025-b8": [],
+    "ds1-1sm-2025-b9": [
+     "Raisonnement par contraposée"
+    ],
+    "ds1-1sm-2025-b10": [
+     "Raisonnement par l'absurde"
+    ],
+    "ds1-1sm-2025-b12": [
+     "Raisonnement par récurrence"
+    ],
+    "ds1-1sm-2025-b13": [
+     "Raisonnement par récurrence"
+    ],
+    "ds1-1sm-2025-b16": [],
+    "ds1-1sm-2025-b17.ds1-1sm-2025-b17-1": [],
+    "ds1-1sm-2025-b17.ds1-1sm-2025-b17-2": [],
+    "ds1-1sm-2025-b18": [],
+    "ds1-1sm-2025-b20": []
+   }
+  },
+  "58": {
+   "titre": "Parité de sommes, de produits et de puissances",
+   "questions": {
+    "arithmetique-tcs-ex1-b2": [
+     "Parité de la somme et du produit"
+    ],
+    "arithmetique-tcs-ex1-b3": [
+     "Parité de la somme et du produit"
+    ],
+    "arithmetique-tcs-ex1-b4": [
+     "Parité de la somme et du produit"
+    ],
+    "arithmetique-tcs-ex1-b5": [
+     "Parité de la somme et du produit"
+    ]
+   }
+  },
+  "59": {
+   "titre": "Produit de deux entiers naturels consécutifs",
+   "questions": {
+    "arithmetique-tcs-ex2-b1": [
+     "Parité de la somme et du produit"
+    ]
+   }
+  },
+  "60": {
+   "titre": "Somme de deux entiers naturels consécutifs",
+   "questions": {
+    "arithmetique-tcs-ex3-b1": [
+     "Parité de la somme et du produit"
+    ]
+   }
+  },
+  "61": {
+   "titre": "Parité d’expressions dépendant d’un entier n",
+   "questions": {
+    "arithmetique-tcs-ex4-b2": [
+     "Parité de la somme et du produit"
+    ],
+    "arithmetique-tcs-ex4-b3": [
+     "Parité de la somme et du produit"
+    ],
+    "arithmetique-tcs-ex4-b4": [
+     "Identités remarquables"
+    ]
+   }
+  },
+  "62": {
+   "titre": "Nombres divisibles par 13",
+   "questions": {
+    "arithmetique-tcs-ex5-b2": [],
+    "arithmetique-tcs-ex5-b3": [],
+    "arithmetique-tcs-ex5-b4": [],
+    "arithmetique-tcs-ex5-b5": [
+     "Identités remarquables"
+    ],
+    "arithmetique-tcs-ex5-b6": [
+     "Identités remarquables"
+    ]
+   }
+  },
+  "63": {
+   "titre": "Divisibilité par 7 de 2a + 3b et de 5a + 4b",
+   "questions": {
+    "arithmetique-tcs-ex6-b2": [],
+    "arithmetique-tcs-ex6-b3": []
+   }
+  },
+  "64": {
+   "titre": "Multiples de 9 compris entre 259 et 305",
+   "questions": {
+    "arithmetique-tcs-ex7-b1": []
+   }
+  },
+  "65": {
+   "titre": "Divisions euclidiennes : quotient et reste",
+   "questions": {
+    "arithmetique-tcs-ex8-b2": [],
+    "arithmetique-tcs-ex8-b3": [],
+    "arithmetique-tcs-ex8-b4": []
+   }
+  },
+  "66": {
+   "titre": "Montrer que 3131 n’est pas premier",
+   "questions": {
+    "arithmetique-tcs-ex9-b1": []
+   }
+  },
+  "67": {
+   "titre": "Le nombre n² + n + 41 est-il toujours premier ?",
+   "questions": {
+    "arithmetique-tcs-ex10-b2": [],
+    "arithmetique-tcs-ex10-b3": []
+   }
+  },
+  "68": {
+   "titre": "Diviseurs de 100",
+   "questions": {
+    "arithmetique-tcs-ex11-b1": []
+   }
+  },
+  "69": {
+   "titre": "PGCD et PPCM de 124 et 120, fraction irréductible",
+   "questions": {
+    "arithmetique-tcs-ex12-b1": [
+     "Décomposition en facteurs premiers"
+    ],
+    "arithmetique-tcs-ex12-b2": [
+     "PGCD et PPCM par la décomposition en facteurs premiers"
+    ],
+    "arithmetique-tcs-ex12-b3": [
+     "PGCD et PPCM par la décomposition en facteurs premiers"
+    ]
+   }
+  },
+  "70": {
+   "titre": "Simplifier une racine carrée grâce aux facteurs premiers",
+   "questions": {
+    "arithmetique-tcs-ex13-b2": [
+     "Décomposition en facteurs premiers",
+     "Propriétés des racines carrées"
+    ],
+    "arithmetique-tcs-ex13-b3": [
+     "Décomposition en facteurs premiers",
+     "Propriétés des racines carrées"
+    ]
+   }
+  },
+  "71": {
+   "titre": "Rendre des fractions irréductibles",
+   "questions": {
+    "arithmetique-tcs-ex14-b2": [
+     "Décomposition en facteurs premiers"
+    ],
+    "arithmetique-tcs-ex14-b3": [
+     "Décomposition en facteurs premiers"
+    ]
+   }
+  },
+  "72": {
+   "titre": "Divisibilité par 27 de (3n − 1)² − 2 + (−2)ⁿ",
+   "questions": {
+    "arithmetique-tcs-ex15-b2": [
+     "Propriétés des puissances"
+    ],
+    "arithmetique-tcs-ex15-b3": []
+   }
+  },
+  "73": {
+   "titre": "Entiers n qui divisent n + 8",
+   "questions": {
+    "arithmetique-tcs-ex16-b1": []
+   }
+  },
+  "74": {
+   "titre": "Division euclidienne de 2ⁿ − 1 par 2ⁿ⁻¹ − 1",
+   "questions": {
+    "arithmetique-tcs-ex17-b1": [
+     "Propriétés des puissances"
+    ]
+   }
+  },
+  "75": {
+   "titre": "Reste de la division de 11b + 27 par 11",
+   "questions": {
+    "arithmetique-tcs-ex18-b1": []
+   }
+  },
+  "76": {
+   "titre": "Si 11 divise 2n + 3, alors 11 divise 5n + 2",
+   "questions": {
+    "arithmetique-tcs-ex19-b2": [],
+    "arithmetique-tcs-ex19-b3": []
+   }
+  },
+  "77": {
+   "titre": "Entiers n pour lesquels (n + 6)/(n − 5) est un entier naturel",
+   "questions": {
+    "arithmetique-tcs-ex20-b1": []
+   }
+  },
+  "78": {
+   "titre": "Nombre premier p ≥ 5 : 12 divise p² − 1",
+   "questions": {
+    "arithmetique-tcs-ex21-b2": [],
+    "arithmetique-tcs-ex21-b3": []
+   }
+  },
+  "79": {
+   "titre": "Paquets identiques de bonbons et de chocolats",
+   "questions": {
+    "arithmetique-tcs-ex22-b1": [
+     "Décomposition en facteurs premiers",
+     "PGCD et PPCM par la décomposition en facteurs premiers"
+    ]
+   }
+  },
+  "80": {
+   "titre": "Former des équipes pour une course d’orientation",
+   "questions": {
+    "arithmetique-tcs-ex23-b2": [
+     "Décomposition en facteurs premiers",
+     "PGCD et PPCM par la décomposition en facteurs premiers"
+    ],
+    "arithmetique-tcs-ex23-b3": []
+   }
+  },
+  "81": {
+   "titre": "Inégalités avec des racines carrées par équivalences successives",
+   "questions": {
+    "logique-1sm-ex1-b2": [],
+    "logique-1sm-ex1-b3": [],
+    "logique-1sm-ex1-b4": []
+   }
+  },
+  "82": {
+   "titre": "Trois implications par contraposition",
+   "questions": {
+    "logique-1sm-ex2-b2": [
+     "Raisonnement par contraposée",
+     "Lois de De Morgan"
+    ],
+    "logique-1sm-ex2-b3": [
+     "Raisonnement par contraposée"
+    ],
+    "logique-1sm-ex2-b4": [
+     "Raisonnement par contraposée",
+     "Lois de De Morgan"
+    ]
+   }
+  },
+  "83": {
+   "titre": "Raisonnement par disjonction des cas",
+   "questions": {
+    "logique-1sm-ex3-b2": [],
+    "logique-1sm-ex3-b3": []
+   }
+  },
+  "84": {
+   "titre": "Six propriétés à démontrer par récurrence",
+   "questions": {
+    "logique-1sm-ex4-b2": [
+     "Raisonnement par récurrence"
+    ],
+    "logique-1sm-ex4-b3": [
+     "Raisonnement par récurrence"
+    ],
+    "logique-1sm-ex4-b4": [
+     "Raisonnement par récurrence"
+    ],
+    "logique-1sm-ex4-b5": [
+     "Raisonnement par récurrence"
+    ],
+    "logique-1sm-ex4-b6": [
+     "Raisonnement par récurrence"
+    ],
+    "logique-1sm-ex4-b7": [
+     "Raisonnement par récurrence"
+    ]
+   }
+  },
+  "85": {
+   "titre": "Restes des carrés dans la division par 5 et √(5n + 7)",
+   "questions": {
+    "logique-1sm-ex5-b2": [
+     "Division euclidienne dans ℤ"
+    ],
+    "logique-1sm-ex5-b3": [
+     "Raisonnement par l'absurde",
+     "Division euclidienne dans ℤ"
+    ]
+   }
+  },
+  "86": {
+   "titre": "Inégalité |x + y| ≤ 2√(x² + y² − xy)",
+   "questions": {
+    "logique-1sm-ex6-b1": []
+   }
+  },
+  "87": {
+   "titre": "Produits a(1 − b) et majoration par 1/4",
+   "questions": {
+    "logique-1sm-ex7-b1": [],
+    "logique-1sm-ex7-b2": [
+     "Raisonnement par l'absurde",
+     "Lois de De Morgan"
+    ],
+    "logique-1sm-ex7-b3": [
+     "Raisonnement par l'absurde",
+     "Lois de De Morgan"
+    ]
+   }
+  },
+  "88": {
+   "titre": "Le nombre √(9a² + 30a + 35) n’est jamais entier",
+   "questions": {
+    "logique-1sm-ex8-b1": []
+   }
+  },
+  "89": {
+   "titre": "Positivité de x⁴ − x³ + x² − x + 1",
+   "questions": {
+    "logique-1sm-ex9-b2": [],
+    "logique-1sm-ex9-b3": []
+   }
+  },
+  "90": {
+   "titre": "Négation, raisonnement par l’absurde et propriété d’Archimède",
+   "questions": {
+    "logique-1sm-ex10-b1": [],
+    "logique-1sm-ex10-b2": [
+     "Raisonnement par l'absurde"
+    ],
+    "logique-1sm-ex10-b3": [
+     "Raisonnement par l'absurde"
+    ]
+   }
+  },
+  "91": {
+   "titre": "Trois réels tels que ab + bc + ca = 1",
+   "questions": {
+    "logique-1sm-ex11-b2": [],
+    "logique-1sm-ex11-b3": [
+     "Raisonnement par l'absurde",
+     "Lois de De Morgan"
+    ]
+   }
+  },
+  "92": {
+   "titre": "Côtés d’un triangle de périmètre 1",
+   "questions": {
+    "logique-1sm-ex12-b2": [],
+    "logique-1sm-ex12-b3": []
+   }
+  },
+  "93": {
+   "titre": "Une inéquation avec trois valeurs absolues",
+   "questions": {
+    "logique-1sm-ex13-b2": [],
+    "logique-1sm-ex13-b3": [],
+    "logique-1sm-ex13-b4": []
+   }
+  },
+  "94": {
+   "titre": "Un système d’inéquations sans solution",
+   "questions": {
+    "logique-1sm-ex14-b1": [
+     "Raisonnement par l'absurde"
+    ]
+   }
+  },
+  "96": {
+   "titre": "Continuité en 0 de (√(1 + sin x) − 1)/x",
+   "questions": {
+    "continuite-soir-ex1-b2": []
+   }
+  },
+  "97": {
+   "titre": "Continuité en 0 de x sin(1/x)",
+   "questions": {
+    "continuite-soir-ex2-b2": [
+     "Théorème des gendarmes"
+    ]
+   }
+  },
+  "98": {
+   "titre": "Valeur de a pour que (√(x² + 1) − √2)/(x − 1) soit continue en 1",
+   "questions": {
+    "continuite-soir-ex3-b2": []
+   }
+  },
+  "99": {
+   "titre": "Fonction définie par morceaux, continue en 1 et sur ℝ",
+   "questions": {
+    "continuite-soir-ex4-b2": [],
+    "continuite-soir-ex4-b3": []
+   }
+  },
+  "100": {
+   "titre": "Prolongement par continuité en 0 de (√(3 + cos x) − 2)/x²",
+   "questions": {
+    "continuite-soir-ex5-b2": [
+     "Prolongement par continuité"
+    ]
+   }
+  },
+  "101": {
+   "titre": "Prolongement par continuité en 2 de (x³ − 2x − 4)/(x − 2)",
+   "questions": {
+    "continuite-soir-ex6-b2": [
+     "Prolongement par continuité"
+    ]
+   }
+  },
+  "102": {
+   "titre": "Continuité de 1/sin(x²) sur ]0, √π[",
+   "questions": {
+    "continuite-soir-ex7-b2": [
+     "Limite et continuité d'une fonction composée"
+    ]
+   }
+  },
+  "103": {
+   "titre": "Continuité de tan(π/(x² + 2)) sur ]−∞, 0[ et ]0, +∞[",
+   "questions": {
+    "continuite-soir-ex8-b2": [
+     "Limite et continuité d'une fonction composée"
+    ]
+   }
+  },
+  "104": {
+   "titre": "Continuité de cos(tan x) sur ]−π/2, π/2[",
+   "questions": {
+    "continuite-soir-ex9-b2": [
+     "Limite et continuité d'une fonction composée"
+    ]
+   }
+  },
+  "105": {
+   "titre": "L’équation (2x + 1)/(x² + 1) = x a une solution dans ]1, 2[",
+   "questions": {
+    "continuite-soir-ex10-b1": [
+     "Théorème des valeurs intermédiaires (TVI)"
+    ]
+   }
+  },
+  "106": {
+   "titre": "Existence de α tel que f(α) = 1 − α",
+   "questions": {
+    "continuite-soir-ex12-b1": [
+     "Théorème des valeurs intermédiaires (TVI)"
+    ]
+   }
+  },
+  "107": {
+   "titre": "Racine de x³ + 2x − 1 : existence, signe et dichotomie",
+   "questions": {
+    "continuite-soir-ex13-b2": [
+     "Théorème de la bijection",
+     "Théorème des valeurs intermédiaires (TVI)"
+    ],
+    "continuite-soir-ex13-b3": [],
+    "continuite-soir-ex13-b4": [
+     "Méthode de dichotomie"
+    ]
+   }
+  },
+  "108": {
+   "titre": "Images d’intervalles par des fonctions continues et monotones",
+   "questions": {
+    "continuite-soir-ex14-b2": [
+     "Image d'un intervalle par une fonction continue"
+    ],
+    "continuite-soir-ex14-b3": [
+     "Image d'un intervalle par une fonction continue"
+    ],
+    "continuite-soir-ex14-b4": [
+     "Image d'un intervalle par une fonction continue"
+    ]
+   }
+  },
+  "109": {
+   "titre": "Une fonction continue et périodique sur ℝ est bornée",
+   "questions": {
+    "continuite-soir-ex15-b1": [
+     "Image d'un intervalle par une fonction continue"
+    ]
+   }
+  },
+  "110": {
+   "titre": "Bijection de x/(x² + 1) sur [−1, 1] et sa réciproque",
+   "questions": {
+    "continuite-soir-ex16-b2": [
+     "Théorème de la bijection",
+     "Image d'un intervalle par une fonction continue"
+    ]
+   }
+  },
+  "111": {
+   "titre": "Calcul de arctan(tan(2016π/5)) et tan(arctan(2016π/5))",
+   "questions": {
+    "continuite-soir-ex17-b2": [
+     "Fonction arc tangente"
+    ],
+    "continuite-soir-ex17-b3": [
+     "Fonction arc tangente"
+    ]
+   }
+  },
+  "112": {
+   "titre": "Montrer que arctan 2 + arctan 3 = 3π/4",
+   "questions": {
+    "continuite-soir-ex18-b1": [
+     "Fonction arc tangente"
+    ]
+   }
+  },
+  "113": {
+   "titre": "Domaines de définition de fonctions avec arctan",
+   "questions": {
+    "continuite-soir-ex19-b2": [
+     "Fonction arc tangente"
+    ],
+    "continuite-soir-ex19-b3": [
+     "Fonction arc tangente"
+    ],
+    "continuite-soir-ex19-b4": [
+     "Fonction arc tangente"
+    ],
+    "continuite-soir-ex19-b5": [
+     "Fonction arc tangente"
+    ]
+   }
+  },
+  "114": {
+   "titre": "Relation arctan x + arctan(1/x) = ±π/2",
+   "questions": {
+    "continuite-soir-ex20-b1": [
+     "Fonction arc tangente"
+    ],
+    "continuite-soir-ex20-b2": [
+     "Fonction arc tangente"
+    ]
+   }
+  },
+  "115": {
+   "titre": "Cinq limites avec la fonction arctan",
+   "questions": {
+    "continuite-soir-ex21-b2": [
+     "Fonction arc tangente"
+    ],
+    "continuite-soir-ex21-b3": [
+     "Fonction arc tangente"
+    ],
+    "continuite-soir-ex21-b4": [
+     "Fonction arc tangente"
+    ],
+    "continuite-soir-ex21-b5": [
+     "Fonction arc tangente"
+    ],
+    "continuite-soir-ex21-b6": [
+     "Limite et continuité d'une fonction composée"
+    ]
+   }
+  },
+  "116": {
+   "titre": "Équations arctan x = π/4 + arctan(1/4) et arctan x + arctan(3x/2) = π/4",
+   "questions": {
+    "continuite-soir-ex22-b2": [
+     "Fonction arc tangente"
+    ],
+    "continuite-soir-ex22-b3": [
+     "Fonction arc tangente"
+    ]
+   }
+  },
+  "117": {
+   "titre": "Racines n-ièmes : propriété, simplification, comparaison et équations",
+   "questions": {
+    "continuite-soir-ex23-b1": [
+     "Fonction racine n-ième et puissance rationnelle"
+    ],
+    "continuite-soir-ex23-b2": [
+     "Fonction racine n-ième et puissance rationnelle"
+    ],
+    "continuite-soir-ex23-b3": [
+     "Fonction racine n-ième et puissance rationnelle"
+    ],
+    "continuite-soir-ex23-b4": [
+     "Fonction racine n-ième et puissance rationnelle"
+    ],
+    "continuite-soir-ex23-b5": [
+     "Fonction racine n-ième et puissance rationnelle"
+    ]
+   }
+  },
+  "118": {
+   "titre": "Trois limites avec des racines cubiques",
+   "questions": {
+    "continuite-soir-ex24-b2": [
+     "Fonction racine n-ième et puissance rationnelle"
+    ],
+    "continuite-soir-ex24-b3": [
+     "Fonction racine n-ième et puissance rationnelle"
+    ],
+    "continuite-soir-ex24-b4": [
+     "Fonction racine n-ième et puissance rationnelle"
+    ]
+   }
+  },
+  "119": {
+   "titre": "Puissances rationnelles : simplification et limites",
+   "questions": {
+    "continuite-soir-ex25-b1": [
+     "Fonction racine n-ième et puissance rationnelle"
+    ],
+    "continuite-soir-ex25-b2": [
+     "Fonction racine n-ième et puissance rationnelle"
+    ]
+   }
+  },
+  "120": {
+   "titre": "Existence de c dans ]−1, 0[ tel que f(c) = c/(4 arctan c + π) + 1/∛(−c)",
+   "questions": {
+    "continuite-soir-ex26-b1": [
+     "Théorème des valeurs intermédiaires (TVI)"
+    ]
+   }
+  },
+  "121": {
+   "titre": "DS n° 1 (rattrapage) — 2ème Bac SM (Sanaa - 2019)",
+   "questions": {
+    "ds1-2sm-2019-rattrapage-b3": [
+     "Fonction racine n-ième et puissance rationnelle"
+    ],
+    "ds1-2sm-2019-rattrapage-b4": [
+     "Fonction racine n-ième et puissance rationnelle"
+    ],
+    "ds1-2sm-2019-rattrapage-b5": [
+     "Fonction arc tangente",
+     "Fonction racine n-ième et puissance rationnelle"
+    ],
+    "ds1-2sm-2019-rattrapage-b6": [
+     "Limite et continuité d'une fonction composée"
+    ],
+    "ds1-2sm-2019-rattrapage-b9": [],
+    "ds1-2sm-2019-rattrapage-b10": [
+     "Limite et continuité d'une fonction composée"
+    ],
+    "ds1-2sm-2019-rattrapage-b11": [
+     "Limite et continuité d'une fonction composée",
+     "Fonction arc tangente"
+    ],
+    "ds1-2sm-2019-rattrapage-b12": [
+     "Fonction arc tangente",
+     "Fonction racine n-ième et puissance rationnelle"
+    ],
+    "ds1-2sm-2019-rattrapage-b13": [
+     "Théorème de la bijection",
+     "Image d'un intervalle par une fonction continue"
+    ],
+    "ds1-2sm-2019-rattrapage-b14": [
+     "Fonction arc tangente"
+    ],
+    "ds1-2sm-2019-rattrapage-b15": [
+     "Fonction arc tangente"
+    ],
+    "ds1-2sm-2019-rattrapage-b16": [
+     "Théorème de la bijection"
+    ],
+    "ds1-2sm-2019-rattrapage-b18": [
+     "Théorème des valeurs intermédiaires (TVI)"
+    ],
+    "ds1-2sm-2019-rattrapage-b20": [
+     "Fonction racine n-ième et puissance rationnelle"
+    ],
+    "ds1-2sm-2019-rattrapage-b23": [],
+    "ds1-2sm-2019-rattrapage-b24": [
+     "Théorème de la bijection"
+    ],
+    "ds1-2sm-2019-rattrapage-b25": [],
+    "ds1-2sm-2019-rattrapage-b26": []
+   }
+  },
+  "122": {
+   "titre": "Devoir surveillé n° 1 — 2ème Bac SM (Sanaa - 2016)",
+   "questions": {
+    "ds1-2sm-2016-b3": [
+     "Fonction racine n-ième et puissance rationnelle"
+    ],
+    "ds1-2sm-2016-b4": [
+     "Fonction racine n-ième et puissance rationnelle"
+    ],
+    "ds1-2sm-2016-b5": [
+     "Fonction arc tangente",
+     "Fonction racine n-ième et puissance rationnelle"
+    ],
+    "ds1-2sm-2016-b6": [
+     "Fonction racine n-ième et puissance rationnelle"
+    ],
+    "ds1-2sm-2016-b9": [],
+    "ds1-2sm-2016-b10": [
+     "Limite et continuité d'une fonction composée"
+    ],
+    "ds1-2sm-2016-b11": [
+     "Fonction racine n-ième et puissance rationnelle"
+    ],
+    "ds1-2sm-2016-b12.ds1-2sm-2016-b12-1": [
+     "Théorème de la bijection",
+     "Image d'un intervalle par une fonction continue"
+    ],
+    "ds1-2sm-2016-b12.ds1-2sm-2016-b12-2": [
+     "Théorème des valeurs intermédiaires (TVI)"
+    ],
+    "ds1-2sm-2016-b12.ds1-2sm-2016-b12-3": [
+     "Théorème de la bijection"
+    ],
+    "ds1-2sm-2016-b14": [
+     "Théorème des valeurs intermédiaires (TVI)",
+     "Théorème de la bijection"
+    ],
+    "ds1-2sm-2016-b17": [
+     "Prolongement par continuité",
+     "Fonction arc tangente"
+    ],
+    "ds1-2sm-2016-b18": [
+     "Fonction arc tangente"
+    ],
+    "ds1-2sm-2016-b19.ds1-2sm-2016-b19-1": [
+     "Théorème de la bijection",
+     "Fonction arc tangente"
+    ],
+    "ds1-2sm-2016-b19.ds1-2sm-2016-b19-2": [
+     "Fonction arc tangente"
+    ],
+    "ds1-2sm-2016-b20.ds1-2sm-2016-b20-1": [
+     "Théorème de la bijection",
+     "Image d'un intervalle par une fonction continue"
+    ],
+    "ds1-2sm-2016-b20.ds1-2sm-2016-b20-2": [
+     "Théorème de la bijection",
+     "Fonction arc tangente"
+    ],
+    "ds1-2sm-2016-b20.ds1-2sm-2016-b20-3": [
+     "Théorème de la bijection"
+    ],
+    "ds1-2sm-2016-b21": [
+     "Fonction arc tangente"
+    ]
+   }
+  },
+  "123": {
+   "titre": "Devoir surveillé n° 1 — Tronc commun Sciences (octobre 2016)",
+   "questions": {
+    "ds1-tcs-2016-b3": [
+     "Identités remarquables"
+    ],
+    "ds1-tcs-2016-b4": [
+     "Propriétés des puissances"
+    ],
+    "ds1-tcs-2016-b5": [
+     "Critères de divisibilité"
+    ],
+    "ds1-tcs-2016-b6": [
+     "Propriétés des puissances",
+     "Identités remarquables"
+    ],
+    "ds1-tcs-2016-b7": [
+     "Propriétés des racines carrées"
+    ],
+    "ds1-tcs-2016-b10": [
+     "Décomposition en facteurs premiers"
+    ],
+    "ds1-tcs-2016-b11": [
+     "PGCD et PPCM par la décomposition en facteurs premiers"
+    ],
+    "ds1-tcs-2016-b12": [
+     "PGCD et PPCM par la décomposition en facteurs premiers"
+    ],
+    "ds1-tcs-2016-b15": [
+     "Parité de la somme et du produit"
+    ],
+    "ds1-tcs-2016-b16": [
+     "Parité de la somme et du produit"
+    ],
+    "ds1-tcs-2016-b19": [],
+    "ds1-tcs-2016-b20": [
+     "Propriétés des racines carrées"
+    ],
+    "ds1-tcs-2016-b21": [
+     "Identités remarquables",
+     "Propriétés des racines carrées"
+    ],
+    "ds1-tcs-2016-b22": [
+     "Identités remarquables"
+    ],
+    "ds1-tcs-2016-b25": [
+     "Identités remarquables"
+    ],
+    "ds1-tcs-2016-b26": [],
+    "ds1-tcs-2016-b29": [
+     "Identités remarquables"
+    ]
+   }
+  },
+  "124": {
+   "titre": "Devoir surveillé n° 1 — Tronc commun Sciences (octobre 2019)",
+   "questions": {
+    "ds1-tcs-2019-b3": [],
+    "ds1-tcs-2019-b4": [
+     "Propriétés des racines carrées"
+    ],
+    "ds1-tcs-2019-b5": [
+     "Propriétés des puissances"
+    ],
+    "ds1-tcs-2019-b6": [
+     "Propriétés des puissances",
+     "Identités remarquables"
+    ],
+    "ds1-tcs-2019-b7": [
+     "Identités remarquables"
+    ],
+    "ds1-tcs-2019-b10.ds1-tcs-2019-b10-1": [
+     "Décomposition en facteurs premiers"
+    ],
+    "ds1-tcs-2019-b10.ds1-tcs-2019-b10-2": [
+     "PGCD et PPCM par la décomposition en facteurs premiers"
+    ],
+    "ds1-tcs-2019-b10.ds1-tcs-2019-b10-3": [
+     "PGCD et PPCM par la décomposition en facteurs premiers"
+    ],
+    "ds1-tcs-2019-b11": [],
+    "ds1-tcs-2019-b14": [
+     "Identités remarquables",
+     "Propriétés des racines carrées"
+    ],
+    "ds1-tcs-2019-b15": [
+     "Identités remarquables",
+     "Propriétés des racines carrées"
+    ],
+    "ds1-tcs-2019-b16": [
+     "Identités remarquables"
+    ],
+    "ds1-tcs-2019-b17": [
+     "Propriétés des racines carrées"
+    ],
+    "ds1-tcs-2019-b20": [
+     "Identités remarquables"
+    ],
+    "ds1-tcs-2019-b21": [
+     "Identités remarquables"
+    ],
+    "ds1-tcs-2019-b22": [
+     "Identités remarquables"
+    ],
+    "ds1-tcs-2019-b25": [],
+    "ds1-tcs-2019-b26": [
+     "Identités remarquables"
+    ]
+   }
+  },
+  "125": {
+   "titre": "Devoir surveillé n° 1 — 1ère Bac SM (octobre 2019)",
+   "questions": {
+    "ds1-1sm-2019-b3": [],
+    "ds1-1sm-2019-b4": [],
+    "ds1-1sm-2019-b5": [],
+    "ds1-1sm-2019-b7": [],
+    "ds1-1sm-2019-b8": [],
+    "ds1-1sm-2019-b9": [
+     "Raisonnement par contraposée"
+    ],
+    "ds1-1sm-2019-b12": [],
+    "ds1-1sm-2019-b13": [
+     "Raisonnement par l'absurde",
+     "Lois de De Morgan"
+    ],
+    "ds1-1sm-2019-b15": [],
+    "ds1-1sm-2019-b17.ds1-1sm-2019-b17-1": [
+     "Raisonnement par récurrence"
+    ],
+    "ds1-1sm-2019-b17.ds1-1sm-2019-b17-2": [],
+    "ds1-1sm-2019-b18": [
+     "Raisonnement par récurrence"
+    ],
+    "ds1-1sm-2019-b20": [
+     "Raisonnement par récurrence"
+    ]
+   }
+  },
+  "126": {
+   "titre": "Devoir surveillé n° 1 — 2ème Bac SM (Sanaa - 2019)",
+   "questions": {
+    "ds1-2sm-2019-b3": [],
+    "ds1-2sm-2019-b4": [
+     "Fonction racine n-ième et puissance rationnelle"
+    ],
+    "ds1-2sm-2019-b5": [
+     "Fonction arc tangente",
+     "Fonction racine n-ième et puissance rationnelle"
+    ],
+    "ds1-2sm-2019-b6": [
+     "Fonction arc tangente"
+    ],
+    "ds1-2sm-2019-b9": [],
+    "ds1-2sm-2019-b10": [
+     "Fonction arc tangente"
+    ],
+    "ds1-2sm-2019-b11": [
+     "Prolongement par continuité",
+     "Fonction arc tangente",
+     "Fonction racine n-ième et puissance rationnelle"
+    ],
+    "ds1-2sm-2019-b12": [
+     "Limite et continuité d'une fonction composée"
+    ],
+    "ds1-2sm-2019-b15": [
+     "Fonction racine n-ième et puissance rationnelle"
+    ],
+    "ds1-2sm-2019-b16": [
+     "Fonction arc tangente"
+    ],
+    "ds1-2sm-2019-b19": [
+     "Fonction arc tangente"
+    ],
+    "ds1-2sm-2019-b20": [
+     "Théorème de la bijection"
+    ],
+    "ds1-2sm-2019-b21.ds1-2sm-2019-b21-1": [
+     "Fonction arc tangente"
+    ],
+    "ds1-2sm-2019-b21.ds1-2sm-2019-b21-2": [
+     "Fonction arc tangente"
+    ],
+    "ds1-2sm-2019-b21.ds1-2sm-2019-b21-3": [
+     "Théorème de la bijection"
+    ],
+    "ds1-2sm-2019-b22": [
+     "Théorème de la bijection"
+    ],
+    "ds1-2sm-2019-b23": [
+     "Théorème de la bijection"
+    ]
+   }
+  },
+  "127": {
+   "titre": "Étude de x − 2√(x − 1) : dérivabilité en 1, branche infinie et variations",
+   "questions": {
+    "haddar-lc-ex1-b2": [],
+    "haddar-lc-ex1-b3": [],
+    "haddar-lc-ex1-b4": [
+     "Branches infinies et asymptotes"
+    ],
+    "haddar-lc-ex1-b5": []
+   }
+  },
+  "128": {
+   "titre": "Douze limites : factorisation, conjuguée, partie entière, encadrement et nombre dérivé",
+   "questions": {
+    "haddar-lc-ex2-b2": [],
+    "haddar-lc-ex2-b3": [],
+    "haddar-lc-ex2-b4": [],
+    "haddar-lc-ex2-b5": [],
+    "haddar-lc-ex2-b6": [],
+    "haddar-lc-ex2-b7": [],
+    "haddar-lc-ex2-b8": [],
+    "haddar-lc-ex2-b9": [
+     "Théorème des gendarmes"
+    ],
+    "haddar-lc-ex2-b10": [],
+    "haddar-lc-ex2-b11": [],
+    "haddar-lc-ex2-b12": [],
+    "haddar-lc-ex2-b13": []
+   }
+  },
+  "129": {
+   "titre": "Continuité en un point de trois fonctions définies par morceaux",
+   "questions": {
+    "haddar-lc-ex3-b2": [],
+    "haddar-lc-ex3-b3": [],
+    "haddar-lc-ex3-b4": []
+   }
+  },
+  "130": {
+   "titre": "Existence d’un réel α tel que √(1 + x) ≤ (1 + x²)α + x sur [−1, 1]",
+   "questions": {
+    "haddar-lc-ex8-b1": [
+     "Image d'un intervalle par une fonction continue"
+    ]
+   }
+  },
+  "131": {
+   "titre": "Bijection de (2 + √(4 − x²))/x sur ]0, 2] et sa réciproque",
+   "questions": {
+    "haddar-lc-ex16-b2": [],
+    "haddar-lc-ex16-b4": [
+     "Théorème de la bijection",
+     "Image d'un intervalle par une fonction continue"
+    ],
+    "haddar-lc-ex16-b5": [
+     "Théorème de la bijection"
+    ]
+   }
+  },
+  "132": {
+   "titre": "Six limites avec la fonction arctan",
+   "questions": {
+    "haddar-lc-ex18-b2": [
+     "Fonction arc tangente"
+    ],
+    "haddar-lc-ex18-b3": [
+     "Fonction arc tangente"
+    ],
+    "haddar-lc-ex18-b4": [
+     "Fonction arc tangente"
+    ],
+    "haddar-lc-ex18-b5": [
+     "Fonction arc tangente"
+    ],
+    "haddar-lc-ex18-b6": [
+     "Fonction arc tangente"
+    ],
+    "haddar-lc-ex18-b7": [
+     "Fonction arc tangente"
+    ]
+   }
+  },
+  "133": {
+   "titre": "Simplifier deux nombres avec des racines n-ièmes",
+   "questions": {
+    "haddar-lc-ex19-b2": [
+     "Fonction racine n-ième et puissance rationnelle"
+    ],
+    "haddar-lc-ex19-b3": [
+     "Fonction racine n-ième et puissance rationnelle"
+    ]
+   }
+  },
+  "134": {
+   "titre": "Valeur exacte de ∛(9 + 4√5) + ∛(9 − 4√5)",
+   "questions": {
+    "haddar-lc-ex20-b2": [
+     "Fonction racine n-ième et puissance rationnelle"
+    ],
+    "haddar-lc-ex20-b3": [],
+    "haddar-lc-ex20-b4": []
+   }
+  },
+  "135": {
+   "titre": "Équations ∛(1 + x) + ∛(1 − x) = ∛2 et 2⁴√(x + 1) − ⁴√(1 − x) = ⁸√(1 − x²)",
+   "questions": {
+    "haddar-lc-ex21-b2": [
+     "Fonction racine n-ième et puissance rationnelle"
+    ],
+    "haddar-lc-ex21-b3": [
+     "Fonction racine n-ième et puissance rationnelle"
+    ]
+   }
+  },
+  "136": {
+   "titre": "Cinq limites avec des racines cubiques",
+   "questions": {
+    "haddar-lc-ex22-b2": [
+     "Fonction racine n-ième et puissance rationnelle"
+    ],
+    "haddar-lc-ex22-b3": [
+     "Fonction racine n-ième et puissance rationnelle"
+    ],
+    "haddar-lc-ex22-b4": [
+     "Fonction racine n-ième et puissance rationnelle"
+    ],
+    "haddar-lc-ex22-b5": [
+     "Fonction racine n-ième et puissance rationnelle"
+    ],
+    "haddar-lc-ex22-b6": [
+     "Fonction racine n-ième et puissance rationnelle"
+    ]
+   }
+  },
+  "137": {
+   "titre": "Équations arctan((x² − 1)/x²) + arctan x = π/2 et arctan 2x + arctan 3x = π/4",
+   "questions": {
+    "haddar-lc-ex25-b2": [
+     "Fonction arc tangente"
+    ],
+    "haddar-lc-ex25-b3": [
+     "Fonction arc tangente"
+    ]
+   }
+  },
+  "138": {
+   "titre": "Bijection de x/(1 + |x|) de ℝ vers ]−1, 1[ et sa réciproque",
+   "questions": {
+    "haddar-lc-ex28-b2": [
+     "Théorème de la bijection",
+     "Image d'un intervalle par une fonction continue"
+    ],
+    "haddar-lc-ex28-b3": [
+     "Théorème de la bijection"
+    ]
+   }
+  },
+  "139": {
+   "titre": "Simplification de arctan(√((1 − cos x)/(1 + cos x))) et représentation graphique",
+   "questions": {
+    "haddar-lc-ex33-b2": [],
+    "haddar-lc-ex33-b3": [
+     "Fonction arc tangente"
+    ],
+    "haddar-lc-ex33-b4": []
+   }
+  },
+  "140": {
+   "titre": "Continuité de √(x² + 1) − x sur ℝ",
+   "questions": {
+    "haddar-2pc-lc-ex2-b2": [
+     "Limite et continuité d'une fonction composée"
+    ]
+   }
+  },
+  "141": {
+   "titre": "Continuité en −3 et sur ]−∞, 2[ de (x + 3)/√|x² + x − 6|",
+   "questions": {
+    "haddar-2pc-lc-ex3-b2": [],
+    "haddar-2pc-lc-ex3-b3": [],
+    "haddar-2pc-lc-ex3-b4": [
+     "Limite et continuité d'une fonction composée"
+    ]
+   }
+  },
+  "142": {
+   "titre": "Continuité de x cos(1/x) en 0 et sur ℝ",
+   "questions": {
+    "haddar-2pc-lc-ex4-b2": [
+     "Théorème des gendarmes"
+    ],
+    "haddar-2pc-lc-ex4-b3": [
+     "Limite et continuité d'une fonction composée"
+    ]
+   }
+  },
+  "143": {
+   "titre": "Trois équations qui ont au moins une solution (TVI)",
+   "questions": {
+    "haddar-2pc-lc-ex5-b2": [
+     "Théorème des valeurs intermédiaires (TVI)"
+    ],
+    "haddar-2pc-lc-ex5-b3": [
+     "Théorème des valeurs intermédiaires (TVI)"
+    ],
+    "haddar-2pc-lc-ex5-b4": [
+     "Théorème des valeurs intermédiaires (TVI)"
+    ]
+   }
+  },
+  "144": {
+   "titre": "Deux équations qui ont une seule solution dans un intervalle",
+   "questions": {
+    "haddar-2pc-lc-ex6-b2": [
+     "Théorème des valeurs intermédiaires (TVI)"
+    ],
+    "haddar-2pc-lc-ex6-b3": [
+     "Théorème des valeurs intermédiaires (TVI)"
+    ]
+   }
+  },
+  "145": {
+   "titre": "Racine de x³ + x − 1 : variations, existence et dichotomie",
+   "questions": {
+    "haddar-2pc-lc-ex7-b2": [],
+    "haddar-2pc-lc-ex7-b3": [
+     "Théorème de la bijection"
+    ],
+    "haddar-2pc-lc-ex7-b4": [
+     "Méthode de dichotomie"
+    ]
+   }
+  },
+  "146": {
+   "titre": "Trois fonctions réciproques : x² − 4x + 2, (2x − 1)/(x + 1), √(x + 2) − 1",
+   "questions": {
+    "haddar-2pc-lc-ex9-b2": [
+     "Théorème de la bijection",
+     "Image d'un intervalle par une fonction continue"
+    ],
+    "haddar-2pc-lc-ex9-b3": [
+     "Théorème de la bijection",
+     "Image d'un intervalle par une fonction continue"
+    ],
+    "haddar-2pc-lc-ex9-b4": [
+     "Théorème de la bijection",
+     "Image d'un intervalle par une fonction continue"
+    ]
+   }
+  },
+  "147": {
+   "titre": "Racines n-ièmes : ordonner, simplifier et résoudre",
+   "questions": {
+    "haddar-2pc-lc-ex11-b1": [
+     "Fonction racine n-ième et puissance rationnelle"
+    ],
+    "haddar-2pc-lc-ex11-b2": [
+     "Fonction racine n-ième et puissance rationnelle"
+    ],
+    "haddar-2pc-lc-ex11-b3": [
+     "Fonction racine n-ième et puissance rationnelle"
+    ]
+   }
+  },
+  "148": {
+   "titre": "Simplifier deux quotients de racines n-ièmes",
+   "questions": {
+    "haddar-2pc-lc-ex12-b2": [
+     "Fonction racine n-ième et puissance rationnelle"
+    ],
+    "haddar-2pc-lc-ex12-b3": [
+     "Fonction racine n-ième et puissance rationnelle"
+    ]
+   }
+  },
+  "149": {
+   "titre": "Trois équations avec des racines n-ièmes",
+   "questions": {
+    "haddar-2pc-lc-ex14-b2": [
+     "Fonction racine n-ième et puissance rationnelle"
+    ],
+    "haddar-2pc-lc-ex14-b3": [
+     "Fonction racine n-ième et puissance rationnelle"
+    ],
+    "haddar-2pc-lc-ex14-b4": [
+     "Fonction racine n-ième et puissance rationnelle"
+    ]
+   }
+  },
+  "150": {
+   "titre": "Nombres A = 3 + √(9 + 125/27), B = −3 + √(9 + 125/27) et x = ∛A − ∛B = 1",
+   "questions": {
+    "haddar-2pc-lc-ex17-b2": [
+     "Fonction racine n-ième et puissance rationnelle"
+    ],
+    "haddar-2pc-lc-ex17-b4.haddar-2pc-lc-ex17-b4-1": [
+     "Fonction racine n-ième et puissance rationnelle"
+    ],
+    "haddar-2pc-lc-ex17-b4.haddar-2pc-lc-ex17-b4-2": []
+   }
+  },
+  "155": {
+   "titre": "Devoir maison n° 1 — 2ème Bac SM (Sanaa - 2026)",
+   "questions": {
+    "dm1-2sm-b3": [
+     "Fonction racine n-ième et puissance rationnelle"
+    ],
+    "dm1-2sm-b4": [
+     "Fonction racine n-ième et puissance rationnelle"
+    ],
+    "dm1-2sm-b5.dm1-2sm-b5-1": [
+     "Fonction racine n-ième et puissance rationnelle"
+    ],
+    "dm1-2sm-b5.dm1-2sm-b5-2": [
+     "Théorème de la bijection",
+     "Image d'un intervalle par une fonction continue"
+    ],
+    "dm1-2sm-b5.dm1-2sm-b5-3": [
+     "Théorème de la bijection",
+     "Fonction racine n-ième et puissance rationnelle"
+    ],
+    "dm1-2sm-b8.dm1-2sm-b8-1": [],
+    "dm1-2sm-b8.dm1-2sm-b8-2": [
+     "Limite et continuité d'une fonction composée"
+    ],
+    "dm1-2sm-b9.dm1-2sm-b9-1": [
+     "Théorème de la bijection",
+     "Fonction arc tangente"
+    ],
+    "dm1-2sm-b9.dm1-2sm-b9-2": [
+     "Fonction arc tangente"
+    ],
+    "dm1-2sm-b10": [
+     "Théorème des valeurs intermédiaires (TVI)"
+    ],
+    "dm1-2sm-b11.dm1-2sm-b11-1": [
+     "Fonction racine n-ième et puissance rationnelle"
+    ],
+    "dm1-2sm-b11.dm1-2sm-b11-2": [],
+    "dm1-2sm-b11.dm1-2sm-b11-3": [],
+    "dm1-2sm-b14": [],
+    "dm1-2sm-b15": [],
+    "dm1-2sm-b16": [
+     "Fonction arc tangente"
+    ],
+    "dm1-2sm-b17": [],
+    "dm1-2sm-b20": [
+     "Fonction arc tangente"
+    ],
+    "dm1-2sm-b21": [
+     "Fonction arc tangente"
+    ],
+    "dm1-2sm-b23.dm1-2sm-b23-1": [
+     "Théorème de la bijection",
+     "Image d'un intervalle par une fonction continue"
+    ],
+    "dm1-2sm-b23.dm1-2sm-b23-2": [
+     "Théorème de la bijection"
+    ],
+    "dm1-2sm-b24": [
+     "Théorème des valeurs intermédiaires (TVI)",
+     "Continuité de la fonction réciproque"
+    ]
+   }
+  },
+  "158": {
+   "titre": "Six limites : racines carrées, fraction rationnelle, formes indéterminées",
+   "questions": {
+    "cours-lc-2pc-ex1-b2": [],
+    "cours-lc-2pc-ex1-b3": [],
+    "cours-lc-2pc-ex1-b4": [],
+    "cours-lc-2pc-ex1-b5": [],
+    "cours-lc-2pc-ex1-b6": [],
+    "cours-lc-2pc-ex1-b7": []
+   }
+  },
+  "159": {
+   "titre": "Continuité en 0 de (4 − √(x² + 16))/x",
+   "questions": {
+    "cours-lc-2pc-ex2-b2": []
+   }
+  },
+  "160": {
+   "titre": "Continuité en 1 d’une fonction définie par morceaux",
+   "questions": {
+    "cours-lc-2pc-ex3-b2": []
+   }
+  },
+  "161": {
+   "titre": "Domaine de définition et continuité de quatre fonctions",
+   "questions": {
+    "cours-lc-2pc-ex4-b2": [],
+    "cours-lc-2pc-ex4-b3": [],
+    "cours-lc-2pc-ex4-b4": [],
+    "cours-lc-2pc-ex4-b5": [
+     "Limite et continuité d'une fonction composée"
+    ]
+   }
+  },
+  "162": {
+   "titre": "Variations de x³ − 3x + 1 et images de trois intervalles",
+   "questions": {
+    "cours-lc-2pc-ex5-b2": [],
+    "cours-lc-2pc-ex5-b3": [],
+    "cours-lc-2pc-ex5-b4": [
+     "Image d'un intervalle par une fonction continue"
+    ]
+   }
+  },
+  "163": {
+   "titre": "Solution unique de x⁵ + 3x³ + 4x − 5 = 0 et de x³ + x² + x − 2 = 0",
+   "questions": {
+    "cours-lc-2pc-ex6-b1": [
+     "Théorème des valeurs intermédiaires (TVI)"
+    ],
+    "cours-lc-2pc-ex6-b2": [
+     "Théorème de la bijection",
+     "Théorème des valeurs intermédiaires (TVI)"
+    ]
+   }
+  },
+  "164": {
+   "titre": "Fonction réciproque de (x² − 1)/(x² + 1) sur ℝ⁺",
+   "questions": {
+    "cours-lc-2pc-ex7-b2": [],
+    "cours-lc-2pc-ex7-b3": [
+     "Théorème de la bijection",
+     "Image d'un intervalle par une fonction continue"
+    ],
+    "cours-lc-2pc-ex7-b4": [
+     "Théorème de la bijection"
+    ]
+   }
+  },
+  "165": {
+   "titre": "Deux équations : 2x⁶ + x³ − 6 = 0 et ∛(x²) − 5∛x + 6 = 0",
+   "questions": {
+    "cours-lc-2pc-ex8-b2": [
+     "Fonction racine n-ième et puissance rationnelle"
+    ],
+    "cours-lc-2pc-ex8-b3": [
+     "Fonction racine n-ième et puissance rationnelle"
+    ]
+   }
+  },
+  "166": {
+   "titre": "Limites avec des racines cubiques : en 0, en 2⁺ et en +∞",
+   "questions": {
+    "cours-lc-2pc-ex9-b2": [
+     "Fonction racine n-ième et puissance rationnelle"
+    ],
+    "cours-lc-2pc-ex9-b3": [
+     "Fonction racine n-ième et puissance rationnelle"
+    ],
+    "cours-lc-2pc-ex9-b4": [
+     "Fonction racine n-ième et puissance rationnelle"
+    ]
+   }
+  },
+  "167": {
+   "titre": "Devoir surveillé n° 1 — 2ème Bac SM (Sanaa - 2017)",
+   "questions": {
+    "ds1-2sm-2017-b3": [
+     "Fonction arc tangente"
+    ],
+    "ds1-2sm-2017-b4": [],
+    "ds1-2sm-2017-b5": [
+     "Fonction racine n-ième et puissance rationnelle"
+    ],
+    "ds1-2sm-2017-b6": [],
+    "ds1-2sm-2017-b9": [
+     "Limite et continuité d'une fonction composée"
+    ],
+    "ds1-2sm-2017-b10": [
+     "Limite et continuité d'une fonction composée"
+    ],
+    "ds1-2sm-2017-b12": [
+     "Fonction racine n-ième et puissance rationnelle"
+    ],
+    "ds1-2sm-2017-b14": [
+     "Fonction arc tangente"
+    ],
+    "ds1-2sm-2017-b15": [
+     "Fonction arc tangente"
+    ],
+    "ds1-2sm-2017-b18.ds1-2sm-2017-b18-1": [
+     "Théorème de la bijection",
+     "Image d'un intervalle par une fonction continue"
+    ],
+    "ds1-2sm-2017-b18.ds1-2sm-2017-b18-2": [
+     "Théorème de la bijection"
+    ],
+    "ds1-2sm-2017-b19": [
+     "Fonction arc tangente"
+    ],
+    "ds1-2sm-2017-b20": [
+     "Fonction arc tangente"
+    ],
+    "ds1-2sm-2017-b21": [],
+    "ds1-2sm-2017-b22": []
+   }
+  },
+  "168": {
+   "titre": "Devoir surveillé n° 1 — 2ème Bac SM (Sanaa - 2020)",
+   "questions": {
+    "ds1-2sm-2020-b3": [],
+    "ds1-2sm-2020-b4": [],
+    "ds1-2sm-2020-b5": [],
+    "ds1-2sm-2020-b6": [],
+    "ds1-2sm-2020-b7": [
+     "Théorème des gendarmes"
+    ],
+    "ds1-2sm-2020-b10": [
+     "Prolongement par continuité"
+    ],
+    "ds1-2sm-2020-b11": [
+     "Limite et continuité d'une fonction composée"
+    ],
+    "ds1-2sm-2020-b12.ds1-2sm-2020-b12-1": [],
+    "ds1-2sm-2020-b12.ds1-2sm-2020-b12-2": [],
+    "ds1-2sm-2020-b13": [
+     "Image d'un intervalle par une fonction continue"
+    ],
+    "ds1-2sm-2020-b15": [
+     "Théorème de la bijection",
+     "Théorème des valeurs intermédiaires (TVI)"
+    ],
+    "ds1-2sm-2020-b16": [
+     "Méthode de dichotomie"
+    ],
+    "ds1-2sm-2020-b19": [
+     "Limite et continuité d'une fonction composée"
+    ],
+    "ds1-2sm-2020-b20.ds1-2sm-2020-b20-1": [
+     "Dérivée d'une fonction composée"
+    ],
+    "ds1-2sm-2020-b20.ds1-2sm-2020-b20-2": [],
+    "ds1-2sm-2020-b21": [
+     "Théorème de la bijection"
+    ],
+    "ds1-2sm-2020-b22": [
+     "Théorème de la bijection"
+    ]
+   }
+  },
+  "169": {
+   "titre": "Devoir surveillé n° 1 — 2ème Bac SM (Sanaa - 2015)",
+   "questions": {
+    "ds1-2sm-2015-b3": [
+     "Fonction racine n-ième et puissance rationnelle"
+    ],
+    "ds1-2sm-2015-b4": [
+     "Fonction racine n-ième et puissance rationnelle"
+    ],
+    "ds1-2sm-2015-b5": [
+     "Théorème des gendarmes"
+    ],
+    "ds1-2sm-2015-b6": [
+     "Fonction arc tangente"
+    ],
+    "ds1-2sm-2015-b9": [
+     "Limite et continuité d'une fonction composée"
+    ],
+    "ds1-2sm-2015-b10": [
+     "Théorème des valeurs intermédiaires (TVI)"
+    ],
+    "ds1-2sm-2015-b13": [
+     "Fonction racine n-ième et puissance rationnelle"
+    ],
+    "ds1-2sm-2015-b14": [
+     "Fonction arc tangente"
+    ],
+    "ds1-2sm-2015-b17.ds1-2sm-2015-b17-1": [],
+    "ds1-2sm-2015-b17.ds1-2sm-2015-b17-2": [
+     "Limite et continuité d'une fonction composée"
+    ],
+    "ds1-2sm-2015-b18": [
+     "Limite et continuité d'une fonction composée"
+    ],
+    "ds1-2sm-2015-b19.ds1-2sm-2015-b19-1": [],
+    "ds1-2sm-2015-b19.ds1-2sm-2015-b19-2": [
+     "Théorème de la bijection",
+     "Fonction arc tangente"
+    ],
+    "ds1-2sm-2015-b19.ds1-2sm-2015-b19-3": [
+     "Fonction arc tangente"
+    ],
+    "ds1-2sm-2015-b21.ds1-2sm-2015-b21-1": [
+     "Théorème de la bijection",
+     "Image d'un intervalle par une fonction continue"
+    ],
+    "ds1-2sm-2015-b21.ds1-2sm-2015-b21-2": [
+     "Théorème de la bijection",
+     "Fonction arc tangente"
+    ]
+   }
+  },
+  "170": {
+   "titre": "Devoir surveillé n° 1 — 2ème Bac SM (Sanaa - 2022)",
+   "questions": {
+    "ds1-2sm-2022-b3": [],
+    "ds1-2sm-2022-b4": [
+     "Fonction racine n-ième et puissance rationnelle",
+     "Fonction arc tangente"
+    ],
+    "ds1-2sm-2022-b5": [
+     "Fonction racine n-ième et puissance rationnelle"
+    ],
+    "ds1-2sm-2022-b8": [
+     "Prolongement par continuité",
+     "Fonction racine n-ième et puissance rationnelle"
+    ],
+    "ds1-2sm-2022-b9": [
+     "Limite et continuité d'une fonction composée"
+    ],
+    "ds1-2sm-2022-b12": [],
+    "ds1-2sm-2022-b13": [
+     "Limite et continuité d'une fonction composée"
+    ],
+    "ds1-2sm-2022-b14.ds1-2sm-2022-b14-1": [
+     "Dérivée d'une fonction composée"
+    ],
+    "ds1-2sm-2022-b14.ds1-2sm-2022-b14-2": [],
+    "ds1-2sm-2022-b15": [
+     "Théorème de la bijection"
+    ],
+    "ds1-2sm-2022-b16": [
+     "Théorème de la bijection"
+    ],
+    "ds1-2sm-2022-b19": [
+     "Limite et continuité d'une fonction composée"
+    ],
+    "ds1-2sm-2022-b20": [
+     "Fonction racine n-ième et puissance rationnelle",
+     "Fonction arc tangente"
+    ],
+    "ds1-2sm-2022-b21": [
+     "Théorème de la bijection",
+     "Théorème des valeurs intermédiaires (TVI)"
+    ],
+    "ds1-2sm-2022-b23": [
+     "Fonction arc tangente"
+    ],
+    "ds1-2sm-2022-b24": [
+     "Fonction arc tangente"
+    ]
+   }
+  },
+  "171": {
+   "titre": "Devoir surveillé n° 1 — 1ère Bac SM, groupe 1 (Sanaa - 2020)",
+   "questions": {
+    "ds1-1sm-2020-gr1-b3": [],
+    "ds1-1sm-2020-gr1-b4": [],
+    "ds1-1sm-2020-gr1-b6": [],
+    "ds1-1sm-2020-gr1-b7": [
+     "Raisonnement par contraposée",
+     "Lois de De Morgan"
+    ],
+    "ds1-1sm-2020-gr1-b9": [
+     "Raisonnement par l'absurde",
+     "Lois de De Morgan"
+    ],
+    "ds1-1sm-2020-gr1-b11": [
+     "Raisonnement par récurrence"
+    ],
+    "ds1-1sm-2020-gr1-b13": [
+     "Raisonnement par l'absurde"
+    ]
+   }
+  },
+  "172": {
+   "titre": "Devoir surveillé n° 1 — 1ère Bac SM, groupe 2 (Sanaa - 2020)",
+   "questions": {
+    "ds1-1sm-2020-gr2-b3": [],
+    "ds1-1sm-2020-gr2-b4": [],
+    "ds1-1sm-2020-gr2-b6": [],
+    "ds1-1sm-2020-gr2-b7": [
+     "Raisonnement par contraposée"
+    ],
+    "ds1-1sm-2020-gr2-b9": [
+     "Raisonnement par l'absurde"
+    ],
+    "ds1-1sm-2020-gr2-b11": [
+     "Raisonnement par récurrence"
+    ],
+    "ds1-1sm-2020-gr2-b13": [
+     "Raisonnement par contraposée",
+     "Lois de De Morgan"
+    ]
+   }
+  },
+  "173": {
+   "titre": "Devoir surveillé n° 1 — Tronc commun Sciences, g1 (Sanaa - 2020)",
+   "questions": {
+    "ds1-tcs-2020-gr1-b2": [
+     "Parité de la somme et du produit"
+    ],
+    "ds1-tcs-2020-gr1-b5": [
+     "Décomposition en facteurs premiers"
+    ],
+    "ds1-tcs-2020-gr1-b6": [
+     "PGCD et PPCM par la décomposition en facteurs premiers"
+    ],
+    "ds1-tcs-2020-gr1-b7": [
+     "Décomposition en facteurs premiers",
+     "Propriétés des racines carrées"
+    ],
+    "ds1-tcs-2020-gr1-b10": [
+     "Identités remarquables",
+     "Propriétés des racines carrées"
+    ],
+    "ds1-tcs-2020-gr1-b11": [
+     "Identités remarquables"
+    ]
+   }
+  },
+  "174": {
+   "titre": "Devoir maison n° 1 — 1ère Bac SM (Sanaa - 2026)",
+   "questions": {
+    "dm1-1sm-b3": [],
+    "dm1-1sm-b4": [],
+    "dm1-1sm-b5": [],
+    "dm1-1sm-b7": [],
+    "dm1-1sm-b8": [],
+    "dm1-1sm-b11": [],
+    "dm1-1sm-b12": [
+     "Raisonnement par récurrence"
+    ],
+    "dm1-1sm-b14": [
+     "Raisonnement par récurrence"
+    ],
+    "dm1-1sm-b16": [],
+    "dm1-1sm-b17": [],
+    "dm1-1sm-b18": [
+     "Raisonnement par récurrence"
+    ],
+    "dm1-1sm-b20": [],
+    "dm1-1sm-b21": [],
+    "dm1-1sm-b23": [
+     "Raisonnement par contraposée",
+     "Lois de De Morgan"
+    ],
+    "dm1-1sm-b25": [
+     "Raisonnement par l'absurde"
+    ],
+    "dm1-1sm-b28": [
+     "Raisonnement par récurrence"
+    ],
+    "dm1-1sm-b29": [
+     "Raisonnement par récurrence"
+    ],
+    "dm1-1sm-b30": [
+     "Raisonnement par récurrence"
+    ]
+   }
+  },
+  "176": {
+   "titre": "Ensembles en extension : inéquation dans ℤ, couples de rationnels, fractions",
+   "questions": {
+    "ensembles-1sm-ex1-b1": [],
+    "ensembles-1sm-ex1-b2": [],
+    "ensembles-1sm-ex1-b3": []
+   }
+  },
+  "177": {
+   "titre": "Les entiers n tels que (2n² + 5n − 2)/(n + 2) soit entier",
+   "questions": {
+    "ensembles-1sm-ex2-b2": [],
+    "ensembles-1sm-ex2-b3": []
+   }
+  },
+  "178": {
+   "titre": "Inclusion de {4k + 3} dans {2k + 1}",
+   "questions": {
+    "ensembles-1sm-ex3-b2": [],
+    "ensembles-1sm-ex3-b3": [
+     "Raisonnement par l'absurde"
+    ],
+    "ensembles-1sm-ex3-b4": []
+   }
+  },
+  "179": {
+   "titre": "Deux ensembles de fractions disjoints",
+   "questions": {
+    "ensembles-1sm-ex4-b2": [],
+    "ensembles-1sm-ex4-b3": [
+     "Raisonnement par l'absurde"
+    ]
+   }
+  },
+  "180": {
+   "titre": "L’ensemble des n + 1/n est inclus dans [2, +∞[",
+   "questions": {
+    "ensembles-1sm-ex5-b2": [],
+    "ensembles-1sm-ex5-b3.ensembles-1sm-ex5-b3-1": [
+     "Raisonnement par l'absurde"
+    ],
+    "ensembles-1sm-ex5-b3.ensembles-1sm-ex5-b3-2": []
+   }
+  },
+  "181": {
+   "titre": "Intersection, différence et réunion de trois ensembles",
+   "questions": {
+    "ensembles-1sm-ex6-b2": [
+     "Opérations sur les ensembles et lois de De Morgan"
+    ],
+    "ensembles-1sm-ex6-b3": [
+     "Opérations sur les ensembles et lois de De Morgan"
+    ],
+    "ensembles-1sm-ex6-b4": [
+     "Opérations sur les ensembles et lois de De Morgan"
+    ]
+   }
+  },
+  "182": {
+   "titre": "Couples d’entiers tels que 6x² − xy − y² = −11",
+   "questions": {
+    "ensembles-1sm-ex7-b1": []
+   }
+  },
+  "183": {
+   "titre": "Les nombres (m + n)/(mn) sont dans ]0, 2]",
+   "questions": {
+    "ensembles-1sm-ex8-b1": []
+   }
+  },
+  "184": {
+   "titre": "Valeurs de m pour que ]1 − m, 1 + m[ soit inclus dans ]0, 2[",
+   "questions": {
+    "ensembles-1sm-ex9-b1": []
+   }
+  },
+  "185": {
+   "titre": "Devoir libre n° 1 — 2ème Bac SM (Lycée Riad Ezzahia) : limites, continuité, arc tangente et fonctions réciproques",
+   "questions": {
+    "devoir-libre-1-2sm-riad-ezzahia-b2": [],
+    "devoir-libre-1-2sm-riad-ezzahia-b3.devoir-libre-1-2sm-riad-ezzahia-b3-1": [
+     "Fonction racine n-ième et puissance rationnelle",
+     "Fonction arc tangente"
+    ],
+    "devoir-libre-1-2sm-riad-ezzahia-b3.devoir-libre-1-2sm-riad-ezzahia-b3-2": [
+     "Fonction racine n-ième et puissance rationnelle",
+     "Fonction arc tangente"
+    ],
+    "devoir-libre-1-2sm-riad-ezzahia-b4": [
+     "Théorème des valeurs intermédiaires (TVI)"
+    ],
+    "devoir-libre-1-2sm-riad-ezzahia-b5": [
+     "Théorème des valeurs intermédiaires (TVI)"
+    ],
+    "devoir-libre-1-2sm-riad-ezzahia-b6.devoir-libre-1-2sm-riad-ezzahia-b6-1": [
+     "Théorème des valeurs intermédiaires (TVI)",
+     "Théorème de la bijection"
+    ],
+    "devoir-libre-1-2sm-riad-ezzahia-b6.devoir-libre-1-2sm-riad-ezzahia-b6-2": [
+     "Théorème des valeurs intermédiaires (TVI)"
+    ],
+    "devoir-libre-1-2sm-riad-ezzahia-b7": [
+     "Théorème des valeurs intermédiaires (TVI)",
+     "Méthode de dichotomie"
+    ],
+    "devoir-libre-1-2sm-riad-ezzahia-b9": [
+     "Fonction arc tangente"
+    ],
+    "devoir-libre-1-2sm-riad-ezzahia-b10": [
+     "Fonction arc tangente"
+    ],
+    "devoir-libre-1-2sm-riad-ezzahia-b13": [],
+    "devoir-libre-1-2sm-riad-ezzahia-b14": [
+     "Limite et continuité d'une fonction composée"
+    ],
+    "devoir-libre-1-2sm-riad-ezzahia-b15.devoir-libre-1-2sm-riad-ezzahia-b15-1": [],
+    "devoir-libre-1-2sm-riad-ezzahia-b15.devoir-libre-1-2sm-riad-ezzahia-b15-2": [
+     "Fonction arc tangente"
+    ],
+    "devoir-libre-1-2sm-riad-ezzahia-b16.devoir-libre-1-2sm-riad-ezzahia-b16-1": [
+     "Théorème de la bijection",
+     "Image d'un intervalle par une fonction continue"
+    ],
+    "devoir-libre-1-2sm-riad-ezzahia-b16.devoir-libre-1-2sm-riad-ezzahia-b16-2": [
+     "Théorème de la bijection",
+     "Fonction arc tangente"
+    ],
+    "devoir-libre-1-2sm-riad-ezzahia-b16.devoir-libre-1-2sm-riad-ezzahia-b16-3": [
+     "Théorème des valeurs intermédiaires (TVI)"
+    ],
+    "devoir-libre-1-2sm-riad-ezzahia-b16.devoir-libre-1-2sm-riad-ezzahia-b16-4": [
+     "Théorème de la bijection"
+    ],
+    "devoir-libre-1-2sm-riad-ezzahia-b16.devoir-libre-1-2sm-riad-ezzahia-b16-5": [
+     "Fonction arc tangente"
+    ],
+    "devoir-libre-1-2sm-riad-ezzahia-b19": [],
+    "devoir-libre-1-2sm-riad-ezzahia-b20": [
+     "Limite et continuité d'une fonction composée"
+    ],
+    "devoir-libre-1-2sm-riad-ezzahia-b21": [
+     "Fonction arc tangente"
+    ],
+    "devoir-libre-1-2sm-riad-ezzahia-b22": [
+     "Fonction arc tangente"
+    ],
+    "devoir-libre-1-2sm-riad-ezzahia-b23": [],
+    "devoir-libre-1-2sm-riad-ezzahia-b24": [
+     "Fonction arc tangente"
+    ],
+    "devoir-libre-1-2sm-riad-ezzahia-b25": [
+     "Théorème des valeurs intermédiaires (TVI)"
+    ],
+    "devoir-libre-1-2sm-riad-ezzahia-b28": [
+     "Théorème de la bijection",
+     "Image d'un intervalle par une fonction continue"
+    ],
+    "devoir-libre-1-2sm-riad-ezzahia-b29": [
+     "Théorème de la bijection"
+    ],
+    "devoir-libre-1-2sm-riad-ezzahia-b30.devoir-libre-1-2sm-riad-ezzahia-b30-1": [
+     "Théorème de la bijection",
+     "Image d'un intervalle par une fonction continue"
+    ],
+    "devoir-libre-1-2sm-riad-ezzahia-b30.devoir-libre-1-2sm-riad-ezzahia-b30-2": [
+     "Théorème de la bijection",
+     "Fonction arc tangente"
+    ],
+    "devoir-libre-1-2sm-riad-ezzahia-b32": [
+     "Théorème des valeurs intermédiaires (TVI)"
+    ],
+    "devoir-libre-1-2sm-riad-ezzahia-b33.devoir-libre-1-2sm-riad-ezzahia-b33-1": [
+     "Fonction racine n-ième et puissance rationnelle"
+    ],
+    "devoir-libre-1-2sm-riad-ezzahia-b33.devoir-libre-1-2sm-riad-ezzahia-b33-2": [
+     "Fonction racine n-ième et puissance rationnelle"
+    ],
+    "devoir-libre-1-2sm-riad-ezzahia-b33.devoir-libre-1-2sm-riad-ezzahia-b33-3": [
+     "Théorème de la bijection",
+     "Image d'un intervalle par une fonction continue"
+    ],
+    "devoir-libre-1-2sm-riad-ezzahia-b33.devoir-libre-1-2sm-riad-ezzahia-b33-4": [
+     "Théorème de la bijection",
+     "Fonction racine n-ième et puissance rationnelle"
+    ]
+   }
+  },
+  "186": {
+   "titre": "Simplification d'expressions avec des racines carrées et rationalisation de dénominateurs",
+   "questions": {
+    "ensembles-nombres-tc-ex1-b1.ensembles-nombres-tc-ex1-b1-1": [
+     "Propriétés des racines carrées",
+     "Identités remarquables"
+    ],
+    "ensembles-nombres-tc-ex1-b1.ensembles-nombres-tc-ex1-b1-2": [
+     "Identités remarquables"
+    ],
+    "ensembles-nombres-tc-ex1-b1.ensembles-nombres-tc-ex1-b1-3": [
+     "Identités remarquables",
+     "Propriétés des racines carrées"
+    ],
+    "ensembles-nombres-tc-ex1-b1.ensembles-nombres-tc-ex1-b1-4": [
+     "Identités remarquables"
+    ],
+    "ensembles-nombres-tc-ex1-b1.ensembles-nombres-tc-ex1-b1-5": [
+     "Identités remarquables",
+     "Propriétés des racines carrées"
+    ],
+    "ensembles-nombres-tc-ex1-b1.ensembles-nombres-tc-ex1-b1-6": [
+     "Identités remarquables",
+     "Propriétés des racines carrées"
+    ],
+    "ensembles-nombres-tc-ex1-b1.ensembles-nombres-tc-ex1-b1-7": [
+     "Propriétés des racines carrées"
+    ],
+    "ensembles-nombres-tc-ex1-b2.ensembles-nombres-tc-ex1-b2-1": [
+     "Propriétés des racines carrées"
+    ],
+    "ensembles-nombres-tc-ex1-b2.ensembles-nombres-tc-ex1-b2-2": [
+     "Identités remarquables",
+     "Propriétés des racines carrées"
+    ],
+    "ensembles-nombres-tc-ex1-b2.ensembles-nombres-tc-ex1-b2-3": [
+     "Identités remarquables",
+     "Propriétés des racines carrées"
+    ]
+   }
+  },
+  "187": {
+   "titre": "Montrer qu'un nombre appartient à ℚ, ℕ, 𝔻 ou ℤ",
+   "questions": {
+    "ensembles-nombres-tc-ex2-b1": [
+     "Identités remarquables",
+     "Propriétés des racines carrées"
+    ],
+    "ensembles-nombres-tc-ex2-b2": [
+     "Propriétés des racines carrées",
+     "Identités remarquables"
+    ],
+    "ensembles-nombres-tc-ex2-b3": [
+     "Propriétés des puissances"
+    ],
+    "ensembles-nombres-tc-ex2-b4": [
+     "Propriétés des puissances"
+    ]
+   }
+  },
+  "188": {
+   "titre": "Racine carrée de 49 + 20√6 et simplification d'expressions avec des radicaux",
+   "questions": {
+    "ensembles-nombres-tc-ex3-b1.ensembles-nombres-tc-ex3-b1-1": [
+     "Identités remarquables"
+    ],
+    "ensembles-nombres-tc-ex3-b1.ensembles-nombres-tc-ex3-b1-2": [
+     "Propriétés des racines carrées",
+     "Identités remarquables"
+    ],
+    "ensembles-nombres-tc-ex3-b2": [
+     "Propriétés des racines carrées",
+     "Identités remarquables"
+    ]
+   }
+  },
+  "189": {
+   "titre": "Développement et factorisation avec les identités remarquables du troisième degré",
+   "questions": {
+    "ensembles-nombres-tc-ex4-b1.ensembles-nombres-tc-ex4-b1-1": [
+     "Identités remarquables"
+    ],
+    "ensembles-nombres-tc-ex4-b1.ensembles-nombres-tc-ex4-b1-2": [
+     "Identités remarquables"
+    ],
+    "ensembles-nombres-tc-ex4-b1.ensembles-nombres-tc-ex4-b1-3": [
+     "Identités remarquables"
+    ],
+    "ensembles-nombres-tc-ex4-b1.ensembles-nombres-tc-ex4-b1-4": [
+     "Identités remarquables"
+    ],
+    "ensembles-nombres-tc-ex4-b2.ensembles-nombres-tc-ex4-b2-1": [
+     "Identités remarquables"
+    ],
+    "ensembles-nombres-tc-ex4-b2.ensembles-nombres-tc-ex4-b2-2": [
+     "Identités remarquables"
+    ],
+    "ensembles-nombres-tc-ex4-b2.ensembles-nombres-tc-ex4-b2-3": [
+     "Identités remarquables"
+    ],
+    "ensembles-nombres-tc-ex4-b2.ensembles-nombres-tc-ex4-b2-4": [
+     "Identités remarquables"
+    ],
+    "ensembles-nombres-tc-ex4-b2.ensembles-nombres-tc-ex4-b2-5": [
+     "Identités remarquables"
+    ],
+    "ensembles-nombres-tc-ex4-b2.ensembles-nombres-tc-ex4-b2-6": [
+     "Identités remarquables"
+    ]
+   }
+  },
+  "190": {
+   "titre": "Identité a³ + b³ + c³ = 3abc et calcul d'une expression lorsque a + b + c = 0",
+   "questions": {
+    "ensembles-nombres-tc-ex5-b2": [
+     "Identités remarquables"
+    ],
+    "ensembles-nombres-tc-ex5-b3": []
+   }
+  },
+  "191": {
+   "titre": "Devoir surveillé n° 1 — 2ème Bac SM (Sanaa - 2026)",
+   "questions": {
+    "ds1-2sm-2026-b3": [],
+    "ds1-2sm-2026-b4": [],
+    "ds1-2sm-2026-b5": [
+     "Fonction racine n-ième et puissance rationnelle"
+    ],
+    "ds1-2sm-2026-b6": [
+     "Fonction arc tangente"
+    ],
+    "ds1-2sm-2026-b9.ds1-2sm-2026-b9-1": [
+     "Prolongement par continuité"
+    ],
+    "ds1-2sm-2026-b9.ds1-2sm-2026-b9-2": [
+     "Limite et continuité d'une fonction composée"
+    ],
+    "ds1-2sm-2026-b10": [
+     "Théorème des valeurs intermédiaires (TVI)"
+    ],
+    "ds1-2sm-2026-b13": [],
+    "ds1-2sm-2026-b14.ds1-2sm-2026-b14-1": [
+     "Théorème des valeurs intermédiaires (TVI)",
+     "Théorème de la bijection"
+    ],
+    "ds1-2sm-2026-b14.ds1-2sm-2026-b14-2": [
+     "Fonction arc tangente"
+    ],
+    "ds1-2sm-2026-b14.ds1-2sm-2026-b14-3": [],
+    "ds1-2sm-2026-b17.ds1-2sm-2026-b17-1": [],
+    "ds1-2sm-2026-b17.ds1-2sm-2026-b17-2": [],
+    "ds1-2sm-2026-b18.ds1-2sm-2026-b18-1": [
+     "Théorème de la bijection"
+    ],
+    "ds1-2sm-2026-b18.ds1-2sm-2026-b18-2": [
+     "Théorème de la bijection",
+     "Fonction arc tangente"
+    ],
+    "ds1-2sm-2026-b18.ds1-2sm-2026-b18-3": [
+     "Théorème de la bijection",
+     "Fonction arc tangente"
+    ]
+   }
+  },
+  "192": {
+   "titre": "Devoir surveillé n° 1 — Tronc commun Sciences (Sanaa - 2014)",
+   "questions": {
+    "ds1-tcs-2014-b3": [],
+    "ds1-tcs-2014-b4": [
+     "Identités remarquables",
+     "Propriétés des racines carrées"
+    ],
+    "ds1-tcs-2014-b5": [],
+    "ds1-tcs-2014-b6": [
+     "Propriétés des puissances",
+     "Identités remarquables"
+    ],
+    "ds1-tcs-2014-b7": [],
+    "ds1-tcs-2014-b10.ds1-tcs-2014-b10-1": [
+     "Décomposition en facteurs premiers"
+    ],
+    "ds1-tcs-2014-b10.ds1-tcs-2014-b10-2": [
+     "PGCD et PPCM par la décomposition en facteurs premiers"
+    ],
+    "ds1-tcs-2014-b10.ds1-tcs-2014-b10-3": [
+     "Décomposition en facteurs premiers",
+     "Propriétés des racines carrées"
+    ],
+    "ds1-tcs-2014-b11": [],
+    "ds1-tcs-2014-b14": [
+     "Identités remarquables"
+    ],
+    "ds1-tcs-2014-b15": [
+     "Identités remarquables",
+     "Propriétés des racines carrées"
+    ],
+    "ds1-tcs-2014-b16": [
+     "Propriétés des racines carrées",
+     "Propriétés des puissances"
+    ],
+    "ds1-tcs-2014-b17": [
+     "Parité de la somme et du produit"
+    ],
+    "ds1-tcs-2014-b20": [
+     "Identités remarquables"
+    ],
+    "ds1-tcs-2014-b21": [
+     "Identités remarquables"
+    ],
+    "ds1-tcs-2014-b24": [
+     "Identités remarquables",
+     "Propriétés des racines carrées"
+    ]
+   }
+  },
+  "193": {
+   "titre": "Devoir surveillé n° 1 — 1ère Bac SM (Sanaa - 2016)",
+   "questions": {
+    "ds1-1sm-2016-b3": [],
+    "ds1-1sm-2016-b4": [],
+    "ds1-1sm-2016-b6": [],
+    "ds1-1sm-2016-b7": [],
+    "ds1-1sm-2016-b8": [
+     "Raisonnement par l'absurde"
+    ],
+    "ds1-1sm-2016-b9": [
+     "Raisonnement par contraposée"
+    ],
+    "ds1-1sm-2016-b11": [],
+    "ds1-1sm-2016-b13": [],
+    "ds1-1sm-2016-b15": [
+     "Raisonnement par récurrence"
+    ],
+    "ds1-1sm-2016-b16": [
+     "Raisonnement par récurrence"
+    ],
+    "ds1-1sm-2016-b18": [],
+    "ds1-1sm-2016-b19": []
+   }
+  },
+  "194": {
+   "titre": "Dérivabilité en un point et interprétation géométrique : x² sin(1/x) en 0 et fonction par morceaux avec arctan en 1",
+   "questions": {
+    "derivabilite-2sm-haddar-ex1-b2": [
+     "Théorème des gendarmes"
+    ],
+    "derivabilite-2sm-haddar-ex1-b3": [
+     "Fonction arc tangente",
+     "Limite et continuité d'une fonction composée"
+    ]
+   }
+  },
+  "195": {
+   "titre": "Déterminer deux paramètres pour qu'une fonction définie par morceaux soit dérivable en 2",
+   "questions": {
+    "derivabilite-2sm-haddar-ex2-b2": []
+   }
+  },
+  "196": {
+   "titre": "Identité 2 arctan(√(x² + 1) − x) + arctan x = π/2 démontrée par la dérivation",
+   "questions": {
+    "derivabilite-2sm-haddar-ex3-b1": [
+     "Dérivée d'une fonction composée",
+     "Fonction arc tangente"
+    ]
+   }
+  },
+  "197": {
+   "titre": "Étude de f(x) = ∛(x³ − 3x²) : dérivabilité à droite de 3, bijection et dérivée de la réciproque",
+   "questions": {
+    "derivabilite-2sm-haddar-ex4-b2": [
+     "Fonction racine n-ième et puissance rationnelle"
+    ],
+    "derivabilite-2sm-haddar-ex4-b3": [
+     "Dérivée d'une fonction composée",
+     "Fonction racine n-ième et puissance rationnelle"
+    ],
+    "derivabilite-2sm-haddar-ex4-b4": [],
+    "derivabilite-2sm-haddar-ex4-b5.derivabilite-2sm-haddar-ex4-b5-1": [
+     "Théorème de la bijection",
+     "Image d'un intervalle par une fonction continue"
+    ],
+    "derivabilite-2sm-haddar-ex4-b5.derivabilite-2sm-haddar-ex4-b5-2": [
+     "Dérivée de la fonction réciproque"
+    ]
+   }
+  },
+  "198": {
+   "titre": "Étude de f(x) = ∛(x − arctan x) : encadrement de arctan x, dérivabilité à droite en 0 et fonction réciproque",
+   "questions": {
+    "derivabilite-2sm-haddar-ex6-b2": [
+     "Fonction arc tangente"
+    ],
+    "derivabilite-2sm-haddar-ex6-b3.derivabilite-2sm-haddar-ex6-b3-1": [
+     "Fonction arc tangente"
+    ],
+    "derivabilite-2sm-haddar-ex6-b3.derivabilite-2sm-haddar-ex6-b3-2": [
+     "Théorème des gendarmes",
+     "Fonction racine n-ième et puissance rationnelle"
+    ],
+    "derivabilite-2sm-haddar-ex6-b4": [
+     "Dérivée d'une fonction composée"
+    ],
+    "derivabilite-2sm-haddar-ex6-b5": [
+     "Théorème de la bijection"
+    ]
+   }
+  },
+  "199": {
+   "titre": "Étude de f(x) = cos(√x) et monotonie de la suite des solutions de f(x) = xⁿ",
+   "questions": {
+    "derivabilite-2sm-haddar-ex7-b2": [
+     "Limite et continuité d'une fonction composée"
+    ],
+    "derivabilite-2sm-haddar-ex7-b3": [
+     "Dérivée d'une fonction composée"
+    ],
+    "derivabilite-2sm-haddar-ex7-b4": [],
+    "derivabilite-2sm-haddar-ex7-b5.derivabilite-2sm-haddar-ex7-b5-1": [
+     "Théorème des valeurs intermédiaires (TVI)"
+    ],
+    "derivabilite-2sm-haddar-ex7-b5.derivabilite-2sm-haddar-ex7-b5-2": []
+   }
+  },
+  "200": {
+   "titre": "Étude de f(x) = 3∛(x + 1) − x : point fixe et dérivabilité de la fonction réciproque",
+   "questions": {
+    "derivabilite-2sm-haddar-ex8-b2.derivabilite-2sm-haddar-ex8-b2-1": [
+     "Fonction racine n-ième et puissance rationnelle"
+    ],
+    "derivabilite-2sm-haddar-ex8-b2.derivabilite-2sm-haddar-ex8-b2-2": [
+     "Fonction racine n-ième et puissance rationnelle"
+    ],
+    "derivabilite-2sm-haddar-ex8-b3": [
+     "Théorème des valeurs intermédiaires (TVI)"
+    ],
+    "derivabilite-2sm-haddar-ex8-b4.derivabilite-2sm-haddar-ex8-b4-1": [
+     "Théorème de la bijection"
+    ],
+    "derivabilite-2sm-haddar-ex8-b4.derivabilite-2sm-haddar-ex8-b4-2": [
+     "Dérivée de la fonction réciproque",
+     "Continuité de la fonction réciproque"
+    ],
+    "derivabilite-2sm-haddar-ex8-b4.derivabilite-2sm-haddar-ex8-b4-3": [
+     "Dérivée de la fonction réciproque"
+    ]
+   }
+  },
+  "201": {
+   "titre": "Deux fonctions arc tangente de même dérivée sur ]0, +∞[ : égalité arctan(1/(2x²)) = arctan(x/(x+1)) − arctan((x−1)/x)",
+   "questions": {
+    "derivabilite-2sm-haddar-ex9-b2": [
+     "Dérivée d'une fonction composée",
+     "Fonction arc tangente"
+    ],
+    "derivabilite-2sm-haddar-ex9-b3": []
+   }
+  },
+  "202": {
+   "titre": "Théorème de Rolle : si f′ ne s'annule pas, l'équation f(x) = 0 a au plus une solution",
+   "questions": {
+    "derivabilite-2sm-haddar-ex10-b2": [
+     "Théorème de Rolle"
+    ]
+   }
+  },
+  "203": {
+   "titre": "Racines de la dérivée de (x² − 1)³(x⁴ − 16)² par le théorème de Rolle",
+   "questions": {
+    "derivabilite-2sm-haddar-ex11-b2": [
+     "Théorème de Rolle"
+    ]
+   }
+  },
+  "204": {
+   "titre": "Continuité de g(x) = f(x)/x et théorème de Rolle : existence de c avec cf′(c) − f(c) = 0",
+   "questions": {
+    "derivabilite-2sm-haddar-ex12-b2": [],
+    "derivabilite-2sm-haddar-ex12-b3": [
+     "Théorème de Rolle"
+    ]
+   }
+  },
+  "205": {
+   "titre": "Encadrement du taux de variation de arctan sur ℝ⁺ par le théorème des accroissements finis",
+   "questions": {
+    "derivabilite-2sm-haddar-ex13-b1": [
+     "Théorème des accroissements finis (TAF)",
+     "Fonction arc tangente"
+    ]
+   }
+  },
+  "206": {
+   "titre": "Inégalité |cos x − cos y| ≤ |x − y| par le théorème des accroissements finis",
+   "questions": {
+    "derivabilite-2sm-haddar-ex14-b1": [
+     "Théorème des accroissements finis (TAF)"
+    ]
+   }
+  },
+  "207": {
+   "titre": "Encadrement de sin y − sin x sur [π/6, π/4] par le TAF et encadrement de (√2 − 1)/π",
+   "questions": {
+    "derivabilite-2sm-haddar-ex15-b1": [
+     "Théorème des accroissements finis (TAF)"
+    ],
+    "derivabilite-2sm-haddar-ex15-b2": []
+   }
+  },
+  "208": {
+   "titre": "Fonction 1/tan x sur [π/4, π/2] : continuité, encadrement de la dérivée et inégalité par le TAF",
+   "questions": {
+    "derivabilite-2sm-haddar-ex16-b2": [],
+    "derivabilite-2sm-haddar-ex16-b3": [],
+    "derivabilite-2sm-haddar-ex16-b4": [
+     "Théorème des accroissements finis (TAF)"
+    ]
+   }
+  },
+  "209": {
+   "titre": "Existence d'un réel c tel que 2f′(c)/f(c) = f′(1 − c)/f(1 − c) par le théorème de Rolle",
+   "questions": {
+    "derivabilite-2sm-haddar-ex17-b2": [
+     "Théorème de Rolle"
+    ]
+   }
+  },
+  "213": {
+   "titre": "Limites et dérivabilité en 0 d'une fonction définie par morceaux, interprétation graphique",
+   "questions": {
+    "derivation-2pc-ex1-b2": [],
+    "derivation-2pc-ex1-b3": []
+   }
+  },
+  "214": {
+   "titre": "Calcul de dérivées : quotient, produit, puissance, racines carrées et n-ièmes, fonctions trigonométriques",
+   "questions": {
+    "derivation-2pc-ex2-b2": [],
+    "derivation-2pc-ex2-b3": [
+     "Dérivée d'une fonction composée"
+    ],
+    "derivation-2pc-ex2-b4": [],
+    "derivation-2pc-ex2-b5": [
+     "Dérivée d'une fonction composée"
+    ],
+    "derivation-2pc-ex2-b6": [
+     "Dérivée d'une fonction composée"
+    ],
+    "derivation-2pc-ex2-b7": [
+     "Dérivée d'une fonction composée"
+    ],
+    "derivation-2pc-ex2-b8": [
+     "Fonction racine n-ième et puissance rationnelle"
+    ],
+    "derivation-2pc-ex2-b9": [
+     "Dérivée d'une fonction composée",
+     "Fonction racine n-ième et puissance rationnelle"
+    ]
+   }
+  },
+  "215": {
+   "titre": "Dérivabilité à droite en 1, dérivée et tableau de variations de x − 2√(x − 1)",
+   "questions": {
+    "derivation-2pc-ex3-b2": [],
+    "derivation-2pc-ex3-b3.derivation-2pc-ex3-b3-1": [
+     "Dérivée d'une fonction composée"
+    ],
+    "derivation-2pc-ex3-b3.derivation-2pc-ex3-b3-2": [
+     "Dérivée d'une fonction composée"
+    ],
+    "derivation-2pc-ex3-b3.derivation-2pc-ex3-b3-3": []
+   }
+  },
+  "216": {
+   "titre": "Monotonie de x + 2/√x, fonction réciproque et dérivée de la réciproque en 5",
+   "questions": {
+    "derivation-2pc-ex4-b2.derivation-2pc-ex4-b2-1": [],
+    "derivation-2pc-ex4-b2.derivation-2pc-ex4-b2-2": [],
+    "derivation-2pc-ex4-b3.derivation-2pc-ex4-b3-1": [
+     "Théorème de la bijection",
+     "Image d'un intervalle par une fonction continue"
+    ],
+    "derivation-2pc-ex4-b3.derivation-2pc-ex4-b3-2": [
+     "Dérivée de la fonction réciproque"
+    ]
+   }
+  },
+  "217": {
+   "titre": "Domaine de définition et dérivabilité aux bornes de f(x) = 2x + √(1 − x²)",
+   "questions": {
+    "derivation-2pc-ex1-2-b2": [],
+    "derivation-2pc-ex1-2-b3.derivation-2pc-ex1-2-b3-1": [],
+    "derivation-2pc-ex1-2-b3.derivation-2pc-ex1-2-b3-2": []
+   }
+  },
+  "218": {
+   "titre": "Continuité et dérivabilité en 0 d'une fonction définie par morceaux avec racine cubique",
+   "questions": {
+    "derivation-2pc-ex2-2-b2": [
+     "Limite et continuité d'une fonction composée"
+    ],
+    "derivation-2pc-ex2-2-b3": [
+     "Fonction racine n-ième et puissance rationnelle"
+    ]
+   }
+  },
+  "219": {
+   "titre": "Calcul de dérivées : produits, quotients, racines n-ièmes et puissances rationnelles",
+   "questions": {
+    "derivation-2pc-ex3-2-b2": [],
+    "derivation-2pc-ex3-2-b3": [
+     "Dérivée d'une fonction composée",
+     "Fonction racine n-ième et puissance rationnelle"
+    ],
+    "derivation-2pc-ex3-2-b4": [],
+    "derivation-2pc-ex3-2-b5": [
+     "Dérivée d'une fonction composée"
+    ],
+    "derivation-2pc-ex3-2-b6": [
+     "Dérivée d'une fonction composée",
+     "Fonction racine n-ième et puissance rationnelle"
+    ],
+    "derivation-2pc-ex3-2-b7": [
+     "Dérivée d'une fonction composée",
+     "Fonction racine n-ième et puissance rationnelle"
+    ],
+    "derivation-2pc-ex3-2-b8": [
+     "Dérivée d'une fonction composée"
+    ],
+    "derivation-2pc-ex3-2-b9": [
+     "Dérivée d'une fonction composée",
+     "Fonction racine n-ième et puissance rationnelle"
+    ]
+   }
+  },
+  "220": {
+   "titre": "Dérivabilité de x² sin(1/x) prolongée en 0, dérivée sur ℝ",
+   "questions": {
+    "derivation-2pc-ex4-2-b2": [
+     "Théorème des gendarmes"
+    ],
+    "derivation-2pc-ex4-2-b3": [
+     "Dérivée d'une fonction composée"
+    ]
+   }
+  },
+  "221": {
+   "titre": "Dérivée et tableau de variations du polynôme x³ − 3x² + 3x − 2",
+   "questions": {
+    "derivation-2pc-ex5-2-b2": [],
+    "derivation-2pc-ex5-2-b3": []
+   }
+  },
+  "222": {
+   "titre": "Signe de la dérivée de ∜x + ∜(10 − x) et comparaison de deux sommes de racines quatrièmes",
+   "questions": {
+    "derivation-2pc-ex6-2-b2": [],
+    "derivation-2pc-ex6-2-b3": [
+     "Dérivée d'une fonction composée",
+     "Fonction racine n-ième et puissance rationnelle"
+    ],
+    "derivation-2pc-ex6-2-b4": [
+     "Fonction racine n-ième et puissance rationnelle"
+    ],
+    "derivation-2pc-ex6-2-b5": []
+   }
+  },
+  "223": {
+   "titre": "Variations de x³ − 3x, réciproque d'une restriction et dérivée de la réciproque en 0",
+   "questions": {
+    "derivation-2pc-ex7-2-b2": [],
+    "derivation-2pc-ex7-2-b3": [
+     "Théorème de la bijection",
+     "Image d'un intervalle par une fonction continue"
+    ],
+    "derivation-2pc-ex7-2-b4": [
+     "Dérivée de la fonction réciproque"
+    ]
+   }
+  },
+  "224": {
+   "titre": "Dérivabilité à droite en 0 et limite en +∞ de x − 2√x + 1",
+   "questions": {
+    "derivation-2pc-ex8-2-b2": [],
+    "derivation-2pc-ex8-2-b3": []
+   }
+  },
+  "225": {
+   "titre": "Écrire en extension un ensemble d'entiers et un ensemble de fractions n/p",
+   "questions": {
+    "ensembles-serie2-1sm-ex1-b2": [],
+    "ensembles-serie2-1sm-ex1-b3": []
+   }
+  },
+  "226": {
+   "titre": "Ensemble des parties d'un ensemble à quatre éléments",
+   "questions": {
+    "ensembles-serie2-1sm-ex2-b1": []
+   }
+  },
+  "227": {
+   "titre": "Propriétés de la différence symétrique de deux ensembles",
+   "questions": {
+    "ensembles-serie2-1sm-ex3-b2": [
+     "Opérations sur les ensembles et lois de De Morgan"
+    ],
+    "ensembles-serie2-1sm-ex3-b3": [
+     "Opérations sur les ensembles et lois de De Morgan"
+    ],
+    "ensembles-serie2-1sm-ex3-b4": [
+     "Opérations sur les ensembles et lois de De Morgan"
+    ],
+    "ensembles-serie2-1sm-ex3-b5": [
+     "Opérations sur les ensembles et lois de De Morgan"
+    ],
+    "ensembles-serie2-1sm-ex3-b6": [
+     "Opérations sur les ensembles et lois de De Morgan"
+    ]
+   }
+  },
+  "228": {
+   "titre": "Résolution des équations A ∪ X = B et A ∩ X = B d'inconnue X dans P(E)",
+   "questions": {
+    "ensembles-serie2-1sm-ex4-b2": [
+     "Opérations sur les ensembles et lois de De Morgan"
+    ],
+    "ensembles-serie2-1sm-ex4-b3": [
+     "Opérations sur les ensembles et lois de De Morgan"
+    ]
+   }
+  },
+  "229": {
+   "titre": "Ensembles définis avec des racines carrées : appartenance, inclusion et égalité avec ]0;1]",
+   "questions": {
+    "ensembles-serie2-1sm-ex5-b2": [
+     "Raisonnement par l'absurde"
+    ],
+    "ensembles-serie2-1sm-ex5-b3": [],
+    "ensembles-serie2-1sm-ex5-b4": []
+   }
+  },
+  "230": {
+   "titre": "Inclusion de l'ensemble des entiers impairs dans un ensemble de fractions (2k − 1)/5",
+   "questions": {
+    "ensembles-serie2-1sm-ex6-b2": [],
+    "ensembles-serie2-1sm-ex6-b3": []
+   }
+  },
+  "231": {
+   "titre": "Ensembles de termes (−1)^n + 1/(n+1) : inclusion et décomposition en réunion",
+   "questions": {
+    "ensembles-serie2-1sm-ex7-b2": [],
+    "ensembles-serie2-1sm-ex7-b3": [
+     "Opérations sur les ensembles et lois de De Morgan"
+    ]
+   }
+  },
+  "232": {
+   "titre": "Égalité de deux ensembles de couples et de deux ensembles d'inverses d'entiers",
+   "questions": {
+    "ensembles-serie2-1sm-ex8-b2": [],
+    "ensembles-serie2-1sm-ex8-b3": []
+   }
+  },
+  "233": {
+   "titre": "Domaine de définition et dérivabilité aux bornes de f(x) = 2x + √(1 − x²)",
+   "questions": {
+    "derivation-2pc-ex1-3-b2": [],
+    "derivation-2pc-ex1-3-b3.derivation-2pc-ex1-3-b3-1": [],
+    "derivation-2pc-ex1-3-b3.derivation-2pc-ex1-3-b3-2": []
+   }
+  },
+  "234": {
+   "titre": "Continuité et dérivabilité en 0 d'une fonction définie par morceaux avec racines",
+   "questions": {
+    "derivation-2pc-ex2-3-b2": [
+     "Limite et continuité d'une fonction composée"
+    ],
+    "derivation-2pc-ex2-3-b3": [
+     "Fonction racine n-ième et puissance rationnelle"
+    ]
+   }
+  },
+  "235": {
+   "titre": "Calcul de dérivées : produits, quotients, racines n-ièmes et puissances rationnelles",
+   "questions": {
+    "derivation-2pc-ex3-3-b2": [],
+    "derivation-2pc-ex3-3-b3": [
+     "Dérivée d'une fonction composée",
+     "Fonction racine n-ième et puissance rationnelle"
+    ],
+    "derivation-2pc-ex3-3-b4": [],
+    "derivation-2pc-ex3-3-b5": [
+     "Dérivée d'une fonction composée"
+    ],
+    "derivation-2pc-ex3-3-b6": [
+     "Dérivée d'une fonction composée",
+     "Fonction racine n-ième et puissance rationnelle"
+    ],
+    "derivation-2pc-ex3-3-b7": [
+     "Dérivée d'une fonction composée",
+     "Fonction racine n-ième et puissance rationnelle"
+    ],
+    "derivation-2pc-ex3-3-b8": [
+     "Dérivée d'une fonction composée"
+    ],
+    "derivation-2pc-ex3-3-b9": [
+     "Dérivée d'une fonction composée",
+     "Fonction racine n-ième et puissance rationnelle"
+    ]
+   }
+  },
+  "236": {
+   "titre": "Dérivabilité de x² sin(1/x) prolongée par 0 en 0",
+   "questions": {
+    "derivation-2pc-ex4-3-b2": [
+     "Théorème des gendarmes"
+    ],
+    "derivation-2pc-ex4-3-b3": [
+     "Dérivée d'une fonction composée"
+    ]
+   }
+  },
+  "237": {
+   "titre": "Dérivée et tableau de variation d'une fonction polynôme de degré 3",
+   "questions": {
+    "derivation-2pc-ex5-b2": [],
+    "derivation-2pc-ex5-b3": []
+   }
+  },
+  "238": {
+   "titre": "Étude de f(x) = ∜x + ∜(10 − x) et comparaison de deux sommes de racines quatrièmes",
+   "questions": {
+    "derivation-2pc-ex6-b2": [],
+    "derivation-2pc-ex6-b3": [
+     "Dérivée d'une fonction composée",
+     "Fonction racine n-ième et puissance rationnelle"
+    ],
+    "derivation-2pc-ex6-b4": [
+     "Fonction racine n-ième et puissance rationnelle"
+    ],
+    "derivation-2pc-ex6-b5": []
+   }
+  },
+  "239": {
+   "titre": "Variations de x³ − 3x, réciproque d'une restriction et dérivée de la réciproque en 0",
+   "questions": {
+    "derivation-2pc-ex7-b2": [],
+    "derivation-2pc-ex7-b3": [
+     "Théorème de la bijection",
+     "Image d'un intervalle par une fonction continue"
+    ],
+    "derivation-2pc-ex7-b4": [
+     "Dérivée de la fonction réciproque"
+    ]
+   }
+  },
+  "240": {
+   "titre": "Dérivabilité à droite en 0 et limite en +∞ de f(x) = x − 2√x + 1",
+   "questions": {
+    "derivation-2pc-ex8-b2": [],
+    "derivation-2pc-ex8-b3": []
+   }
+  },
+  "241": {
+   "titre": "Écriture en extension d'ensembles définis par une condition sur les diviseurs et sur les carrés",
+   "questions": {
+    "ensembles-1sm-ex1-2-b2": []
+   }
+  },
+  "242": {
+   "titre": "Appartenance d'un réel à des ensembles définis par une expression paramétrée et intersection",
+   "questions": {
+    "ensembles-1sm-ex2-2-b2": [],
+    "ensembles-1sm-ex2-2-b3": [],
+    "ensembles-1sm-ex2-2-b4": []
+   }
+  },
+  "243": {
+   "titre": "Intersection vide et réunion de deux ensembles de réels de la forme a + 2kπ/5",
+   "questions": {
+    "ensembles-1sm-ex3-2-b2": [
+     "Raisonnement par l'absurde"
+    ],
+    "ensembles-1sm-ex3-2-b3": []
+   }
+  },
+  "244": {
+   "titre": "Inclusion entre deux ensembles de réels de la forme a + kπ/3 et a + kπ, contre-exemple",
+   "questions": {
+    "ensembles-1sm-ex4-2-b2": [],
+    "ensembles-1sm-ex4-2-b3": [],
+    "ensembles-1sm-ex4-2-b4": []
+   }
+  },
+  "245": {
+   "titre": "Écriture en extension de l'ensemble des sommes (−1)^n + (−1)^m et détermination de ses parties",
+   "questions": {
+    "ensembles-1sm-ex5-2-b2": [],
+    "ensembles-1sm-ex5-2-b3": []
+   }
+  },
+  "246": {
+   "titre": "Inclusion d'un ensemble défini par une expression avec racine carrée dans l'intervalle ]0, 1/2]",
+   "questions": {
+    "ensembles-1sm-activite6-b2": []
+   }
+  },
+  "247": {
+   "titre": "Devoir surveillé n° 1 (rattrapage) — 1ère Bac SM (novembre 2024)",
+   "questions": {
+    "ds1-rattrapage-1sm-2024-b2.ds1-rattrapage-1sm-2024-b2-1": [
+     "Lois de De Morgan"
+    ],
+    "ds1-rattrapage-1sm-2024-b2.ds1-rattrapage-1sm-2024-b2-2": [],
+    "ds1-rattrapage-1sm-2024-b2.ds1-rattrapage-1sm-2024-b2-3": [],
+    "ds1-rattrapage-1sm-2024-b2.ds1-rattrapage-1sm-2024-b2-4": [],
+    "ds1-rattrapage-1sm-2024-b3": [],
+    "ds1-rattrapage-1sm-2024-b5": [],
+    "ds1-rattrapage-1sm-2024-b7": [
+     "Raisonnement par contraposée"
+    ],
+    "ds1-rattrapage-1sm-2024-b9": [
+     "Raisonnement par l'absurde"
+    ],
+    "ds1-rattrapage-1sm-2024-b11.ds1-rattrapage-1sm-2024-b11-1": [
+     "Raisonnement par récurrence"
+    ],
+    "ds1-rattrapage-1sm-2024-b11.ds1-rattrapage-1sm-2024-b11-2": [
+     "Raisonnement par récurrence"
+    ],
+    "ds1-rattrapage-1sm-2024-b14": [
+     "Raisonnement par l'absurde"
+    ],
+    "ds1-rattrapage-1sm-2024-b15": [
+     "Raisonnement par l'absurde"
+    ],
+    "ds1-rattrapage-1sm-2024-b16.ds1-rattrapage-1sm-2024-b16-1": [],
+    "ds1-rattrapage-1sm-2024-b16.ds1-rattrapage-1sm-2024-b16-2": [],
+    "ds1-rattrapage-1sm-2024-b19": [],
+    "ds1-rattrapage-1sm-2024-b20": [
+     "Raisonnement par l'absurde"
+    ]
+   }
+  },
+  "248": {
+   "titre": "Contrôle n° 1 — 1ère Bac SM : logique mathématique (octobre 2018)",
+   "questions": {
+    "controle1-1sm-2018-b3.controle1-1sm-2018-b3-1": [],
+    "controle1-1sm-2018-b3.controle1-1sm-2018-b3-2": [],
+    "controle1-1sm-2018-b3.controle1-1sm-2018-b3-3": [],
+    "controle1-1sm-2018-b3.controle1-1sm-2018-b3-4": [],
+    "controle1-1sm-2018-b3.controle1-1sm-2018-b3-5": [],
+    "controle1-1sm-2018-b3.controle1-1sm-2018-b3-6": [],
+    "controle1-1sm-2018-b4": [],
+    "controle1-1sm-2018-b6": [
+     "Raisonnement par contraposée",
+     "Lois de De Morgan"
+    ],
+    "controle1-1sm-2018-b8": [
+     "Raisonnement par l'absurde"
+    ],
+    "controle1-1sm-2018-b10": [],
+    "controle1-1sm-2018-b13": [
+     "Raisonnement par récurrence"
+    ],
+    "controle1-1sm-2018-b14": [
+     "Raisonnement par récurrence"
+    ],
+    "controle1-1sm-2018-b15": [
+     "Raisonnement par récurrence"
+    ],
+    "controle1-1sm-2018-b17": [],
+    "controle1-1sm-2018-b19": []
+   }
+  },
+  "249": {
+   "titre": "Les ensembles N, Z, D, Q et R : appartenance d’un nombre et nombres rationnels ou irrationnels",
+   "questions": {
+    "ensembles-nombres-tc-activite-1-b2.ensembles-nombres-tc-activite-1-b2-1": [],
+    "ensembles-nombres-tc-activite-1-b2.ensembles-nombres-tc-activite-1-b2-2": [],
+    "ensembles-nombres-tc-activite-1-b2.ensembles-nombres-tc-activite-1-b2-3": [],
+    "ensembles-nombres-tc-activite-1-b2.ensembles-nombres-tc-activite-1-b2-4": [],
+    "ensembles-nombres-tc-activite-1-b2.ensembles-nombres-tc-activite-1-b2-5": [],
+    "ensembles-nombres-tc-activite-1-b2.ensembles-nombres-tc-activite-1-b2-6": [],
+    "ensembles-nombres-tc-activite-1-b2.ensembles-nombres-tc-activite-1-b2-7": [],
+    "ensembles-nombres-tc-activite-1-b2.ensembles-nombres-tc-activite-1-b2-8": [
+     "Irrationalité de √2"
+    ],
+    "ensembles-nombres-tc-activite-1-b2.ensembles-nombres-tc-activite-1-b2-9": [],
+    "ensembles-nombres-tc-activite-1-b3.ensembles-nombres-tc-activite-1-b3-1": [
+     "Irrationalité de √2"
+    ],
+    "ensembles-nombres-tc-activite-1-b3.ensembles-nombres-tc-activite-1-b3-2": [],
+    "ensembles-nombres-tc-activite-1-b3.ensembles-nombres-tc-activite-1-b3-3": [],
+    "ensembles-nombres-tc-activite-1-b3.ensembles-nombres-tc-activite-1-b3-4": []
+   }
+  },
+  "250": {
+   "titre": "Écriture scientifique, puissances de 10 et calculs avec des racines carrées dans R",
+   "questions": {
+    "ecriture-scientifique-racines-tc-activite-2-b1.ecriture-scientifique-racines-tc-activite-2-b1-1": [
+     "Propriétés des puissances"
+    ],
+    "ecriture-scientifique-racines-tc-activite-2-b1.ecriture-scientifique-racines-tc-activite-2-b1-2": [],
+    "ecriture-scientifique-racines-tc-activite-2-b1.ecriture-scientifique-racines-tc-activite-2-b1-3": [],
+    "ecriture-scientifique-racines-tc-activite-2-b2.ecriture-scientifique-racines-tc-activite-2-b2-1": [],
+    "ecriture-scientifique-racines-tc-activite-2-b2.ecriture-scientifique-racines-tc-activite-2-b2-2": [
+     "Identités remarquables",
+     "Propriétés des racines carrées"
+    ],
+    "ecriture-scientifique-racines-tc-activite-2-b3.ecriture-scientifique-racines-tc-activite-2-b3-1": [
+     "Identités remarquables",
+     "Propriétés des racines carrées"
+    ],
+    "ecriture-scientifique-racines-tc-activite-2-b3.ecriture-scientifique-racines-tc-activite-2-b3-2": [
+     "Identités remarquables"
+    ]
+   }
+  },
+  "251": {
+   "titre": "Identités remarquables du troisième degré : cubes, somme et différence de cubes et application",
+   "questions": {
+    "identites-remarquables-cube-tc-activite-3-b2.identites-remarquables-cube-tc-activite-3-b2-1": [
+     "Identités remarquables"
+    ],
+    "identites-remarquables-cube-tc-activite-3-b2.identites-remarquables-cube-tc-activite-3-b2-2": [
+     "Identités remarquables"
+    ],
+    "identites-remarquables-cube-tc-activite-3-b3.identites-remarquables-cube-tc-activite-3-b3-1": [
+     "Identités remarquables"
+    ],
+    "identites-remarquables-cube-tc-activite-3-b3.identites-remarquables-cube-tc-activite-3-b3-2": [
+     "Identités remarquables"
+    ],
+    "identites-remarquables-cube-tc-activite-3-b4": [
+     "Identités remarquables"
+    ],
+    "identites-remarquables-cube-tc-activite-3-b5.identites-remarquables-cube-tc-activite-3-b5-1": [
+     "Identités remarquables"
+    ],
+    "identites-remarquables-cube-tc-activite-3-b5.identites-remarquables-cube-tc-activite-3-b5-2": [
+     "Identités remarquables"
+    ],
+    "identites-remarquables-cube-tc-activite-3-b5.identites-remarquables-cube-tc-activite-3-b5-3": [
+     "Identités remarquables"
+    ]
+   }
+  },
+  "252": {
+   "titre": "Devoir surveillé n° 1 — 2ème Bac PC (2011)",
+   "questions": {
+    "ds1-2pc-2011-b3": [],
+    "ds1-2pc-2011-b4": [],
+    "ds1-2pc-2011-b5": [],
+    "ds1-2pc-2011-b6": [
+     "Fonction racine n-ième et puissance rationnelle"
+    ],
+    "ds1-2pc-2011-b9": [],
+    "ds1-2pc-2011-b12": [
+     "Fonction racine n-ième et puissance rationnelle"
+    ],
+    "ds1-2pc-2011-b15": [
+     "Théorème des valeurs intermédiaires (TVI)"
+    ],
+    "ds1-2pc-2011-b16": [
+     "Méthode de dichotomie"
+    ],
+    "ds1-2pc-2011-b17": [],
+    "ds1-2pc-2011-b20": [],
+    "ds1-2pc-2011-b21": [],
+    "ds1-2pc-2011-b22": [
+     "Théorème de la bijection",
+     "Image d'un intervalle par une fonction continue"
+    ],
+    "ds1-2pc-2011-b23": [
+     "Théorème de la bijection"
+    ]
+   }
+  },
+  "253": {
+   "titre": "Devoir surveillé n° 1 — 2ème Bac PC (octobre 2016)",
+   "questions": {
+    "ds1-2pc-2016-b3": [],
+    "ds1-2pc-2016-b4": [],
+    "ds1-2pc-2016-b5": [],
+    "ds1-2pc-2016-b6": [
+     "Fonction racine n-ième et puissance rationnelle"
+    ],
+    "ds1-2pc-2016-b7": [
+     "Fonction racine n-ième et puissance rationnelle"
+    ],
+    "ds1-2pc-2016-b8": [],
+    "ds1-2pc-2016-b11": [],
+    "ds1-2pc-2016-b12": [
+     "Limite et continuité d'une fonction composée"
+    ],
+    "ds1-2pc-2016-b13.ds1-2pc-2016-b13-1": [],
+    "ds1-2pc-2016-b13.ds1-2pc-2016-b13-2": [],
+    "ds1-2pc-2016-b13.ds1-2pc-2016-b13-3": [],
+    "ds1-2pc-2016-b14": [],
+    "ds1-2pc-2016-b15": [
+     "Image d'un intervalle par une fonction continue"
+    ],
+    "ds1-2pc-2016-b17": [
+     "Théorème des valeurs intermédiaires (TVI)"
+    ],
+    "ds1-2pc-2016-b18": [
+     "Théorème des valeurs intermédiaires (TVI)"
+    ],
+    "ds1-2pc-2016-b21.ds1-2pc-2016-b21-1": [],
+    "ds1-2pc-2016-b21.ds1-2pc-2016-b21-2": [],
+    "ds1-2pc-2016-b21.ds1-2pc-2016-b21-3": [
+     "Théorème de la bijection",
+     "Image d'un intervalle par une fonction continue"
+    ],
+    "ds1-2pc-2016-b22": [
+     "Théorème de la bijection"
+    ]
+   }
+  }
+ },
+ "doutes": [
+  "#48 ds1-tcs-2021-b4 : factorisation n²(n+1)² par identité remarquable laissée de côté (outil passager), seul n(n+1) pair retenu",
+  "#49 ds1-tcs-2022-b23 : encadrement de radicaux emboîtés (u<v ⇒ √u<√v) → « Ordre et opérations » (chapitre Ordre dans ℝ, hors des chapitres du DS)",
+  "#49 ds1-tcs-2022-b4.ds1-tcs-2022-b4-2 : simple vérification par développement, retenue « Identités remarquables » car le calcul passe par (a+b)(a−b)",
+  "#50 ds1-tcs-2023-b7 : fraction irréductible en divisant par le PGCD déjà calculé ; « PGCD et PPCM par la décomposition » retenu faute de mieux (sinon liste vide)",
+  "#50 ds1-tcs-2023-b17 : encadrement entre deux carrés consécutifs, croissance de √ → « Ordre et opérations » (chapitre Ordre dans ℝ)",
+  "#51 ds1-tcs-2024-b3.ds1-tcs-2024-b3-1 : parité par la seule définition (2k+1) → liste vide",
+  "#51 ds1-tcs-2024-b3.ds1-tcs-2024-b3-3 : question de parité dont l'étape décisive est a²−b² ; parité par définition → « Identités remarquables » seul",
+  "#52 ds1-tcs-2025-b16 : √(N²)=N après la question précédente ; « Propriétés des racines carrées » retenu (sinon liste vide)",
+  "#52 ds1-tcs-2025-b23 : disjonction sur les restes de la division par 3 — aucun théorème de la liste → vide",
+  "#60 arithmetique-tcs-ex3-b1 : la solution n'écrit que 2n+1 (définition), mais la question établit un cas de la parité d'une somme → « Parité de la somme et du produit » gardé",
+  "#61 arithmetique-tcs-ex4-b4 : parité par définition après développement des carrés → « Identités remarquables » seul",
+  "#64 arithmetique-tcs-ex7-b1 : la solution procède par division euclidienne ; le critère de divisibilité par 9 n'y est qu'une vérification facultative → vide (on pourrait défendre « Critères de divisibilité »)",
+  "#69 arithmetique-tcs-ex12-b3 : fraction irréductible en divisant par le PGCD déjà trouvé → « PGCD et PPCM par la décomposition » (faute de mieux)",
+  "#67 arithmetique-tcs-ex10-b2 : primalité de 41 par essais de division (p² > 41) — aucun théorème de la liste → vide",
+  "#72 arithmetique-tcs-ex15-b2 : calcul surtout de développement ; « Propriétés des puissances » retenu pour (−2)^(n+1) + 2(−2)^n = 0, étape qui fait aboutir le calcul (sinon vide)",
+  "#123 ds1-tcs-2016-b26 : factorisation 2x(4x²+3) puis parité par la seule définition → vide",
+  "#123 ds1-tcs-2016-b20 : 490000 = 700² donc √ = 700 ; « Propriétés des racines carrées » gardé (calcul très simple)",
+  "#124 ds1-tcs-2019-b11 : PGCD par l'algorithme d'Euclide — n'est pas « PGCD et PPCM par la décomposition en facteurs premiers » → vide",
+  "#124 ds1-tcs-2019-b3 : « tout premier > 3 est impair » par la définition d'un nombre premier → vide",
+  "#192 ds1-tcs-2014-b7 : PGCD(2014, 2015) = 1 par « un diviseur commun divise la différence » — pas la décomposition → vide",
+  "#192 ds1-tcs-2014-b11 : algorithme d'Euclide → vide (comme #124 ds1-tcs-2019-b11)",
+  "#53 ds1-1sm-2021-b3 (Q3) : inéquation résolue par le signe d'un trinôme (« Signe du trinôme » est au Tronc commun, absent de la liste 1ère Bac SM) : liste vide",
+  "#56 ds1-1sm-2024-b3 (Q1) : négation d'une proposition à quantificateurs seulement (pas de « et »/« ou ») : pas de « Lois de De Morgan », liste vide",
+  "#56 ds1-1sm-2024-b21 (Q12) : simple complémentaire d'un intervalle, étiqueté « Opérations sur les ensembles et lois de De Morgan » pour le ranger dans le chapitre Ensembles (sinon liste vide)",
+  "#57 ds1-1sm-2025-b10 (Q7) : l'absurde s'appuie sur l'irrationalité de √2, théorème du Tronc commun absent de la liste 1ère Bac SM : seulement « Raisonnement par l'absurde »",
+  "#176 ensembles-1sm-ex1-b1 (Q1) : signe d'un trinôme (Tronc commun, absent de la liste 1ère Bac SM) : liste vide",
+  "#178 ensembles-1sm-ex3-b3 (Q2) : non-appartenance rédigée par l'absurde (k = −1/2 ∉ ℤ) ; absurde très léger, gardé car c'est la structure de la preuve (idem #53 Q8)",
+  "#231 ensembles-serie2-1sm-ex7-b3 (Q2) : égalité B = A ∪ C par double inclusion et disjonction pair/impair ; « Opérations sur les ensembles » retenu pour la réunion (A ⊂ B et C ⊂ B ⇒ A ∪ C ⊂ B), cas limite",
+  "#247 ds1-rattrapage-1sm-2024-b2-3 (Q1c) : négation d'une implication (« A et non B »), pas une loi de De Morgan : liste vide",
+  "#247 ds1-rattrapage-1sm-2024-b20 (Q11) : non-surjectivité rédigée par l'absurde (0 sans antécédent) ; absurde léger, gardé par cohérence avec les non-appartenances (#53 Q8, #178 Q2, #247 Q7)",
+  "#247 ds1-rattrapage-1sm-2024-b9 (Q5) : l'absurde s'appuie sur l'irrationalité de √2 (Tronc commun, hors liste 1ère Bac SM) et sur l'expression conjuguée : seulement « Raisonnement par l'absurde »",
+  "#54 ds1-1sm-2022-b3.ds1-1sm-2022-b3-1 : négation d'une proposition quantifiée sans « et »/« ou » — aucun théorème de la liste (« Lois de De Morgan » = connecteurs) ; laissé vide, comme les autres négations purement quantifiées du lot",
+  "#54 ds1-1sm-2022-b19 : principe des tiroirs, absent de la liste ; laissé vide",
+  "#83 (et autres) : raisonnements par disjonction des cas ou par équivalences successives — aucun théorème de la liste ; laissés vides",
+  "Convention du lot : « Lois de De Morgan » ajouté quand la contraposée ou l'hypothèse par l'absurde exige de nier un « et »/« ou » (ex. #54 b10, #82 b4), même sans être nommée",
+  "#88 logique-1sm-ex8-b1 : le contenu portait « Raisonnement par l'absurde » mais la solution procède par encadrement direct entre deux entiers consécutifs ; laissé vide",
+  "#172 ds1-1sm-2020-gr2-b3 : négation d'une implication quantifiée (« A et non B ») — pas une loi de De Morgan au sens strict ; laissé vide (« Lois de De Morgan » possible si on la tire de non A ou B)",
+  "#174 dm1-1sm-b25 : la solution écarte x ≤ −1 et x ≥ −1/2 (« impossible ») grâce à la stricte croissance — classé « Raisonnement par l'absurde », on pourrait y voir une contraposée par cas",
+  "#28 serie-continuite-reciproque-ex11-b4 : signe de f' lu sur les images f'(]−∞;α]) = ]−∞;0] — « Image d'un intervalle par une fonction continue » ; un simple raisonnement de monotonie suffirait aussi",
+  "#39 serie2-continuite-arctan-ex02-b4-1 et b4-2 : expression de f⁻¹ par résolution de f(x)=y, puis f⁻¹(x)=f(x) ⇔ f(x)=x par stricte monotonie — rangés sous « Théorème de la bijection » (réciproque), le reste est algébrique",
+  "#214 derivation-2pc-ex2-b2 et b4 : dérivée d'un quotient / d'un produit — « Dérivée d'une somme, d'un produit, d'un quotient » n'existe pas en 2ème Bac ; laissé vide",
+  "#213 derivation-2pc-ex1-b3 : dérivabilité à gauche/droite et demi-tangentes — aucun théorème de la liste ; laissé vide",
+  "#11 limites-continuite-ex2-b4 (et #12 limites-continuite-ex3-b4) : expression explicite de f^{-1}(x) par résolution de f(y) = x ; étiquetée « Théorème de la bijection » (fonction réciproque), mais c'est surtout du calcul algébrique — liste vide défendable.",
+  "#21 serie-continuite-reciproque-ex04-b2 : continuité sur ℝ déduite de la continuité en 0 par changement de variable h = x − x0 et l'équation fonctionnelle ; aucun théorème décisif de la liste (liste vide).",
+  "#34 serie-continuite-reciproque-ex17-b3, -b4, -b5-4 : parité de f^{-1}, équation f(x) = f^{-1}(x), variations de f^{-1}∘h — raisonnements sur la réciproque (unicité de l'antécédent, même monotonie que f) rattachés à « Théorème de la bijection » ; pas de théorème plus précis dans la liste.",
+  "#96 continuite-soir-ex1-b2 : continuité en 0 par expression conjuguée et limite usuelle sin x / x (hors liste) ; la continuité de √ en 1 n'est qu'un passage — liste vide (« Limite et continuité d'une fonction composée » possible).",
+  "#11, #12, #38, #216, #223, #239 (questions « bijection de I sur J à déterminer ») : « Image d'un intervalle par une fonction continue » ajouté à « Théorème de la bijection » parce que le calcul de J = f(I) est demandé ; à retirer si la convention est de ne le mettre que pour une question « déterminer f(I) » isolée.",
+  "#219, #235, #222, #238 (dérivées de ⁿ√u et u^r) : « Dérivée d'une fonction composée » + « Fonction racine n-ième et puissance rationnelle » ; les dérivées de produits/quotients sans composée (Q1, Q3) laissées vides (pas de théorème correspondant en 2ème Bac PC/SVT).",
+  "#161 cours-lc-2pc-ex4-b5 : continuité de √(x+3) (règle √u) étiquetée « Limite et continuité d'une fonction composée », comme #140 et #141 Q3 ; liste vide défendable si l'on considère la règle √u comme routine",
+  "#252 ds1-2pc-2011-b16 : encadrement d'amplitude 0,5 par un pas de dichotomie justifié par le TVI nommé ; étiqueté « Méthode de dichotomie » seul (comme #107 et #145), TVI défendable en plus",
+  "#110, #138, #146, #164, #252, #253 : « montrer que f est bijective / admet une réciproque sur J à déterminer » étiqueté Bijection + Image d'un intervalle (J = f(I) demandé) ; « déterminer f⁻¹(x) » seul étiqueté Bijection (calcul algébrique, la bijection n'est qu'en arrière-plan) — liste vide défendable",
+  "#168 ds1-2sm-2020-b11 (Q7) : continuité de g par composition racine∘polynôme — étiquetée « Limite et continuité d'une fonction composée », mais le cœur est aussi la simplification valable en 0 ; pourrait être vide.",
+  "#198 derivabilite-2sm-haddar-ex6-b4 (Q3) : tableau de variation, la dérivée de ∛φ est calculée dans la question (« Dérivée d'une fonction composée ») — usage d'outil possiblement trop passager.",
+  "#199 derivabilite-2sm-haddar-ex7-b2 (Q1) : limite usuelle (1 − cos t)/t² et changement de variable t = √x — seule « Limite et continuité d'une fonction composée » correspond ; la limite trigonométrique usuelle n'a pas d'étiquette.",
+  "#201 derivabilite-2sm-haddar-ex9-b3 (Q2) : « dérivée nulle sur un intervalle ⇒ constante » n'a pas d'étiquette dans la liste (conséquence du TAF non invoquée) — laissé vide.",
+  "#206 derivabilite-2sm-haddar-ex14-b1 (et #207 Q1, #208 Q3) : majoration de f(x) − f(y) par la dérivée, que la solution obtient par le TAF (existence de c) — « Inégalité des accroissements finis » conviendrait aussi ; seul le TAF, invoqué, est mis.",
+  "#15 ds1-2sm-2023-b9 (Q5) : ∛(ab) = ∛8 = 2, calcul de routine laissé vide, bien que la partie porte sur les racines n-ièmes.",
+  "Général : pour « f est une bijection de I sur J à déterminer », seul « Théorème de la bijection » est mis ; « Image d'un intervalle par une fonction continue » est réservé à une question qui demande seulement f(I) (#168 Q9).",
+  "#16 ds1-2sm-2024-b18 (Q10) : monotonie par la stricte croissance de arctan et de la racine cubique, étiquetée par ces deux fonctions ; on pourrait aussi la laisser vide (comparaison d'inégalités).",
+  "#17 ds1-2sm-2025-b4 (Q2) : limite +∞ par minoration (théorème de comparaison, pas un encadrement) ; étiquetée « Théorème des gendarmes », le plus proche de la liste.",
+  "#17 ds1-2sm-2025-b14-1 (Q7a) : continuité par opérations, seule la continuité de la racine cubique est non triviale ; étiquette « racine n-ième » discutable (liste vide possible).",
+  "#36 serie-continuite-reciproque-ex19-b3-3 (Q2c) : l'unicité vient de la bijection (question précédente), le reste est un tri de racines d'un polynôme ; « Théorème de la bijection » seul retenu.",
+  "#37 serie-continuite-reciproque-ex20-b4 (Q3) : variations par dérivée de u puis composée avec arctan croissante ; « Fonction arc tangente » retenue, la dérivée de √(1+x²) est jugée de routine.",
+  "#121 ds1-2sm-2019-rattrapage-b23 (Q15) : variations d'un polynôme par le signe de la dérivée ; aucun théorème de la liste ne correspond (lien dérivée/monotonie absent), liste vide.",
+  "#155 dm1-2sm-b11.dm1-2sm-b11-2 et -3 : déductions (comparaison des racines appliquée à arctan x ∈ ]0,1[ ; monotonie de f_{n+1}) laissées vides, pas de résultat nouveau décisif",
+  "#185 devoir-libre-1-2sm-riad-ezzahia-b2 : trouver a pour la continuité en 1 (factorisation avec t = √x) ; ni racine n-ième (simple racine carrée) ni prolongement (f(1) est donné) : laissé vide",
+  "#191 ds1-2sm-2026-b17.ds1-2sm-2026-b17-2 : monotonie par le signe de la dérivée de √(x²+1) − x ; dérivée de √u (outil de 1ère), pas « Dérivée d'une fonction composée » : laissé vide",
+  "#191 ds1-2sm-2026-b18.ds1-2sm-2026-b18-1 et #126 ds1-2sm-2019-b20 : l'intervalle image est donné dans l'énoncé, donc « Théorème de la bijection » seul (« Image d'un intervalle… » réservé aux questions où J est à déterminer)",
+  "#122/#126/#167/#169/#185/#191 : continuité « par composition » sur un intervalle ou en un point (arctan∘…, ∛…) étiquetée « Limite et continuité d'une fonction composée » ; c'est parfois un usage assez routinier",
+  "#185 b15-2 et b24 : monotonie d'une composée arctan∘u étiquetée « Fonction arc tangente » (stricte croissance d'arctan décisive), à confirmer"
+ ]
+}
