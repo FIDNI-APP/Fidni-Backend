@@ -240,6 +240,18 @@ check('PC/SVT : jamais une question d’arc tangente, les 9 autres théorèmes c
       and all({t.name for x in v for t in x.theorems.all()} == set(TH) - {'Fonction arc tangente'} for v in vus_pc))
 check('quiz disponibles selon le niveau', el.get('/api/skill-assessments/available/').data.get(str(lim.id)) == 30
       and el_pc.get('/api/skill-assessments/available/').data.get(str(lim.id)) == 27)
+# Chapitre hors du programme de l'élève (13/10/2026, Logique vue par un élève de 2ème Bac : 3 questions sur 13) :
+# pas de filtre de théorèmes, toutes ses questions.
+tc = ClassLevel.objects.get(name='Tronc commun Sciences')
+check('chapitre hors du niveau de l’élève : chapitre de test non rattaché au Tronc commun',
+      not lim.class_levels.filter(pk=tc.pk).exists())
+eleves[2].profile.class_level = tc
+eleves[2].profile.save()
+el_tc = APIClient()
+el_tc.force_authenticate(eleves[2])
+check('chapitre hors du niveau de l’élève : toutes ses questions (arc tangente comprise)',
+      el_tc.get('/api/skill-assessments/available/').data.get(str(lim.id)) == 30
+      and len(tires(el_tc)) == 10)
 
 servies = tires(el)
 tvi = next(x for x in servies if x.theorems.first().name == 'Théorème des valeurs intermédiaires (TVI)')
