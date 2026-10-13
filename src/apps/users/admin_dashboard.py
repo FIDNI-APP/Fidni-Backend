@@ -443,6 +443,8 @@ TRACKED_ACTIONS = [
     ('accueil-objectif', 'Accueil : bouton « Où j’en suis »'),
     ('accueil-progression', 'Accueil : « Ma progression › »'),
     ('quiz-refait', 'Quiz de chapitre repassé'),
+    ('quiz-dernier-resultat', 'Dernier résultat d’un quiz rouvert'),
+    ('quiz-repris', 'Quiz repris après une pause'),
     ('mode-revision', 'Liste de révision en mode révision'),
     ('barre-mobile', 'Barre d’onglets (téléphone)'),
     ('visite-auto', 'Visite guidée lancée automatiquement'),
@@ -627,6 +629,35 @@ def _anonymous(first, prev_first, current, previous, signups_current):
     }
 
 
+def _evaluations_groupees(real_ids, limit):
+    """Évaluations de questions (journal AssessmentEvent), regroupées par membre et contenu tant qu'elles se suivent à
+    moins de 30 min : « A évalué 4 questions : 3 réussies »."""
+    from apps.interactions.models import AssessmentEvent
+    rows = list(AssessmentEvent.objects.filter(user_id__in=real_ids, reprise=False).order_by('-at')[:limit * 6])
+    _, par_id = _content_index([(ContentType.objects.get_for_model(Content).id, r.object_id) for r in rows])
+    groupes = []
+    for r in rows:  # du plus récent au plus ancien
+        g = groupes[-1] if groupes else None
+        if g and g['user_id'] == r.user_id and g['oid'] == r.object_id and g['debut'] - r.at <= timedelta(minutes=30):
+            g['debut'] = r.at
+        else:
+            g = {'user_id': r.user_id, 'oid': r.object_id, 'at': r.at, 'debut': r.at, 'n': 0, 'ok': 0, 'aide': 0}
+            groupes.append(g)
+        g['n'] += 1
+        g['ok'] += r.status == 'success'
+        g['aide'] += r.aide in ('indice', 'solution')
+    out = []
+    for g in groupes[:limit]:
+        c = par_id.get(g['oid'])
+        if not c:
+            continue
+        label = f'A évalué {g["n"]} question{"s" if g["n"] > 1 else ""} : {g["ok"]} réussie{"s" if g["ok"] > 1 else ""}'
+        if g['aide']:
+            label += f', {g["aide"]} avec aide'
+        out.append({'at': g['at'], 'kind': 'evaluation', 'user_id': g['user_id'], 'label': label, 'content': _content_ref(c)})
+    return out
+
+
 def recent_activity(real_ids, limit=40):
     """Dernières actions des membres, toutes sources confondues, de la plus récente à la plus ancienne."""
     events = []
@@ -656,8 +687,28 @@ def recent_activity(real_ids, limit=40):
         events.append({'at': s.created_at, 'kind': 'solution', 'user_id': s.author_id, 'label': 'A proposé une solution',
                        'content': _content_ref(s.content_item)})
     for a in SkillAssessment.objects.filter(user_id__in=real_ids).select_related('chapter').order_by('-completed_at')[:limit]:
+        p = round(100 * a.score / a.max_score) if a.max_score else 0
         events.append({'at': a.completed_at, 'kind': 'skilliq', 'user_id': a.user_id,
-                       'label': f'Test Skill IQ : {a.chapter.name}' if a.chapter_id else 'Test Skill IQ'})
+                       'label': f'Quiz « {a.chapter.name} » : {p} %' if a.chapter_id else f'Quiz : {p} %'})
+    # 14/10/2026 : ce que le membre fait vraiment dans un contenu (évaluations, aides, favoris), et ses DS.
+    events += _evaluations_groupees(real_ids, limit)
+    from apps.interactions.models import QuestionHelp, Save, UpcomingTest
+    aides = list(QuestionHelp.objects.filter(user_id__in=real_ids).order_by('-last_at')[:limit])
+    favoris = [s for s in Save.objects.filter(user_id__in=real_ids).order_by('-saved_at')[:limit] if str(s.object_id).isdigit()]
+    ct_id2, par_id = _content_index([(ct_id, h.object_id) for h in aides] + [(s.content_type_id, s.object_id) for s in favoris])
+    for h in aides:
+        c = par_id.get(h.object_id)
+        if c:
+            events.append({'at': h.last_at, 'kind': 'aide', 'user_id': h.user_id, 'content': _content_ref(c),
+                           'label': 'A ouvert un indice' if h.kind == 'indice' else 'A ouvert une solution'})
+    for s in favoris:
+        c = par_id.get(int(s.object_id)) if s.content_type_id == ct_id2 else None
+        if c:
+            events.append({'at': s.saved_at, 'kind': 'favori', 'user_id': s.user_id, 'label': 'A mis en favori',
+                           'content': _content_ref(c)})
+    for t in UpcomingTest.objects.filter(user_id__in=real_ids).order_by('-created_at')[:limit]:
+        events.append({'at': t.created_at, 'kind': 'ds', 'user_id': t.user_id,
+                       'label': f'A annoncé un {t.get_kind_display()} pour le {t.date:%d/%m}'})
     events = sorted((e for e in events if e['at']), key=lambda e: e['at'], reverse=True)[:limit]
     names.update(User.objects.filter(id__in={e['user_id'] for e in events}).values_list('id', 'username'))
     for e in events:
@@ -759,6 +810,22 @@ def user_detail(request, pk):
     """Dernières actions d'un membre (fiche dépliée dans Pilotage › Membres)."""
     user = get_object_or_404(User, pk=pk)
     return Response({'id': user.id, 'activity': recent_activity({user.id}, limit=15)})
+
+
+@api_view(['GET'])
+@permission_classes([IsSuperuser])
+def user_journal(request, pk):
+    """Journal d'un membre, jour par jour et contenu par contenu (apps/users/member_journal.py) ;
+    ?avant=AAAA-MM-JJ : les 14 jours d'activité précédents (« Voir plus »)."""
+    from apps.users.member_journal import journal
+    user = get_object_or_404(User, pk=pk)
+    avant = None
+    if request.query_params.get('avant'):
+        try:
+            avant = date.fromisoformat(request.query_params['avant'])
+        except ValueError:
+            return Response({'avant': 'Date invalide (AAAA-MM-JJ).'}, status=400)
+    return Response({'id': user.id, 'username': user.username, **journal(user, avant)})
 
 
 # --------------------------------------------------------------------------- courbe d'un élément

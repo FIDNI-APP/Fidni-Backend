@@ -312,5 +312,66 @@ acts = live.get('activity', [])
 check('direct : activité récente des membres réels (admin exclu)', acts and all(a['username'] != admin.username for a in acts)
       and any(a['kind'] == 'comment' for a in acts), acts[:3])
 
+# ── Journal d'un membre (14/10/2026) : jour par jour, contenu par contenu
+from django.db import connection  # noqa: E402
+from django.test.utils import CaptureQueriesContext  # noqa: E402
+from apps.caracteristics.models import Chapter  # noqa: E402
+from apps.documents.models import Document  # noqa: E402
+from apps.interactions.models import AssessmentEvent, QuestionHelp, Save, UpcomingTest  # noqa: E402
+from apps.skilliq.models import SkillAssessment  # noqa: E402
+
+dina = User.objects.create_user('dina', 'dina@x.fr', 'Motdepasse-solide-42')
+User.objects.filter(pk=dina.pk).update(date_joined=now - timedelta(days=60))
+dina.refresh_from_db()
+ex3 = Content.objects.create(type='exercise', title='Exercice détaillé', author=editorial, subject=subject,
+                             json_content={'version': '2.1', 'blocks': [
+                                 {'id': 'q1', 'type': 'question', 'content': {'html': '<p>?</p>'}},
+                                 {'id': 'q2', 'type': 'question', 'content': {'html': '<p>?</p>'},
+                                  'subQuestions': [{'id': 'a', 'content': {'html': '<p>?</p>'}}]}]})
+ex3.class_levels.add(level)
+AssessmentEvent.objects.create(user=dina, object_id=ex3.id, question_path='q1', status='success', aide='', source='question', at=now - timedelta(minutes=20))
+AssessmentEvent.objects.create(user=dina, object_id=ex3.id, question_path='q2.a', status='review', aide='indice', source='question', at=now - timedelta(minutes=10))
+QuestionHelp.objects.create(user=dina, object_id=ex3.id, question_path='q2.a', kind='indice', day=today,
+                            first_at=now - timedelta(minutes=12), last_at=now - timedelta(minutes=12), count=2)
+StudyTimeDay.objects.create(user=dina, object_id=ex3.id, date=today, seconds=14 * 60)
+Save.objects.create(user=dina, content_type=ct, object_id=str(ex3.id))
+lim = Chapter.objects.get(name='Limites et continuité')
+SkillAssessment.objects.create(user=dina, chapter=lim, class_level=level, score=6, max_score=8)
+UpcomingTest.objects.create(user=dina, subject=subject, date=today + timedelta(days=5))
+Document.objects.create(user=dina, title='Mon brouillon secret', html='<p>privé</p>')
+# Activité ancienne (30 jours) : dans une page suivante.
+StudyTimeDay.objects.create(user=dina, object_id=ex.id, date=today - timedelta(days=30), seconds=600)
+
+c.force_authenticate(alice)
+check('journal : élève refusé', c.get(f'/api/pilotage/utilisateurs/{dina.id}/journal/').status_code == 403)
+c.force_authenticate(admin)
+with CaptureQueriesContext(connection) as ctx:
+    r = c.get(f'/api/pilotage/utilisateurs/{dina.id}/journal/')
+j = r.data
+jour = j['jours'][0] if r.status_code == 200 and j['jours'] else {}
+cont = next((x for x in jour.get('contenus', []) if x['content']['id'] == ex3.id), {})
+check('journal : un jour, son temps et le contenu travaillé', r.status_code == 200 and jour['date'] == today.isoformat()
+      and jour['minutes'] == 14 and cont.get('minutes') == 14, jour)
+check('journal : questions évaluées et aides', cont.get('questions') == {'success': 1, 'review': 1}
+      and cont.get('aides') == {'indice': 1}, cont)
+detail = [(x['question'], x['texte']) for x in cont.get('detail', [])]
+check('journal : détail par question, libellés de la page', ('Q1', 'réussie · sans aide') in detail
+      and ('Q2a', 'à revoir · avec indice') in detail and ('Q2a', 'Indice ouvert (2 fois)') in detail, detail)
+check('journal : favori', any(g['kind'] == 'favori' for g in cont.get('gestes', [])), cont.get('gestes'))
+evts = {e['kind']: e['label'] for e in jour.get('evenements', [])}
+check('journal : quiz avec son score, DS annoncé', evts.get('quiz', '').endswith(': 75 %') and 'DS annoncé' in evts.get('ds', ''), evts)
+check('journal : documents privés jamais montrés', 'secret' not in str(j) and 'brouillon' not in str(j))
+check('journal : nombre de requêtes borné', len(ctx.captured_queries) <= 45, len(ctx.captured_queries))
+check('journal : page suivante proposée', j['suivant'] and j['plus_ancien'] == (now - timedelta(days=60)).date().isoformat(), j)
+r2 = c.get(f'/api/pilotage/utilisateurs/{dina.id}/journal/', {'avant': j['suivant']})
+check('journal : « Voir plus » saute les semaines vides jusqu’à l’activité ancienne',
+      r2.status_code == 200 and [d['date'] for d in r2.data['jours']] == [(today - timedelta(days=30)).isoformat()], r2.data)
+check('journal : date invalide → 400', c.get(f'/api/pilotage/utilisateurs/{dina.id}/journal/', {'avant': 'hier'}).status_code == 400)
+live = c.get('/api/pilotage/direct/').data
+kinds = {a['kind'] for a in live['activity']}
+check('direct : évaluations regroupées, aides, favoris, DS', {'evaluation', 'aide', 'favori', 'ds'} <= kinds, kinds)
+ev = next((a for a in live['activity'] if a['kind'] == 'evaluation' and a['username'] == 'dina'), {})
+check('direct : « A évalué 2 questions : 1 réussie, 1 avec aide »', ev.get('label') == 'A évalué 2 questions : 1 réussie, 1 avec aide', ev)
+
 print(f'\n{sum(results)}/{len(results)} vérifications réussies')
 sys.exit(0 if all(results) else 1)

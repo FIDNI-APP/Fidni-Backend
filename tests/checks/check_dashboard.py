@@ -136,6 +136,7 @@ check('Skill IQ : premier passage, pas de score précédent', res['previous_scor
       and res['attempts'] == 1, res)
 check('Skill IQ : page d’exercices du chapitre à son niveau (S’entraîner)',
       res['hub_url'] == '/exercises/niveau/2eme-bac-sm/limites-et-continuite', res.get('hub_url'))
+cl.get(f'/api/skill-assessments/quiz/{limites.id}/')  # nouveau passage (le précédent est clos à l'envoi)
 res2 = cl.post(f'/api/skill-assessments/submit/{limites.id}/',
                {'answers': {str(qs[0].id): 1, str(qs[1].id): 1, str(qs[2].id): 1}}, format='json').data
 check('Skill IQ refait : score précédent gardé (2/3 → 3/3), 2 passages',

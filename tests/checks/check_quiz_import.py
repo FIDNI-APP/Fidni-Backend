@@ -256,7 +256,9 @@ el_pc.force_authenticate(eleves[1])
 
 
 def tires(client):
-    return [SkillQuestion.objects.get(pk=x['id']) for x in client.get(f'/api/skill-assessments/quiz/{lim.id}/').data['questions']]
+    # ?nouveau=1 : un nouveau tirage à chaque fois (sinon le passage commencé est repris, mêmes questions).
+    return [SkillQuestion.objects.get(pk=x['id'])
+            for x in client.get(f'/api/skill-assessments/quiz/{lim.id}/', {'nouveau': 1}).data['questions']]
 
 
 couverts = [{t.name for x in tires(el) for t in x.theorems.all()} for _ in range(5)]
@@ -333,12 +335,14 @@ check('admin : théorème d’un autre chapitre refusé', cl.patch(f'/api/pilota
 r = el.get(f'/api/skill-assessments/quiz/{lim.id}/')
 check('minuteur : 1 min par question', r.data.get('duree_secondes') == 60 * len(r.data['questions']), r.data.get('duree_secondes'))
 check('la bonne réponse n’est jamais dans le quiz lui-même', all('correct_answer' not in x for x in r.data['questions']))
-une = SkillQuestion.objects.get(pk=r.data['questions'][0]['id'])
+r_quiz_questions = [x['id'] for x in r.data['questions']]
+une = SkillQuestion.objects.get(pk=r_quiz_questions[0])
 r = el.post(f'/api/skill-assessments/verifier/{une.id}/', {'answer': 1}, format='json')
 check('correction d’une question : bonne réponse, explication, théorèmes', r.status_code == 200
       and r.data['correct_answer'] == 0 and r.data['is_correct'] is False and r.data['theoremes'], r.data)
+autre_q = r_quiz_questions[1]
 check('correction : réponse hors des choix refusée',
-      el.post(f'/api/skill-assessments/verifier/{une.id}/', {'answer': 7}, format='json').status_code == 400)
+      el.post(f'/api/skill-assessments/verifier/{autre_q}/', {'answer': 7}, format='json').status_code == 400)
 check('correction : réservée aux connectés',
       APIClient().post(f'/api/skill-assessments/verifier/{une.id}/', {'answer': 0}, format='json').status_code in (401, 403))
 SkillQuestion.objects.filter(pk=une.pk).update(a_relire=True)

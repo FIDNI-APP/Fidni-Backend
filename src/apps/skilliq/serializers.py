@@ -22,7 +22,14 @@ class SkillAssessmentSerializer(serializers.ModelSerializer):
     class Meta:
         model = SkillAssessment
         fields = ['id', 'chapter', 'chapter_name', 'subject_name', 'score', 'max_score', 'level', 'time_spent',
-                  'previous_score', 'previous_max', 'attempts', 'hub_url', 'par_theoreme', 'class_level', 'completed_at']
+                  'previous_score', 'previous_max', 'attempts', 'hub_url', 'par_theoreme', 'class_level', 'completed_at',
+                  'a_correction']
+
+    a_correction = serializers.SerializerMethodField()
+
+    def get_a_correction(self, obj):
+        """La correction du dernier passage est gardée (« Voir mon dernier résultat » ; GET chapter/<id>/)."""
+        return bool(obj.derniere_correction)
 
     def get_subject_name(self, obj):
         if obj.chapter and obj.chapter.subject:
@@ -48,9 +55,14 @@ class SkillAssessmentSerializer(serializers.ModelSerializer):
 
 
 class QuizSubmissionSerializer(serializers.Serializer):
-    """Serializer for quiz submission"""
+    """Envoi d'un quiz : {id de question: index} (-1 : sans réponse, temps écoulé), temps passé en secondes."""
     answers = serializers.DictField(
-        child=serializers.IntegerField(min_value=-1),  # -1 : sans réponse (temps écoulé)
+        child=serializers.IntegerField(min_value=-1),
         help_text="Question ID -> selected option index"
     )
     time_spent = serializers.IntegerField(min_value=0, required=False, default=0)
+
+    def validate_answers(self, value):
+        if any(not str(k).isdigit() for k in value):
+            raise serializers.ValidationError('Identifiants de questions invalides.')
+        return value

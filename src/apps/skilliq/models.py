@@ -87,6 +87,11 @@ class SkillAssessment(models.Model):
     class_level = models.ForeignKey('caracteristics.ClassLevel', on_delete=models.SET_NULL, null=True, blank=True,
                                     related_name='+')
 
+    # Correction figée du dernier passage (14/10/2026), remplacée au passage suivant (un seul gardé, pour ne pas
+    # charger la base) : [{id, question, options, correct_answer, your_answer, is_correct, explanation, theoremes}]
+    # dans l'ordre servi. Une question modifiée ou supprimée ensuite ne change rien à ce que l'élève revoit.
+    derniere_correction = models.JSONField(default=list, blank=True)
+
     completed_at = models.DateTimeField(auto_now=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -117,3 +122,29 @@ class SkillAssessment(models.Model):
     def save(self, *args, **kwargs):
         self.level = self.calculate_level()
         super().save(*args, **kwargs)
+
+
+class QuizEnCours(models.Model):
+    """Passage commencé d'un quiz (chapitre, niveau) (14/10/2026), en base : le cache n'est pas partagé entre les
+    workers. Un seul par (élève, chapitre, niveau), remplacé par un nouveau tirage, supprimé à l'envoi.
+
+    - `questions` : ids servis, dans l'ordre ; l'envoi note TOUTES ces questions (sans réponse = fausse).
+    - `reponses` : {id: index} verrouillées à la correction de chaque question (POST verifier/) : une réponse corrigée
+      ne change plus, et seule une question de son passage peut être corrigée.
+    - `temps` : secondes de minuteur déjà utilisées (le minuteur s'arrête pendant les corrections), pour reprendre.
+    Repris (mêmes questions, corrections déjà vues, temps restant) pendant REPRISE_HEURES, puis oublié."""
+    REPRISE_HEURES = 24
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='quiz_en_cours')
+    chapter = models.ForeignKey('caracteristics.Chapter', on_delete=models.CASCADE, related_name='+')
+    class_level = models.ForeignKey('caracteristics.ClassLevel', on_delete=models.CASCADE, related_name='+')
+    questions = models.JSONField(default=list)
+    reponses = models.JSONField(default=dict, blank=True)
+    temps = models.PositiveIntegerField(default=0)
+    duree_secondes = models.PositiveIntegerField(default=0)
+    debut = models.DateTimeField(auto_now_add=True)
+    maj = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        app_label = 'skilliq'
+        unique_together = ('user', 'chapter', 'class_level')

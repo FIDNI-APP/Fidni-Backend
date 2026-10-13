@@ -59,6 +59,8 @@ ACTIONS = {
     'prog-activite-detail',
     'accueil-objectif', 'accueil-progression',  # accueil : bloc « Où j'en suis »
     'quiz-refait',        # quiz de chapitre repassé
+    'quiz-dernier-resultat',  # dernier résultat d'un quiz rouvert (correction comprise)
+    'quiz-repris',        # quiz commencé, repris là où on s'était arrêté
     'mode-revision',      # liste de révision ouverte en mode révision
     'barre-mobile',       # barre d'onglets en bas sur téléphone
     'visite-auto', 'visite-passee', 'visite-finie',  # visites guidées

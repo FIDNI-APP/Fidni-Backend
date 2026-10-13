@@ -6,6 +6,7 @@ urlpatterns = [
     path('my/', views.get_my_assessments, name='my-assessments'),
     path('available/', views.get_available, name='skill-available'),
     path('nouveaux/', views.get_new, name='skill-new'),
+    path('en-cours/', views.get_en_cours, name='skill-en-cours'),
     path('quiz/<int:chapter_id>/', views.get_quiz, name='get-quiz'),
     path('submit/<int:chapter_id>/', views.submit_quiz, name='submit-quiz'),
     path('verifier/<int:question_id>/', views.check_answer, name='check-answer'),
