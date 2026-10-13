@@ -445,6 +445,8 @@ TRACKED_ACTIONS = [
     ('quiz-refait', 'Quiz de chapitre repassé'),
     ('quiz-dernier-resultat', 'Dernier résultat d’un quiz rouvert'),
     ('quiz-repris', 'Quiz repris après une pause'),
+    ('quiz-bandeau', 'Accueil : bandeau « Nouveau · Quiz par chapitre »'),
+    ('quiz-decouvert', 'Page des quiz ouverte pour la première fois'),
     ('mode-revision', 'Liste de révision en mode révision'),
     ('barre-mobile', 'Barre d’onglets (téléphone)'),
     ('visite-auto', 'Visite guidée lancée automatiquement'),

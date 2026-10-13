@@ -61,6 +61,8 @@ ACTIONS = {
     'quiz-refait',        # quiz de chapitre repassé
     'quiz-dernier-resultat',  # dernier résultat d'un quiz rouvert (correction comprise)
     'quiz-repris',        # quiz commencé, repris là où on s'était arrêté
+    'quiz-bandeau',       # accueil : « Essayer » du bandeau « Nouveau · Quiz par chapitre »
+    'quiz-decouvert',     # première ouverture de la page des quiz (sur cet appareil)
     'mode-revision',      # liste de révision ouverte en mode révision
     'barre-mobile',       # barre d'onglets en bas sur téléphone
     'visite-auto', 'visite-passee', 'visite-finie',  # visites guidées
