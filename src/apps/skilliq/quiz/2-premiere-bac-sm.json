@@ -1,0 +1,591 @@
+{
+ "niveau": "1ère Bac SM",
+ "chapitres": [
+  {
+   "chapitre": "Logique mathématique",
+   "questions": [
+    {
+     "question": "Quelle est la négation de « $\\forall x \\in \\mathbb{R},\\ \\exists n \\in \\mathbb{N} : n > x$ » ?",
+     "bonne": "$\\exists x \\in \\mathbb{R},\\ \\forall n \\in \\mathbb{N} : n \\leq x$",
+     "distracteurs": [
+      "$\\exists x \\in \\mathbb{R},\\ \\forall n \\in \\mathbb{N} : n < x$",
+      "$\\forall x \\in \\mathbb{R},\\ \\exists n \\in \\mathbb{N} : n \\leq x$",
+      "$\\exists x \\in \\mathbb{R},\\ \\exists n \\in \\mathbb{N} : n \\leq x$"
+     ],
+     "explication": "On échange chaque quantificateur ($\\forall \\leftrightarrow \\exists$), en gardant leur ordre, puis on nie la propriété finale : la négation de $n > x$ est $n \\leq x$, pas $n < x$.",
+     "difficulte": "medium",
+     "cible": "25 % de réussite sur les quantificateurs (DS 2019).",
+     "theoremes": [
+      "Lois de De Morgan"
+     ]
+    },
+    {
+     "question": "Quelle est la négation de « $x > 0$ et $y \\leq 1$ » ?",
+     "bonne": "$x \\leq 0$ ou $y > 1$",
+     "distracteurs": [
+      "$x \\leq 0$ et $y > 1$",
+      "$x < 0$ ou $y > 1$",
+      "$x \\leq 0$ ou $y \\geq 1$"
+     ],
+     "explication": "Loi de De Morgan : $\\neg(P \\text{ et } Q) \\iff (\\neg P) \\text{ ou } (\\neg Q)$. La négation de $x > 0$ est $x \\leq 0$ et celle de $y \\leq 1$ est $y > 1$ : les bornes changent de « strict » à « large ».",
+     "difficulte": "easy",
+     "cible": "Programme : lois de De Morgan.",
+     "theoremes": [
+      "Lois de De Morgan"
+     ]
+    },
+    {
+     "question": "Quelle est la négation de « $P \\Rightarrow Q$ » ?",
+     "bonne": "$P$ et $(\\neg Q)$",
+     "distracteurs": [
+      "$(\\neg P) \\Rightarrow (\\neg Q)$",
+      "$Q \\Rightarrow P$",
+      "$(\\neg P)$ ou $Q$"
+     ],
+     "explication": "$P \\Rightarrow Q$ équivaut à $(\\neg P) \\text{ ou } Q$ ; par De Morgan, sa négation est $P \\text{ et } (\\neg Q)$. La négation d’une implication n’est pas une implication, et $(\\neg P) \\text{ ou } Q$ lui est équivalente.",
+     "difficulte": "medium",
+     "cible": "Programme : négation d’une implication.",
+     "theoremes": [
+      "Lois de De Morgan"
+     ]
+    },
+    {
+     "question": "La proposition « $\\forall x \\in \\left]0\\,;1\\right[,\\ \\dfrac{x}{1-x} < 1$ » est fausse. Quelle proposition le prouve ?",
+     "bonne": "$\\exists x \\in \\left]0\\,;1\\right[ : \\dfrac{x}{1-x} \\geq 1$, par exemple $x = \\dfrac{3}{4}$",
+     "distracteurs": [
+      "$\\exists x \\in \\left]0\\,;1\\right[ : \\dfrac{x}{1-x} > 1$, par exemple $x = \\dfrac{1}{2}$",
+      "$\\forall x \\in \\left]0\\,;1\\right[ : \\dfrac{x}{1-x} \\geq 1$",
+      "$\\exists x \\in \\left]0\\,;1\\right[ : \\dfrac{x}{1-x} \\geq 1$, par exemple $x = \\dfrac{1}{4}$"
+     ],
+     "explication": "Il suffit d’un contre-exemple : pour $x = \\dfrac{3}{4}$, $\\dfrac{x}{1-x} = 3 \\geq 1$. Pour $x = \\dfrac{1}{2}$, on obtient $1$, qui n’est pas $> 1$ ; pour $x = \\dfrac{1}{4}$, on obtient $\\dfrac{1}{3}$. La proposition « pour tout » est fausse aussi ($x = \\dfrac{1}{4}$).",
+     "difficulte": "hard",
+     "cible": "25 % de réussite à « $(\\forall x \\in ]0,1[) : \\frac{x}{1-x} < 1$ » (DS 2019) : nier puis donner un contre-exemple.",
+     "theoremes": [
+      "Lois de De Morgan"
+     ]
+    },
+    {
+     "question": "Quelle est la contraposée de l’implication « $P \\Rightarrow Q$ » ?",
+     "bonne": "$(\\neg Q) \\Rightarrow (\\neg P)$",
+     "distracteurs": [
+      "$Q \\Rightarrow P$",
+      "$(\\neg P) \\Rightarrow (\\neg Q)$",
+      "$P \\Rightarrow (\\neg Q)$"
+     ],
+     "explication": "La contraposée échange les deux propositions ET les nie ; elle est équivalente à l’implication. $Q \\Rightarrow P$ est la réciproque, et $(\\neg P) \\Rightarrow (\\neg Q)$ est la contraposée de la réciproque.",
+     "difficulte": "easy",
+     "cible": "Programme : contraposée et réciproque.",
+     "theoremes": [
+      "Raisonnement par contraposée"
+     ]
+    },
+    {
+     "question": "Soient $x, y, z > 0$. Pour démontrer par contraposée « $x + y + z < xyz \\Rightarrow (xy > 3 \\text{ ou } xz > 3 \\text{ ou } yz > 3)$ », que faut-il démontrer ?",
+     "bonne": "$(xy \\leq 3 \\text{ et } xz \\leq 3 \\text{ et } yz \\leq 3) \\Rightarrow x + y + z \\geq xyz$",
+     "distracteurs": [
+      "$(xy \\leq 3 \\text{ ou } xz \\leq 3 \\text{ ou } yz \\leq 3) \\Rightarrow x + y + z \\geq xyz$",
+      "$(xy \\leq 3 \\text{ et } xz \\leq 3 \\text{ et } yz \\leq 3) \\Rightarrow x + y + z > xyz$",
+      "$x + y + z \\geq xyz \\Rightarrow (xy \\leq 3 \\text{ et } xz \\leq 3 \\text{ et } yz \\leq 3)$"
+     ],
+     "explication": "On nie les deux membres et on les échange. La négation de « ou » est « et » (De Morgan), et la négation de $<$ est $\\geq$. La dernière proposition est la réciproque de la contraposée, pas la contraposée.",
+     "difficulte": "hard",
+     "cible": "0 % de réussite à cette contraposée (DS 2020) : négation d’un « ou » et d’une inégalité stricte.",
+     "theoremes": [
+      "Raisonnement par contraposée",
+      "Lois de De Morgan"
+     ]
+    },
+    {
+     "question": "Soit $n \\in \\mathbb{N}$. Pour montrer « si $n^2$ est pair, alors $n$ est pair », il est plus simple de montrer :",
+     "bonne": "si $n$ est impair, alors $n^2$ est impair.",
+     "distracteurs": [
+      "si $n$ est pair, alors $n^2$ est pair.",
+      "si $n^2$ est impair, alors $n$ est impair.",
+      "si $n$ est impair, alors $n^2$ est pair."
+     ],
+     "explication": "C’est la contraposée : $n = 2k+1$ donne $n^2 = 2(2k^2 + 2k) + 1$, impair. « Si $n$ est pair, alors $n^2$ est pair » est la réciproque : elle ne prouve pas l’implication demandée.",
+     "difficulte": "medium",
+     "cible": "Programme : choisir la contraposée.",
+     "theoremes": [
+      "Raisonnement par contraposée"
+     ]
+    },
+    {
+     "question": "Pour montrer par l’absurde que $x = 2\\sqrt{7} - 7\\sqrt{2} \\notin \\mathbb{Q}$ (en admettant $\\sqrt{2} \\notin \\mathbb{Q}$), on suppose $x \\in \\mathbb{Q}$. Quel enchaînement mène à la contradiction ?",
+     "bonne": "$x \\neq 0$ et $x\\left(2\\sqrt{7} + 7\\sqrt{2}\\right) = -70$, donc $2\\sqrt{7} + 7\\sqrt{2} \\in \\mathbb{Q}$ ; en retranchant $x$, $14\\sqrt{2} \\in \\mathbb{Q}$.",
+     "distracteurs": [
+      "$x^2 = 126 - 28\\sqrt{14} \\in \\mathbb{Q}$, donc $\\sqrt{14} \\in \\mathbb{Q}$, ce qui contredit $\\sqrt{2} \\notin \\mathbb{Q}$.",
+      "$2\\sqrt{7}$ et $7\\sqrt{2}$ sont irrationnels, donc leur différence $x$ est irrationnelle.",
+      "$x \\neq 0$ et $x\\left(2\\sqrt{7} + 7\\sqrt{2}\\right) = 70$, donc $2\\sqrt{7} + 7\\sqrt{2} \\in \\mathbb{Q}$ ; en ajoutant $x$, $4\\sqrt{7} \\in \\mathbb{Q}$."
+     ],
+     "explication": "$(2\\sqrt{7})^2 - (7\\sqrt{2})^2 = 28 - 98 = -70$. Avec $x$ et $2\\sqrt{7} + 7\\sqrt{2}$ rationnels, leur différence $14\\sqrt{2}$ l’est aussi : contradiction. $\\sqrt{14} \\in \\mathbb{Q}$ ne contredit pas directement $\\sqrt{2} \\notin \\mathbb{Q}$, et une différence d’irrationnels peut être rationnelle.",
+     "difficulte": "hard",
+     "cible": "17 % de réussite à « montrer que $2\\sqrt{7} - 7\\sqrt{2} \\notin \\mathbb{Q}$ » (DS rattrapage 2024).",
+     "theoremes": [
+      "Raisonnement par l'absurde"
+     ]
+    },
+    {
+     "question": "Raisonner par l’absurde pour démontrer une proposition $P$, c’est :",
+     "bonne": "supposer $\\neg P$ et en déduire une contradiction.",
+     "distracteurs": [
+      "supposer $P$ et en déduire une proposition vraie.",
+      "trouver une valeur pour laquelle $P$ est vraie.",
+      "supposer $\\neg P$ et vérifier qu’elle est fausse sur un exemple."
+     ],
+     "explication": "Si $\\neg P$ mène à une contradiction (une proposition et sa négation), $\\neg P$ est fausse, donc $P$ est vraie. Partir de $P$ ne prouve rien, et un exemple ne prouve pas une proposition générale.",
+     "difficulte": "easy",
+     "cible": "Programme : principe du raisonnement par l’absurde.",
+     "theoremes": [
+      "Raisonnement par l'absurde"
+     ]
+    },
+    {
+     "question": "Pour montrer que le système $\\begin{cases} 2x - 3y > 1 \\\\ 3y - 2z \\geq 3 \\\\ x - z \\leq 2 \\end{cases}$ n’a pas de solution dans $\\mathbb{R}^3$, on en suppose une. Quelle contradiction obtient-on ?",
+     "bonne": "En ajoutant les deux premières : $2x - 2z > 4$, donc $x - z > 2$, ce qui contredit $x - z \\leq 2$.",
+     "distracteurs": [
+      "En ajoutant les deux premières : $2x - 2z \\geq 4$, donc $x - z \\geq 2$, ce qui contredit $x - z \\leq 2$.",
+      "En ajoutant les deux premières : $2x - 2z > 4$, donc $x - z > 4$, ce qui contredit $x - z \\leq 2$.",
+      "En ajoutant les trois : $3x - 3z > 6$, ce qui est impossible."
+     ],
+     "explication": "Une inégalité stricte plus une large donne une stricte : $2x - 2z > 4$, soit $x - z > 2$. Avec « $\\geq$ », $x - z = 2$ resterait possible : pas de contradiction. On ne peut pas ajouter une inégalité « $\\leq$ » à des « $>$ ».",
+     "difficulte": "medium",
+     "cible": "33 % de réussite à « ce système n’a pas de solution » (exercice 74).",
+     "theoremes": [
+      "Raisonnement par l'absurde"
+     ]
+    },
+    {
+     "question": "Dans une démonstration par récurrence de « $\\forall n \\geq n_0,\\ P(n)$ », que montre-t-on à l’étape d’hérédité ?",
+     "bonne": "Pour tout $n \\geq n_0$ : si $P(n)$ est vraie, alors $P(n+1)$ est vraie.",
+     "distracteurs": [
+      "Pour tout $n \\geq n_0$ : $P(n)$ et $P(n+1)$ sont vraies.",
+      "Il existe $n \\geq n_0$ tel que $P(n)$ implique $P(n+1)$.",
+      "Pour tout $n \\geq n_0$ : si $P(n+1)$ est vraie, alors $P(n)$ est vraie."
+     ],
+     "explication": "L’hérédité est une implication, pour tout $n \\geq n_0$ : on suppose $P(n)$ (hypothèse de récurrence) et on en déduit $P(n+1)$. Affirmer $P(n)$ pour tout $n$, c’est supposer ce qu’on veut démontrer.",
+     "difficulte": "easy",
+     "cible": "Programme : principe de récurrence.",
+     "theoremes": [
+      "Raisonnement par récurrence"
+     ]
+    },
+    {
+     "question": "Le prédicat $P(n)$ : « $n = n + 1$ » vérifie l’hérédité. Que peut-on en conclure ?",
+     "bonne": "Rien : l’initialisation est fausse, la récurrence ne s’applique pas.",
+     "distracteurs": [
+      "$P(n)$ est vraie pour tout $n$, puisque l’hérédité est démontrée.",
+      "$P(n)$ est vraie à partir d’un certain rang.",
+      "L’hérédité est forcément fausse, puisque $P(n)$ n’est jamais vraie."
+     ],
+     "explication": "Si $n = n + 1$, alors $n + 1 = n + 2$ : l’hérédité est vraie, mais $P(n)$ n’est vraie pour aucun $n$. L’initialisation est indispensable.",
+     "difficulte": "medium",
+     "cible": "50 % de réussite aux démonstrations par récurrence (DS 2016, 2022).",
+     "theoremes": [
+      "Raisonnement par récurrence"
+     ]
+    },
+    {
+     "question": "On veut montrer par récurrence que $9$ divise $u_n = n\\,4^{n+1} - (n+1)4^n + 1$ pour tout $n \\in \\mathbb{N}$. On suppose $9 \\mid u_n$. Quelle écriture permet de conclure que $9 \\mid u_{n+1}$ ?",
+     "bonne": "$u_{n+1} = 4u_n + 3\\left(4^{n+1} - 1\\right)$, avec $3 \\mid 4^{n+1} - 1$",
+     "distracteurs": [
+      "$u_{n+1} = 4u_n + 3\\left(4^{n+1} - 1\\right)$, avec $3 \\mid u_n$",
+      "$u_{n+1} = u_n + 4^{n+1}$, avec $9 \\mid u_n$",
+      "$u_{n+1} = 4u_n + 9$, avec $9 \\mid u_n$"
+     ],
+     "explication": "Le calcul donne $u_{n+1} - 4u_n = 4^{n+2} - 4^{n+1} - 3 = 3\\left(4^{n+1} - 1\\right)$, et $4 \\equiv 1 \\ [3]$ donne $3 \\mid 4^{n+1} - 1$, donc $9 \\mid 3\\left(4^{n+1} - 1\\right)$. Savoir seulement $3 \\mid u_n$ ne suffit pas. Vérification : $u_1 = 9$ et $u_2 = 81$.",
+     "difficulte": "hard",
+     "cible": "33 % de réussite à « $n\\,4^{n+1} - (n+1)4^n + 1$ est divisible par $9$ » (DS 2023).",
+     "theoremes": [
+      "Raisonnement par récurrence"
+     ]
+    }
+   ]
+  },
+  {
+   "chapitre": "Ensembles et applications",
+   "questions": [
+    {
+     "question": "Soient $A$ et $B$ deux parties d’un ensemble $E$. Le complémentaire de $A \\cap B$ dans $E$ est :",
+     "bonne": "$\\overline{A} \\cup \\overline{B}$",
+     "distracteurs": [
+      "$\\overline{A} \\cap \\overline{B}$",
+      "$\\overline{A} \\cup B$",
+      "$A \\cup B$"
+     ],
+     "explication": "Loi de De Morgan : $\\overline{A \\cap B} = \\overline{A} \\cup \\overline{B}$ (ne pas être dans les deux, c’est manquer au moins l’un). $\\overline{A} \\cap \\overline{B}$ est le complémentaire de $A \\cup B$.",
+     "difficulte": "easy",
+     "cible": "Programme : lois de De Morgan pour les ensembles.",
+     "theoremes": [
+      "Opérations sur les ensembles et lois de De Morgan"
+     ]
+    },
+    {
+     "question": "Laquelle de ces égalités est vraie pour toutes parties $A$, $B$, $C$ d’un ensemble $E$ ?",
+     "bonne": "$A \\cap (B \\cup C) = (A \\cap B) \\cup (A \\cap C)$",
+     "distracteurs": [
+      "$A \\cap (B \\cup C) = (A \\cap B) \\cup C$",
+      "$A \\cup (B \\cap C) = (A \\cup B) \\cap C$",
+      "$A \\cap (B \\cup C) = (A \\cup B) \\cap (A \\cup C)$"
+     ],
+     "explication": "L’intersection est distributive sur la réunion (et inversement). Dans les autres écritures, $C$ n’est pas « distribué » ou les opérations sont interverties : un élément de $C$ hors de $A$ suffit à les mettre en défaut.",
+     "difficulte": "medium",
+     "cible": "Programme : distributivité.",
+     "theoremes": [
+      "Opérations sur les ensembles et lois de De Morgan"
+     ]
+    },
+    {
+     "question": "Pour toutes parties $A$, $B$, $C$ de $E$, $A \\cap (B \\setminus C)$ est égal à :",
+     "bonne": "$(A \\cap B) \\setminus (A \\cap C)$",
+     "distracteurs": [
+      "$(A \\cap B) \\setminus (A \\cup C)$",
+      "$(A \\setminus B) \\cap (A \\setminus C)$",
+      "$(A \\cap B) \\cup \\left(A \\cap \\overline{C}\\right)$"
+     ],
+     "explication": "$(A \\cap B) \\setminus (A \\cap C) = (A \\cap B) \\cap \\left(\\overline{A} \\cup \\overline{C}\\right) = A \\cap B \\cap \\overline{C}$. $(A \\cap B) \\setminus (A \\cup C)$ est vide, et $(A \\setminus B) \\cap (A \\setminus C) = A \\setminus (B \\cup C)$.",
+     "difficulte": "medium",
+     "cible": "50 % de réussite à « montrer que $A \\cap (B - C) = (A \\cap B) - (A \\cap C)$ » (exercice 138).",
+     "theoremes": [
+      "Opérations sur les ensembles et lois de De Morgan"
+     ]
+    },
+    {
+     "question": "Soient $A$ et $B$ deux parties de $E$. Laquelle de ces équivalences est vraie ?",
+     "bonne": "$A \\subset B \\iff \\overline{B} \\subset \\overline{A}$",
+     "distracteurs": [
+      "$A \\subset B \\iff \\overline{A} \\subset \\overline{B}$",
+      "$A \\subset B \\iff A \\cup B = A$",
+      "$A \\subset B \\iff A \\cap B = B$"
+     ],
+     "explication": "Passer au complémentaire renverse l’inclusion (c’est la contraposée de $x \\in A \\Rightarrow x \\in B$). Si $A \\subset B$, alors $A \\cup B = B$ et $A \\cap B = A$, pas l’inverse.",
+     "difficulte": "hard",
+     "cible": "Programme : inclusion et complémentaire.",
+     "theoremes": [
+      "Opérations sur les ensembles et lois de De Morgan"
+     ]
+    },
+    {
+     "question": "Une application $f : E \\to F$ est injective si et seulement si :",
+     "bonne": "$\\forall (x, x') \\in E^2,\\ f(x) = f(x') \\Rightarrow x = x'$",
+     "distracteurs": [
+      "$\\forall (x, x') \\in E^2,\\ x = x' \\Rightarrow f(x) = f(x')$",
+      "$\\forall y \\in F,\\ \\exists x \\in E : f(x) = y$",
+      "$\\forall y \\in F,\\ \\exists!\\, x \\in E : f(x) = y$"
+     ],
+     "explication": "Injective : deux éléments qui ont la même image sont égaux. L’implication $x = x' \\Rightarrow f(x) = f(x')$ est vraie pour toute application ; « tout $y$ a un antécédent » est la surjectivité ; « exactement un » est la bijectivité.",
+     "difficulte": "medium",
+     "cible": "25 % de réussite à « montrer que $f$ est injective » (DS rattrapage 2024).",
+     "theoremes": [
+      "Application réciproque d'une bijection"
+     ]
+    },
+    {
+     "question": "Pour montrer que $f : \\mathbb{R} \\to \\mathbb{R}$, $f(x) = x^2 + 1$, n’est pas surjective, il suffit de :",
+     "bonne": "trouver un réel sans antécédent, par exemple $0$.",
+     "distracteurs": [
+      "trouver deux réels distincts de même image, par exemple $1$ et $-1$.",
+      "montrer que $f$ n’est pas strictement monotone sur $\\mathbb{R}$.",
+      "trouver un réel sans antécédent, par exemple $2$."
+     ],
+     "explication": "$f(x) = 0$ n’a pas de solution car $x^2 + 1 \\geq 1$. Deux réels de même image prouvent que $f$ n’est pas injective, pas qu’elle n’est pas surjective. $2 = f(1)$ a un antécédent.",
+     "difficulte": "medium",
+     "cible": "25 % de réussite à « montrer que $f$ n’est pas surjective » (DS rattrapage 2024).",
+     "theoremes": [
+      "Application réciproque d'une bijection"
+     ]
+    },
+    {
+     "question": "L’application $f : [0\\,;+\\infty[ \\to [1\\,;+\\infty[$, $f(x) = x^2 + 1$, est bijective. Sa réciproque est :",
+     "bonne": "$f^{-1}(y) = \\sqrt{y - 1}$",
+     "distracteurs": [
+      "$f^{-1}(y) = \\dfrac{1}{y^2 + 1}$",
+      "$f^{-1}(y) = -\\sqrt{y - 1}$",
+      "$f^{-1}(y) = \\sqrt{y} - 1$"
+     ],
+     "explication": "On résout $y = x^2 + 1$ avec $x \\geq 0$ : $x = \\sqrt{y - 1}$. La réciproque n’est pas l’inverse $\\dfrac{1}{f}$, et $-\\sqrt{y - 1}$ n’est pas dans l’ensemble de départ $[0\\,;+\\infty[$.",
+     "difficulte": "medium",
+     "cible": "Programme : déterminer une application réciproque.",
+     "theoremes": [
+      "Application réciproque d'une bijection"
+     ]
+    },
+    {
+     "question": "Soit $f : E \\to F$ une bijection. Laquelle de ces affirmations est vraie ?",
+     "bonne": "$f^{-1} \\circ f = \\mathrm{Id}_E$ et $f \\circ f^{-1} = \\mathrm{Id}_F$",
+     "distracteurs": [
+      "$f^{-1} \\circ f = \\mathrm{Id}_F$ et $f \\circ f^{-1} = \\mathrm{Id}_E$",
+      "$f^{-1} = \\dfrac{1}{f}$",
+      "$f^{-1} \\circ f = f \\circ f^{-1} = \\mathrm{Id}_E$"
+     ],
+     "explication": "$f^{-1} \\circ f$ part de $E$ et revient dans $E$ ; $f \\circ f^{-1}$ part de $F$. Les deux identités ne sont les mêmes que si $E = F$. La notation $f^{-1}$ ne désigne pas l’inverse $\\dfrac{1}{f}$.",
+     "difficulte": "hard",
+     "cible": "Programme : application réciproque.",
+     "theoremes": [
+      "Application réciproque d'une bijection"
+     ]
+    },
+    {
+     "question": "Soient $f : E \\to F$ et $g : F \\to G$ deux bijections. Alors $g \\circ f$ est bijective et :",
+     "bonne": "$(g \\circ f)^{-1} = f^{-1} \\circ g^{-1}$",
+     "distracteurs": [
+      "$(g \\circ f)^{-1} = g^{-1} \\circ f^{-1}$",
+      "$(g \\circ f)^{-1} = f \\circ g$",
+      "$(g \\circ f)^{-1} = g \\circ f$"
+     ],
+     "explication": "Pour revenir de $G$ à $E$, on défait d’abord $g$, puis $f$ : $f^{-1} \\circ g^{-1}$ (l’ordre s’inverse, comme pour enlever chaussettes et chaussures). $g^{-1} \\circ f^{-1}$ n’est même pas défini en général.",
+     "difficulte": "medium",
+     "cible": "Programme : réciproque d’une composée de bijections.",
+     "theoremes": [
+      "Composée de deux bijections"
+     ]
+    },
+    {
+     "question": "Soient $f : E \\to F$ et $g : F \\to G$. On sait que $g \\circ f$ est injective. Que peut-on affirmer ?",
+     "bonne": "$f$ est injective.",
+     "distracteurs": [
+      "$g$ est injective.",
+      "$f$ et $g$ sont injectives.",
+      "$f$ est surjective."
+     ],
+     "explication": "Si $f(x) = f(x')$, alors $g(f(x)) = g(f(x'))$, donc $x = x'$. Rien n’oblige $g$ à être injective : elle peut confondre des éléments de $F$ qui ne sont pas des images par $f$.",
+     "difficulte": "hard",
+     "cible": "62 % de réussite sur injection et surjection dans ce chapitre.",
+     "theoremes": [
+      "Composée de deux bijections"
+     ]
+    },
+    {
+     "question": "Soient $f(x) = 2x + 1$ et $g(x) = x^2$, de $\\mathbb{R}$ dans $\\mathbb{R}$. Que vaut $(g \\circ f)(x)$ ?",
+     "bonne": "$(2x + 1)^2$",
+     "distracteurs": [
+      "$2x^2 + 1$",
+      "$2x^3 + x^2$",
+      "$x^2 + 2x + 1$"
+     ],
+     "explication": "$(g \\circ f)(x) = g(f(x)) = g(2x + 1) = (2x + 1)^2$ : on applique $f$ d’abord. $2x^2 + 1$ est $(f \\circ g)(x)$.",
+     "difficulte": "easy",
+     "cible": "Programme : composée de deux applications.",
+     "theoremes": [
+      "Composée de deux bijections"
+     ]
+    },
+    {
+     "question": "Soient $f : E \\to F$ et $g : F \\to G$. On sait que $g \\circ f$ est surjective. Que peut-on affirmer ?",
+     "bonne": "$g$ est surjective.",
+     "distracteurs": [
+      "$f$ est surjective.",
+      "$f$ et $g$ sont surjectives.",
+      "$g$ est injective."
+     ],
+     "explication": "Tout $z \\in G$ s’écrit $g(f(x))$, donc a pour antécédent $f(x)$ par $g$. $f$ peut ne pas atteindre tout $F$ si $g$ « rattrape » ces éléments manquants.",
+     "difficulte": "hard",
+     "cible": "Programme : composée et surjectivité.",
+     "theoremes": [
+      "Composée de deux bijections"
+     ]
+    }
+   ]
+  },
+  {
+   "chapitre": "Arithmétique dans ℤ",
+   "questions": [
+    {
+     "question": "Quelle est la division euclidienne de $-17$ par $5$ ?",
+     "bonne": "$-17 = 5 \\times (-4) + 3$",
+     "distracteurs": [
+      "$-17 = 5 \\times (-3) - 2$",
+      "$-17 = 5 \\times (-3) + 2$",
+      "$-17 = 5 \\times (-5) + 8$"
+     ],
+     "explication": "Le reste doit vérifier $0 \\leq r < 5$ : $-17 = -20 + 3$. Avec $-2$, le reste est négatif ; $5 \\times (-3) + 2 = -13$ ; $8$ dépasse le diviseur.",
+     "difficulte": "medium",
+     "cible": "Programme : division euclidienne dans $\\mathbb{Z}$ (reste positif).",
+     "theoremes": [
+      "Division euclidienne dans ℤ"
+     ]
+    },
+    {
+     "question": "Dans la division euclidienne de $a \\in \\mathbb{Z}$ par $b \\in \\mathbb{N}^*$, on écrit $a = bq + r$ avec :",
+     "bonne": "$q \\in \\mathbb{Z}$ et $0 \\leq r < b$",
+     "distracteurs": [
+      "$q \\in \\mathbb{N}$ et $0 \\leq r < b$",
+      "$q \\in \\mathbb{Z}$ et $0 \\leq r \\leq b$",
+      "$q \\in \\mathbb{Z}$ et $|r| < b$"
+     ],
+     "explication": "Le quotient peut être négatif (si $a < 0$), et le reste est unique grâce à $0 \\leq r < b$. Avec $r \\leq b$ ou $|r| < b$, il y aurait deux écritures possibles.",
+     "difficulte": "easy",
+     "cible": "Programme : existence et unicité du quotient et du reste.",
+     "theoremes": [
+      "Division euclidienne dans ℤ"
+     ]
+    },
+    {
+     "question": "Le reste de la division euclidienne de $a$ par $7$ est $5$. Quel est le reste de la division euclidienne de $-a$ par $7$ ?",
+     "bonne": "$2$",
+     "distracteurs": [
+      "$5$",
+      "$-5$",
+      "$12$"
+     ],
+     "explication": "$a = 7q + 5$ donne $-a = -7q - 5 = 7(-q - 1) + 2$, et $0 \\leq 2 < 7$. $-5$ n’est pas un reste (il doit être positif), et $12$ dépasse $7$.",
+     "difficulte": "hard",
+     "cible": "Programme : reste d’un entier négatif.",
+     "theoremes": [
+      "Division euclidienne dans ℤ"
+     ]
+    },
+    {
+     "question": "Soit $n \\in \\mathbb{N}^*$. Laquelle de ces propriétés est vraie pour tous entiers $a$, $b$, $c$ ?",
+     "bonne": "Si $a \\equiv b \\ [n]$, alors $a^k \\equiv b^k \\ [n]$ pour tout $k \\in \\mathbb{N}$.",
+     "distracteurs": [
+      "Si $ac \\equiv bc \\ [n]$ et $c \\not\\equiv 0 \\ [n]$, alors $a \\equiv b \\ [n]$.",
+      "Si $a \\equiv b \\ [n]$, alors $c^a \\equiv c^b \\ [n]$ pour $a, b \\in \\mathbb{N}$.",
+      "Si $ab \\equiv 0 \\ [n]$, alors $a \\equiv 0 \\ [n]$ ou $b \\equiv 0 \\ [n]$."
+     ],
+     "explication": "Les congruences sont compatibles avec la somme, le produit, donc les puissances. On ne peut pas simplifier par $c$ : $2 \\times 2 \\equiv 4 \\times 2 \\ [4]$ mais $2 \\not\\equiv 4 \\ [4]$. Les exposants ne se réduisent pas modulo $n$ : $1 \\equiv 4 \\ [3]$ mais $2^1 \\not\\equiv 2^4 \\ [3]$. Enfin $2 \\times 3 \\equiv 0 \\ [6]$.",
+     "difficulte": "medium",
+     "cible": "Programme : propriétés des congruences (ce qui est permis et ce qui ne l’est pas).",
+     "theoremes": [
+      "Congruences modulo n"
+     ]
+    },
+    {
+     "question": "Quel est le reste de la division euclidienne de $2^{100}$ par $7$ ?",
+     "bonne": "$2$",
+     "distracteurs": [
+      "$1$",
+      "$4$",
+      "$6$"
+     ],
+     "explication": "$2^3 = 8 \\equiv 1 \\ [7]$ et $100 = 3 \\times 33 + 1$, donc $2^{100} = \\left(2^3\\right)^{33} \\times 2 \\equiv 2 \\ [7]$. On trouve $1$ si l’on oublie le facteur restant, $4$ si l’on se trompe sur $100 \\bmod 3$.",
+     "difficulte": "medium",
+     "cible": "Programme : calcul de restes avec les congruences.",
+     "theoremes": [
+      "Congruences modulo n"
+     ]
+    },
+    {
+     "question": "Pour tout $n \\in \\mathbb{Z}$, $n^2$ est congru modulo $4$ à :",
+     "bonne": "$0$ ou $1$",
+     "distracteurs": [
+      "$0$, $1$ ou $3$",
+      "$0$, $1$ ou $2$",
+      "$1$ seulement"
+     ],
+     "explication": "Si $n = 2k$, $n^2 = 4k^2 \\equiv 0$ ; si $n = 2k + 1$, $n^2 = 4(k^2 + k) + 1 \\equiv 1$. Conséquence : un entier de la forme $4k + 2$ ou $4k + 3$ n’est jamais un carré.",
+     "difficulte": "hard",
+     "cible": "Programme : congruences et disjonction des cas.",
+     "theoremes": [
+      "Congruences modulo n"
+     ]
+    },
+    {
+     "question": "Soit $n = 2^4 \\times 3^2 \\times 7$. Lequel de ces entiers divise $n$ ?",
+     "bonne": "$2^3 \\times 7$",
+     "distracteurs": [
+      "$2^5 \\times 3$",
+      "$3^3$",
+      "$2 \\times 5$"
+     ],
+     "explication": "Un diviseur de $n$ n’a que des facteurs premiers de $n$, avec des exposants au plus égaux : $2^3 \\leq 2^4$ et $7^1$. $2^5$ et $3^3$ dépassent les exposants de $n$, et $5$ n’y figure pas.",
+     "difficulte": "easy",
+     "cible": "Programme : diviseurs et décomposition en facteurs premiers.",
+     "theoremes": [
+      "Décomposition en facteurs premiers"
+     ]
+    },
+    {
+     "question": "Un entier $n \\geq 2$ qui n’est pas premier admet toujours :",
+     "bonne": "un diviseur premier $p$ tel que $p^2 \\leq n$.",
+     "distracteurs": [
+      "un diviseur premier $p$ tel que $p^2 > n$.",
+      "au moins deux diviseurs premiers distincts.",
+      "un diviseur premier impair."
+     ],
+     "explication": "Si $n = ab$ avec $2 \\leq a \\leq b$, alors $a^2 \\leq n$, et un diviseur premier de $a$ convient. D’où le test : on ne cherche des diviseurs premiers que jusqu’à $\\sqrt{n}$. Contre-exemples : $4 = 2^2$ et $8 = 2^3$.",
+     "difficulte": "medium",
+     "cible": "Programme : test de primalité.",
+     "theoremes": [
+      "Décomposition en facteurs premiers"
+     ]
+    },
+    {
+     "question": "Dans la preuve de l’infinité des nombres premiers, on suppose qu’ils sont en nombre fini, $p_1, \\dots, p_k$, et on pose $N = p_1 p_2 \\cdots p_k + 1$. Quel argument conclut ?",
+     "bonne": "$N \\geq 2$ admet un diviseur premier, qui ne peut être aucun des $p_i$ : contradiction.",
+     "distracteurs": [
+      "$N$ est forcément premier et différent des $p_i$ : contradiction.",
+      "$N$ est divisible par chacun des $p_i$ : contradiction.",
+      "$N$ est pair, donc divisible par $2$ : contradiction."
+     ],
+     "explication": "Chaque $p_i$ divise $N - 1$, donc ne divise pas $N$ (il diviserait $1$). Un diviseur premier de $N$ est donc nouveau. $N$ n’est pas forcément premier : voir $2 \\times 3 \\times 5 \\times 7 \\times 11 \\times 13 + 1 = 59 \\times 509$.",
+     "difficulte": "medium",
+     "cible": "Programme : infinité des nombres premiers.",
+     "theoremes": [
+      "Infinité des nombres premiers"
+     ]
+    },
+    {
+     "question": "On pose $N = 2 \\times 3 \\times 5 \\times 7 \\times 11 \\times 13 + 1 = 30\\,031$. Laquelle de ces affirmations est vraie ?",
+     "bonne": "$N$ n’est divisible par aucun des nombres $2, 3, 5, 7, 11, 13$.",
+     "distracteurs": [
+      "$N$ est premier, puisqu’il s’écrit $p_1 \\cdots p_k + 1$.",
+      "$N$ est divisible par $13$.",
+      "$N$ est divisible par l’un des nombres $2, 3, 5, 7, 11, 13$."
+     ],
+     "explication": "Chacun de ces nombres divise $N - 1$, donc laisse le reste $1$ dans la division de $N$. Mais $N = 59 \\times 509$ n’est pas premier : la preuve n’affirme pas que $N$ est premier.",
+     "difficulte": "hard",
+     "cible": "Programme : infinité des nombres premiers (ce que la preuve affirme vraiment).",
+     "theoremes": [
+      "Infinité des nombres premiers"
+     ]
+    },
+    {
+     "question": "Algorithme d’Euclide : pour $a \\geq b > 0$, on a $\\mathrm{PGCD}(a, b) = \\mathrm{PGCD}(b, r)$ où $r$ est :",
+     "bonne": "le reste de la division euclidienne de $a$ par $b$.",
+     "distracteurs": [
+      "le quotient de la division euclidienne de $a$ par $b$.",
+      "la moitié de $a - b$.",
+      "le reste de la division euclidienne de $b$ par $a$."
+     ],
+     "explication": "De $a = bq + r$, les diviseurs communs à $a$ et $b$ sont ceux de $b$ et $r$. Le reste de $b$ par $a$ vaut $b$ (si $a > b$) : on tournerait en rond.",
+     "difficulte": "medium",
+     "cible": "33 % de réussite à « déterminer le PGCD par l’algorithme d’Euclide » (Tronc commun, DS 2019).",
+     "theoremes": [
+      "PGCD, PPCM et algorithme d'Euclide"
+     ]
+    },
+    {
+     "question": "Que vaut $\\mathrm{PGCD}(546, 234)$ ?",
+     "bonne": "$78$",
+     "distracteurs": [
+      "$26$",
+      "$39$",
+      "$6$"
+     ],
+     "explication": "Euclide : $546 = 2 \\times 234 + 78$ et $234 = 3 \\times 78 + 0$, donc le PGCD est $78$. Avec les décompositions $546 = 2 \\times 3 \\times 7 \\times 13$ et $234 = 2 \\times 3^2 \\times 13$ : $2 \\times 3 \\times 13 = 78$.",
+     "difficulte": "medium",
+     "cible": "Programme : algorithme d’Euclide.",
+     "theoremes": [
+      "PGCD, PPCM et algorithme d'Euclide"
+     ]
+    },
+    {
+     "question": "Soient $a, b \\in \\mathbb{N}^*$ et $d = \\mathrm{PGCD}(a, b)$. Laquelle de ces affirmations est vraie ?",
+     "bonne": "Tout diviseur commun de $a$ et $b$ divise $d$.",
+     "distracteurs": [
+      "Tout multiple de $d$ est un diviseur commun de $a$ et $b$.",
+      "$d$ divise tout diviseur commun de $a$ et $b$.",
+      "$\\dfrac{a}{d}$ et $\\dfrac{b}{d}$ sont premiers avec $d$."
+     ],
+     "explication": "Les diviseurs communs de $a$ et $b$ sont exactement les diviseurs de $d$ (l’algorithme d’Euclide les conserve). L’inverse est faux : $d$ ne divise pas $1$ en général. Contre-exemple pour la dernière : $a = 4$, $b = 8$, $d = 4$ et $\\dfrac{b}{d} = 2$ n’est pas premier avec $4$.",
+     "difficulte": "hard",
+     "cible": "Programme : caractérisation du PGCD.",
+     "theoremes": [
+      "PGCD, PPCM et algorithme d'Euclide"
+     ]
+    }
+   ]
+  }
+ ]
+}

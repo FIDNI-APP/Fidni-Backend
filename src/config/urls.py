@@ -178,6 +178,7 @@ urlpatterns = [
     path('api/pilotage/quiz/chapitre/<int:pk>/', quiz_admin.chapitre, name='pilotage-quiz-chapitre'),
     path('api/pilotage/quiz/chapitre/<int:pk>/publier/', quiz_admin.publier, name='pilotage-quiz-publier'),
     path('api/pilotage/quiz/question/<int:pk>/', quiz_admin.question, name='pilotage-quiz-question'),
+    path('api/pilotage/quiz/chapitre/<int:pk>/valider/', quiz_admin.valider, name='pilotage-quiz-valider'),
     path('api/pilotage/utilisateurs/', admin_dashboard.users_list, name='pilotage-utilisateurs'),
     path('api/pilotage/utilisateurs/<int:pk>/', admin_dashboard.user_detail, name='pilotage-utilisateur'),
     # « Un membre n'arrive pas à se connecter » : comptes, blocage, journaux d'authentification.

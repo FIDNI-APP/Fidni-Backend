@@ -86,7 +86,7 @@ assess(lim1, {'q1': 'success', 'q2': 'success', 'q3': 'success'})
 Complete.objects.create(user=eleve, content_type=ct, object_id=str(lim1.id), status='success')
 assess(der1, {'q1': 'review', 'q2': 'failed', 'q3': 'success'})
 Complete.objects.create(user=eleve, content_type=ct, object_id=str(der1.id), status='review')
-SkillQuestion.objects.create(chapter=suites, question='?', options=['a', 'b'], correct_answer=0)
+SkillQuestion.objects.create(chapter=suites, class_level=sm, question='?', options=['a', 'b'], correct_answer=0)
 
 c = APIClient()
 check('visiteur : refusé', c.get('/api/devoirs/').status_code in (401, 403))

@@ -84,7 +84,7 @@ Complete.objects.create(user=eleve, content_type=ct, object_id=str(ex_lim.id), s
 Complete.objects.create(user=eleve, content_type=ct, object_id=str(ex_der.id), status='review')
 SkillAssessment.objects.create(user=eleve, chapter=lim, score=8, max_score=10)
 SkillAssessment.objects.create(user=eleve, chapter=autre, score=3, max_score=10)
-SkillQuestion.objects.create(chapter=vierge, question='?', options=['a', 'b'], correct_answer=0)
+SkillQuestion.objects.create(chapter=vierge, class_level=sm, question='?', options=['a', 'b'], correct_answer=0)
 today = timezone.localdate()
 StudyTimeDay.objects.create(user=eleve, object_id=ex_lim.id, date=today, seconds=1500)
 StudyTimeDay.objects.create(user=eleve, object_id=ex_der.id, date=today - timedelta(days=1), seconds=600)

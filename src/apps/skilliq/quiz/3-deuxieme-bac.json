@@ -1,0 +1,974 @@
+{
+ "niveaux": [
+  "2ème Bac SM",
+  "2ème Bac PC/SVT"
+ ],
+ "chapitres": [
+  {
+   "chapitre": "Limites et continuité",
+   "questions": [
+    {
+     "question": "Soit $f$ une fonction définie sur $[a\\,;b]$ avec $f(a) < 0 < f(b)$. Quelle hypothèse garantit que l’équation $f(x) = 0$ admet au moins une solution dans $]a\\,;b[$ ?",
+     "bonne": "$f$ est continue sur $[a\\,;b]$.",
+     "distracteurs": [
+      "$f$ est continue sur $]a\\,;b[$.",
+      "$f$ est strictement monotone sur $[a\\,;b]$.",
+      "$f$ est dérivable sur $]a\\,;b[$."
+     ],
+     "explication": "Le TVI exige la continuité sur le segment fermé. Contre-exemple : $f(a) = -1$ et $f(x) = 1$ pour $x \\in ]a\\,;b]$ est continue (et dérivable) sur $]a\\,;b[$ sans jamais s’annuler. La monotonie seule n’empêche pas les sauts.",
+     "difficulte": "medium",
+     "cible": "50 % de réussite aux questions d’existence de solutions par le TVI (DS 2025).",
+     "theoremes": [
+      "Théorème des valeurs intermédiaires (TVI)"
+     ]
+    },
+    {
+     "question": "$f$ est continue sur $\\mathbb{R}$ avec $f(0) = -1$, $f(1) = 2$, $f(3) = -2$ et $f(5) = 4$. Que peut-on affirmer ?",
+     "bonne": "$f$ s’annule au moins trois fois sur $]0\\,;5[$.",
+     "distracteurs": [
+      "$f$ s’annule exactement trois fois sur $]0\\,;5[$.",
+      "$f$ s’annule au moins quatre fois sur $]0\\,;5[$.",
+      "$f$ s’annule exactement une fois sur chacun des intervalles $]0\\,;1[$, $]1\\,;3[$ et $]3\\,;5[$."
+     ],
+     "explication": "Trois changements de signe, sur trois intervalles disjoints : le TVI donne au moins une racine dans chacun. Sans monotonie, rien n’assure l’unicité : « exactement » ne peut pas être affirmé.",
+     "difficulte": "hard",
+     "cible": "50 % de réussite à « montrer que $P_n$ admet exactement trois racines » (DS 2025) : existence ≠ unicité.",
+     "theoremes": [
+      "Théorème des valeurs intermédiaires (TVI)"
+     ]
+    },
+    {
+     "question": "Soit $f$ continue et strictement croissante sur $[a\\,;b]$ avec $f(a) \\times f(b) < 0$. Alors l’équation $f(x) = 0$ admet :",
+     "bonne": "une unique solution, et elle est dans $]a\\,;b[$.",
+     "distracteurs": [
+      "au moins une solution, mais pas forcément une seule.",
+      "une unique solution, qui peut être $a$ ou $b$.",
+      "une unique solution, égale à $\\dfrac{a + b}{2}$."
+     ],
+     "explication": "Le TVI donne l’existence ; la stricte monotonie donne l’unicité. $f(a) \\times f(b) < 0$ exclut $f(a) = 0$ et $f(b) = 0$, donc la solution est strictement entre $a$ et $b$, sans raison d’être au milieu.",
+     "difficulte": "medium",
+     "cible": "Programme : TVI et stricte monotonie (unicité).",
+     "theoremes": [
+      "Théorème des valeurs intermédiaires (TVI)",
+      "Théorème de la bijection"
+     ]
+    },
+    {
+     "question": "Soit $f$ continue et strictement décroissante sur $I = [a\\,;+\\infty[$. Alors $f(I)$ est :",
+     "bonne": "$\\left]\\lim\\limits_{+\\infty} f\\,;\\,f(a)\\right]$",
+     "distracteurs": [
+      "$\\left[f(a)\\,;\\,\\lim\\limits_{+\\infty} f\\right[$",
+      "$\\left[\\lim\\limits_{+\\infty} f\\,;\\,f(a)\\right]$",
+      "$\\left]\\lim\\limits_{+\\infty} f\\,;\\,f(a)\\right[$"
+     ],
+     "explication": "Décroissante : $f(a)$ est le maximum, atteint (crochet fermé) ; la limite en $+\\infty$ n’est jamais atteinte (crochet ouvert). L’intervalle image a la même nature que $I$, bornes rangées dans l’ordre croissant.",
+     "difficulte": "medium",
+     "cible": "Programme : image d’un intervalle par une fonction continue et strictement monotone.",
+     "theoremes": [
+      "Image d'un intervalle par une fonction continue"
+     ]
+    },
+    {
+     "question": "Pour montrer que l’équation $f(x) = \\lambda$ admet une unique solution dans un intervalle $I$, il suffit que :",
+     "bonne": "$f$ soit continue et strictement monotone sur $I$, et $\\lambda \\in f(I)$.",
+     "distracteurs": [
+      "$f$ soit continue sur $I$, et $\\lambda \\in f(I)$.",
+      "$f$ soit continue et strictement monotone sur $I$.",
+      "$f$ soit continue et monotone sur $I$, et $\\lambda \\in f(I)$."
+     ],
+     "explication": "$\\lambda \\in f(I)$ donne l’existence, la stricte monotonie l’unicité. Sans stricte monotonie, plusieurs solutions sont possibles (une fonction constante sur un morceau) ; sans $\\lambda \\in f(I)$, aucune.",
+     "difficulte": "medium",
+     "cible": "50 % de réussite à « $f^{-1}(x) = x$ admet une solution unique » (DS 2019).",
+     "theoremes": [
+      "Théorème de la bijection"
+     ]
+    },
+    {
+     "question": "Soit $f(x) = x^3 + x - 1$ sur $\\mathbb{R}$. Laquelle de ces affirmations est vraie ?",
+     "bonne": "$f$ est une bijection de $\\mathbb{R}$ sur $\\mathbb{R}$, et l’équation $f(x) = 0$ a une unique solution, dans $]0\\,;1[$.",
+     "distracteurs": [
+      "$f$ est une bijection de $\\mathbb{R}$ sur $\\mathbb{R}$, et l’équation $f(x) = 0$ a une unique solution, dans $]1\\,;2[$.",
+      "$f$ est une bijection de $\\mathbb{R}$ sur $]-1\\,;+\\infty[$, et $f(x) = 0$ a une unique solution, dans $]0\\,;1[$.",
+      "$f$ n’est pas une bijection, car l’équation $f(x) = 0$ a plusieurs solutions."
+     ],
+     "explication": "$f$ est continue et strictement croissante ($f'(x) = 3x^2 + 1 > 0$), avec des limites $-\\infty$ et $+\\infty$ : $f(\\mathbb{R}) = \\mathbb{R}$. Comme $f(0) = -1 < 0 < 1 = f(1)$, la solution est dans $]0\\,;1[$ ; $f(1) > 0$ l’exclut de $]1\\,;2[$.",
+     "difficulte": "hard",
+     "cible": "Programme : théorème de la bijection.",
+     "theoremes": [
+      "Théorème de la bijection"
+     ]
+    },
+    {
+     "question": "Soit $f$ continue sur un segment $[a\\,;b]$. Laquelle de ces affirmations est toujours vraie ?",
+     "bonne": "$f([a\\,;b])$ est un segment $[m\\,;M]$.",
+     "distracteurs": [
+      "$f([a\\,;b]) = [f(a)\\,;f(b)]$.",
+      "$f([a\\,;b])$ est un intervalle ouvert.",
+      "$f([a\\,;b])$ est le segment d’extrémités $f(a)$ et $f(b)$."
+     ],
+     "explication": "L’image d’un segment par une fonction continue est un segment, où $m$ et $M$ sont le minimum et le maximum de $f$ sur $[a\\,;b]$. Ce ne sont $f(a)$ et $f(b)$ que si $f$ est monotone.",
+     "difficulte": "medium",
+     "cible": "Programme : image d’un segment.",
+     "theoremes": [
+      "Image d'un intervalle par une fonction continue"
+     ]
+    },
+    {
+     "question": "Soit $f(x) = x^2$. Que vaut $f\\left(\\left]-1\\,;2\\right]\\right)$ ?",
+     "bonne": "$[0\\,;4]$",
+     "distracteurs": [
+      "$]1\\,;4]$",
+      "$[1\\,;4]$",
+      "$]0\\,;4]$"
+     ],
+     "explication": "$f$ n’est pas monotone sur $]-1\\,;2]$ : elle décroît jusqu’à $0$ puis croît. Le minimum $0 = f(0)$ est atteint, le maximum est $f(2) = 4$, et les valeurs de $]-1\\,;0[$ donnent $]0\\,;1[$, déjà couvert.",
+     "difficulte": "hard",
+     "cible": "33 % de réussite à « dresser le tableau de variations » (exercice 24) : lire l’image sur les variations.",
+     "theoremes": [
+      "Image d'un intervalle par une fonction continue"
+     ]
+    },
+    {
+     "question": "$f$ est continue et strictement croissante sur un intervalle $I$. Que peut-on dire de $f^{-1}$ sur $f(I)$ ?",
+     "bonne": "$f^{-1}$ est continue et strictement croissante.",
+     "distracteurs": [
+      "$f^{-1}$ est continue et strictement décroissante.",
+      "$f^{-1}$ est strictement croissante, mais pas forcément continue.",
+      "$f^{-1}$ est dérivable et strictement croissante."
+     ],
+     "explication": "Théorème : $f^{-1}$ est continue sur $f(I)$ et de même monotonie que $f$. Elle n’est pas forcément dérivable : $x \\mapsto x^3$ a pour réciproque $\\sqrt[3]{x}$, non dérivable en $0$.",
+     "difficulte": "medium",
+     "cible": "Programme : continuité et monotonie de la fonction réciproque.",
+     "theoremes": [
+      "Continuité de la fonction réciproque"
+     ]
+    },
+    {
+     "question": "Dans un repère orthonormé, les courbes de $f$ et de $f^{-1}$ sont :",
+     "bonne": "symétriques par rapport à la droite d’équation $y = x$.",
+     "distracteurs": [
+      "symétriques par rapport à l’origine du repère.",
+      "symétriques par rapport à l’axe des abscisses.",
+      "symétriques par rapport à la droite d’équation $y = -x$."
+     ],
+     "explication": "Le point $(x\\,;y)$ est sur la courbe de $f$ si et seulement si $(y\\,;x)$ est sur celle de $f^{-1}$ : échanger les coordonnées, c’est la symétrie par rapport à la première bissectrice.",
+     "difficulte": "easy",
+     "cible": "Programme : représentation graphique de la réciproque.",
+     "theoremes": [
+      "Continuité de la fonction réciproque"
+     ]
+    },
+    {
+     "question": "$f(x) = x - \\sin x$ est continue et strictement croissante sur $[0\\,;\\pi]$. Sur quel intervalle est définie sa réciproque $f^{-1}$ ?",
+     "bonne": "$[0\\,;\\pi]$",
+     "distracteurs": [
+      "$[-1\\,;1]$",
+      "$[0\\,;\\pi - 1]$",
+      "$[-\\pi\\,;\\pi]$"
+     ],
+     "explication": "$f^{-1}$ est définie sur $f([0\\,;\\pi]) = [f(0)\\,;f(\\pi)] = [0 - 0\\,;\\pi - \\sin \\pi] = [0\\,;\\pi]$. Le piège : retrancher $1$ ($\\sin \\pi = 0$, pas $1$).",
+     "difficulte": "hard",
+     "cible": "33 % de réussite sur « la fonction $x - \\sin x$ et sa réciproque » (exercice 24).",
+     "theoremes": [
+      "Continuité de la fonction réciproque",
+      "Théorème de la bijection"
+     ]
+    },
+    {
+     "question": "La fonction $f(x) = \\dfrac{\\sin x}{x}$, définie sur $\\mathbb{R}^*$, est prolongeable par continuité en $0$ parce que :",
+     "bonne": "$\\lim\\limits_{x \\to 0} f(x) = 1$ est finie.",
+     "distracteurs": [
+      "$f$ est continue sur $\\mathbb{R}^*$.",
+      "$f(0)$ existe.",
+      "$\\lim\\limits_{x \\to 0} f(x) = 0$."
+     ],
+     "explication": "Une fonction non définie en $a$ est prolongeable par continuité en $a$ si et seulement si elle a une limite finie en $a$ ; on pose alors $f(0) = 1$. $f(0)$ n’existe pas, c’est tout l’objet du prolongement.",
+     "difficulte": "medium",
+     "cible": "Programme : prolongement par continuité.",
+     "theoremes": [
+      "Prolongement par continuité"
+     ]
+    },
+    {
+     "question": "Peut-on prolonger par continuité en $0$ la fonction $f(x) = \\dfrac{|x|}{x}$, définie sur $\\mathbb{R}^*$ ?",
+     "bonne": "Non : ses limites à gauche ($-1$) et à droite ($1$) en $0$ sont différentes.",
+     "distracteurs": [
+      "Oui, en posant $f(0) = 0$, la moyenne des limites à gauche et à droite.",
+      "Oui, en posant $f(0) = 1$.",
+      "Non, car $f$ n’est pas définie en $0$."
+     ],
+     "explication": "Il faudrait une limite finie en $0$ ; or $f = -1$ à gauche et $1$ à droite. Aucune valeur de $f(0)$ ne rend $f$ continue. « Non définie en $0$ » n’est pas une raison : c’est justement le cas où l’on prolonge.",
+     "difficulte": "hard",
+     "cible": "Programme : prolongement par continuité (limites à gauche et à droite).",
+     "theoremes": [
+      "Prolongement par continuité"
+     ]
+    },
+    {
+     "question": "Si $\\lim\\limits_{x \\to a} u(x) = b$ et si $g$ est continue en $b$, alors :",
+     "bonne": "$\\lim\\limits_{x \\to a} g\\left(u(x)\\right) = g(b)$",
+     "distracteurs": [
+      "$\\lim\\limits_{x \\to a} g\\left(u(x)\\right) = g(a)$",
+      "$\\lim\\limits_{x \\to a} u\\left(g(x)\\right) = u(b)$",
+      "$\\lim\\limits_{x \\to a} g\\left(u(x)\\right) = b$"
+     ],
+     "explication": "On « fait entrer » la limite dans une fonction continue : $u(x)$ tend vers $b$, et $g$ continue en $b$ donne $g(u(x)) \\to g(b)$. C’est $u(x)$ qui tend vers $b$, pas $x$.",
+     "difficulte": "medium",
+     "cible": "50 % de réussite à « montrer que $g = f^{-1} \\circ \\dots$ est continue » (DS 2024) : composée.",
+     "theoremes": [
+      "Limite et continuité d'une fonction composée"
+     ]
+    },
+    {
+     "question": "$f$ est continue sur l’intervalle $I$ et $g$ est continue sur l’intervalle $J$. Quelle condition assure que $g \\circ f$ est continue sur $I$ ?",
+     "bonne": "$f(I) \\subset J$",
+     "distracteurs": [
+      "$J \\subset f(I)$",
+      "$I \\subset J$",
+      "$g(J) \\subset I$"
+     ],
+     "explication": "Il faut que $g$ soit continue là où on l’applique, c’est-à-dire en chaque $f(x)$ avec $x \\in I$ : $f(I) \\subset J$. Les autres inclusions ne portent pas sur les valeurs prises par $f$.",
+     "difficulte": "medium",
+     "cible": "Programme : continuité d’une composée sur un intervalle.",
+     "theoremes": [
+      "Limite et continuité d'une fonction composée"
+     ]
+    },
+    {
+     "question": "Que vaut $\\lim\\limits_{x \\to +\\infty} \\sqrt{\\dfrac{4x^2 + 1}{x^2 + 3}}$ ?",
+     "bonne": "$2$",
+     "distracteurs": [
+      "$4$",
+      "$\\dfrac{1}{\\sqrt{3}}$",
+      "$+\\infty$"
+     ],
+     "explication": "La fraction tend vers $4$ (termes de plus haut degré), et $\\sqrt{\\phantom{x}}$ est continue en $4$ : la limite est $\\sqrt{4} = 2$. Oublier la racine donne $4$.",
+     "difficulte": "easy",
+     "cible": "Programme : limite d’une composée.",
+     "theoremes": [
+      "Limite et continuité d'une fonction composée"
+     ]
+    },
+    {
+     "question": "Pour tout réel $a \\geq 0$ et tous $n, p \\in \\mathbb{N}^*$, laquelle de ces égalités est vraie ?",
+     "bonne": "$\\sqrt[n]{\\sqrt[p]{a}} = \\sqrt[np]{a}$",
+     "distracteurs": [
+      "$\\sqrt[n]{\\sqrt[p]{a}} = \\sqrt[n+p]{a}$",
+      "$\\sqrt[n]{a} + \\sqrt[n]{a} = \\sqrt[n]{2a}$",
+      "$\\sqrt[n]{a^p} = \\sqrt[p]{a^n}$"
+     ],
+     "explication": "En puissances rationnelles : $\\left(a^{\\frac{1}{p}}\\right)^{\\frac{1}{n}} = a^{\\frac{1}{np}}$. $2\\sqrt[n]{a} \\neq \\sqrt[n]{2a}$ (sauf $n = 1$ ou $a = 0$), et $a^{\\frac{p}{n}} \\neq a^{\\frac{n}{p}}$ en général.",
+     "difficulte": "medium",
+     "cible": "50 % de réussite aux calculs avec des racines $n$-ièmes (DS 2023).",
+     "theoremes": [
+      "Fonction racine n-ième et puissance rationnelle"
+     ]
+    },
+    {
+     "question": "Pour résoudre $\\sqrt[3]{x + 25} - \\sqrt[3]{x + 6} = 1$ (avec $x \\geq -6$), on pose $a = \\sqrt[3]{x + 25}$ et $b = \\sqrt[3]{x + 6}$, de sorte que $a - b = 1$ et $a^3 - b^3 = 19$. On en déduit :",
+     "bonne": "$a^2 + ab + b^2 = 19$",
+     "distracteurs": [
+      "$a^2 - ab + b^2 = 19$",
+      "$a^2 + b^2 = 19$",
+      "$(a - b)^3 = 19$"
+     ],
+     "explication": "$a^3 - b^3 = (a - b)(a^2 + ab + b^2)$ et $a - b = 1$. Avec $a = b + 1$ : $3b^2 + 3b + 1 = 19$, d’où $b = 2$ (car $b \\geq 0$) et $x = 2$. $(a - b)^3 = 1$, pas $19$.",
+     "difficulte": "hard",
+     "cible": "25 % de réussite à « $\\sqrt[3]{x + 25} - \\sqrt[3]{x + 6} = 1$ » (DS 2019).",
+     "theoremes": [
+      "Fonction racine n-ième et puissance rationnelle"
+     ]
+    },
+    {
+     "question": "Pour $x > 0$, $\\dfrac{\\sqrt[3]{x^2}}{\\sqrt{x}}$ est égal à :",
+     "bonne": "$\\sqrt[6]{x}$",
+     "distracteurs": [
+      "$x^{\\frac{4}{3}}$",
+      "$\\sqrt[3]{x}$",
+      "$x^{\\frac{7}{6}}$"
+     ],
+     "explication": "$\\dfrac{x^{\\frac{2}{3}}}{x^{\\frac{1}{2}}} = x^{\\frac{2}{3} - \\frac{1}{2}} = x^{\\frac{1}{6}}$. On soustrait les exposants d’un quotient ; les additionner donne $x^{\\frac{7}{6}}$.",
+     "difficulte": "medium",
+     "cible": "Programme : puissances rationnelles.",
+     "theoremes": [
+      "Fonction racine n-ième et puissance rationnelle"
+     ]
+    },
+    {
+     "question": "Pour quels réels $x$ a-t-on $\\arctan(\\tan x) = x$ ?",
+     "bonne": "Pour $x \\in \\left]-\\dfrac{\\pi}{2}\\,;\\dfrac{\\pi}{2}\\right[$ seulement.",
+     "distracteurs": [
+      "Pour tout $x \\in \\mathbb{R}$.",
+      "Pour tout $x$ tel que $\\tan x$ est défini.",
+      "Pour $x \\in [0\\,;\\pi]$ seulement."
+     ],
+     "explication": "$\\arctan$ prend ses valeurs dans $\\left]-\\dfrac{\\pi}{2}\\,;\\dfrac{\\pi}{2}\\right[$ : $\\arctan(\\tan x)$ n’y sort jamais. Par exemple $\\arctan\\left(\\tan \\pi\\right) = \\arctan 0 = 0 \\neq \\pi$. En revanche $\\tan(\\arctan y) = y$ pour tout réel $y$.",
+     "difficulte": "medium",
+     "cible": "50 % de réussite à « montrer que $\\alpha = \\pi - \\arctan \\alpha$ » (DS 2026).",
+     "theoremes": [
+      "Fonction arc tangente"
+     ]
+    },
+    {
+     "question": "Pour tout réel $x > 0$, $\\arctan x + \\arctan \\dfrac{1}{x}$ est égal à :",
+     "bonne": "$\\dfrac{\\pi}{2}$",
+     "distracteurs": [
+      "$-\\dfrac{\\pi}{2}$",
+      "$\\dfrac{\\pi}{4}$",
+      "$0$"
+     ],
+     "explication": "Pour $x > 0$, posons $\\theta = \\arctan x \\in \\left]0\\,;\\dfrac{\\pi}{2}\\right[$ : $\\tan\\left(\\dfrac{\\pi}{2} - \\theta\\right) = \\dfrac{1}{\\tan\\theta} = \\dfrac{1}{x}$. Pour $x < 0$, la somme vaut $-\\dfrac{\\pi}{2}$ ; $\\dfrac{\\pi}{4}$ n’est obtenu que pour $x = 1$ et un seul des deux termes.",
+     "difficulte": "hard",
+     "cible": "50 % de réussite à $\\lim x \\arctan x \\arctan\\frac{1}{x}$ (DS 2017) : la relation qui débloque.",
+     "theoremes": [
+      "Fonction arc tangente"
+     ]
+    },
+    {
+     "question": "Que vaut $\\arctan\\left(\\tan \\dfrac{3\\pi}{4}\\right)$ ?",
+     "bonne": "$-\\dfrac{\\pi}{4}$",
+     "distracteurs": [
+      "$\\dfrac{3\\pi}{4}$",
+      "$\\dfrac{\\pi}{4}$",
+      "$-\\dfrac{3\\pi}{4}$"
+     ],
+     "explication": "$\\tan \\dfrac{3\\pi}{4} = -1$ et $\\arctan(-1) = -\\dfrac{\\pi}{4}$, seul angle de $\\left]-\\dfrac{\\pi}{2}\\,;\\dfrac{\\pi}{2}\\right[$ de tangente $-1$. $\\dfrac{3\\pi}{4}$ n’est pas dans cet intervalle.",
+     "difficulte": "medium",
+     "cible": "33 % de réussite à « en déduire $f(x) = \\frac{\\pi}{4} - \\frac{1}{2}\\arctan x$ » (DS 2026).",
+     "theoremes": [
+      "Fonction arc tangente"
+     ]
+    },
+    {
+     "question": "Que vaut $\\lim\\limits_{x \\to +\\infty} x \\arctan \\dfrac{1}{x}$ ?",
+     "bonne": "$1$",
+     "distracteurs": [
+      "$0$",
+      "$\\dfrac{\\pi}{2}$",
+      "$+\\infty$"
+     ],
+     "explication": "On pose $t = \\dfrac{1}{x} \\to 0^+$ : $x \\arctan \\dfrac{1}{x} = \\dfrac{\\arctan t}{t} \\to 1$. C’est une forme « $\\infty \\times 0$ » : ni $0$ ni $+\\infty$ ne s’imposent.",
+     "difficulte": "hard",
+     "cible": "50 % de réussite à $\\lim\\limits_{x \\to +\\infty} x (\\arctan x)(\\arctan\\frac{1}{x})$ (DS 2017).",
+     "theoremes": [
+      "Fonction arc tangente",
+      "Limite et continuité d'une fonction composée"
+     ]
+    },
+    {
+     "question": "Que vaut $\\lim\\limits_{x \\to +\\infty} \\dfrac{\\sin x}{x}$ ?",
+     "bonne": "$0$",
+     "distracteurs": [
+      "$1$",
+      "Elle n’existe pas, car $\\sin x$ n’a pas de limite en $+\\infty$.",
+      "$+\\infty$"
+     ],
+     "explication": "$\\left|\\dfrac{\\sin x}{x}\\right| \\leq \\dfrac{1}{x} \\to 0$ : par encadrement, la limite est $0$. La limite $1$ est celle en $0$. Un numérateur sans limite n’empêche pas le quotient d’en avoir une.",
+     "difficulte": "medium",
+     "cible": "Programme : théorème des gendarmes.",
+     "theoremes": [
+      "Théorème des gendarmes"
+     ]
+    },
+    {
+     "question": "On sait que $u(x) \\leq f(x) \\leq v(x)$ pour $x$ voisin de $a$. Quelle hypothèse permet de conclure que $\\lim\\limits_{x \\to a} f(x) = \\ell$ ?",
+     "bonne": "$\\lim\\limits_{x \\to a} u(x) = \\lim\\limits_{x \\to a} v(x) = \\ell$",
+     "distracteurs": [
+      "$\\lim\\limits_{x \\to a} u(x) = \\ell$ et $v$ est bornée au voisinage de $a$.",
+      "$\\lim\\limits_{x \\to a} \\left(v(x) - u(x)\\right) = 0$",
+      "$\\lim\\limits_{x \\to a} v(x) = \\ell$ et $u(x) \\leq \\ell$ au voisinage de $a$."
+     ],
+     "explication": "Il faut que les deux encadrants aient la même limite finie. Que $v - u$ tende vers $0$ ne suffit pas : $u$ et $v$ peuvent osciller ensemble (et $f$ avec elles).",
+     "difficulte": "hard",
+     "cible": "Programme : hypothèses du théorème des gendarmes.",
+     "theoremes": [
+      "Théorème des gendarmes"
+     ]
+    },
+    {
+     "question": "Si $|f(x) - \\ell| \\leq u(x)$ au voisinage de $a$, quelle condition donne $\\lim\\limits_{x \\to a} f(x) = \\ell$ ?",
+     "bonne": "$\\lim\\limits_{x \\to a} u(x) = 0$",
+     "distracteurs": [
+      "$\\lim\\limits_{x \\to a} u(x) = \\ell$",
+      "$u$ est bornée au voisinage de $a$.",
+      "$u(x) \\geq 0$ au voisinage de $a$."
+     ],
+     "explication": "La distance entre $f(x)$ et $\\ell$ est majorée par $u(x)$ : elle tend vers $0$ si $u(x)$ tend vers $0$. $u(x) \\geq 0$ est automatique et ne dit rien de la limite.",
+     "difficulte": "medium",
+     "cible": "Programme : limite par majoration de l’écart.",
+     "theoremes": [
+      "Théorème des gendarmes"
+     ]
+    },
+    {
+     "question": "$f$ est continue et strictement croissante sur $[1\\,;2]$, avec $f(1) < 0 < f(2)$ et $f(1{,}5) > 0$. À l’étape suivante de la dichotomie, la solution de $f(x) = 0$ est dans :",
+     "bonne": "$]1\\,;1{,}5[$",
+     "distracteurs": [
+      "$]1{,}5\\,;2[$",
+      "$]1{,}25\\,;1{,}5[$",
+      "$]1\\,;2[$, sans réduction possible"
+     ],
+     "explication": "$f(1) < 0 < f(1{,}5)$ : le changement de signe est sur $]1\\,;1{,}5[$. On garde la moitié où $f$ change de signe ; pour aller jusqu’à $]1{,}25\\,;1{,}5[$, il faudrait connaître le signe de $f(1{,}25)$.",
+     "difficulte": "medium",
+     "cible": "Programme : méthode de dichotomie.",
+     "theoremes": [
+      "Méthode de dichotomie"
+     ]
+    },
+    {
+     "question": "En partant d’un intervalle de longueur $1$, combien d’étapes de dichotomie faut-il au minimum pour obtenir un encadrement de longueur au plus $10^{-2}$ ?",
+     "bonne": "$7$",
+     "distracteurs": [
+      "$6$",
+      "$10$",
+      "$100$"
+     ],
+     "explication": "Après $n$ étapes, la longueur est $\\dfrac{1}{2^n}$. Il faut $2^n \\geq 100$ : $2^6 = 64$ ne suffit pas, $2^7 = 128$ oui.",
+     "difficulte": "hard",
+     "cible": "Programme : précision de la dichotomie.",
+     "theoremes": [
+      "Méthode de dichotomie"
+     ]
+    }
+   ]
+  },
+  {
+   "chapitre": "Suites numériques",
+   "questions": [
+    {
+     "question": "Laquelle de ces affirmations sur la convergence des suites monotones est vraie ?",
+     "bonne": "Toute suite croissante et majorée converge.",
+     "distracteurs": [
+      "Toute suite croissante converge.",
+      "Toute suite bornée converge.",
+      "Toute suite convergente est monotone."
+     ],
+     "explication": "C’est le théorème de convergence monotone. $(n)$ est croissante et diverge, $\\left((-1)^n\\right)$ est bornée et diverge, $\\left(\\dfrac{(-1)^n}{n}\\right)$ converge sans être monotone.",
+     "difficulte": "medium",
+     "cible": "Programme : convergence d’une suite monotone et bornée.",
+     "theoremes": [
+      "Suite monotone et bornée : convergence"
+     ]
+    },
+    {
+     "question": "$(u_n)$ est croissante et majorée par $2$. Que peut-on affirmer ?",
+     "bonne": "$(u_n)$ converge vers une limite $\\ell \\leq 2$.",
+     "distracteurs": [
+      "$(u_n)$ converge vers $2$.",
+      "$(u_n)$ converge vers une limite $\\ell < 2$.",
+      "$(u_n)$ diverge vers $+\\infty$."
+     ],
+     "explication": "Le majorant $2$ n’est pas forcément la limite : $u_n = 1 - \\dfrac{1}{n+1}$ tend vers $1$. Et la limite peut égaler le majorant : $u_n = 2 - \\dfrac{1}{n+1}$ tend vers $2$, d’où $\\ell \\leq 2$ et non $\\ell < 2$.",
+     "difficulte": "hard",
+     "cible": "Programme : limite et majorant (inégalité large).",
+     "theoremes": [
+      "Suite monotone et bornée : convergence"
+     ]
+    },
+    {
+     "question": "$(u_n)$ est décroissante et minorée par $0$. Laquelle de ces affirmations est vraie ?",
+     "bonne": "$(u_n)$ converge, et sa limite est positive ou nulle.",
+     "distracteurs": [
+      "$(u_n)$ converge vers $0$.",
+      "$(u_n)$ converge, et sa limite est strictement positive.",
+      "On ne peut rien dire de la convergence de $(u_n)$."
+     ],
+     "explication": "Décroissante et minorée : elle converge, et le passage à la limite dans $u_n \\geq 0$ donne $\\ell \\geq 0$. $u_n = 1 + \\dfrac{1}{n+1}$ tend vers $1$, $u_n = \\dfrac{1}{n+1}$ tend vers $0$.",
+     "difficulte": "medium",
+     "cible": "Programme : convergence monotone et passage à la limite.",
+     "theoremes": [
+      "Suite monotone et bornée : convergence"
+     ]
+    },
+    {
+     "question": "Pour quelles valeurs du réel $q$ la suite $(q^n)$ converge-t-elle ?",
+     "bonne": "$-1 < q \\leq 1$",
+     "distracteurs": [
+      "$-1 \\leq q \\leq 1$",
+      "$-1 < q < 1$",
+      "$0 \\leq q \\leq 1$"
+     ],
+     "explication": "Pour $|q| < 1$, $q^n \\to 0$ ; pour $q = 1$, la suite est constante. Pour $q = -1$, elle vaut alternativement $1$ et $-1$ : elle diverge. Pour $|q| > 1$, elle diverge.",
+     "difficulte": "medium",
+     "cible": "Programme : limite d’une suite géométrique.",
+     "theoremes": [
+      "Convergence et divergence",
+      "Suites arithmétiques et géométriques"
+     ]
+    },
+    {
+     "question": "Laquelle de ces affirmations sur la convergence d’une suite et de ses suites associées est vraie ?",
+     "bonne": "Si $(u_n)$ converge vers $\\ell$, alors $(u_{2n})$ converge vers $\\ell$.",
+     "distracteurs": [
+      "Si $(u_{2n})$ converge, alors $(u_n)$ converge.",
+      "Si $(|u_n|)$ converge, alors $(u_n)$ converge.",
+      "Si $(u_n^2)$ converge vers $\\ell^2$, alors $(u_n)$ converge vers $\\ell$."
+     ],
+     "explication": "Une suite extraite d’une suite convergente converge vers la même limite. Avec $u_n = (-1)^n$ : $(u_{2n})$, $(|u_n|)$ et $(u_n^2)$ convergent (vers $1$), mais pas $(u_n)$.",
+     "difficulte": "hard",
+     "cible": "Programme : convergence et suites extraites.",
+     "theoremes": [
+      "Convergence et divergence"
+     ]
+    },
+    {
+     "question": "Toute suite convergente est :",
+     "bonne": "bornée.",
+     "distracteurs": [
+      "monotone.",
+      "positive à partir d’un certain rang.",
+      "constante à partir d’un certain rang."
+     ],
+     "explication": "À partir d’un rang, les termes sont proches de la limite ; les premiers termes sont en nombre fini : la suite est bornée. $\\left(\\dfrac{(-1)^n}{n+1}\\right)$ converge vers $0$ sans être monotone ni de signe constant.",
+     "difficulte": "easy",
+     "cible": "Programme : convergente implique bornée.",
+     "theoremes": [
+      "Convergence et divergence"
+     ]
+    },
+    {
+     "question": "$(u_n)$ est géométrique de raison $q \\neq 1$. Que vaut $u_0 + u_1 + \\dots + u_n$ ?",
+     "bonne": "$u_0\\,\\dfrac{1 - q^{n+1}}{1 - q}$",
+     "distracteurs": [
+      "$u_0\\,\\dfrac{1 - q^{n}}{1 - q}$",
+      "$u_0\\,\\dfrac{1 - q^{n+1}}{1 + q}$",
+      "$(n+1)\\,\\dfrac{u_0 + u_n}{2}$"
+     ],
+     "explication": "Il y a $n + 1$ termes, de $u_0$ à $u_n$ : l’exposant est le nombre de termes. La dernière formule est celle d’une suite arithmétique.",
+     "difficulte": "medium",
+     "cible": "Programme : somme des termes d’une suite géométrique.",
+     "theoremes": [
+      "Suites arithmétiques et géométriques"
+     ]
+    },
+    {
+     "question": "$(u_n)$ est arithmétique de raison $r$. Laquelle de ces égalités est vraie pour tous $n, p \\in \\mathbb{N}$ ?",
+     "bonne": "$u_n = u_p + (n - p)\\,r$",
+     "distracteurs": [
+      "$u_n = u_p + (n + p)\\,r$",
+      "$u_n = u_p \\times r^{n-p}$",
+      "$u_n = u_p + n\\,r$"
+     ],
+     "explication": "Passer de l’indice $p$ à l’indice $n$, c’est ajouter $n - p$ fois la raison. $u_p \\times r^{n-p}$ est la formule géométrique ; $u_p + n\\,r$ n’est juste que pour $p = 0$.",
+     "difficulte": "medium",
+     "cible": "Programme : terme général d’une suite arithmétique.",
+     "theoremes": [
+      "Suites arithmétiques et géométriques"
+     ]
+    },
+    {
+     "question": "$(u_n)$ vérifie $u_{n+1} = \\dfrac{1}{2}u_n + 3$. On pose $v_n = u_n - \\alpha$. Pour quelle valeur de $\\alpha$ la suite $(v_n)$ est-elle géométrique ?",
+     "bonne": "$\\alpha = 6$",
+     "distracteurs": [
+      "$\\alpha = 3$",
+      "$\\alpha = 2$",
+      "$\\alpha = -6$"
+     ],
+     "explication": "$v_{n+1} = \\dfrac{1}{2}u_n + 3 - \\alpha = \\dfrac{1}{2}v_n + \\dfrac{\\alpha}{2} + 3 - \\alpha$ : il faut $3 - \\dfrac{\\alpha}{2} = 0$, soit $\\alpha = 6$, le point fixe de $x \\mapsto \\dfrac{1}{2}x + 3$.",
+     "difficulte": "hard",
+     "cible": "Programme : suites arithmético-géométriques.",
+     "theoremes": [
+      "Suites arithmétiques et géométriques",
+      "Suites récurrentes u(n+1) = f(u(n))"
+     ]
+    },
+    {
+     "question": "Deux suites $(u_n)$ et $(v_n)$ sont adjacentes si :",
+     "bonne": "l’une est croissante, l’autre décroissante, et $\\lim (u_n - v_n) = 0$.",
+     "distracteurs": [
+      "l’une est croissante, l’autre décroissante, et $u_n \\leq v_n$ pour tout $n$.",
+      "elles convergent vers la même limite.",
+      "l’une est croissante, l’autre décroissante, et $(u_n - v_n)$ est bornée."
+     ],
+     "explication": "La définition demande les monotonies contraires ET un écart qui tend vers $0$. Deux suites de même limite ne sont pas forcément monotones ; $u_n \\leq v_n$ seul n’empêche pas un écart qui reste grand.",
+     "difficulte": "medium",
+     "cible": "Programme : définition des suites adjacentes.",
+     "theoremes": [
+      "Suites adjacentes"
+     ]
+    },
+    {
+     "question": "$(u_n)$ et $(v_n)$ sont adjacentes, $(u_n)$ croissante. Laquelle de ces affirmations est vraie ?",
+     "bonne": "Elles convergent vers une même limite $\\ell$, et $u_n \\leq \\ell \\leq v_n$ pour tout $n$.",
+     "distracteurs": [
+      "Elles convergent vers une même limite $\\ell$, et $v_n \\leq \\ell \\leq u_n$ pour tout $n$.",
+      "Elles convergent, mais pas forcément vers la même limite.",
+      "Elles convergent vers une même limite $\\ell$, et $u_n < \\ell < v_n$ pour tout $n$."
+     ],
+     "explication": "La suite croissante reste en dessous de la limite, la décroissante au-dessus. Les inégalités sont larges : deux suites constantes égales à $\\ell$ sont adjacentes.",
+     "difficulte": "hard",
+     "cible": "Programme : théorème des suites adjacentes.",
+     "theoremes": [
+      "Suites adjacentes"
+     ]
+    },
+    {
+     "question": "$u_{n+1} = f(u_n)$, où $f$ est continue sur un intervalle $I$, $f(I) \\subset I$ et $u_0 \\in I$. Si $(u_n)$ converge vers $\\ell \\in I$, alors :",
+     "bonne": "$f(\\ell) = \\ell$",
+     "distracteurs": [
+      "$f(\\ell) = 0$",
+      "$f'(\\ell) = 0$",
+      "$\\ell = f(u_0)$"
+     ],
+     "explication": "On passe à la limite dans $u_{n+1} = f(u_n)$ : à gauche $\\ell$, à droite $f(\\ell)$ grâce à la continuité de $f$ en $\\ell$. La limite est un point fixe de $f$, pas un zéro.",
+     "difficulte": "medium",
+     "cible": "Programme : limite d’une suite récurrente.",
+     "theoremes": [
+      "Suites récurrentes u(n+1) = f(u(n))"
+     ]
+    },
+    {
+     "question": "Dans « si $(u_n)$, définie par $u_{n+1} = f(u_n)$, converge vers $\\ell$, alors $f(\\ell) = \\ell$ », quelle hypothèse sur $f$ est indispensable ?",
+     "bonne": "$f$ est continue en $\\ell$.",
+     "distracteurs": [
+      "$f$ est croissante sur $I$.",
+      "$f$ est dérivable sur $I$.",
+      "$f(\\ell) \\in I$."
+     ],
+     "explication": "Sans continuité en $\\ell$, $f(u_n)$ peut ne pas tendre vers $f(\\ell)$. La monotonie sert à étudier le sens de variation de $(u_n)$, pas à identifier la limite ; la dérivabilité est plus que nécessaire.",
+     "difficulte": "hard",
+     "cible": "Programme : hypothèse de continuité pour les suites récurrentes.",
+     "theoremes": [
+      "Suites récurrentes u(n+1) = f(u(n))"
+     ]
+    },
+    {
+     "question": "$f$ est croissante sur $I$, $f(I) \\subset I$, $u_{n+1} = f(u_n)$ et $u_1 \\geq u_0$. Alors :",
+     "bonne": "$(u_n)$ est croissante.",
+     "distracteurs": [
+      "$(u_n)$ est décroissante.",
+      "$(u_n)$ est croissante et majorée.",
+      "$(u_n)$ n’est pas forcément monotone."
+     ],
+     "explication": "Par récurrence : si $u_{n+1} \\geq u_n$, alors $f(u_{n+1}) \\geq f(u_n)$, c’est-à-dire $u_{n+2} \\geq u_{n+1}$. Rien ne garantit qu’elle soit majorée si $I$ n’est pas borné (exemple $f(x) = x + 1$ sur $\\mathbb{R}$).",
+     "difficulte": "hard",
+     "cible": "Programme : monotonie d’une suite récurrente.",
+     "theoremes": [
+      "Suites récurrentes u(n+1) = f(u(n))",
+      "Raisonnement par récurrence"
+     ]
+    },
+    {
+     "question": "Pour tout $n$, $\\dfrac{n}{n+1} \\leq u_n \\leq \\dfrac{n+2}{n+1}$. Alors :",
+     "bonne": "$(u_n)$ converge vers $1$.",
+     "distracteurs": [
+      "$(u_n)$ est bornée, mais peut diverger.",
+      "$(u_n)$ converge, mais pas forcément vers $1$.",
+      "$(u_n)$ converge vers $2$."
+     ],
+     "explication": "Les deux encadrants tendent vers $1$ : par le théorème des gendarmes, $(u_n)$ converge vers $1$.",
+     "difficulte": "medium",
+     "cible": "Programme : théorème des gendarmes pour les suites.",
+     "theoremes": [
+      "Théorème des gendarmes"
+     ]
+    },
+    {
+     "question": "Que vaut $\\lim\\limits_{n \\to +\\infty} \\dfrac{(-1)^n}{n}$ ?",
+     "bonne": "$0$",
+     "distracteurs": [
+      "Elle n’existe pas, car $(-1)^n$ oscille.",
+      "$1$",
+      "$-1$"
+     ],
+     "explication": "$\\left|\\dfrac{(-1)^n}{n}\\right| = \\dfrac{1}{n} \\to 0$ : par encadrement, la suite tend vers $0$. L’oscillation du signe est « écrasée » par $\\dfrac{1}{n}$.",
+     "difficulte": "medium",
+     "cible": "Programme : encadrement d’une suite qui oscille.",
+     "theoremes": [
+      "Théorème des gendarmes"
+     ]
+    },
+    {
+     "question": "$u_0 = 1$ et $u_{n+1} = \\sqrt{2 + u_n}$. On montre par récurrence que $0 < u_n < 2$. Dans l’hérédité, de $0 < u_n < 2$ on déduit :",
+     "bonne": "$\\sqrt{2} < u_{n+1} < 2$, donc $0 < u_{n+1} < 2$.",
+     "distracteurs": [
+      "$0 < u_{n+1} < \\sqrt{2}$.",
+      "$2 < u_{n+1} < 4$.",
+      "$\\sqrt{2} < u_{n+1} \\leq 4$."
+     ],
+     "explication": "$2 < 2 + u_n < 4$, et la racine carrée est strictement croissante : $\\sqrt{2} < u_{n+1} < 2$. Oublier la racine donne $2 < u_{n+1} < 4$.",
+     "difficulte": "medium",
+     "cible": "Programme : récurrence et encadrement des termes.",
+     "theoremes": [
+      "Raisonnement par récurrence"
+     ]
+    }
+   ]
+  },
+  {
+   "chapitre": "Dérivation et étude des fonctions",
+   "questions": [
+    {
+     "question": "Si $u$ est dérivable et strictement positive sur $I$, la dérivée de $x \\mapsto \\sqrt{u(x)}$ est :",
+     "bonne": "$\\dfrac{u'(x)}{2\\sqrt{u(x)}}$",
+     "distracteurs": [
+      "$\\dfrac{1}{2\\sqrt{u(x)}}$",
+      "$\\dfrac{u'(x)}{\\sqrt{u(x)}}$",
+      "$\\dfrac{u'(x)}{2\\,u(x)}$"
+     ],
+     "explication": "Dérivée d’une composée : $\\left(\\sqrt{u}\\right)' = \\dfrac{1}{2\\sqrt{u}} \\times u'$. Oublier le facteur $u'(x)$ est l’erreur la plus fréquente.",
+     "difficulte": "medium",
+     "cible": "Programme : dérivée d’une composée.",
+     "theoremes": [
+      "Dérivée d'une fonction composée"
+     ]
+    },
+    {
+     "question": "Quelle est la dérivée de $f(x) = \\cos\\left(x^2\\right)$ ?",
+     "bonne": "$-2x\\sin\\left(x^2\\right)$",
+     "distracteurs": [
+      "$-\\sin\\left(x^2\\right)$",
+      "$2x\\sin\\left(x^2\\right)$",
+      "$-\\sin(2x)$"
+     ],
+     "explication": "$\\left(\\cos u\\right)' = -u' \\sin u$ avec $u = x^2$ et $u' = 2x$. Le signe vient de $\\cos' = -\\sin$, le facteur $2x$ de la composée.",
+     "difficulte": "medium",
+     "cible": "Programme : dérivée d’une composée.",
+     "theoremes": [
+      "Dérivée d'une fonction composée"
+     ]
+    },
+    {
+     "question": "$f$ est dérivable en $a$ et $g$ est dérivable en $f(a)$. Alors $(g \\circ f)'(a)$ vaut :",
+     "bonne": "$g'\\left(f(a)\\right) \\times f'(a)$",
+     "distracteurs": [
+      "$g'(a) \\times f'(a)$",
+      "$g'\\left(f(a)\\right)$",
+      "$g'\\left(f'(a)\\right)$"
+     ],
+     "explication": "On dérive $g$ au point où elle est appliquée, $f(a)$, puis on multiplie par $f'(a)$. Exemple : $(\\sin(3x))' = 3\\cos(3x)$.",
+     "difficulte": "hard",
+     "cible": "Programme : dérivée d’une composée.",
+     "theoremes": [
+      "Dérivée d'une fonction composée"
+     ]
+    },
+    {
+     "question": "$f$ est continue, strictement monotone sur $I$, et dérivable en $a$. À quelle condition $f^{-1}$ est-elle dérivable en $b = f(a)$ ?",
+     "bonne": "$f'(a) \\neq 0$",
+     "distracteurs": [
+      "$f'(a) > 0$",
+      "$f'(b) \\neq 0$",
+      "$f(a) \\neq 0$"
+     ],
+     "explication": "$\\left(f^{-1}\\right)'(b) = \\dfrac{1}{f'(a)}$ exige $f'(a) \\neq 0$ ; le signe importe peu (fonction décroissante). La condition porte sur $f'$ en $a = f^{-1}(b)$, pas en $b$.",
+     "difficulte": "medium",
+     "cible": "Programme : dérivabilité de la fonction réciproque.",
+     "theoremes": [
+      "Dérivée de la fonction réciproque"
+     ]
+    },
+    {
+     "question": "$f$ est une bijection dérivable de $\\mathbb{R}$ sur $\\mathbb{R}$, avec $f(1) = 3$ et $f'(1) = 2$. Que vaut $\\left(f^{-1}\\right)'(3)$ ?",
+     "bonne": "$\\dfrac{1}{2}$",
+     "distracteurs": [
+      "$\\dfrac{1}{3}$",
+      "$2$",
+      "$-\\dfrac{1}{2}$"
+     ],
+     "explication": "$\\left(f^{-1}\\right)'(3) = \\dfrac{1}{f'\\left(f^{-1}(3)\\right)} = \\dfrac{1}{f'(1)} = \\dfrac{1}{2}$. On dérive $f$ en l’antécédent $1$, pas en $3$.",
+     "difficulte": "hard",
+     "cible": "Programme : dérivée de la fonction réciproque.",
+     "theoremes": [
+      "Dérivée de la fonction réciproque"
+     ]
+    },
+    {
+     "question": "La courbe de $x \\mapsto \\sqrt[3]{x}$, sur $[0\\,;+\\infty[$, admet une demi-tangente verticale :",
+     "bonne": "au point d’abscisse $0$.",
+     "distracteurs": [
+      "au point d’abscisse $1$.",
+      "en aucun point : la fonction est dérivable sur $[0\\,;+\\infty[$.",
+      "au point d’abscisse $0$, mais elle y est horizontale."
+     ],
+     "explication": "$\\sqrt[3]{\\phantom{x}}$ est la réciproque de $x \\mapsto x^3$, dont la dérivée s’annule en $0$ : le taux $\\dfrac{\\sqrt[3]{x}}{x} = \\dfrac{1}{\\sqrt[3]{x^2}}$ tend vers $+\\infty$. Elle est dérivable sur $]0\\,;+\\infty[$ seulement.",
+     "difficulte": "medium",
+     "cible": "50 % de réussite à l’étude de la dérivabilité et des demi-tangentes en un point (exercice 147).",
+     "theoremes": [
+      "Dérivée de la fonction réciproque"
+     ]
+    },
+    {
+     "question": "$f$ est deux fois dérivable sur $I$. La courbe de $f$ admet un point d’inflexion d’abscisse $a$ si :",
+     "bonne": "$f''$ s’annule en $a$ en changeant de signe.",
+     "distracteurs": [
+      "$f''(a) = 0$.",
+      "$f'$ s’annule en $a$ en changeant de signe.",
+      "$f'(a) = 0$ et $f''(a) \\neq 0$."
+     ],
+     "explication": "Un point d’inflexion est un changement de concavité. $f''(a) = 0$ ne suffit pas : $x \\mapsto x^4$ en $0$. $f'$ qui change de signe caractérise un extremum.",
+     "difficulte": "medium",
+     "cible": "Programme : point d’inflexion.",
+     "theoremes": [
+      "Concavité et point d'inflexion"
+     ]
+    },
+    {
+     "question": "Si $f'' > 0$ sur un intervalle $I$, alors sur $I$ :",
+     "bonne": "la courbe de $f$ est convexe : elle est au-dessus de ses tangentes.",
+     "distracteurs": [
+      "la courbe de $f$ est concave : elle est en dessous de ses tangentes.",
+      "$f$ est strictement croissante.",
+      "la courbe de $f$ est convexe : elle est en dessous de ses tangentes."
+     ],
+     "explication": "$f'' > 0$ : $f'$ croît, la courbe « tourne vers le haut », au-dessus de ses tangentes. Cela ne dit rien du signe de $f'$ : $x \\mapsto x^2$ est convexe et décroissante sur $]-\\infty\\,;0]$.",
+     "difficulte": "medium",
+     "cible": "Programme : concavité et dérivée seconde.",
+     "theoremes": [
+      "Concavité et point d'inflexion"
+     ]
+    },
+    {
+     "question": "La courbe de $f(x) = x^3 - 3x^2 + 1$ admet un point d’inflexion d’abscisse :",
+     "bonne": "$1$",
+     "distracteurs": [
+      "$0$",
+      "$2$",
+      "$3$"
+     ],
+     "explication": "$f''(x) = 6x - 6$ s’annule en $1$ en changeant de signe. $0$ et $2$ sont les zéros de $f'(x) = 3x^2 - 6x$ : ce sont des extremums.",
+     "difficulte": "hard",
+     "cible": "Programme : recherche d’un point d’inflexion.",
+     "theoremes": [
+      "Concavité et point d'inflexion"
+     ]
+    },
+    {
+     "question": "On sait que $\\lim\\limits_{x \\to +\\infty} f(x) = +\\infty$ et $\\lim\\limits_{x \\to +\\infty} \\dfrac{f(x)}{x} = +\\infty$. La courbe de $f$ admet au voisinage de $+\\infty$ :",
+     "bonne": "une branche parabolique de direction l’axe des ordonnées.",
+     "distracteurs": [
+      "une branche parabolique de direction l’axe des abscisses.",
+      "une asymptote oblique.",
+      "une asymptote verticale."
+     ],
+     "explication": "$\\dfrac{f(x)}{x} \\to +\\infty$ : la courbe « monte » plus vite que toute droite (comme $x^2$). La direction de l’axe des abscisses correspond à $\\dfrac{f(x)}{x} \\to 0$ (comme $\\sqrt{x}$).",
+     "difficulte": "medium",
+     "cible": "Programme : branches paraboliques.",
+     "theoremes": [
+      "Branches infinies et asymptotes"
+     ]
+    },
+    {
+     "question": "Pour montrer que la droite d’équation $y = 2x + 1$ est asymptote à la courbe de $f$ en $+\\infty$, il faut et il suffit de montrer :",
+     "bonne": "$\\lim\\limits_{x \\to +\\infty} \\left(f(x) - 2x - 1\\right) = 0$",
+     "distracteurs": [
+      "$\\lim\\limits_{x \\to +\\infty} \\dfrac{f(x)}{x} = 2$",
+      "$\\lim\\limits_{x \\to +\\infty} \\left(f(x) - 2x\\right) = 0$",
+      "$\\lim\\limits_{x \\to +\\infty} \\dfrac{f(x)}{2x + 1} = 1$"
+     ],
+     "explication": "L’écart vertical entre la courbe et la droite doit tendre vers $0$. $\\dfrac{f(x)}{x} \\to 2$ est nécessaire mais pas suffisant : $f(x) = 2x + 1 + \\sqrt{x}$ le vérifie sans asymptote.",
+     "difficulte": "hard",
+     "cible": "Programme : asymptote oblique.",
+     "theoremes": [
+      "Branches infinies et asymptotes"
+     ]
+    },
+    {
+     "question": "On sait que $\\lim\\limits_{x \\to +\\infty} \\dfrac{f(x)}{x} = 3$ et $\\lim\\limits_{x \\to +\\infty} \\left(f(x) - 3x\\right) = +\\infty$. La courbe de $f$ admet en $+\\infty$ :",
+     "bonne": "une branche parabolique de direction la droite d’équation $y = 3x$.",
+     "distracteurs": [
+      "une asymptote oblique d’équation $y = 3x$.",
+      "une branche parabolique de direction l’axe des ordonnées.",
+      "une asymptote horizontale d’équation $y = 3$."
+     ],
+     "explication": "Le coefficient directeur $3$ existe, mais $f(x) - 3x$ ne tend pas vers une limite finie : pas d’asymptote, seulement une direction asymptotique (exemple : $3x + \\sqrt{x}$).",
+     "difficulte": "medium",
+     "cible": "Programme : branches infinies.",
+     "theoremes": [
+      "Branches infinies et asymptotes"
+     ]
+    },
+    {
+     "question": "Quelles hypothèses le théorème de Rolle demande-t-il pour conclure qu’il existe $c \\in ]a\\,;b[$ tel que $f'(c) = 0$ ?",
+     "bonne": "$f$ continue sur $[a\\,;b]$, dérivable sur $]a\\,;b[$, et $f(a) = f(b)$.",
+     "distracteurs": [
+      "$f$ dérivable sur $]a\\,;b[$ et $f(a) = f(b)$.",
+      "$f$ continue sur $[a\\,;b]$, dérivable sur $]a\\,;b[$, et $f(a) = f(b) = 0$.",
+      "$f$ continue sur $]a\\,;b[$, dérivable sur $]a\\,;b[$, et $f(a) = f(b)$."
+     ],
+     "explication": "La continuité aux bornes est indispensable (sinon $f$ peut sauter en $a$ ou en $b$). Rolle ne demande pas $f(a) = f(b) = 0$, seulement l’égalité.",
+     "difficulte": "medium",
+     "cible": "Programme : théorème de Rolle.",
+     "theoremes": [
+      "Théorème de Rolle"
+     ]
+    },
+    {
+     "question": "$f(x) = |x|$ sur $[-1\\,;1]$ vérifie $f(-1) = f(1)$, mais $f'$ ne s’annule jamais sur $]-1\\,;1[$. Quelle hypothèse de Rolle manque ?",
+     "bonne": "La dérivabilité sur $]-1\\,;1[$ (en $0$).",
+     "distracteurs": [
+      "La continuité sur $[-1\\,;1]$.",
+      "L’égalité $f(-1) = f(1)$.",
+      "La stricte monotonie de $f$ sur $[-1\\,;1]$."
+     ],
+     "explication": "$|x|$ est continue partout, mais pas dérivable en $0$ (point anguleux). Sans dérivabilité sur tout $]a\\,;b[$, la conclusion de Rolle peut tomber.",
+     "difficulte": "hard",
+     "cible": "Programme : hypothèses de Rolle.",
+     "theoremes": [
+      "Théorème de Rolle"
+     ]
+    },
+    {
+     "question": "$f$ est continue sur $[a\\,;b]$ et dérivable sur $]a\\,;b[$. Le théorème des accroissements finis affirme qu’il existe $c$ tel que :",
+     "bonne": "$c \\in ]a\\,;b[$ et $f(b) - f(a) = (b - a)\\,f'(c)$.",
+     "distracteurs": [
+      "$c \\in [a\\,;b]$ et $f'(c) = 0$.",
+      "$c \\in ]a\\,;b[$ et $f(b) + f(a) = (b - a)\\,f'(c)$.",
+      "$c = \\dfrac{a + b}{2}$ et $f(b) - f(a) = (b - a)\\,f'(c)$."
+     ],
+     "explication": "Il existe un point où la tangente est parallèle à la corde. On ne sait pas où est $c$ : rien n’impose le milieu. $f'(c) = 0$ est la conclusion de Rolle, cas particulier $f(a) = f(b)$.",
+     "difficulte": "medium",
+     "cible": "33 % de réussite sur les accroissements finis (exercice 158).",
+     "theoremes": [
+      "Théorème des accroissements finis (TAF)"
+     ]
+    },
+    {
+     "question": "Pour $0 \\leq a < b$, le TAF appliqué à $\\arctan$ sur $[a\\,;b]$ donne $c \\in ]a\\,;b[$ tel que $\\dfrac{\\arctan b - \\arctan a}{b - a} = \\dfrac{1}{1 + c^2}$. Quel encadrement en déduit-on ?",
+     "bonne": "$\\dfrac{1}{1 + b^2} < \\dfrac{\\arctan b - \\arctan a}{b - a} < \\dfrac{1}{1 + a^2}$",
+     "distracteurs": [
+      "$\\dfrac{1}{1 + a^2} < \\dfrac{\\arctan b - \\arctan a}{b - a} < \\dfrac{1}{1 + b^2}$",
+      "$\\dfrac{a}{1 + a^2} < \\dfrac{\\arctan b - \\arctan a}{b - a} < \\dfrac{b}{1 + b^2}$",
+      "$0 < \\dfrac{\\arctan b - \\arctan a}{b - a} < \\dfrac{1}{1 + b^2}$"
+     ],
+     "explication": "De $0 \\leq a < c < b$ on tire $1 + a^2 < 1 + c^2 < 1 + b^2$ ; l’inverse renverse l’ordre : $\\dfrac{1}{1 + b^2} < \\dfrac{1}{1 + c^2} < \\dfrac{1}{1 + a^2}$. Oublier ce renversement est le piège.",
+     "difficulte": "hard",
+     "cible": "33 % de réussite à l’encadrement du taux de variation d’$\\arctan$ par le TAF (exercice 158).",
+     "theoremes": [
+      "Théorème des accroissements finis (TAF)"
+     ]
+    },
+    {
+     "question": "$f$ est dérivable sur un intervalle $I$ et $|f'(x)| \\leq M$ pour tout $x \\in I$. Alors, pour tous $x, y \\in I$ :",
+     "bonne": "$|f(x) - f(y)| \\leq M\\,|x - y|$",
+     "distracteurs": [
+      "$|f(x) - f(y)| \\leq M$",
+      "$|f(x) - f(y)| \\geq M\\,|x - y|$",
+      "$|f(x)| \\leq M\\,|x|$"
+     ],
+     "explication": "C’est l’inégalité des accroissements finis : la variation de $f$ est au plus $M$ fois la variation de $x$. $|f(x)| \\leq M|x|$ suppose en plus $0 \\in I$ et $f(0) = 0$.",
+     "difficulte": "medium",
+     "cible": "Programme : inégalité des accroissements finis.",
+     "theoremes": [
+      "Inégalité des accroissements finis"
+     ]
+    },
+    {
+     "question": "Pour tout $x \\geq 0$, l’inégalité des accroissements finis appliquée à $\\sin$ entre $0$ et $x$ donne :",
+     "bonne": "$|\\sin x| \\leq x$",
+     "distracteurs": [
+      "$\\sin x \\geq x$",
+      "$|\\sin x| \\leq x^2$",
+      "$|\\sin x| \\leq \\dfrac{x}{2}$"
+     ],
+     "explication": "$|\\sin'| = |\\cos| \\leq 1$, donc $|\\sin x - \\sin 0| \\leq 1 \\times |x - 0| = x$. Les autres sont fausses près de $0$ (par exemple $x = \\dfrac{1}{2}$, où $\\sin x \\approx 0{,}48$).",
+     "difficulte": "hard",
+     "cible": "Programme : inégalités par les accroissements finis.",
+     "theoremes": [
+      "Inégalité des accroissements finis"
+     ]
+    }
+   ]
+  }
+ ]
+}

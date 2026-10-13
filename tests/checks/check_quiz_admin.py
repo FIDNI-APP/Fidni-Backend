@@ -40,6 +40,10 @@ cl, el = APIClient(), APIClient()
 cl.force_authenticate(admin)
 el.force_authenticate(eleve)
 base = f'/api/pilotage/quiz/chapitre/{chapter.pk}/'
+# Un quiz = (chapitre, niveau) depuis le 13/10/2026 : l'administrateur précise le niveau, l'élève a le sien.
+N = f'?niveau={level.pk}'
+eleve.profile.class_level = level
+eleve.profile.save()
 
 check('réservé aux administrateurs', el.get('/api/pilotage/quiz/').status_code == 403
       and el.post(base, {}, format='json').status_code == 403)
@@ -49,23 +53,23 @@ check('chapitres du niveau, quiz vide', row is not None and row['total'] == 0 an
 
 Q = {'question': 'Combien vaut $\\lim_{x \\to 0} \\frac{\\sin x}{x}$ ?', 'options': ['$0$', '$1$', '$+\\infty$', 'Elle n’existe pas'],
      'correct_answer': 1, 'difficulty': 'easy', 'explanation': 'Limite usuelle.'}
-r = cl.post(base, Q, format='json')
+r = cl.post(base + N, Q, format='json')
 check('question créée en brouillon', r.status_code == 201 and r.data['en_ligne'] is False, (r.status_code, r.data))
 qid = r.data.get('id')
-check('réponse vide refusée', cl.post(base, {**Q, 'options': ['a', '', 'c']}, format='json').status_code == 400)
-check('bonne réponse hors liste refusée', cl.post(base, {**Q, 'correct_answer': 7}, format='json').status_code == 400)
-check('réponses identiques refusées', cl.post(base, {**Q, 'options': ['a', 'a']}, format='json').status_code == 400)
-check('question vide refusée', cl.post(base, {**Q, 'question': '  '}, format='json').status_code == 400)
+check('réponse vide refusée', cl.post(base + N, {**Q, 'options': ['a', '', 'c']}, format='json').status_code == 400)
+check('bonne réponse hors liste refusée', cl.post(base + N, {**Q, 'correct_answer': 7}, format='json').status_code == 400)
+check('réponses identiques refusées', cl.post(base + N, {**Q, 'options': ['a', 'a']}, format='json').status_code == 400)
+check('question vide refusée', cl.post(base + N, {**Q, 'question': '  '}, format='json').status_code == 400)
 
 r = el.get('/api/skill-assessments/available/')
 check('brouillon : invisible des élèves', r.status_code == 200 and str(chapter.pk) not in r.data, r.data)
 check('brouillon : le quiz ne se lance pas', el.get(f'/api/skill-assessments/quiz/{chapter.pk}/').status_code == 404)
 
-r = cl.post(base + 'publier/', {'en_ligne': True}, format='json')
+r = cl.post(base + 'publier/' + N, {'en_ligne': True}, format='json')
 check('mise en ligne refusée sous 5 questions', r.status_code == 400, r.status_code)
 for i in range(5):
-    cl.post(base, {**Q, 'question': f'Question {i} : $x^{i}$ ?'}, format='json')
-r = cl.post(base + 'publier/', {'en_ligne': True}, format='json')
+    cl.post(base + N, {**Q, 'question': f'Question {i} : $x^{i}$ ?'}, format='json')
+r = cl.post(base + 'publier/' + N, {'en_ligne': True}, format='json')
 check('mise en ligne (6 questions)', r.status_code == 200 and r.data['questions'] == 6, (r.status_code, r.data))
 r = el.get('/api/skill-assessments/available/')
 check('en ligne : visible des élèves', r.data.get(str(chapter.pk)) == 6, r.data)
@@ -81,9 +85,9 @@ r = cl.patch(f'/api/pilotage/quiz/question/{qid}/', {'en_ligne': False}, format=
 check('une question retirée seule', r.status_code == 200 and el.get('/api/skill-assessments/available/').data.get(str(chapter.pk)) == 5)
 check('supprimer une question', cl.delete(f'/api/pilotage/quiz/question/{qid}/').status_code == 204
       and not SkillQuestion.objects.filter(pk=qid).exists())
-r = cl.post(base + 'publier/', {'en_ligne': False}, format='json')
+r = cl.post(base + 'publier/' + N, {'en_ligne': False}, format='json')
 check('quiz retiré : plus visible', r.status_code == 200 and str(chapter.pk) not in el.get('/api/skill-assessments/available/').data)
-r = cl.get(base)
+r = cl.get(base + N)
 check('détail : chapitre, niveaux, questions', r.status_code == 200 and r.data['chapitre']['id'] == chapter.pk
       and len(r.data['questions']) == 5 and r.data['min_en_ligne'] == 5, r.status_code)
 
