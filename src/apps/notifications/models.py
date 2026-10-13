@@ -9,14 +9,16 @@ class Notification(models.Model):
     - « comment » : nouveau commentaire sur un contenu avec lequel il a interagi (voir services.py) ;
     - « reply » : réponse à l'un de ses commentaires ;
     - « report » : son signalement d'erreur a été traité, avec la réponse de l'administrateur (`message`).
+    - « quiz » (13/10/2026) : le quiz d'un chapitre de son niveau vient d'être mis en ligne (skilliq/annonces.py).
     Tant qu'il ne l'a pas lue, les nouveaux commentaires du même contenu s'ajoutent à la même notification
     (`count`) au lieu d'en créer une par commentaire.
     """
     KIND_COMMENT = 'comment'
     KIND_REPLY = 'reply'
     KIND_REPORT = 'report'
+    KIND_QUIZ = 'quiz'
     KIND_CHOICES = [(KIND_COMMENT, 'Nouveau commentaire'), (KIND_REPLY, 'Réponse à son commentaire'),
-                    (KIND_REPORT, 'Signalement traité')]
+                    (KIND_REPORT, 'Signalement traité'), (KIND_QUIZ, 'Nouveau quiz de chapitre')]
 
     recipient = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notifications')
     kind = models.CharField(max_length=10, choices=KIND_CHOICES)

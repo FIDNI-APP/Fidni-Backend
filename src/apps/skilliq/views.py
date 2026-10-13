@@ -1,4 +1,6 @@
 # apps/skilliq/views.py
+# Quiz par chapitre côté élève. Depuis le 13/10/2026, un quiz = (chapitre, niveau) : le niveau vient de ?niveau=
+# (ou « niveau » dans le corps), sinon du profil (tirage.niveau_demande) ; jamais de questions d'un autre niveau.
 from django.db import transaction
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
@@ -19,7 +21,7 @@ SECONDES_PAR_QUESTION = 60  # minuteur du quiz (côté élève, en pause pendant
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def get_my_assessments(request):
-    """Get all skill assessments for the current user"""
+    """Les derniers résultats de l'élève : un par (chapitre, niveau)."""
     assessments = SkillAssessment.objects.filter(user=request.user).select_related('chapter', 'chapter__subject')
     serializer = SkillAssessmentSerializer(assessments, many=True, context={'request': request})
     return Response(serializer.data)
@@ -28,9 +30,10 @@ def get_my_assessments(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def get_quiz(request, chapter_id):
-    """10 questions du chapitre, une par théorème d'abord (tirage.py) ; jamais une question à relire ni hors du
-    programme du niveau de l'élève."""
-    questions = tirage.tirer(tirage.disponibles(tirage.niveau_de(request.user), chapter_id))
+    """Les questions du quiz (chapitre, niveau), une par théorème d'abord (tirage.py) ; jamais une question à relire
+    ni d'un autre niveau."""
+    niveau = tirage.niveau_demande(request)
+    questions = tirage.tirer(tirage.disponibles(niveau, chapter_id))
 
     if not questions:
         return Response(
@@ -41,6 +44,7 @@ def get_quiz(request, chapter_id):
     serializer = SkillQuestionSerializer(questions, many=True)
     return Response({
         'chapter_id': chapter_id,
+        'niveau': niveau.id,
         'questions': serializer.data,
         # Minuteur façon concours (13/10/2026) : 1 min par question, en pause pendant la correction de chacune.
         'duree_secondes': SECONDES_PAR_QUESTION * len(questions),
@@ -50,7 +54,7 @@ def get_quiz(request, chapter_id):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def submit_quiz(request, chapter_id):
-    """Submit quiz answers and get results"""
+    """Réponses du quiz (chapitre, niveau) → score, correction, bilan par théorème."""
     serializer = QuizSubmissionSerializer(data=request.data)
 
     if not serializer.is_valid():
@@ -58,23 +62,24 @@ def submit_quiz(request, chapter_id):
 
     answers = serializer.validated_data['answers']
     time_spent = serializer.validated_data.get('time_spent', 0)
+    niveau = tirage.niveau_demande(request)
 
-    # Get questions for this chapter
     question_ids = [int(qid) for qid in answers.keys()]
     questions = SkillQuestion.objects.filter(
         id__in=question_ids,
         chapter_id=chapter_id,
+        class_level=niveau,
         is_active=True,
         a_relire=False,
     ).prefetch_related('theorems')
 
-    if not questions.exists():
+    if niveau is None or not questions.exists():
         return Response(
             {'error': 'Invalid questions'},
             status=status.HTTP_400_BAD_REQUEST
         )
 
-    # Calculate score with weighted difficulty
+    # Score pondéré par la difficulté (jamais montrée aux élèves).
     score = 0
     max_score = 0
     difficulty_points = {'easy': 1, 'medium': 2, 'hard': 3}
@@ -88,15 +93,19 @@ def submit_quiz(request, chapter_id):
             score += points
 
     # Bilan par théorème : ce que l'élève maîtrise, ce qu'il doit revoir (tirage.bilan).
-    par_theoreme = tirage.bilan(questions, answers, tirage.disponibles(tirage.niveau_de(request.user), chapter_id))
+    par_theoreme = tirage.bilan(questions, answers, tirage.disponibles(niveau, chapter_id))
 
-    # Un résultat par chapitre ; un nouveau passage garde le score précédent (« 40 % → 80 % »).
+    # Un résultat par (chapitre, niveau) ; un nouveau passage garde le score précédent (« 40 % → 80 % »).
+    # Un résultat d'avant le découpage par niveau (sans niveau) est repris par ce passage.
     with transaction.atomic():
-        assessment, created = SkillAssessment.objects.select_for_update().get_or_create(
-            user=request.user, chapter_id=chapter_id,
-            defaults={'score': score, 'max_score': max_score, 'answers': answers, 'time_spent': time_spent,
-                      'par_theoreme': par_theoreme})
-        if not created:
+        mine = SkillAssessment.objects.select_for_update().filter(user=request.user, chapter_id=chapter_id)
+        assessment = mine.filter(class_level=niveau).first() or mine.filter(class_level__isnull=True).first()
+        if assessment is None:
+            assessment = SkillAssessment.objects.create(
+                user=request.user, chapter_id=chapter_id, class_level=niveau, score=score, max_score=max_score,
+                answers=answers, time_spent=time_spent, par_theoreme=par_theoreme)
+        else:
+            assessment.class_level = niveau
             assessment.previous_score, assessment.previous_max = assessment.score, assessment.max_score
             assessment.attempts = (assessment.attempts or 1) + 1
             assessment.score, assessment.max_score = score, max_score
@@ -137,25 +146,42 @@ def check_answer(request, question_id):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def get_available(request):
-    """Nombre de questions servables à l'élève par chapitre : quels quiz existent vraiment ({chapitre: n})."""
-    from collections import Counter
-    n = Counter(q.chapter_id for q in tirage.disponibles(tirage.niveau_de(request.user)))
-    return Response({str(k): v for k, v in n.items()})
+    """Quiz prêts : {chapitre: nombre de questions} pour le niveau demandé (sinon celui de l'élève) ;
+    ?tous=1 : {niveau: {chapitre: nombre}} pour tous les niveaux (barre de niveaux de la page)."""
+    from django.db.models import Count
+    qs = SkillQuestion.objects.filter(is_active=True, a_relire=False, class_level__isnull=False)
+    if request.query_params.get('tous'):
+        out = {}
+        for r in qs.values('class_level_id', 'chapter_id').annotate(n=Count('id')):
+            out.setdefault(str(r['class_level_id']), {})[str(r['chapter_id'])] = r['n']
+        return Response(out)
+    niveau = tirage.niveau_demande(request)
+    if niveau is None:
+        return Response({})
+    rows = qs.filter(class_level=niveau).values('chapter_id').annotate(n=Count('id'))
+    return Response({str(r['chapter_id']): r['n'] for r in rows})
 
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def get_chapter_assessment(request, chapter_id):
-    """Get assessment for a specific chapter"""
-    try:
-        assessment = SkillAssessment.objects.get(
-            user=request.user,
-            chapter_id=chapter_id
-        )
-        serializer = SkillAssessmentSerializer(assessment, context={'request': request})
-        return Response(serializer.data)
-    except SkillAssessment.DoesNotExist:
+    """Dernier résultat de l'élève sur le quiz (chapitre, niveau)."""
+    niveau = tirage.niveau_demande(request)
+    assessment = (SkillAssessment.objects.filter(user=request.user, chapter_id=chapter_id, class_level=niveau).first()
+                  or SkillAssessment.objects.filter(user=request.user, chapter_id=chapter_id,
+                                                    class_level__isnull=True).first())
+    if assessment is None:
         return Response(
             {'error': 'No assessment found for this chapter'},
             status=status.HTTP_404_NOT_FOUND
         )
+    serializer = SkillAssessmentSerializer(assessment, context={'request': request})
+    return Response(serializer.data)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_new(request):
+    """Quiz sortis depuis moins de 14 jours : [{niveau, chapitre, depuis}] (étiquette « Nouveau », annonces.py)."""
+    from .annonces import nouveaux
+    return Response([{'niveau': lv, 'chapitre': ch, 'depuis': d.isoformat()} for (ch, lv), d in nouveaux().items()])

@@ -1,5 +1,8 @@
 {
- "niveau": "2ème Bac SM",
+ "niveaux": [
+  "2ème Bac SM",
+  "2ème Bac PC/SVT"
+ ],
  "chapitres": [
   {
    "chapitre": "Limites et continuité",

@@ -86,7 +86,7 @@ qp(admin, 'q1.a', 'success')
 for e in eleves[:3]:
     qp(e, 'q1.b', 'success')
 # Quiz actuel : une question ratée par 2 élèves sur 3, qui choisissent surtout la réponse 2.
-ancienne = SkillQuestion.objects.create(chapter=lim, question='Le TVI exige-t-il la continuité ?',
+ancienne = SkillQuestion.objects.create(chapter=lim, class_level=sm, question='Le TVI exige-t-il la continuité ?',
                                         options=['Oui, sur $[a\\,;b]$', 'Non', 'Seulement en $a$', 'Seulement en $b$'],
                                         correct_answer=0, is_active=True)
 for i, rep in enumerate([0, 2, 2]):
@@ -159,14 +159,36 @@ try:
 except Exception as exc:  # CommandError
     check('niveau inconnu refusé', 'niveau inconnu' in str(exc), exc)
 
+# Un quiz par niveau (13/10/2026) : un fichier pour SM et PC/SVT → une copie par niveau, arc tangente seulement en SM ;
+# la copie d'une question déjà validée dans l'autre niveau arrive validée (hors ligne).
+pc = ClassLevel.objects.get(name='2ème Bac PC/SVT')
+SkillQuestion.objects.filter(pk=neuves[0].pk).update(a_relire=False)
+deux_niveaux = {'niveaux': ['2ème Bac SM', '2ème Bac PC/SVT'], 'chapitres': [{'chapitre': lim.name, 'questions': [
+    q('Q1 : quelle hypothèse ?'), q('Arc : laquelle ?', theoremes=['Fonction arc tangente'])]}]}
+bil = constats.importer(deux_niveaux)
+copie = SkillQuestion.objects.filter(chapter=lim, class_level=pc, question='Q1 : quelle hypothèse ?').first()
+check('deux niveaux : la SM reçoit l’arc tangente, la PC/SVT sa copie de Q1 et pas l’arc tangente',
+      [ligne['creees'] for ligne in bil] == [1, 1] and copie is not None
+      and SkillQuestion.objects.filter(class_level=sm, question='Arc : laquelle ?').exists()
+      and not SkillQuestion.objects.filter(class_level=pc, question='Arc : laquelle ?').exists(), bil)
+check('copie d’une question validée dans l’autre niveau : validée, hors ligne',
+      copie is not None and not copie.a_relire and not copie.is_active)
+check('écart expliqué : hors programme en PC/SVT',
+      any('hors programme en 2ème Bac PC/SVT' in e['raison'] for ligne in bil for e in ligne['ecartees']), bil)
+SkillQuestion.objects.filter(question='Arc : laquelle ?').delete()
+copie.delete()
+SkillQuestion.objects.filter(pk=neuves[0].pk).update(a_relire=True)
+
 cl, el = APIClient(), APIClient()
 cl.force_authenticate(admin)
 el.force_authenticate(eleves[0])
+eleves[0].profile.class_level = sm  # un quiz = (chapitre, niveau) : l'élève a le sien
+eleves[0].profile.save()
 check('moniteur : questions de quiz à relire', cl.get('/api/pilotage/direct/').data['todo']['quiz_a_relire'] == 2)
 rows = {x['id']: x for x in cl.get('/api/pilotage/quiz/', {'niveau': sm.id}).data}
 check('liste des chapitres : à relire, contenu en ligne', rows[lim.id]['a_relire'] == 2 and rows[lim.id]['contenus']
       and not rows[vide.id]['contenus'], rows[lim.id])
-detail = cl.get(f'/api/pilotage/quiz/chapitre/{lim.id}/').data
+detail = cl.get(f'/api/pilotage/quiz/chapitre/{lim.id}/?niveau={sm.id}').data
 check('détail : source, à relire, motif', any(x['source'] == 'claude' and x['a_relire'] and x['motif']
                                              for x in detail['questions']))
 
@@ -179,25 +201,26 @@ check('élève : décompte des quiz sans les questions à relire',
 SkillQuestion.objects.filter(pk=neuves[0].pk).update(is_active=False)
 
 for i in range(3):
-    SkillQuestion.objects.create(chapter=lim, question=f'Manuelle {i}', options=['a', 'b'], correct_answer=0, is_active=False)
-r = cl.post(f'/api/pilotage/quiz/chapitre/{lim.id}/publier/', {'en_ligne': True}, format='json')
+    SkillQuestion.objects.create(chapter=lim, class_level=sm, question=f'Manuelle {i}', options=['a', 'b'], correct_answer=0,
+                                 is_active=False)
+r = cl.post(f'/api/pilotage/quiz/chapitre/{lim.id}/publier/?niveau={sm.id}', {'en_ligne': True}, format='json')
 check('mise en ligne : 4 validées + 2 à relire → refusée, la relecture est rappelée',
       r.status_code == 400 and 'attendent ta relecture' in r.data['detail'], r.data)
 r = cl.patch(f'/api/pilotage/quiz/question/{neuves[0].id}/', {'valider': True}, format='json')
 check('valider une question (quiz déjà en ligne) → validée et en ligne aussitôt',
       r.status_code == 200 and not r.data['a_relire'] and r.data['en_ligne'], r.data)
-r = cl.post(f'/api/pilotage/quiz/chapitre/{lim.id}/publier/', {'en_ligne': True}, format='json')
+r = cl.post(f'/api/pilotage/quiz/chapitre/{lim.id}/publier/?niveau={sm.id}', {'en_ligne': True}, format='json')
 neuves[1].refresh_from_db()
 check('mise en ligne : seules les validées', r.status_code == 200 and r.data['questions'] == 5
       and not neuves[1].is_active and neuves[1].a_relire, r.data)
-r = cl.post(f'/api/pilotage/quiz/chapitre/{lim.id}/valider/', {'ids': [neuves[1].id]}, format='json')
+r = cl.post(f'/api/pilotage/quiz/chapitre/{lim.id}/valider/?niveau={sm.id}', {'ids': [neuves[1].id]}, format='json')
 neuves[1].refresh_from_db()
 check('valider sur un quiz en ligne → en ligne aussitôt', r.status_code == 200 and r.data['validees'] == 1
       and neuves[1].is_active and not neuves[1].a_relire, r.data)
-check('valider : ids invalides refusés', cl.post(f'/api/pilotage/quiz/chapitre/{lim.id}/valider/', {'ids': 'x'},
+check('valider : ids invalides refusés', cl.post(f'/api/pilotage/quiz/chapitre/{lim.id}/valider/?niveau={sm.id}', {'ids': 'x'},
                                                 format='json').status_code == 400)
 check('valider réservé aux administrateurs',
-      el.post(f'/api/pilotage/quiz/chapitre/{lim.id}/valider/', {}, format='json').status_code == 403)
+      el.post(f'/api/pilotage/quiz/chapitre/{lim.id}/valider/?niveau={sm.id}', {}, format='json').status_code == 403)
 check('valider : true seulement', cl.patch(f'/api/pilotage/quiz/question/{neuves[0].id}/', {'valider': 1},
                                           format='json').status_code == 400)
 
@@ -212,14 +235,19 @@ SkillQuestion.objects.filter(chapter=lim).delete()
 SkillAssessment.objects.filter(chapter=lim).delete()
 
 
-def creer(nom, i):
-    x = SkillQuestion.objects.create(chapter=lim, question=f'{nom} {i}', options=['a', 'b', 'c', 'd'], correct_answer=0)
+def creer(nom, i, niveau):
+    x = SkillQuestion.objects.create(chapter=lim, class_level=niveau, question=f'{nom} {i}', options=['a', 'b', 'c', 'd'],
+                                     correct_answer=0)
     x.theorems.set([TH[nom]])
     return x
 
 
-par_nom = {n: [creer(n, i) for i in range(3)] for n in TH}
-pc = ClassLevel.objects.get(name='2ème Bac PC/SVT')
+# Deux quiz distincts : 2ème Bac SM (30 questions, arc tangente comprise) et 2ème Bac PC/SVT (27, sans).
+par_nom = {n: [creer(n, i, sm) for i in range(3)] for n in TH}
+for n in TH:
+    if n != 'Fonction arc tangente':
+        for i in range(3):
+            creer(n, i, pc)
 for u, lv in ((eleves[0], sm), (eleves[1], pc)):
     u.profile.class_level = lv
     u.profile.save()
@@ -232,7 +260,7 @@ def tires(client):
 
 
 couverts = [{t.name for x in tires(el) for t in x.theorems.all()} for _ in range(5)]
-check('SM : 10 questions, chaque théorème évalué à chaque passage', all(c == set(TH) for c in couverts),
+check('SM : chaque théorème évalué à chaque passage', all(c == set(TH) for c in couverts),
       [len(c) for c in couverts])
 vus_pc = [tires(el_pc) for _ in range(5)]
 check('PC/SVT : jamais une question d’arc tangente, les 9 autres théorèmes couverts',
@@ -240,32 +268,48 @@ check('PC/SVT : jamais une question d’arc tangente, les 9 autres théorèmes c
       and all({t.name for x in v for t in x.theorems.all()} == set(TH) - {'Fonction arc tangente'} for v in vus_pc))
 check('quiz disponibles selon le niveau', el.get('/api/skill-assessments/available/').data.get(str(lim.id)) == 30
       and el_pc.get('/api/skill-assessments/available/').data.get(str(lim.id)) == 27)
-# Chapitre hors du programme de l'élève (13/10/2026, Logique vue par un élève de 2ème Bac : 3 questions sur 13) :
-# pas de filtre de théorèmes, toutes ses questions.
+# Quiz d'un autre niveau (barre de niveaux de la page) : celui de ce niveau, jamais un mélange.
 tc = ClassLevel.objects.get(name='Tronc commun Sciences')
-check('chapitre hors du niveau de l’élève : chapitre de test non rattaché au Tronc commun',
-      not lim.class_levels.filter(pk=tc.pk).exists())
 eleves[2].profile.class_level = tc
 eleves[2].profile.save()
 el_tc = APIClient()
 el_tc.force_authenticate(eleves[2])
-check('chapitre hors du niveau de l’élève : toutes ses questions (arc tangente comprise)',
-      el_tc.get('/api/skill-assessments/available/').data.get(str(lim.id)) == 30
-      and len(tires(el_tc)) == 10)
+check('élève du Tronc commun, sans choix : pas de quiz « Limites et continuité » (pas de son niveau)',
+      el_tc.get('/api/skill-assessments/available/').data.get(str(lim.id)) is None
+      and el_tc.get(f'/api/skill-assessments/quiz/{lim.id}/').status_code == 404)
+check('quiz d’un autre niveau choisi (?niveau=) : ce quiz-là, en entier',
+      el_tc.get('/api/skill-assessments/available/', {'niveau': sm.id}).data.get(str(lim.id)) == 30
+      and len(el_tc.get(f'/api/skill-assessments/quiz/{lim.id}/', {'niveau': pc.id}).data['questions']) == 27)
+check('tous les niveaux d’un coup (?tous=1)', el_tc.get('/api/skill-assessments/available/', {'tous': 1}).data
+      .get(str(pc.id), {}).get(str(lim.id)) == 27)
+pc_vu_par_sm = [SkillQuestion.objects.get(pk=x['id']) for x in
+                el.get(f'/api/skill-assessments/quiz/{lim.id}/', {'niveau': pc.id}).data['questions']]
+check('élève de SM qui choisit le quiz PC/SVT : jamais d’arc tangente (quiz non partagés)',
+      len(pc_vu_par_sm) == 27 and all(x.class_level_id == pc.id for x in pc_vu_par_sm)
+      and not any(t.name == 'Fonction arc tangente' for x in pc_vu_par_sm for t in x.theorems.all()))
+check('toutes les questions du chapitre à chaque passage (30 au plus)', len(tires(el)) == 30 and len(tires(el_pc)) == 27)
 
 servies = tires(el)
 tvi = next(x for x in servies if x.theorems.first().name == 'Théorème des valeurs intermédiaires (TVI)')
 reponses = {str(x.id): (1 if x.id == tvi.id else 0) for x in servies}
 r = el.post(f'/api/skill-assessments/submit/{lim.id}/', {'answers': reponses}, format='json')
 pt = r.data.get('par_theoreme') or {}
-check('bilan : le TVI raté en tête (0 %), les autres à 100 %', r.status_code == 200
-      and pt['theoremes'][0]['name'] == 'Théorème des valeurs intermédiaires (TVI)' and pt['theoremes'][0]['pct'] == 0
+check('bilan : le TVI en partie raté en tête (2 sur 3, 67 %), les autres à 100 %', r.status_code == 200
+      and pt['theoremes'][0]['name'] == 'Théorème des valeurs intermédiaires (TVI)' and pt['theoremes'][0]['pct'] == 67
+      and pt['theoremes'][0]['justes'] == 2 and pt['theoremes'][0]['total'] == 3
       and all(s['pct'] == 100 for s in pt['theoremes'][1:]) and len(pt['theoremes']) == 10, pt)
 check('bilan : à revoir = le TVI, chapitre pas maîtrisé', pt['a_revoir'] == ['Théorème des valeurs intermédiaires (TVI)']
       and pt['complet'] is False and pt['non_evalues'] == [])
 check('correction : théorème de chaque question', all(c['theoremes'] for c in r.data['correction']))
-check('bilan gardé avec le résultat', SkillAssessment.objects.get(user=eleves[0], chapter=lim).par_theoreme == pt
+check('bilan gardé avec le résultat, rangé au niveau du quiz',
+      SkillAssessment.objects.get(user=eleves[0], chapter=lim).par_theoreme == pt
+      and SkillAssessment.objects.get(user=eleves[0], chapter=lim).class_level_id == sm.id
       and el.get('/api/skill-assessments/my/').data[0]['par_theoreme'] == pt)
+r = el.post(f'/api/skill-assessments/submit/{lim.id}/', {'answers': {str(x.id): 0 for x in pc_vu_par_sm}, 'niveau': pc.id},
+            format='json')
+check('quiz PC/SVT passé par un élève de SM : un résultat à part', r.status_code == 200
+      and SkillAssessment.objects.filter(user=eleves[0], chapter=lim).count() == 2
+      and r.data['class_level'] == pc.id, r.status_code)
 servies = tires(el)
 r = el.post(f'/api/skill-assessments/submit/{lim.id}/', {'answers': {str(x.id): 0 for x in servies}}, format='json')
 check('tout juste → chapitre maîtrisé à 100 %', r.data['par_theoreme']['complet'] is True
@@ -275,7 +319,7 @@ b = tirage.bilan([deux], {str(deux.id): 0}, [deux, par_nom['Méthode de dichotom
 check('théorème non tiré → « non évalué », chapitre pas déclaré maîtrisé',
       b['non_evalues'] == [{'id': TH['Méthode de dichotomie'].id, 'name': 'Méthode de dichotomie'}] and b['complet'] is False)
 
-d = cl.get(f'/api/pilotage/quiz/chapitre/{lim.id}/').data
+d = cl.get(f'/api/pilotage/quiz/chapitre/{lim.id}/?niveau={sm.id}').data
 check('admin : théorèmes du chapitre et de chaque question', len(d['chapitre']['theoremes']) == 10
       and all(x['theoremes'] for x in d['questions']))
 autre = Theorem.objects.exclude(chapters=lim).first()
@@ -305,8 +349,56 @@ servies = tires(el)
 reponses = {str(x.id): 0 for x in servies[:4]} | {str(x.id): -1 for x in servies[4:]}
 r = el.post(f'/api/skill-assessments/submit/{lim.id}/', {'answers': reponses, 'time_spent': 600}, format='json')
 check('temps écoulé : les questions sans réponse (-1) comptent comme fausses', r.status_code == 200
-      and sum(c['is_correct'] for c in r.data['correction']) == 4 and len(r.data['correction']) == 10
+      and sum(c['is_correct'] for c in r.data['correction']) == 4 and len(r.data['correction']) == 30
       and r.data['score'] < r.data['max_score'], (r.status_code, r.data.get('score')))
+
+
+# ---------------------------------------------------------------- « Nouveau » et notification
+from apps.notifications.models import Notification  # noqa: E402
+from apps.skilliq import annonces  # noqa: E402
+
+Notification.objects.filter(kind='quiz').delete()
+for u, lv in ((eleves[0], sm), (eleves[1], pc), (eleves[3], tc)):
+    u.profile.class_level = lv
+    u.profile.save()
+staff.profile.class_level = sm
+staff.profile.save()
+def nouveau(niveau):
+    return any(x['chapitre'] == lim.id and x['niveau'] == niveau.id for x in el.get('/api/skill-assessments/nouveaux/').data)
+
+
+check('quiz retiré', cl.post(f'/api/pilotage/quiz/chapitre/{lim.id}/publier/?niveau={sm.id}', {'en_ligne': False},
+                             format='json').status_code == 200
+      and not SkillQuestion.objects.filter(chapter=lim, class_level=sm, en_ligne_le__isnull=False).exists())
+check('quiz hors ligne : pas « Nouveau »', not nouveau(sm))
+r = cl.post(f'/api/pilotage/quiz/chapitre/{lim.id}/publier/?niveau={sm.id}', {'en_ligne': True}, format='json')
+dest = set(Notification.objects.filter(kind='quiz', target=f'quiz:{lim.id}:{sm.id}').values_list('recipient_id', flat=True))
+check('quiz SM en ligne : notification aux élèves de SM seulement (pas PC/SVT, pas l’équipe)',
+      r.status_code == 200 and eleves[0].id in dest and eleves[1].id not in dest and eleves[3].id not in dest
+      and staff.id not in dest and admin.id not in dest, dest)
+cl.post(f'/api/pilotage/quiz/chapitre/{lim.id}/publier/?niveau={pc.id}', {'en_ligne': False}, format='json')
+cl.post(f'/api/pilotage/quiz/chapitre/{lim.id}/publier/?niveau={pc.id}', {'en_ligne': True}, format='json')
+check('quiz PC/SVT en ligne : ses élèves prévenus à leur tour',
+      Notification.objects.filter(recipient=eleves[1], target=f'quiz:{lim.id}:{pc.id}').exists()
+      and not Notification.objects.filter(recipient=eleves[0], target=f'quiz:{lim.id}:{pc.id}').exists())
+n = Notification.objects.filter(recipient=eleves[0], kind='quiz').first()
+check('notification : titre = chapitre, lien vers le quiz de son niveau', n and n.title == lim.name
+      and n.link == f'/skill-iq?chapitre={lim.id}&niveau={sm.id}')
+r = APIClient()
+r.force_authenticate(eleves[0])
+liste = r.get('/api/notifications/').data['results'] if r.get('/api/notifications/').status_code == 200 else []
+check('cloche : la notification arrive, lien vers le quiz', any(
+    x['kind'] == 'quiz' and x['url'] == f'/skill-iq?chapitre={lim.id}&niveau={sm.id}' for x in liste), liste[:1])
+cl.post(f'/api/pilotage/quiz/chapitre/{lim.id}/publier/?niveau={sm.id}', {'en_ligne': False}, format='json')
+cl.post(f'/api/pilotage/quiz/chapitre/{lim.id}/publier/?niveau={sm.id}', {'en_ligne': True}, format='json')
+check('quiz retiré puis remis : pas de deuxième notification',
+      Notification.objects.filter(recipient=eleves[0], target=f'quiz:{lim.id}:{sm.id}').count() == 1)
+check('« Nouveau » : quiz mis en ligne il y a moins de 14 jours, par niveau', nouveau(sm) and nouveau(pc))
+from datetime import timedelta  # noqa: E402
+from django.utils import timezone  # noqa: E402
+SkillQuestion.objects.filter(chapter=lim).update(en_ligne_le=timezone.now() - timedelta(days=15))
+check('« Nouveau » : plus après 14 jours', not nouveau(sm) and not nouveau(pc))
+check('annonce rejouable sans doublon', annonces.annoncer(lim, sm) == 0)
 
 print(f'\n{sum(results)}/{len(results)} vérifications réussies')
 sys.exit(0 if all(results) else 1)

@@ -117,7 +117,7 @@ check('un autre élève ne voit rien des données du premier', d2['totals']['que
 
 # ── Skill IQ : quiz disponibles, pas de fuite de la réponse, correction après envoi, score au tableau de bord
 from apps.skilliq.models import SkillQuestion  # noqa: E402
-qs = [SkillQuestion.objects.create(chapter=limites, question=f'Q{i}', options=['a', 'b', 'c'], correct_answer=1,
+qs = [SkillQuestion.objects.create(chapter=limites, class_level=level, question=f'Q{i}', options=['a', 'b', 'c'], correct_answer=1,
                                    difficulty='easy', explanation=f'Parce que {i}') for i in range(3)]
 cache.clear()
 check('Skill IQ : quiz disponibles par chapitre', cl.get('/api/skill-assessments/available/').data == {str(limites.id): 3})

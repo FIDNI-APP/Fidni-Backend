@@ -22,7 +22,7 @@ class SkillAssessmentSerializer(serializers.ModelSerializer):
     class Meta:
         model = SkillAssessment
         fields = ['id', 'chapter', 'chapter_name', 'subject_name', 'score', 'max_score', 'level', 'time_spent',
-                  'previous_score', 'previous_max', 'attempts', 'hub_url', 'par_theoreme', 'completed_at']
+                  'previous_score', 'previous_max', 'attempts', 'hub_url', 'par_theoreme', 'class_level', 'completed_at']
 
     def get_subject_name(self, obj):
         if obj.chapter and obj.chapter.subject:
@@ -41,6 +41,8 @@ class SkillAssessmentSerializer(serializers.ModelSerializer):
 
     def get_hub_url(self, obj):
         from apps.caracteristics.hubs import hub_url
+        if obj.class_level_id:  # quiz d'un niveau précis (13/10/2026) : les exercices de ce niveau
+            return hub_url('exercises', obj.class_level, obj.chapter)
         level, chapter_ids = self._level()
         return hub_url('exercises', level, obj.chapter) if obj.chapter_id in chapter_ids else None
 

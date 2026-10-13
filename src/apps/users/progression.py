@@ -87,7 +87,10 @@ def _collect(user, journal=False):
     for r in completes:
         r['object_id'] = int(r['object_id'])  # Complete.object_id : CharField
     time_rows = list(StudyTimeDay.objects.filter(user=user).values('object_id', 'date', 'seconds'))
-    quizzes = {q.chapter_id: q for q in SkillAssessment.objects.filter(user=user)}
+    # Un résultat par (chapitre, niveau) depuis le 13/10/2026 : celui du niveau de l'élève l'emporte.
+    mon_niveau = getattr(getattr(user, 'profile', None), 'class_level_id', None)
+    quizzes = {q.chapter_id: q for q in sorted(SkillAssessment.objects.filter(user=user),
+                                               key=lambda a: a.class_level_id == mon_niveau)}
     events = list(AssessmentEvent.objects.filter(user=user).order_by('at', 'id').values_list(
         'object_id', 'question_path', 'status', 'aide', 'reprise', 'at')) if journal else []
 
@@ -154,7 +157,10 @@ def _chapter_entries(chapter_list, chap, quizzes, level):
     counts = Counter(Content.chapters.through.objects.filter(
         chapter_id__in=[c.id for c in chapter_list], content__type__in=('exercise', 'exam'),
         **({'content__class_levels': level} if level else {})).values_list('chapter_id', flat=True))
-    quiz_ready = set(SkillQuestion.objects.filter(is_active=True).values('chapter_id').annotate(n=Count('id'))
+    # Quiz prêt : celui du niveau de l'élève (un quiz par chapitre et par niveau, 13/10/2026).
+    quiz_ready = set(SkillQuestion.objects.filter(is_active=True, a_relire=False,
+                                                  **({'class_level': level} if level else {}))
+                     .values('chapter_id').annotate(n=Count('id'))
                      .filter(n__gt=0).values_list('chapter_id', flat=True))
     # Page du chapitre au niveau de l'élève : seulement si le chapitre est de son niveau (sinon 404).
     in_level = set(Chapter.objects.filter(class_levels=level, id__in=[c.id for c in chapter_list])

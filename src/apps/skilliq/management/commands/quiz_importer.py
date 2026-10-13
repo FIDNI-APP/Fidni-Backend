@@ -35,7 +35,7 @@ class Command(BaseCommand):
             self.stdout.write(f'== {os.path.basename(chemin)}')
             for ligne in bilan:
                 total += ligne['creees']
-                self.stdout.write(f"{ligne['chapitre']} : {ligne['creees']} question(s)"
+                self.stdout.write(f"{ligne['chapitre']} ({ligne['niveau']}) : {ligne['creees']} question(s)"
                                   + (' (simulation)' if simulation else ''))
                 for e in ligne['ecartees']:
                     self.stdout.write(f"   écartée : {e['question']} — {e['raison']}")

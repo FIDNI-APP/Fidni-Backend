@@ -286,48 +286,67 @@ def _cle(s):
 
 
 def importer(data, simulation=False):
-    """{"niveau": nom, "chapitres": [{"chapitre": nom exact, "questions": [...]}]} → bilan par chapitre.
-    Questions enregistrées en brouillon « à relire », rattachées à leurs théorèmes (au moins un, noms exacts du
-    chapitre) ; une question déjà présente (même texte) est ignorée, l'import peut donc être rejoué.
-    `simulation` : rien n'est écrit."""
+    """{"niveau": nom | "niveaux": [noms], "chapitres": [{"chapitre": nom exact, "questions": [...]}]} → bilan par
+    (chapitre, niveau).
+
+    Un quiz = (chapitre, niveau), jamais partagé : chaque niveau listé reçoit sa propre copie des questions, sauf
+    celles dont un théorème n'est pas au programme de ce niveau (Theorem.class_levels : arc tangente, Rolle, TAF
+    écartés du quiz 2ème Bac PC/SVT). Questions rattachées à leurs théorèmes (au moins un, noms exacts du chapitre),
+    en brouillon « à relire » — sauf si la même question (même texte) est déjà validée dans le quiz d'un autre niveau
+    du chapitre : elle arrive validée, hors ligne. Une question déjà présente dans le quiz est ignorée : l'import
+    peut être rejoué. `simulation` : rien n'est écrit."""
     from django.db import transaction
     from apps.caracteristics.models import Chapter, ClassLevel, Theorem
     from apps.caracteristics.programme import nom_niveau_actuel
 
-    niveau = ClassLevel.objects.filter(name=nom_niveau_actuel(str(data.get('niveau') or ''))).first()
-    if niveau is None:
-        raise ValueError(f"niveau inconnu : {data.get('niveau')!r}")
+    niveaux = []
+    for nom in data.get('niveaux') or [data.get('niveau')]:
+        lv = ClassLevel.objects.filter(name=nom_niveau_actuel(str(nom or ''))).first()
+        if lv is None:
+            raise ValueError(f'niveau inconnu : {nom!r}')
+        niveaux.append(lv)
     bilan = []
     with transaction.atomic():
-        for bloc in data.get('chapitres') or []:
-            nom = str(bloc.get('chapitre') or '')
-            ch = Chapter.objects.filter(name=nom, class_levels=niveau).first()
-            ligne = {'chapitre': nom, 'creees': 0, 'ecartees': []}
-            bilan.append(ligne)
-            if ch is None:
-                ligne['ecartees'].append({'question': '', 'raison': 'chapitre inconnu à ce niveau'})
-                continue
-            vues = {_cle(t) for t in SkillQuestion.objects.filter(chapter=ch).values_list('question', flat=True)}
-            du_chapitre = {th.name: th for th in Theorem.objects.filter(chapters=ch).distinct()}
-            for q in bloc.get('questions') or []:
-                champs, raison = controler(q)
-                noms = q.get('theoremes') if isinstance(q, dict) else None
-                if champs and _cle(champs['question']) in vues:
-                    champs, raison = None, 'déjà présente'
-                elif champs and (not isinstance(noms, list) or not noms):
-                    champs, raison = None, 'aucun théorème indiqué'
-                elif champs and any(n not in du_chapitre for n in noms):
-                    champs, raison = None, 'théorème inconnu pour ce chapitre : ' + ', '.join(
-                        str(n) for n in noms if n not in du_chapitre)
-                if not champs:
-                    ligne['ecartees'].append({'question': _propre((q or {}).get('question') if isinstance(q, dict)
-                                                                  else '')[:120], 'raison': raison})
+        for niveau in niveaux:
+            for bloc in data.get('chapitres') or []:
+                nom = str(bloc.get('chapitre') or '')
+                ch = Chapter.objects.filter(name=nom, class_levels=niveau).first()
+                ligne = {'chapitre': nom, 'niveau': niveau.name, 'creees': 0, 'ecartees': []}
+                bilan.append(ligne)
+                if ch is None:
+                    ligne['ecartees'].append({'question': '', 'raison': 'chapitre inconnu à ce niveau'})
                     continue
-                vues.add(_cle(champs['question']))
-                if not simulation:
-                    nouvelle = SkillQuestion.objects.create(chapter=ch, is_active=False, a_relire=True,
-                                                            source='claude', **champs)
-                    nouvelle.theorems.set([du_chapitre[n] for n in noms])
-                ligne['creees'] += 1
+                vues = {_cle(t) for t in SkillQuestion.objects.filter(chapter=ch, class_level=niveau)
+                        .values_list('question', flat=True)}
+                validees = {_cle(t) for t in SkillQuestion.objects.filter(chapter=ch, a_relire=False)
+                            .exclude(class_level=niveau).values_list('question', flat=True)}
+                du_chapitre = {th.name: th for th in
+                               Theorem.objects.filter(chapters=ch).prefetch_related('class_levels').distinct()}
+                for q in bloc.get('questions') or []:
+                    champs, raison = controler(q)
+                    noms = q.get('theoremes') if isinstance(q, dict) else None
+                    if champs and _cle(champs['question']) in vues:
+                        champs, raison = None, 'déjà présente'
+                    elif champs and (not isinstance(noms, list) or not noms):
+                        champs, raison = None, 'aucun théorème indiqué'
+                    elif champs and any(n not in du_chapitre for n in noms):
+                        champs, raison = None, 'théorème inconnu pour ce chapitre : ' + ', '.join(
+                            str(n) for n in noms if n not in du_chapitre)
+                    elif champs and any(du_chapitre[n].class_levels.all()
+                                        and niveau.id not in {lv.id for lv in du_chapitre[n].class_levels.all()}
+                                        for n in noms):
+                        champs, raison = None, f'hors programme en {niveau.name} : ' + ', '.join(
+                            n for n in noms if du_chapitre[n].class_levels.all()
+                            and niveau.id not in {lv.id for lv in du_chapitre[n].class_levels.all()})
+                    if not champs:
+                        ligne['ecartees'].append({'question': _propre((q or {}).get('question') if isinstance(q, dict)
+                                                                      else '')[:120], 'raison': raison})
+                        continue
+                    cle = _cle(champs['question'])
+                    vues.add(cle)
+                    if not simulation:
+                        nouvelle = SkillQuestion.objects.create(chapter=ch, class_level=niveau, is_active=False,
+                                                                a_relire=cle not in validees, source='claude', **champs)
+                        nouvelle.theorems.set([du_chapitre[n] for n in noms])
+                    ligne['creees'] += 1
     return bilan
-

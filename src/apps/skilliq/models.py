@@ -33,9 +33,15 @@ class SkillQuestion(models.Model):
     a_relire = models.BooleanField(default=False)
     motif = models.TextField(blank=True, default='')
     # Théorèmes (ou propriétés) qu'évalue la question (13/10/2026) : bilan « maîtrisé / à revoir » par théorème à
-    # la fin du quiz, tirage qui couvre chaque théorème, et filtre de niveau (un théorème hors programme du niveau
-    # de l'élève — arc tangente en PC/SVT — écarte la question).
+    # la fin du quiz, et tirage qui couvre chaque théorème.
     theorems = models.ManyToManyField('caracteristics.Theorem', blank=True, related_name='skill_questions')
+    # Niveau du quiz (13/10/2026) : un quiz = (chapitre, niveau), jamais partagé entre deux niveaux. « Limites et
+    # continuité » a un quiz 2ème Bac SM (avec arc tangente) et un quiz 2ème Bac PC/SVT (sans) : des questions
+    # distinctes, mises en ligne séparément. Vide : question d'avant ce découpage, jamais servie.
+    class_level = models.ForeignKey('caracteristics.ClassLevel', on_delete=models.SET_NULL, null=True, blank=True,
+                                    related_name='skill_questions')
+    # Première mise en ligne (13/10/2026) : un quiz de chapitre est « Nouveau » 14 jours (skilliq/annonces.py).
+    en_ligne_le = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         app_label = 'skilliq'
@@ -76,13 +82,17 @@ class SkillAssessment(models.Model):
     # Bilan du dernier passage par théorème (13/10/2026) : [{id, name, justes, total, pct}], du moins maîtrisé
     # au mieux maîtrisé ; « non_evalues » à part. Vide pour les passages plus anciens.
     par_theoreme = models.JSONField(default=dict, blank=True)
+    # Niveau du quiz passé (13/10/2026) : un résultat par (élève, chapitre, niveau). Vide : passage d'avant le
+    # découpage par niveau, repris au prochain passage du quiz de son niveau.
+    class_level = models.ForeignKey('caracteristics.ClassLevel', on_delete=models.SET_NULL, null=True, blank=True,
+                                    related_name='+')
 
     completed_at = models.DateTimeField(auto_now=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         app_label = 'skilliq'
-        unique_together = ('user', 'chapter')
+        unique_together = ('user', 'chapter', 'class_level')
         ordering = ['-completed_at']
 
     def __str__(self):
