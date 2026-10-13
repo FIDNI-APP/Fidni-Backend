@@ -52,7 +52,9 @@ import copy
 import re
 
 MATIERE = 'Mathématiques'
-TC, SM1, SM2, PC = 'Tronc commun Sciences', '1ère Bac SM', '2ème Bac SM', '2ème Bac PC'
+# 12/10/2026 : « 2ème Bac PC » renommé « 2ème Bac PC/SVT » (migration caracteristics/0004_pc_svt ; ancienne adresse
+# du niveau : ALIAS_NIVEAUX, ancien nom accepté à l'import : NOMS_NIVEAUX_ANCIENS).
+TC, SM1, SM2, PC = 'Tronc commun Sciences', '1ère Bac SM', '2ème Bac SM', '2ème Bac PC/SVT'
 
 # (nom affiché, ordre des menus = ClassLevel.order), du plus jeune au plus avancé.
 NIVEAUX = [(TC, 1), (SM1, 2), (SM2, 3), (PC, 4)]
@@ -70,7 +72,7 @@ ORDRE_NATURE = {
 # nos repères, comme indications.
 TITRES_SEULS = {SM1}
 
-# Niveau précédent dans la même filière (prérequis permis). Le 2ème Bac PC suit la 1ère Bac Sciences
+# Niveau précédent dans la même filière (prérequis permis). Le 2ème Bac PC/SVT suit la 1ère Bac Sciences
 # expérimentales, absente du site.
 NIVEAU_PRECEDENT = {SM1: TC, SM2: SM1}
 
@@ -1243,7 +1245,7 @@ _SM2 = [
               remarque="Nom actuel gardé (partagé avec le PC). Le dénombrement n'est pas un chapitre de 2ème Bac SM (c'est un chapitre de 1ère) : il y sert d'outil (capacité 2.3.1, « utiliser le modèle combinatoire adéquat »). Ce chapitre reçoit donc les contenus de 2ème Bac SM rangés dans « Dénombrement », détaché de ce niveau (voir question ouverte)."),
 ]
 
-# ── 2ème Bac PC — ordre : progression usuelle (repère, non officielle ; le cadre n'en donne pas)
+# ── 2ème Bac PC/SVT — ordre : progression usuelle (repère, non officielle ; le cadre n'en donne pas)
 _PC = [
     _chapitre('Limites et continuité', 'Analyse',
               titre_officiel='Deuxième sous-domaine : Continuité, dérivation et étude de fonctions (items 1.2.1 à 1.2.4, et la partie « monotonie et représentation graphique » de 1.2.11)',
@@ -1256,7 +1258,7 @@ _PC = [
                   "(1.2.11, partie) Déterminer la monotonie de la fonction réciproque d'une fonction continue et strictement monotone sur un intervalle et la représenter graphiquement.",
               ],
               hors_programme=[
-                  'Fonction arc tangente : hors programme en 2ème Bac PC.',
+                  'Fonction arc tangente : hors programme en 2ème Bac PC/SVT.',
               ],
               theoremes=[
                   'Théorème des gendarmes',
@@ -1297,7 +1299,7 @@ _PC = [
                   "1.2.22. Étudier des fonctions ou des composées de fonctions figurant au programme et les représenter graphiquement (ensemble de définition, éléments de symétrie, périodicité, monotonie, branches infinies, tangentes, concavité, points d'inflexion...).",
               ],
               hors_programme=[
-                  'Théorème de Rolle, théorème et inégalité des accroissements finis : hors programme en 2ème Bac PC.',
+                  'Théorème de Rolle, théorème et inégalité des accroissements finis : hors programme en 2ème Bac PC/SVT.',
               ],
               theoremes=[
                   "Dérivée d'une fonction composée",
@@ -1331,7 +1333,7 @@ _PC = [
                   '1.1.5. Utiliser les suites pour résoudre des problèmes variés issus de domaines différents.',
               ],
               hors_programme=[
-                  'Suites adjacentes : hors programme en 2ème Bac PC.',
+                  'Suites adjacentes : hors programme en 2ème Bac PC/SVT.',
               ],
               perimetre=[
                   'Suites uₙ₊₁ = a·uₙ + b et uₙ₊₁ = (a·uₙ + b)/(c·uₙ + d) étudiées sur des exemples, au moyen de suites arithmétiques ou géométriques auxiliaires (1.1.1).',
@@ -1412,7 +1414,7 @@ _PC = [
                   "2.4.9. Résoudre des équations dont la résolution se ramène à la résolution d'une équation du second degré à une seule inconnue à coefficients réels.",
               ],
               hors_programme=[
-                  "Racines n-ièmes d'un nombre complexe (zⁿ = a) et composées de transformations en écriture complexe : hors programme en 2ème Bac PC.",
+                  "Racines n-ièmes d'un nombre complexe (zⁿ = a) et composées de transformations en écriture complexe : hors programme en 2ème Bac PC/SVT.",
               ],
               perimetre=[
                   'Équations du second degré à coefficients réels (2.4.8, 2.4.9).',
@@ -1519,7 +1521,7 @@ _PC = [
                   "1.3.4. Calculer le volume d'un solide de révolution engendré par la rotation de la courbe d'une fonction autour de l'axe des abscisses.",
               ],
               hors_programme=[
-                  'Sommes de Riemann et fonctions x ↦ ∫ₐ^{u(x)} f(t) dt : hors programme en 2ème Bac PC.',
+                  'Sommes de Riemann et fonctions x ↦ ∫ₐ^{u(x)} f(t) dt : hors programme en 2ème Bac PC/SVT.',
               ],
               perimetre=[
                   "Volumes de révolution autour de l'axe des abscisses (1.3.4).",
@@ -1587,7 +1589,7 @@ _PC = [
                   "2.5.6. Reconnaître la loi binomiale et l'appliquer dans des situations variées.",
               ],
               hors_programme=[
-                  'Fonction de répartition : hors programme en 2ème Bac PC.',
+                  'Fonction de répartition : hors programme en 2ème Bac PC/SVT.',
               ],
               theoremes=[
                   'Probabilité conditionnelle',
@@ -1842,8 +1844,27 @@ ALIAS_SLUGS = {
 }
 
 
+# Anciennes adresses d'un NIVEAU (/<rubrique>/niveau/<ancien>[/<chapitre>]) → nouveau slug : redirection 301.
+ALIAS_NIVEAUX = {
+    '2eme-bac-pc': '2eme-bac-pc-svt',  # « 2ème Bac PC » → « 2ème Bac PC/SVT » (12/10/2026)
+}
+
+# Anciens noms de niveau encore écrits dans des fiches, l'import ou l'IA → nom actuel.
+NOMS_NIVEAUX_ANCIENS = {
+    '2ème bac pc': PC, '2eme bac pc': PC, '2 bac pc': PC, '2bac pc': PC, '2 pc': PC,
+    '2ème bac svt': PC, '2eme bac svt': PC, '2 bac svt': PC, '2bac svt': PC, '2 svt': PC,
+    '2ème bac pc/svt': PC, '2 pc/svt': PC, '2bac pc/svt': PC,
+}
+
+
+def nom_niveau_actuel(nom):
+    """Nom actuel d'un niveau écrit sous un ancien nom (« 2ème Bac PC » → « 2ème Bac PC/SVT »), sinon tel quel."""
+    return NOMS_NIVEAUX_ANCIENS.get(' '.join((nom or '').lower().split()), nom)
+
+
 def _nom_niveau(niveau):
-    return getattr(niveau, 'name', niveau)
+    nom = getattr(niveau, 'name', niveau)
+    return nom_niveau_actuel(nom) if isinstance(nom, str) else nom
 
 
 def _cle(nom):

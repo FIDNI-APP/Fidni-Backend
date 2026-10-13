@@ -522,7 +522,7 @@ def check_against_db(fiche: dict) -> tuple[list[str], list[str], dict]:
     Anciens noms de chapitres et de théorèmes (avant le programme officiel du 11/10/2026) acceptés : traduits par
     programme.traduire_noms() selon les niveaux de la fiche, avec un avertissement chacun."""
     from apps.caracteristics.models import Chapter, ClassLevel, Subject, Subfield, Theorem
-    from apps.caracteristics.programme import traduire_noms
+    from apps.caracteristics.programme import nom_niveau_actuel, traduire_noms
     from apps.things.models import Content
 
     errors, warnings = [], []
@@ -530,8 +530,10 @@ def check_against_db(fiche: dict) -> tuple[list[str], list[str], dict]:
     subject = Subject.objects.filter(name__iexact=subject_name).first()
     if not subject:
         errors.append(f'matière inconnue : « {subject_name} »')
-    levels = _match(ClassLevel.objects.all(), fiche.get('niveaux', []), 'niveau', errors)
-    niveaux = fiche.get('niveaux') if isinstance(fiche.get('niveaux'), list) else []
+    # Ancien nom d'un niveau renommé (« 2ème Bac PC » → « 2ème Bac PC/SVT », 12/10/2026) : accepté tel quel.
+    niveaux = [nom_niveau_actuel(n) if isinstance(n, str) else n for n in fiche.get('niveaux') or []] \
+        if isinstance(fiche.get('niveaux'), list) else []
+    levels = _match(ClassLevel.objects.all(), niveaux, 'niveau', errors)
     noms_chapitres, noms_theoremes, traductions = traduire_noms(
         fiche.get('chapitres', []), fiche.get('theoremes', []), [str(n) for n in niveaux])
     warnings += traductions

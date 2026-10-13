@@ -265,9 +265,13 @@ st = c.get(f'/api/contents/{dur.id}/statistics/').data
 check('statistiques : solution vue avant la réussite (comptes maison exclus)',
       st['solution_views_before_success'] == 1 and st['user_viewed_solution'], st['solution_views_before_success'])
 
-# ── Éditeur : un exercice sans difficulté reste accepté (l'éditeur la demande ; pas de 400 inexpliqué)
+# ── Éditeur : un exercice sans difficulté reste accepté (l'éditeur la demande ; pas de 400 inexpliqué).
+# Création réservée à l'équipe (12/10/2026) : un élève est refusé, un administrateur publie.
 c.force_authenticate(eleve)
 base = {'type': 'exercise', 'title': 'Nouvel exercice', 'json_content': structure(), 'class_levels': [sm.id]}
+r = c.post('/api/contents/', base, format='json')
+check('création : refusée à un élève', r.status_code == 403, (r.status_code, getattr(r, 'data', None)))
+c.force_authenticate(admin)
 r = c.post('/api/contents/', base, format='json')
 check('création sans difficulté : acceptée comme avant', r.status_code == 201, (r.status_code, r.data))
 r = c.post('/api/contents/', {**base, 'difficulty': 'easy'}, format='json')

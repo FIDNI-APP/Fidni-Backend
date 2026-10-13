@@ -172,6 +172,7 @@ urlpatterns = [
     # Pilotage (administrateurs) : inscrits, activité, statistiques d'usage.
     path('api/usage/', usage_views.record, name='usage'),
     path('api/pilotage/', admin_dashboard.overview, name='pilotage'),
+    path('api/pilotage/direct/', admin_dashboard.live, name='pilotage-direct'),
     path('api/pilotage/serie/', admin_dashboard.serie, name='pilotage-serie'),
     path('api/pilotage/quiz/', quiz_admin.chapitres, name='pilotage-quiz'),
     path('api/pilotage/quiz/chapitre/<int:pk>/', quiz_admin.chapitre, name='pilotage-quiz-chapitre'),

@@ -21,6 +21,7 @@ from datetime import timedelta
 from django.db.models import Q
 from django.utils import timezone
 
+from apps.caracteristics.programme import nom_niveau_actuel
 from apps.things import importing
 
 from . import client, consignes, documents
@@ -63,7 +64,8 @@ def _niveaux(job):
         else:
             donnes = [job.options['niveau']] if job.options.get('niveau') else []
         job.options['niveaux'] = consignes.niveaux_du_travail(donnes)
-    return job.options['niveaux']
+    # Un travail créé avant un renommage de niveau (« 2ème Bac PC » → « 2ème Bac PC/SVT ») garde l'ancien nom.
+    return [nom_niveau_actuel(n) for n in job.options['niveaux']]
 
 
 def _appeler(job, messages, system=None):

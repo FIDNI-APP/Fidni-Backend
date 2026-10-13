@@ -171,19 +171,21 @@ check('notions : chaque rubrique est un chapitre du programme', set(NOTIONS) - {
 # ── Migration 0003 : données figées d'accord avec le programme au moment de l'écrire
 m = importlib.import_module('apps.caracteristics.migrations.0003_programme_officiel')
 D = m.DONNEES
+# « 2ème Bac PC » renommé « 2ème Bac PC/SVT » après 0003 (migration 0004, 12/10/2026) : 0003 garde l'ancien nom.
+N = P.nom_niveau_actuel
 check('0003 : mêmes réponses aux questions ouvertes', m.DECISIONS == P.DECISIONS)
 check('0003 : cibles des opérations au programme, au bon niveau', all(
-    op['vers'] in [c['nom'] for c in P.PROGRAMME[op['niveau']]] and op['de'] not in [c['nom'] for c in P.PROGRAMME[op['niveau']]]
+    op['vers'] in [c['nom'] for c in P.PROGRAMME[N(op['niveau'])]] and op['de'] not in [c['nom'] for c in P.PROGRAMME[N(op['niveau'])]]
     for op in D['scissions'])
-    and all(op['vers'] in [c['nom'] for c in P.PROGRAMME[op['niveau']]] for op in D['detachements'])
-    and all(op['chapitre'] in [c['nom'] for c in P.PROGRAMME[op['niveau']]] for op in D['rattachements'])
+    and all(op['vers'] in [c['nom'] for c in P.PROGRAMME[N(op['niveau'])]] for op in D['detachements'])
+    and all(op['chapitre'] in [c['nom'] for c in P.PROGRAMME[N(op['niveau'])]] for op in D['rattachements'])
     and all(op['vers'] in P.DOMAINE_CHAPITRE and op['de'] not in P.DOMAINE_CHAPITRE for op in D['fusions'])
     and 'Espaces vectoriels' not in [op['de'] for op in D['fusions']])
 # Vrai au moment d'écrire 0003. Si programme.py change APRÈS le déploiement de 0003, adapter ce test, jamais 0003.
 check('0003 : programme, domaines et alias figés = programme.py',
-      D['programme'] == {n: [(c['nom'], c['domaine']) for c in ch] for n, ch in P.PROGRAMME.items()}
+      {N(n): v for n, v in D['programme'].items()} == {n: [(c['nom'], c['domaine']) for c in ch] for n, ch in P.PROGRAMME.items()}
       and D['domaine_theoreme'] == P.DOMAINE_THEOREME
-      and sorted(map(tuple, ((a, n, tuple(v)) for a, n, v in D['alias_chapitres'])))
+      and sorted(map(tuple, ((a, N(n), tuple(v)) for a, n, v in D['alias_chapitres'])))
       == sorted((a, n, tuple(v)) for a, r_ in P.ALIAS_CHAPITRES.items() for n, v in r_.items())
       and dict((a, tuple(v)) for a, v in D['alias_theoremes']) == P.ALIAS_THEOREMES)
 src = open(m.__file__, encoding='utf-8').read() + open(importlib.import_module('apps.caracteristics.programme_migration').__file__,

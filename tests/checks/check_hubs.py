@@ -43,7 +43,7 @@ seo._index_cache.update(html=INDEX, at=10 ** 12)
 
 u = User.objects.create_user('auteur', 'a@x.fr', 'x')
 sm2 = ClassLevel.objects.get(name='2ème Bac SM')
-pc2 = ClassLevel.objects.get(name='2ème Bac PC')
+pc2 = ClassLevel.objects.get(name='2ème Bac PC/SVT')
 maths = Subject.objects.get(name='Mathématiques')
 lim = Chapter.objects.get(name='Limites et continuité', class_levels=sm2)
 suites = Chapter.objects.filter(class_levels=sm2, name__icontains='suites').first()
@@ -83,8 +83,20 @@ check('chapitre : lien vers le cours du chapitre', d['related'] == [
     {'section': 'lessons', 'label': 'Cours', 'count': 1, 'url': '/lessons/niveau/2eme-bac-sm/limites-et-continuite'}], d['related'])
 check('niveau inconnu : 404', cl.get('/api/hubs/', {'section': 'exercises', 'level': 'cm2'}).status_code == 404)
 check('chapitre inconnu : 404', cl.get('/api/hubs/', {'section': 'exercises', 'level': '2eme-bac-sm', 'chapter': 'zzz'}).status_code == 404)
-d = cl.get('/api/hubs/', {'section': 'exercises', 'level': '2eme-bac-pc'}).json()
+d = cl.get('/api/hubs/', {'section': 'exercises', 'level': '2eme-bac-pc-svt'}).json()
 check('niveau sans contenu : consultable mais non indexable', d['count'] == 0 and not d['indexable'], d)
+# « 2ème Bac PC » renommé « 2ème Bac PC/SVT » (12/10/2026) : le « / » sépare les mots, l'ancienne adresse redirige.
+check('niveau PC/SVT : nom et adresse', d['level']['name'] == '2ème Bac PC/SVT' and d['level']['slug'] == '2eme-bac-pc-svt'
+      and '2 Bac PC/SVT' in d['title'], (d.get('level'), d.get('title')))
+r = cl.get('/api/hubs/', {'section': 'exercises', 'level': '2eme-bac-pc'})
+check('ancienne adresse du niveau PC : redirect seul vers PC/SVT',
+      r.status_code == 200 and r.json() == {'redirect': '/exercises/niveau/2eme-bac-pc-svt'}, (r.status_code, r.content[:200]))
+r = cl.get('/api/hubs/', {'section': 'lessons', 'level': '2eme-bac-pc', 'chapter': 'limites-et-continuite'})
+check('ancienne adresse d’un chapitre du PC : même chapitre au niveau PC/SVT',
+      r.json() == {'redirect': '/lessons/niveau/2eme-bac-pc-svt/limites-et-continuite'}, r.content[:200])
+r = cl.get('/seo/hub/exercises/2eme-bac-pc/')
+check('page pré-remplie de l’ancienne adresse du PC : 301',
+      r.status_code == 301 and r['Location'].endswith('/exercises/niveau/2eme-bac-pc-svt'), (r.status_code, r.get('Location')))
 
 # ── Pages pré-remplies
 r = cl.get('/seo/hub/exercises/2eme-bac-sm/limites-et-continuite/')
@@ -98,7 +110,7 @@ check('page chapitre : liens vers chaque exercice', f'href="/exercises/{e1.id}"'
 check('page chapitre : autres chapitres et cours', 'href="/exercises/niveau/2eme-bac-sm/' + suites.name.lower().replace(' ', '-').replace('é', 'e') in page
       or '/exercises/niveau/2eme-bac-sm/' in page.split('Autres chapitres')[1], 'Autres chapitres')
 check('page chapitre : fil d’Ariane schema.org', '"@type": "BreadcrumbList"' in page and '"@type": "CollectionPage"' in page)
-r = cl.get('/seo/hub/exercises/2eme-bac-pc/')
+r = cl.get('/seo/hub/exercises/2eme-bac-pc-svt/')
 check('page sans contenu : noindex', r.status_code == 200 and 'content="noindex"' in r.content.decode())
 check('page inconnue : 404', cl.get('/seo/hub/exercises/cm2/').status_code == 404)
 
@@ -118,10 +130,10 @@ check('liste : niveau et chapitre en liens', '<a href="/exercises/niveau/2eme-ba
       and '<a href="/exercises/niveau/2eme-bac-sm/limites-et-continuite">' in page)
 page = cl.get('/seo/page/home/').content.decode()
 check('accueil : liens par niveau', 'href="/exercises/niveau/2eme-bac-sm"' in page and 'href="/lessons/niveau/2eme-bac-sm"' in page
-      and '2eme-bac-pc' not in page)
+      and '2eme-bac-pc-svt' not in page)
 xml = cl.get('/sitemap.xml').content.decode()
 check('sitemap : hubs avec contenu', 'https://fidni.fr/exercises/niveau/2eme-bac-sm/limites-et-continuite</loc>' in xml
-      and 'https://fidni.fr/lessons/niveau/2eme-bac-sm</loc>' in xml and '2eme-bac-pc' not in xml)
+      and 'https://fidni.fr/lessons/niveau/2eme-bac-sm</loc>' in xml and '2eme-bac-pc-svt' not in xml)
 
 # ── Examens : section devoirs / section nationaux (le filtre était ignoré : paramètre mal nommé)
 ds = make('exam', 'Devoir surveillé n° 1', lim)
@@ -194,7 +206,7 @@ check('niveaux : 200, ordre du programme', r.status_code == 200 and [x['name'] f
 check('niveaux : contenus et chapitres remplis', by['2eme-bac-sm']['count'] == 3 and by['2eme-bac-sm']['chapters_filled'] == 2
       and by['2eme-bac-sm']['chapters_total'] == len(sm2_chapters) and by['2eme-bac-sm']['url'] == '/exercises/niveau/2eme-bac-sm',
       by.get('2eme-bac-sm'))
-check('niveaux : niveau vide à 0', by['2eme-bac-pc']['count'] == 0 and by['2eme-bac-pc']['chapters_filled'] == 0, by.get('2eme-bac-pc'))
+check('niveaux : niveau vide à 0', by['2eme-bac-pc-svt']['count'] == 0 and by['2eme-bac-pc-svt']['chapters_filled'] == 0, by.get('2eme-bac-pc-svt'))
 check('niveaux : matière et rubrique', r.json()['subject'] == 'Mathématiques' and r.json()['type'] == 'exercise')
 ex_lv = {x['slug']: x for x in cl.get('/api/hubs/niveaux/', {'section': 'exams'}).json()['levels']}
 check('niveaux devoirs : sans le Bac national', ex_lv['2eme-bac-sm']['count'] == 1, ex_lv['2eme-bac-sm'])
@@ -211,7 +223,7 @@ r = cl.get('/api/hubs/nationaux/')
 years = r.json().get('years', []) if r.status_code == 200 else []
 check('Bac national : une année par dossier, la plus récente d’abord, sans année à la fin',
       [(y['year'], y['count']) for y in years] == [(2023, 1), (2019, 1), (None, 1)], years)
-check('Bac national : niveaux de chaque année', years and years[0]['levels'] == ['2ème Bac SM', '2ème Bac PC'], years[:1])
+check('Bac national : niveaux de chaque année', years and years[0]['levels'] == ['2ème Bac SM', '2ème Bac PC/SVT'], years[:1])
 r = cl.get('/api/contents/', {'type': 'exam', 'is_national_exam': 'true', 'national_year': 'aucune'})
 check('Bac national : sujets sans année (dossier à part)', ids(r) == {sans.id}, ids(r))
 r = cl.get('/api/contents/', {'type': 'exam', 'is_national_exam': 'true', 'national_year': '2023'})
@@ -221,10 +233,10 @@ check('Bac national : année invalide ignorée (pas d’erreur)', r.status_code 
 # Page des devoirs d'un niveau : nombre, texte et sitemap sans les sujets du Bac national (comme ses dossiers).
 d = cl.get('/api/hubs/', {'section': 'exams', 'level': '2eme-bac-sm'}).json()
 check('page des devoirs : compte sans le Bac national', d['count'] == 1, d['count'])
-d = cl.get('/api/hubs/', {'section': 'exams', 'level': '2eme-bac-pc'}).json()
+d = cl.get('/api/hubs/', {'section': 'exams', 'level': '2eme-bac-pc-svt'}).json()
 check('niveau qui n’a que des sujets nationaux : pas de page de devoirs indexable', d['count'] == 0 and not d['indexable'], d['count'])
 xml = cl.get('/sitemap.xml').content.decode()
-check('sitemap : pas de page de devoirs pour un niveau sans devoir', '/exams/niveau/2eme-bac-pc' not in xml)
+check('sitemap : pas de page de devoirs pour un niveau sans devoir', '/exams/niveau/2eme-bac-pc-svt' not in xml)
 page = cl.get('/seo/hub/exams/2eme-bac-sm/limites-et-continuite/').content.decode()
 check('page pré-remplie des devoirs : sans les sujets du Bac national', f'href="/exams/{ds.id}"' in page
       and f'href="/exams/{bac.id}"' not in page)

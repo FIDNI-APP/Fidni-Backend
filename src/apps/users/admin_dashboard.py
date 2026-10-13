@@ -794,3 +794,49 @@ def serie(request):
             d += timedelta(days=7)
     return Response({'source': source, 'cle': cle, 'libelle': label, 'pas': pas,
                      'mesure_depuis': since.isoformat(), 'points': points})
+
+
+@api_view(['GET'])
+@permission_classes([IsSuperuser])
+def live(request):
+    """GET /api/pilotage/direct/ : le « moniteur » du Pilotage, relu toutes les 30 s (léger, sans les séries).
+
+    Aujourd'hui et hier (vues, membres actifs, inscriptions, travail, visiteurs non connectés), ce qui attend
+    (signalements, corrections à vérifier, travaux de l'IA) et l'activité récente de tous les membres réels.
+    """
+    from apps.ia.models import IAJob
+    today = timezone.localdate()
+    yesterday = today - timedelta(days=1)
+    since = timezone.make_aware(datetime.combine(yesterday, time.min))
+    real = _real_users()
+    real_ids = set(real.values_list('id', flat=True))
+
+    active = defaultdict(set)
+    for uid, ds in _active_days(real.values('id'), since).items():
+        for d in ds:
+            active[d].add(uid)
+    signups = Counter(_day(d) for d in real.filter(date_joined__gte=since).values_list('date_joined', flat=True))
+    work = Counter()
+    for model in (Complete, QuestionProgress):
+        work.update(_day(d) for d in model.objects.filter(created_at__gte=since, user_id__in=real_ids)
+                    .values_list('created_at', flat=True))
+    views = dict(ContentDailyView.objects.filter(date__gte=yesterday).values_list('date').annotate(s=Sum('count')))
+    visitors = dict(UsageDaily.objects.filter(kind=UsageDaily.KIND_SITE, name='visites', date__gte=yesterday)
+                    .values_list('date', 'anon_visitors'))
+
+    def day(d):
+        return {'views': views.get(d, 0), 'active': len(active.get(d, ())), 'signups': signups.get(d, 0),
+                'work': work.get(d, 0), 'visitors': visitors.get(d, 0) or 0}
+
+    return Response({
+        'generated_at': timezone.now().isoformat(),
+        'today': day(today),
+        'yesterday': day(yesterday),
+        'todo': {
+            'reports_open': ContentReport.objects.filter(status=ContentReport.STATUS_OPEN).count(),
+            'a_verifier': Content.objects.filter(json_content__a_verifier=True).count(),
+            'ia_en_cours': IAJob.objects.filter(status__in=[IAJob.EN_ATTENTE, IAJob.EN_COURS]).count(),
+            'ia_a_relire': IAJob.objects.filter(status=IAJob.PRET).count(),
+        },
+        'activity': recent_activity(real_ids, 20),
+    })

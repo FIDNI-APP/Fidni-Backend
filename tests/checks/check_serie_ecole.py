@@ -101,8 +101,9 @@ check('réservé aux administrateurs', eleve.get('/api/pilotage/serie/', {'sourc
 
 # ---------------------------------------------------------------- établissement d'origine
 school = School.objects.create(name='Lycée Ibn Sina', city='Rabat', kind='lycee')
+# Création de contenu réservée à l'équipe (12/10/2026) : l'administrateur publie.
 prof = APIClient()
-prof.force_authenticate(eleves[1])
+prof.force_authenticate(admin)
 r = prof.post('/api/contents/', {'type': 'exercise', 'title': 'Avec école', 'difficulty': 'easy', 'subject': subject.pk,
                                  'class_levels': [level.pk], 'school': school.pk,
                                  'json_content': {'version': '2.1', 'blocks': []}}, format='json')
