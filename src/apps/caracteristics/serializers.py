@@ -108,6 +108,13 @@ class SubjectWithChaptersSerializer(serializers.ModelSerializer):
         class_level_id = self.context.get('class_level_id')
         if class_level_id:
             chapters = obj.chapters.filter(class_levels__id=class_level_id)
+            # Ordre du programme officiel du niveau (avant : alphabétique, « Équations différentielles » en dernier) ;
+            # hors programme : après, par nom.
+            level_name = self.context.get('class_level_name')
+            if level_name:
+                from apps.caracteristics.programme import rang
+                rangs = rang(level_name)
+                chapters = sorted(chapters, key=lambda c: (rangs[c.name], c.name))
         else:
             chapters = obj.chapters.all()
         return ChapterMinimalSerializer(chapters, many=True).data
@@ -126,5 +133,5 @@ class ClassLevelWithTaxonomySerializer(serializers.ModelSerializer):
         return SubjectWithChaptersSerializer(
             subjects,
             many=True,
-            context={'class_level_id': obj.id}
+            context={'class_level_id': obj.id, 'class_level_name': obj.name}
         ).data

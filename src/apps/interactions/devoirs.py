@@ -48,6 +48,9 @@ class _Ref(serializers.Serializer):
 
 class UpcomingTestSerializer(serializers.ModelSerializer):
     subject = _Ref(read_only=True)
+    # Niveau du DS (lu par « Modifier » : un chapitre comme « Suites numériques » existe en 1ère et en 2ème Bac,
+    # deviner le niveau par les chapitres ouvrait le mauvais, et l'enregistrement l'y déplaçait).
+    class_level = _Ref(read_only=True)
     chapters = _Ref(many=True, read_only=True)
     subject_id = serializers.PrimaryKeyRelatedField(source='subject', queryset=Subject.objects.all(),
                                                     write_only=True, required=False, allow_null=True)
@@ -61,9 +64,9 @@ class UpcomingTestSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = UpcomingTest
-        fields = ['id', 'kind', 'subject', 'subject_id', 'class_level_id', 'chapters', 'chapter_ids', 'date',
-                  'days_left', 'grade', 'mock_done_at', 'mock_seconds', 'created_at']
-        read_only_fields = ['mock_done_at', 'mock_seconds', 'created_at']
+        fields = ['id', 'kind', 'subject', 'subject_id', 'class_level', 'class_level_id', 'chapters', 'chapter_ids', 'date',
+                  'days_left', 'grade', 'mock_started_at', 'mock_done_at', 'mock_seconds', 'created_at']
+        read_only_fields = ['mock_started_at', 'mock_done_at', 'mock_seconds', 'created_at']
 
     def get_days_left(self, obj):
         return (obj.date - timezone.localdate()).days
@@ -86,6 +89,17 @@ class UpcomingTestSerializer(serializers.ModelSerializer):
         chapters = attrs.get('chapters')
         if subject and chapters and any(c.subject_id and c.subject_id != subject.id for c in chapters):
             raise serializers.ValidationError({'chapter_ids': 'Ces chapitres ne sont pas tous de cette matière.'})
+        # Le même DS (type, matière, date) annoncé deux fois : deux préparations, deux DS blancs, rien ne le signalait.
+        request = self.context.get('request')
+        date = attrs.get('date', getattr(self.instance, 'date', None))
+        kind = attrs.get('kind', getattr(self.instance, 'kind', 'ds'))
+        changes = self.instance is None or any(k in attrs for k in ('date', 'kind', 'subject'))
+        if request is not None and date is not None and changes:
+            same = UpcomingTest.objects.filter(user=request.user, date=date, kind=kind, subject=subject)
+            if self.instance is not None:
+                same = same.exclude(pk=self.instance.pk)
+            if same.exists():
+                raise serializers.ValidationError({'date': 'Tu as déjà annoncé ce DS à cette date : modifie-le plutôt.'})
         return attrs
 
 
@@ -281,6 +295,10 @@ def _mock_payload(test, user, names, ordered_ids, with_structure=False):
         'settings': {'minutes': test.mock_minutes, 'difficulty': test.mock_difficulty, 'choices': list(MOCK_MINUTES)},
         'difficulty_respected': respected,
         'min_questions': MOCK_MIN_QUESTIONS,
+        # Chapitres du DS que le sujet couvre (le plan dit lesquels n'ont pas d'exercice long).
+        'chapters_covered': sorted({ch for cid in ids for ch in chapters_of.get(cid, []) if ch in names}),
+        # Heure du serveur : le chronomètre du navigateur s'y recale (horloge du téléphone décalée).
+        'now': timezone.now(),
     }
 
 
@@ -303,8 +321,17 @@ def _rank(c):
 
 
 def _readiness(entries):
+    """Moyenne de maîtrise des chapitres du DS ; un chapitre pas encore évalué compte 0 (avant : la moyenne des
+    seuls chapitres évalués, « Prêt à 100 % » avec un chapitre sur deux pas commencé). Rien d'évalué : None."""
     known = [c['mastery'] for c in entries if c['mastery'] is not None]
-    return round(sum(known) / len(known)) if known else None
+    return round(sum(known) / len(entries)) if known else None
+
+
+def _weak(entries):
+    """Chapitres à renforcer, les plus fragiles d'abord (mêmes états que le plan) : puces dorées de Réviser et de
+    l'accueil."""
+    weak = sorted((c for c in entries if _rank(c) <= 1), key=lambda c: (_rank(c), c['mastery'] if c['mastery'] is not None else -1))
+    return [c['name'] for c in weak][:3]
 
 
 def _preparation(test, user, entries):
@@ -345,24 +372,22 @@ class UpcomingTestViewSet(viewsets.ModelViewSet):
                 .prefetch_related(Prefetch('chapters', queryset=Chapter.objects.select_related('subfield'))))
 
     def list(self, request, *args, **kwargs):
-        """À venir (du plus proche au plus lointain), avec la préparation ; puis les passés (récents d'abord)."""
-        from apps.users.progression import _chapter_entries, _collect, _per_chapter
+        """À venir (du plus proche au plus lointain), avec la préparation ; puis les passés (récents d'abord).
+        La préparation est celle du plan (chapter_progress) : même « Prêt à … % » sur l'accueil, Réviser et le plan."""
+        from apps.users.progression import _collect, chapter_progress, maitrise_par_chapitre
         today = timezone.localdate()
         tests = list(self.get_queryset())
         upcoming = [t for t in tests if t.date >= today]
         past = sorted((t for t in tests if t.date < today), key=lambda t: (t.date, t.id), reverse=True)
         data = []
-        chap = quizzes = None
+        d = mine = None
         if upcoming:
-            d = _collect(request.user)
-            chap, _ = _per_chapter(d)
-            quizzes = d.quizzes
+            d, mine = _collect(request.user), maitrise_par_chapitre(request.user)
         for t in upcoming:
             row = self.get_serializer(t).data
-            entries = _chapter_entries(list(t.chapters.all()), chap, quizzes, _level(request.user, t))
+            entries = chapter_progress(request.user, list(t.chapters.all()), _level(request.user, t), d=d, mine=mine)
             row['readiness'] = _readiness(entries)
-            row['weak_chapters'] = [c['name'] for c in sorted(entries, key=lambda c: (STATUS_RANK.get(c['status'], 2), c['mastery'] or 0))
-                                    if c['status'] in ('weak', 'todo')][:3]
+            row['weak_chapters'] = _weak(entries)
             data.append(row)
         data += [self.get_serializer(t).data for t in past]
         return Response(data)
@@ -436,14 +461,14 @@ class UpcomingTestViewSet(viewsets.ModelViewSet):
             elif what == 'finish':
                 if test.mock_started_at is None:
                     return Response({'error': 'Le DS blanc n’a pas commencé.'}, status=status.HTTP_400_BAD_REQUEST)
-                try:
-                    seconds = int(request.data.get('seconds'))
-                except (TypeError, ValueError):
+                if test.mock_done_at is None:
+                    # Le temps mesuré par le serveur : celui envoyé par le navigateur dépendait de l'horloge du
+                    # téléphone (décalée : temps faux, voire 0). Plafonné à 6 h (DS blanc oublié).
                     seconds = int((now - test.mock_started_at).total_seconds())
-                test.mock_seconds = max(0, min(seconds, 6 * 3600))
-                test.mock_done_at = now
-                test.save(update_fields=['mock_seconds', 'mock_done_at', 'updated_at'])
-                _forget_maitrise(request.user)
+                    test.mock_seconds = max(0, min(seconds, 6 * 3600))
+                    test.mock_done_at = now
+                    test.save(update_fields=['mock_seconds', 'mock_done_at', 'updated_at'])
+                    _forget_maitrise(request.user)
             elif what == 'new':
                 previous = list(test.mock_ids)
                 test.mock_ids = _pick_mock(request.user, ordered_ids, _level(request.user, test), exclude=previous,

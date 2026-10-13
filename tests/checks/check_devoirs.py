@@ -102,6 +102,17 @@ check('DS annoncé', r.status_code == 201 and r.data['days_left'] == 3 and r.dat
       and len(r.data['chapters']) == 3, r.data)
 test_id = r.data['id']
 check('niveau pris du profil', UpcomingTest.objects.get(id=test_id).class_level_id == sm.id)
+check('niveau du DS renvoyé (« Modifier » le reprend)', r.data['class_level'] == {'id': sm.id, 'name': sm.name}
+      and r.data['mock_started_at'] is None, r.data.get('class_level'))
+dup = c.post('/api/devoirs/', {'kind': 'ds', 'subject_id': maths.id, 'date': (today + timedelta(days=3)).isoformat(),
+                               'chapter_ids': [lim.id]}, format='json')
+check('même DS (type, matière, date) annoncé deux fois : refusé', dup.status_code == 400 and 'date' in dup.data, dup.data)
+ctrl = c.post('/api/devoirs/', {'kind': 'controle', 'subject_id': maths.id, 'date': (today + timedelta(days=3)).isoformat(),
+                                'chapter_ids': [lim.id]}, format='json')
+check('un contrôle le même jour : accepté', ctrl.status_code == 201, ctrl.data)
+check('« Modifier » vers la date d’un autre DS identique : refusé',
+      c.patch(f'/api/devoirs/{ctrl.data["id"]}/', {'kind': 'ds'}, format='json').status_code == 400)
+c.delete(f'/api/devoirs/{ctrl.data["id"]}/')
 far = c.post('/api/devoirs/', {'subject_id': maths.id, 'date': (today + timedelta(days=500)).isoformat(), 'chapter_ids': [lim.id]}, format='json')
 check('date absurde : refusée', far.status_code == 400 and 'date' in far.data, far.data)
 
@@ -116,7 +127,9 @@ check('même maîtrise que Ma progression', by_id[lim.id]['mastery'] == 100 and 
       and by_id[suites.id]['status'] == 'todo' and by_id[suites.id]['quiz_ready'], [(x['name'], x['status'], x['mastery']) for x in p['chapters']])
 check('« S’entraîner » : page du chapitre à son niveau', by_id[lim.id]['hub_url'] == '/exercises/niveau/2eme-bac-sm/limites-et-continuite'
       and all(x['hub_url'] for x in p['chapters']), [x['hub_url'] for x in p['chapters']])
-check('prêt à : moyenne des chapitres évalués', p['readiness'] == round((100 + by_id[der.id]['mastery']) / 2), p['readiness'])
+# Suites pas encore évalué : compte 0 (avant : moyenne des seuls chapitres évalués, « 100 % » trompeur).
+check('prêt à : moyenne de tous les chapitres, pas encore évalué = 0', p['readiness'] == round((100 + by_id[der.id]['mastery'] + 0) / 3),
+      p['readiness'])
 ex_ids = [x['id'] for x in p['exercises']]
 check('exercices pour toi : ceux des chapitres du DS, jamais déjà réussis', lim1.id not in ex_ids and hors.id not in ex_ids
       and {der2.id, lim2.id, sui1.id} <= set(ex_ids), [x['title'] for x in p['exercises']])
@@ -133,6 +146,7 @@ check('DS blanc : le chapitre le plus fragile d’abord, puis un par chapitre ju
 check('DS blanc : seulement des exercices d’au moins 3 questions (la courte est écartée)', der4.id not in mock_ids, titles)
 check('DS blanc : durée (temps cible, sinon difficulté) proche de l’heure demandée', mock['minutes'] == 30 + 20 + 15, mock['minutes'])
 check('DS blanc : pas d’énoncé dans le plan (léger)', 'structure' not in mock['exercises'][0])
+check('DS blanc : chapitres couverts', mock['chapters_covered'] == sorted({der.id, suites.id}), mock.get('chapters_covered'))
 prep = p['preparation']
 check('préparation au départ', prep['exercises'] == 0 and prep['quizzes'] == 0 and prep['quizzes_total'] == 1 and not prep['mock'], prep)
 
@@ -148,8 +162,13 @@ check('commencer : exercices figés, horloge lancée', r.status_code == 200 and 
 # Il travaille un exercice du DS (hors DS blanc) : le DS blanc reste le même.
 assess(der2, {'q1': 'success'})
 check('DS blanc figé même après d’autres exercices', [x['id'] for x in c.get(f'/api/devoirs/{test_id}/ds-blanc/').data['exercises']] == mock_ids)
-r = c.post(f'/api/devoirs/{test_id}/ds-blanc/', {'action': 'finish', 'seconds': 3000}, format='json')
-check('terminer : temps enregistré', r.status_code == 200 and r.data['done_at'] and r.data['seconds'] == 3000, r.data.get('seconds'))
+check('heure du serveur dans la réponse (chronomètre recalé)', r.data.get('now') is not None)
+# 50 min plus tôt ; le navigateur annonce 10 s (horloge du téléphone décalée) : c'est le temps du serveur qui compte.
+UpcomingTest.objects.filter(id=test_id).update(mock_started_at=timezone.now() - timedelta(minutes=50))
+r = c.post(f'/api/devoirs/{test_id}/ds-blanc/', {'action': 'finish', 'seconds': 10}, format='json')
+check('terminer : temps mesuré par le serveur', r.status_code == 200 and r.data['done_at'] and 2990 <= r.data['seconds'] <= 3010, r.data.get('seconds'))
+again = c.post(f'/api/devoirs/{test_id}/ds-blanc/', {'action': 'finish'}, format='json')
+check('terminer deux fois : le premier temps reste', again.data['seconds'] == r.data['seconds'] and again.data['done_at'] == r.data['done_at'])
 r = c.post(f'/api/devoirs/{test_id}/ds-blanc/', {'action': 'new'}, format='json')
 new_ids = [x['id'] for x in r.data['exercises']]
 check('un autre DS blanc : d’autres exercices', r.status_code == 200 and new_ids and not set(new_ids) & set(mock_ids)
@@ -193,6 +212,14 @@ check('liste : à venir (le plus proche d’abord) puis passés', [x['id'] for x
 fresh = c.get(f'/api/devoirs/{test_id}/plan/').data['readiness']  # a bougé : il a travaillé depuis
 check('liste : préparation des DS à venir', r.data[0]['readiness'] == fresh != p['readiness'] and der.name in r.data[0]['weak_chapters']
       and 'readiness' not in r.data[2], r.data[0])
+check('liste : chapitres fragiles = ceux du plan', r.data[0]['weak_chapters'][0] == der.name, r.data[0]['weak_chapters'])
+# Ordre du programme dans le choix des chapitres (avant : alphabétique).
+tax = c.get('/api/class-levels/?include_taxonomy=true').data
+tax = tax.get('results', tax) if isinstance(tax, dict) else tax
+noms = [ch['name'] for lv in tax if lv['id'] == sm.id for s_ in lv['subjects'] if s_['id'] == maths.id for ch in s_['chapters']]
+from apps.caracteristics.programme import rang  # noqa: E402
+rangs = rang(sm.name)
+check('formulaire : chapitres dans l’ordre du programme', noms and [rangs[n] for n in noms] == sorted(rangs[n] for n in noms), noms[:6])
 r = c.get('/api/devoirs/prochain/')
 check('rappel : le DS dans 3 jours', r.data['test'] and r.data['test']['id'] == test_id, r.data)
 r = c.patch(f'/api/devoirs/{past.data["id"]}/', {'grade': 14.5}, format='json')

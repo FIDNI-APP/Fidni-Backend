@@ -196,21 +196,29 @@ def _chapter_entries(chapter_list, chap, quizzes, level):
     return chapters
 
 
-def chapter_progress(user, chapters, level=None):
-    """Maîtrise de quelques chapitres, même calcul que la carte du programme (plan d'un DS)."""
-    d = _collect(user)
+def chapter_progress(user, chapters, level=None, d=None, mine=None):
+    """Maîtrise de quelques chapitres, même calcul que la carte du programme (plan d'un DS, liste des DS : `d` et
+    `mine` déjà calculés pour plusieurs DS d'un coup)."""
+    if d is None:
+        d = _collect(user)
     allowed = {ch.id for ch in chapitres_du_niveau(level)} if level else None
     chap, _ = _per_chapter(d, allowed)
     entries = _chapter_entries(chapters, chap, d.quizzes, level)
     # État de « Ma progression » (apps/users/maitrise.py, même calcul, en cache) quand le chapitre est au programme
     # du niveau de l'élève : le plan du DS et la page disent la même chose.
-    from apps.users import maitrise
-    mine = {c['id']: c for c in maitrise.evaluer(user, getattr(getattr(user, 'profile', None), 'class_level', None))['chapters']}
+    if mine is None:
+        mine = maitrise_par_chapitre(user)
     for e in entries:
         m = mine.get(e['id'])
         e['etat'] = m['etat'] if m else None
         e['raison'] = m['raison'] if m else None
     return entries
+
+
+def maitrise_par_chapitre(user):
+    """{chapitre: entrée de Ma progression} (état, raison) au niveau de l'élève (en cache, apps/users/maitrise.py)."""
+    from apps.users import maitrise
+    return {c['id']: c for c in maitrise.evaluer(user, getattr(getattr(user, 'profile', None), 'class_level', None))['chapters']}
 
 
 @api_view(['GET'])
