@@ -51,7 +51,14 @@
      "theoremes": [
       "Théorème des valeurs intermédiaires (TVI)",
       "Théorème de la bijection"
-     ]
+     ],
+     "par_niveau": {
+      "2ème Bac PC/SVT": {
+       "theoremes": [
+        "Théorème des valeurs intermédiaires (TVI)"
+       ]
+      }
+     }
     },
     {
      "question": "Soit $f$ continue et strictement décroissante sur $I = [a\\,;+\\infty[$. Alors $f(I)$ est :",
@@ -81,7 +88,14 @@
      "cible": "50 % de réussite à « $f^{-1}(x) = x$ admet une solution unique » (DS 2019).",
      "theoremes": [
       "Théorème de la bijection"
-     ]
+     ],
+     "par_niveau": {
+      "2ème Bac PC/SVT": {
+       "theoremes": [
+        "Théorème des valeurs intermédiaires (TVI)"
+       ]
+      }
+     }
     },
     {
      "question": "Soit $f(x) = x^3 + x - 1$ sur $\\mathbb{R}$. Laquelle de ces affirmations est vraie ?",
@@ -96,7 +110,22 @@
      "cible": "Programme : théorème de la bijection.",
      "theoremes": [
       "Théorème de la bijection"
-     ]
+     ],
+     "par_niveau": {
+      "2ème Bac PC/SVT": {
+       "bonne": "$f$ admet une fonction réciproque définie sur $\\mathbb{R}$, et l’équation $f(x) = 0$ a une unique solution, dans $]0\\,;1[$.",
+       "distracteurs": [
+        "$f$ admet une fonction réciproque définie sur $\\mathbb{R}$, et l’équation $f(x) = 0$ a une unique solution, dans $]1\\,;2[$.",
+        "$f$ admet une fonction réciproque définie sur $]-1\\,;+\\infty[$, et $f(x) = 0$ a une unique solution, dans $]0\\,;1[$.",
+        "$f$ n’admet pas de fonction réciproque, car l’équation $f(x) = 0$ a plusieurs solutions."
+       ],
+       "explication": "$f$ est continue et strictement croissante ($f'(x) = 3x^2 + 1 > 0$), avec des limites $-\\infty$ et $+\\infty$ : elle admet une fonction réciproque définie sur $f(\\mathbb{R}) = \\mathbb{R}$. Comme $f(0) = -1 < 0 < 1 = f(1)$, la solution est dans $]0\\,;1[$ ; $f(1) > 0$ l’exclut de $]1\\,;2[$.",
+       "theoremes": [
+        "Théorème des valeurs intermédiaires (TVI)",
+        "Continuité de la fonction réciproque"
+       ]
+      }
+     }
     },
     {
      "question": "Soit $f$ continue sur un segment $[a\\,;b]$. Laquelle de ces affirmations est toujours vraie ?",
@@ -172,7 +201,14 @@
      "theoremes": [
       "Continuité de la fonction réciproque",
       "Théorème de la bijection"
-     ]
+     ],
+     "par_niveau": {
+      "2ème Bac PC/SVT": {
+       "theoremes": [
+        "Continuité de la fonction réciproque"
+       ]
+      }
+     }
     },
     {
      "question": "La fonction $f(x) = \\dfrac{\\sin x}{x}$, définie sur $\\mathbb{R}^*$, est prolongeable par continuité en $0$ parce que :",
@@ -771,7 +807,12 @@
      "cible": "Programme : dérivée de la fonction réciproque.",
      "theoremes": [
       "Dérivée de la fonction réciproque"
-     ]
+     ],
+     "par_niveau": {
+      "2ème Bac PC/SVT": {
+       "question": "$f$ est continue, strictement croissante et dérivable sur $\\mathbb{R}$, avec $f(\\mathbb{R}) = \\mathbb{R}$, $f(1) = 3$ et $f'(1) = 2$. Que vaut $\\left(f^{-1}\\right)'(3)$ ?"
+      }
+     }
     },
     {
      "question": "La courbe de $x \\mapsto \\sqrt[3]{x}$, sur $[0\\,;+\\infty[$, admet une demi-tangente verticale :",

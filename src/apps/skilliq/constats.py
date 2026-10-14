@@ -285,13 +285,23 @@ def _cle(s):
     return re.sub(r'[^0-9a-z$\\]+', '', s.casefold())
 
 
+def pour_niveau(q, niveau):
+    """La question telle que la voit ce niveau : `par_niveau` remplace des champs (texte, réponses, théorèmes) pour
+    un niveau précis — ex. 2ème Bac PC/SVT, où « bijection » est hors programme (on dit « fonction réciproque »)."""
+    if not isinstance(q, dict) or not isinstance(q.get('par_niveau'), dict):
+        return q
+    autre = q['par_niveau'].get(niveau)
+    q = {k: v for k, v in q.items() if k != 'par_niveau'}
+    return {**q, **autre} if isinstance(autre, dict) else q
+
+
 def importer(data, simulation=False):
     """{"niveau": nom | "niveaux": [noms], "chapitres": [{"chapitre": nom exact, "questions": [...]}]} → bilan par
     (chapitre, niveau).
 
     Un quiz = (chapitre, niveau), jamais partagé : chaque niveau listé reçoit sa propre copie des questions, sauf
     celles dont un théorème n'est pas au programme de ce niveau (Theorem.class_levels : arc tangente, Rolle, TAF
-    écartés du quiz 2ème Bac PC/SVT). Questions rattachées à leurs théorèmes (au moins un, noms exacts du chapitre),
+    écartés du quiz 2ème Bac PC/SVT ; `par_niveau` d'une question : sa variante pour un niveau). Questions rattachées à leurs théorèmes (au moins un, noms exacts du chapitre),
     en brouillon « à relire » — sauf si la même question (même texte) est déjà validée dans le quiz d'un autre niveau
     du chapitre : elle arrive validée, hors ligne. Une question déjà présente dans le quiz est ignorée : l'import
     peut être rejoué. `simulation` : rien n'est écrit."""
@@ -323,6 +333,7 @@ def importer(data, simulation=False):
                 du_chapitre = {th.name: th for th in
                                Theorem.objects.filter(chapters=ch).prefetch_related('class_levels').distinct()}
                 for q in bloc.get('questions') or []:
+                    q = pour_niveau(q, niveau.name)
                     champs, raison = controler(q)
                     noms = q.get('theoremes') if isinstance(q, dict) else None
                     if champs and _cle(champs['question']) in vues:

@@ -179,6 +179,54 @@ SkillQuestion.objects.filter(question='Arc : laquelle ?').delete()
 copie.delete()
 SkillQuestion.objects.filter(pk=neuves[0].pk).update(a_relire=True)
 
+# « Bijection » hors programme en 2ème Bac PC/SVT (Natsu, 14/10/2026) : variante `par_niveau` des questions, et
+# migration 0006 pour celles déjà importées.
+import importlib  # noqa: E402
+import re  # noqa: E402
+
+from django.apps import apps as django_apps  # noqa: E402
+
+avant = set(SkillQuestion.objects.values_list('pk', flat=True))
+with open(os.path.join(os.path.dirname(constats.__file__), 'quiz', '3-deuxieme-bac.json'), encoding='utf-8') as fh:
+    constats.importer(json.load(fh))
+nouvelles = SkillQuestion.objects.exclude(pk__in=avant).prefetch_related('theorems')
+
+
+def mots(x):
+    return ' '.join([x.question, x.explanation, *x.options] + [t.name for t in x.theorems.all()])
+
+
+en_pc = [x for x in nouvelles if x.class_level_id == pc.id]
+check('fichier des quiz de 2ème Bac : aucune « bijection » en PC/SVT (textes et théorèmes du bilan)',
+      en_pc and not [x.question[:60] for x in en_pc if re.search('biject', mots(x), re.I)],
+      [x.question[:60] for x in en_pc if re.search('biject', mots(x), re.I)])
+check('… la SM garde son vocabulaire (bijection au programme)',
+      any(re.search('biject', mots(x), re.I) for x in nouvelles if x.class_level_id == sm.id))
+cubique = next((x for x in en_pc if 'x^3 + x - 1' in x.question), None)
+check('variante PC : « admet une fonction réciproque », bonne réponse à sa place',
+      cubique is not None and 'admet une fonction réciproque définie sur $\\mathbb{R}$, et l’équation $f(x) = 0$ a une '
+      'unique solution, dans $]0\\,;1[$.' in cubique.options[cubique.correct_answer], cubique and cubique.options)
+SkillQuestion.objects.exclude(pk__in=avant).delete()
+
+# Migration 0006 : une question PC importée avant la variante est réécrite ; la même en SM ne bouge pas.
+ancienne_pc = dict(question='Soit $f(x) = x^3 + x - 1$ sur $\\mathbb{R}$. Laquelle de ces affirmations est vraie ?',
+                options=['$f$ n’est pas une bijection, car…', '$f$ est une bijection de $\\mathbb{R}$ sur $\\mathbb{R}$ (bonne)',
+                         'autre 1', 'autre 2'], correct_answer=1, explanation='bijection')
+ch_lim = lim
+x_pc = SkillQuestion.objects.create(chapter=ch_lim, class_level=pc, **ancienne_pc)
+x_sm = SkillQuestion.objects.create(chapter=ch_lim, class_level=sm, **ancienne_pc)
+importlib.import_module('apps.skilliq.migrations.0006_quiz_pc_sans_bijection').appliquer(django_apps, None)
+x_pc.refresh_from_db()
+x_sm.refresh_from_db()
+check('migration 0006 : la question PC déjà en base n’a plus de « bijection », bonne réponse au même rang',
+      not re.search('biject', mots(x_pc), re.I) and x_pc.correct_answer == 1
+      and x_pc.options[1].startswith('$f$ admet une fonction réciproque définie sur $\\mathbb{R}$')
+      and {t.name for t in x_pc.theorems.all()} == {'Théorème des valeurs intermédiaires (TVI)',
+                                                   'Continuité de la fonction réciproque'}, (x_pc.options, x_pc.explanation))
+check('migration 0006 : la même question en SM est intacte', x_sm.options == ancienne_pc['options'])
+x_pc.delete()
+x_sm.delete()
+
 cl, el = APIClient(), APIClient()
 cl.force_authenticate(admin)
 el.force_authenticate(eleves[0])
