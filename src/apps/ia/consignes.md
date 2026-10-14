@@ -46,6 +46,7 @@ Rien d'autre que ce bloc : pas de commentaire avant ni après.
 | `chapitres` | oui | au moins un, noms exacts du niveau choisi (annexe A) |
 | `theoremes` | non | noms exacts de l'annexe C utilisés par le contenu (ceux des questions s'y ajoutent d'eux-mêmes) |
 | `difficulte` | exercice, examen | `"facile"`, `"moyen"`, `"difficile"` |
+| `ecole` | non | établissement d'origine **nommé dans le document** (en-tête « Lycée … », « Groupe scolaire … »), tel qu'écrit, ou `{"nom": "…", "ville": "…"}` si la ville figure aussi ; cherché par le serveur dans la liste officielle (introuvable : laissé vide). Pas d'établissement dans le document : pas de champ, ne le devine jamais. |
 | `examen` | examen | `{"national": false, "duree_minutes": 120}` (durée si elle est indiquée ; sinon 120 pour un devoir surveillé et signale-le dans `doutes`) ; examen national : `{"national": true, "annee": 2023, "duree_minutes": 180}` |
 | `blocs` | exercice, examen | voir ci-dessous |
 | `sections` | leçon | voir ci-dessous |

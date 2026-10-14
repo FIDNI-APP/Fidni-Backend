@@ -18,7 +18,7 @@ from rest_framework.response import Response
 from apps.things.models import ContentReport
 from apps.users.admin_dashboard import IsSuperuser
 
-from . import client, consignes as ia_consignes, documents, pipeline
+from . import client, consignes as ia_consignes, depot, documents, pipeline
 from .client import IAErreur
 from .models import IAFile, IAJob
 
@@ -56,6 +56,12 @@ def _resume(job):
                          for f in r.get('fiches') or [] if isinstance(f, dict)]
         out['publies'] = r.get('publies') or []
         out['nb_doutes'] = len(r.get('doutes') or []) + len(r.get('problemes') or [])
+        # Préparé par Claude (ia/depot.py, 14/10/2026) : ses commentaires sont les `doutes` ; `remplace` = contenu
+        # déjà publié que ce brouillon met à jour (même clé).
+        out['depot'] = job.options.get('depot') == 'claude'
+        out['remplace'] = job.options.get('contenu') if job.options.get('remplacer') else None
+        if out['depot'] and not out['created_by']:
+            out['created_by'] = 'Claude'
     else:
         rep = job.report
         out['signalement'] = rep.id if rep else None
@@ -78,6 +84,8 @@ def _detail(job):
             'apercus': pipeline.apercus(job) if r.get('fiches') else [],
             'fichiers': [{'id': f.id, 'nom': f.name, 'mime': f.mime} for f in job.files.all()],
         })
+        if out.get('depot'):  # brouillon de Claude : le résumé de sa carte (établissement, compteurs…)
+            out['carte'] = depot.carte(job)
     else:
         out.update({k: r.get(k) for k in ('explication', 'doutes', 'modifications', 'erreurs')})
         rep = job.report
@@ -92,7 +100,8 @@ def _detail(job):
 def jobs(request):
     """Travaux récents, et si l'IA est prête (clé configurée)."""
     _occupe()
-    qs = IAJob.objects.select_related('created_by', 'report__content')
+    # Les brouillons de Claude ont leur onglet (« À valider », brouillons()).
+    qs = IAJob.objects.select_related('created_by', 'report__content').exclude(pk__in=depot.travaux().values('pk'))
     kind = request.query_params.get('kind')
     if kind in (IAJob.IMPORT, IAJob.SIGNALEMENT):
         qs = qs.filter(kind=kind)
@@ -100,6 +109,31 @@ def jobs(request):
         'configuree': client.configuree(),
         'modele': getattr(settings, 'ANTHROPIC_MODEL', ''),
         'results': [_resume(j) for j in qs[:60]],
+    })
+
+
+GROUPES = {
+    'a_valider': [IAJob.PRET, IAJob.ERREUR, IAJob.EN_ATTENTE, IAJob.EN_COURS],
+    'publies': [IAJob.PUBLIE],
+    'rejetes': [IAJob.REJETE],
+}
+
+
+@api_view(['GET'])
+@permission_classes([IsSuperuser])
+def brouillons(request):
+    """Onglet « À valider » : les contenus préparés par Claude, en cartes. ?statut=a_valider|publies|rejetes"""
+    _occupe()
+    statut = request.query_params.get('statut') or 'a_valider'
+    if statut not in GROUPES:
+        return Response({'detail': 'statut : ' + ', '.join(GROUPES)}, status=status.HTTP_400_BAD_REQUEST)
+    qs = depot.travaux()
+    # Dans l'ordre du dépôt pour relire une série comme elle se lit ; les traités, du plus récent au plus ancien.
+    lignes = qs.filter(status__in=GROUPES[statut]).order_by('created_at' if statut == 'a_valider' else '-updated_at')
+    return Response({
+        'compte': {k: qs.filter(status__in=v).count() for k, v in GROUPES.items()},
+        'ia_configuree': client.configuree(),
+        'results': [depot.carte(j) for j in lignes[:150]],
     })
 
 

@@ -175,11 +175,11 @@ def _figures(job, fichiers, specs, anciennes=None):
     images, erreurs = {}, []
     for spec in specs or []:
         nom = str((spec or {}).get('nom') or '')
-        if not re.match(r'^[A-Za-z0-9._-]+\.png$', nom):
+        if not re.match(r'^[A-Za-z0-9._-]+\.(png|jpe?g|webp)$' if (spec or {}).get('depot') else r'^[A-Za-z0-9._-]+\.png$', nom):
             erreurs.append(f'figure « {nom} » : nom invalide (lettres, chiffres, . _ -, extension .png)')
             continue
         signature = json.dumps(spec, sort_keys=True)
-        if nom in anciennes and anciennes[nom][0] == signature:
+        if nom in anciennes and (anciennes[nom][0] == signature or (spec or {}).get('depot')):
             images[nom] = anciennes[nom]
             continue
         try:
@@ -188,6 +188,10 @@ def _figures(job, fichiers, specs, anciennes=None):
             erreurs.append(str(exc))
         except Exception as exc:  # image corrompue, cadre hors page…
             erreurs.append(f'figure « {nom} » : découpe impossible ({exc})')
+    # Figures déposées par Claude (depot.py) : gardées même si l'IA ne les redéclare pas après une correction.
+    for nom, v in anciennes.items():
+        if nom not in images and '"depot": true' in str(v[0]):
+            images[nom] = tuple(v)
     return images, erreurs
 
 
@@ -211,15 +215,19 @@ def _completer(job, fiches, avertissements):
         f['format'] = importing.FORMAT
         for champ in ('source', 'credit', 'a_verifier', 'doublon_ok'):
             f.pop(champ, None)
+        note = (o.get('note') if o.get('depot') else
+                ORIGINES.get(o.get('origine'), '') + ' Fiche préparée par l’IA (Pilotage).')
         f['source'] = {'document': job.options.get('document') or 'document envoyé', 'origine': o.get('origine'),
-                       'note': ORIGINES.get(o.get('origine'), '') + ' Fiche préparée par l’IA (Pilotage).'}
+                       'note': note}
         if o.get('credit'):
             f['credit'] = o['credit']
         cle = importing.slugify(str(f.get('cle') or f.get('titre') or f'contenu-{i + 1}'))[:70] or f'contenu-{i + 1}'
         if len(cle) < 3:
             cle = f'contenu-{cle}'
         base, n = cle, 2
-        while cle in prises or cle in vues:
+        # Mise à jour d'un contenu publié (brouillon de Claude, depot.py) : sa clé est voulue, on la garde.
+        garder = bool(o.get('remplacer')) and cle == o.get('cle')
+        while (cle in prises and not garder) or cle in vues:
             cle = f'{base}-{n}'
             n += 1
         if cle != f.get('cle'):
@@ -399,7 +407,8 @@ def publier(job, *, a_verifier, doublon_ok, auteur):
     if bloquant:
         raise IAErreur('Publication impossible :\n- ' + '\n- '.join(bloquant))
     for f in fiches:
-        if Content.objects.filter(json_content__import__cle=f['cle']).exists():
+        if Content.objects.filter(json_content__import__cle=f['cle']).exists() and not (
+                job.options.get('remplacer') and f['cle'] == job.options.get('cle')):
             raise IAErreur(f'La clé « {f["cle"]} » vient d’être utilisée par un autre contenu : demander une correction.')
     publies = []
     with tempfile.TemporaryDirectory() as d, transaction.atomic():

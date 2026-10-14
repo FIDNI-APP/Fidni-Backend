@@ -208,6 +208,11 @@ def validate(fiche: dict) -> tuple[list[str], list[str], set[str]]:
     credit = fiche.get('credit')
     if credit is not None and not (isinstance(credit, str) and 0 < len(credit.strip()) <= 120):
         errors.append('credit : texte de 120 caractères au plus, ex. « M. Haddar, professeur de mathématiques »')
+    # Établissement d'origine (14/10/2026, champ « école » du site) : facultatif, nom ou {"nom", "ville"}.
+    ecole = fiche.get('ecole')
+    if ecole is not None and not _ecole_valide(ecole):
+        errors.append('ecole : nom de l’établissement (texte) ou {"nom": "…", "ville": "…"}, '
+                      'ex. {"nom": "Lycée Ibn Sina", "ville": "Rabat"}')
     src = fiche.get('source') or {}
     if not src.get('document'):
         errors.append('source.document : nom du document d’origine obligatoire (traçabilité)')
@@ -545,6 +550,40 @@ def all_html(structure: dict):
 
 # --------------------------------------------------------------------------- base de données
 
+def _ecole_valide(ecole) -> bool:
+    if isinstance(ecole, str):
+        return 0 < len(ecole.strip()) <= 255
+    return (isinstance(ecole, dict) and isinstance(ecole.get('nom'), str) and 0 < len(ecole['nom'].strip()) <= 255
+            and (ecole.get('ville') is None or isinstance(ecole.get('ville'), str)))
+
+
+def trouver_ecole(ecole):
+    """Établissement de la liste officielle (caracteristics.School) → (école ou None, avertissement ou None).
+    Recherche par mots normalisés (comme le formulaire du site), nom exact d'abord ; introuvable ou ambigu : vide,
+    avec un avertissement (l'import continue)."""
+    from apps.caracteristics.models import School, school_search_key
+
+    if not ecole or not _ecole_valide(ecole):
+        return None, None
+    nom = (ecole if isinstance(ecole, str) else ecole['nom']).strip()
+    ville = '' if isinstance(ecole, str) else (ecole.get('ville') or '').strip()
+    qs = School.objects.all()
+    for mot in school_search_key(nom, ville).split():
+        qs = qs.filter(search__contains=mot)
+    trouves = list(qs[:20])
+    exacts = [e for e in trouves if school_search_key(e.name) == school_search_key(nom)
+              and (not ville or school_search_key(e.city) == school_search_key(ville))]
+    choix = exacts if len(exacts) == 1 else trouves
+    libelle = f'« {nom} »' + (f' ({ville})' if ville else '')
+    if len(choix) == 1:
+        return choix[0], None
+    if not choix:
+        return None, f'établissement {libelle} introuvable dans la liste officielle : laissé vide'
+    villes = sorted({e.city for e in choix if e.city})[:5]
+    return None, (f'{len(choix)} établissements correspondent à {libelle}'
+                  + (f' ({", ".join(villes)}…)' if villes else '') + ' : précise la ville ; laissé vide')
+
+
 def _match(model_qs, names: list[str], what: str, errors: list[str], **filters):
     found = []
     choices = list(model_qs.filter(**filters).values_list('name', flat=True))
@@ -611,9 +650,12 @@ def check_against_db(fiche: dict) -> tuple[list[str], list[str], dict]:
             if normalize_text(c.title) == title_key:
                 errors.append(f'doublon probable : même titre que #{c.display_id} « {c.title} »'
                               ' (changer le titre ou mettre "doublon_ok": true)')
+    school, avert_ecole = trouver_ecole(fiche.get('ecole'))
+    if avert_ecole:
+        warnings.append(avert_ecole)
     return errors, warnings, {
         'subject': subject, 'levels': levels, 'chapters': chapters, 'theorems': theorems,
-        'subfields': subfields, 'existing': existing,
+        'subfields': subfields, 'existing': existing, 'school': school,
     }
 
 
@@ -656,6 +698,9 @@ def import_fiche(fiche: dict, base_dir: str, *, api_base: str = 'https://api.fid
         content.is_national_exam = bool(ex.get('national')) if kind == 'exam' else False
         content.national_year = ex.get('annee') if kind == 'exam' else None
         content.duration_minutes = ex.get('duree_minutes') if kind == 'exam' else None
+        # Établissement : seulement s'il est trouvé (sinon celui choisi à la main sur le site est gardé).
+        if res.get('school') is not None:
+            content.school = res['school']
         content.json_content = content.json_content or {}
         content.save()
 

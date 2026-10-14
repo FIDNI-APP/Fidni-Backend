@@ -916,6 +916,7 @@ def live(request):
     Aujourd'hui et hier (vues, membres actifs, inscriptions, travail, visiteurs non connectés), ce qui attend
     (signalements, corrections à vérifier, travaux de l'IA) et l'activité récente de tous les membres réels.
     """
+    from apps.ia import depot as ia_depot
     from apps.ia.models import IAJob
     from apps.skilliq.models import SkillQuestion
     today = timezone.localdate()
@@ -949,7 +950,10 @@ def live(request):
             'reports_open': ContentReport.objects.filter(status=ContentReport.STATUS_OPEN).count(),
             'a_verifier': Content.objects.filter(json_content__a_verifier=True).count(),
             'ia_en_cours': IAJob.objects.filter(status__in=[IAJob.EN_ATTENTE, IAJob.EN_COURS]).count(),
-            'ia_a_relire': IAJob.objects.filter(status=IAJob.PRET).count(),
+            # Brouillons de Claude (onglet « À valider ») comptés à part de ceux de l'IA.
+            'ia_a_relire': IAJob.objects.filter(status=IAJob.PRET).exclude(
+                pk__in=ia_depot.travaux().values('pk')).count(),
+            'brouillons': ia_depot.travaux().filter(status__in=[IAJob.PRET, IAJob.ERREUR]).count(),
             # Questions de quiz rédigées par l'IA, invisibles des élèves tant qu'elles ne sont pas validées.
             'quiz_a_relire': SkillQuestion.objects.filter(a_relire=True).count(),
         },

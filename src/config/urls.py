@@ -195,6 +195,7 @@ urlpatterns = [
     path('api/pilotage/signalements/<int:pk>/', content_reports.report_update, name='pilotage-signalement'),
     # IA des administrateurs : import d'un document, correction d'un signalement (rien sans validation).
     path('api/pilotage/ia/', ia_views.jobs, name='pilotage-ia'),
+    path('api/pilotage/brouillons/', ia_views.brouillons, name='pilotage-brouillons'),
     path('api/pilotage/ia/import/', ia_views.nouvel_import, name='pilotage-ia-import'),
     path('api/pilotage/ia/<int:pk>/', ia_views.job_detail, name='pilotage-ia-detail'),
     path('api/pilotage/ia/<int:pk>/corriger/', ia_views.job_corriger, name='pilotage-ia-corriger'),
