@@ -187,9 +187,11 @@ def _session_score(data):
 
 
 def _forget_stats(content_id, user_id):
-    """Onglet « Activité » : les statistiques sont en cache 5 min ; une auto-évaluation doit s'y voir tout de suite."""
+    """Statistiques en cache 5 min ; une auto-évaluation doit s'y voir tout de suite (réussite par question
+    comprise, affichée à côté de chaque question)."""
     cache.delete(f'content_stats_{content_id}_user_{user_id}')
     cache.delete(f'content_stats_{content_id}_user_None')
+    cache.delete(f'content_qstats_{content_id}')
 
 
 def _forget_maitrise(user_id):
@@ -999,6 +1001,32 @@ class ContentViewSet(VoteMixin, viewsets.ModelViewSet):
             }
         return {'exercises_avg_seconds': 0, 'lessons_avg_seconds': 0,
                 'exams_avg_seconds': 0, 'chapters': [c.name for c in chapters]}
+
+    @action(detail=True, methods=['get'])
+    def question_stats(self, request, pk=None):
+        """Réussite de la classe, question par question, affichée à côté de chaque question (15/10/2026 : remplace
+        l'onglet « Activité », jugé difficile d'accès). Vrais élèves seulement (comptes maison exclus), mêmes
+        chiffres pour tous : en cache 5 min par contenu, effacé à chaque auto-évaluation (_forget_stats).
+        → {"eleves": n, "questions": {chemin: {"total", "success", "partial", "review"}}} ; « review » compte aussi
+        les anciens « failed »."""
+        item = self.get_object()
+        key = f'content_qstats_{item.id}'
+        data = cache.get(key)
+        if data is None:
+            from apps.users.admin_dashboard import _house_filter
+            ct = ContentType.objects.get_for_model(Content)
+            house = User.objects.filter(_house_filter()).values('id')
+            rows = (QuestionProgress.objects.filter(content_type=ct, object_id=item.id)
+                    .exclude(user_id__in=house).exclude(status=''))
+            questions, eleves = {}, set()
+            for path, st, uid in rows.values_list('question_path', 'status', 'user_id'):
+                b = questions.setdefault(path, {'total': 0, 'success': 0, 'partial': 0, 'review': 0})
+                b['total'] += 1
+                b['success' if st == 'success' else 'partial' if st == 'partial' else 'review'] += 1
+                eleves.add(uid)
+            data = {'eleves': len(eleves), 'questions': questions}
+            cache.set(key, data, 300)
+        return Response(data)
 
     @action(detail=True, methods=['get'])
     def statistics(self, request, pk=None):

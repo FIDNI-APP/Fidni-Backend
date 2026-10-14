@@ -73,13 +73,15 @@ old.profile.refresh_from_db()
 check('civilité « préfère ne pas le dire » acceptée', r.status_code == 200 and old.profile.gender == 'N', r.data)
 
 APILog.objects.create(endpoint='/api/x/', method='GET', status_code=200, response_time_ms=1, ip_address='1.2.3.4', user=old)
-r = client(old).get('/api/auth/my-data/')
-check('export de ses données (JSON téléchargeable)', r.status_code == 200 and 'attachment' in r['Content-Disposition'], r.status_code)
-data = json.loads(r.content)
-check('… compte, profil et journaux inclus', data['compte']['email'] == 'o@x.fr' and 'users.UserProfile' in data
-      and 'logging.APILog' in data, list(data.keys())[:8])
-check('… sans mot de passe ni jetons', 'password' not in r.content.decode() and 'token_blacklist.OutstandingToken' not in data)
-check('export réservé au titulaire du compte', client().get('/api/auth/my-data/').status_code in (401, 403))
+# Plus de téléchargement en libre service (15/10/2026) : copie envoyée sur demande, par la commande exporter_donnees.
+check('plus d’export des données en libre service', client(old).get('/api/auth/my-data/').status_code == 404)
+import io as _io  # noqa: E402
+_sortie = _io.StringIO()
+call_command('exporter_donnees', 'O@X.FR', stdout=_sortie)
+data = json.loads(_sortie.getvalue())
+check('commande exporter_donnees : compte, profil et journaux inclus', data['compte']['email'] == 'o@x.fr'
+      and 'users.UserProfile' in data and 'logging.APILog' in data, list(data.keys())[:8])
+check('… sans mot de passe ni jetons', 'password' not in _sortie.getvalue() and 'token_blacklist.OutstandingToken' not in data)
 
 vieux = APILog.objects.create(endpoint='/api/y/', method='GET', status_code=200, response_time_ms=1, ip_address='5.6.7.8')
 APILog.objects.filter(pk=vieux.pk).update(timestamp=timezone.now() - timedelta(days=200))

@@ -26,7 +26,7 @@ from apps.authentication.views import USERNAME_RE
 from apps.authentication.pseudos import PSEUDO_REFUSE, pseudo_interdit
 from .identity import apply_identity
 from .account_deletion import DELETED_USERNAME, delete_account, is_deleted_account
-from .legal import accept_terms, export_user_data
+from .legal import accept_terms
 from rest_framework.permissions import IsAdminUser
 from config.throttling import AuthRateThrottle
 import logging
@@ -968,18 +968,3 @@ class ModerationDeleteAccountView(APIView):
         logger.warning('Modération : %s a supprimé le compte %s et son contenu (%s)%s',
                        request.user.username, username, summary, f', banni ({banned})' if banned else '')
         return Response({'detail': 'account_deleted', 'removed': summary, 'banned': banned})
-
-
-class ExportMyDataView(APIView):
-    """Télécharger toutes ses données (RGPD, droits d'accès et de portabilité)."""
-    permission_classes = [IsAuthenticated]
-    throttle_classes = [AuthRateThrottle]
-
-    def get(self, request):
-        import json
-        from django.core.serializers.json import DjangoJSONEncoder
-        from django.http import HttpResponse
-        body = json.dumps(export_user_data(request.user), cls=DjangoJSONEncoder, ensure_ascii=False, indent=2)
-        response = HttpResponse(body, content_type='application/json; charset=utf-8')
-        response['Content-Disposition'] = f'attachment; filename="fidni-mes-donnees-{request.user.username}.json"'
-        return response

@@ -17,7 +17,7 @@ from apps.users.views import (
     TeacherInvitationView, TeacherInvitationRespondView,
     TeacherInvitationDeleteView, StudentInvitationsView,
 )
-from apps.users.views import PasswordChangeView, UpdateUserInfoView, UpdateMeView, DeleteAccountView, ModerationDeleteAccountView, ExportMyDataView
+from apps.users.views import PasswordChangeView, UpdateUserInfoView, UpdateMeView, DeleteAccountView, ModerationDeleteAccountView
 from apps.users.dashboard_views import (
     get_user_dashboard_stats,
     get_learning_path_progress,
@@ -164,7 +164,6 @@ urlpatterns = [
     path('api/auth/password/change/', PasswordChangeView.as_view(), name='password-change'),
     path('api/auth/user/update/', UpdateUserInfoView.as_view(), name='user-update'),
     path('api/auth/delete-account/', DeleteAccountView.as_view(), name='delete-account'),
-    path('api/auth/my-data/', ExportMyDataView.as_view(), name='my-data'),
     path('api/moderation/users/<str:username>/delete/', ModerationDeleteAccountView.as_view(), name='moderation-delete-account'),
 
     # Dashboard endpoints

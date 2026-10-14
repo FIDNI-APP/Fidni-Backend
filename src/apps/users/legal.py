@@ -14,7 +14,7 @@ from django.utils import timezone
 
 # À changer à chaque modification des CGU ou de la politique de confidentialité :
 # les comptes existants devront les accepter de nouveau.
-TERMS_VERSION = '2026-09-29.2'  # 09-28 .2 : AdSense ; .3 : annonces personnalisées ; 09-29 : hébergeur OVH au lieu d'AWS ; .2 : date de naissance
+TERMS_VERSION = '2026-10-15'  # 10-15 : copie des données sur demande par e-mail ; 09-28 .2 : AdSense ; .3 : annonces personnalisées ; 09-29 : hébergeur OVH au lieu d'AWS ; .2 : date de naissance
 
 # Journaux techniques (adresses IP, requêtes) : la CNIL recommande 6 mois à 1 an.
 LOG_RETENTION = timedelta(days=180)

@@ -2,6 +2,7 @@
 nouvelle adresse e-mail à confirmer, sur une base SQLite jetable. Google n'est jamais appelé : la vérification du jeton est remplacée par une
 fonction factice, puis la vraie fonction est testée avec une clé RSA locale et un faux client JWKS."""
 import os
+import json
 import re
 import sys
 import tempfile
@@ -518,10 +519,12 @@ check('Google injoignable : 503 (pas la faute du jeton)', r.status_code == 503
 fake_jwks.down = False
 
 # 11. Données : le lien Google est dans l'export, sans jeton
-exp = bearer(gpost(token()).data['access']).get('/api/auth/my-data/')
-body = exp.content.decode()
-check('export « Mes données » : compte Google inclus', exp.status_code == 200 and '1098765' in body
-      and re.search(r'users\.GoogleAccount', body), exp.status_code)
+from apps.users.legal import export_user_data  # noqa: E402
+from django.core.serializers.json import DjangoJSONEncoder  # noqa: E402
+gp = gpost(token())
+body = json.dumps(export_user_data(User.objects.get(username=gp.data['user']['username'])), cls=DjangoJSONEncoder)
+check('export des données (sur demande) : compte Google inclus', '1098765' in body
+      and re.search(r'users\.GoogleAccount', body), gp.status_code)
 
 # 12. Pages servies par Django : la fenêtre de connexion Google peut s'ouvrir
 coop = APIClient().get('/sitemap.xml').headers.get('Cross-Origin-Opener-Policy')
