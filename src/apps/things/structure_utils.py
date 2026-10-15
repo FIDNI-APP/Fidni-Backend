@@ -107,15 +107,18 @@ def _items(structure):
 
 def move_methods_to_hints(structure: dict) -> int:
     """Sépare la « Méthode » de chaque solution en indication (sur place). Une indication déjà présente est
-    gardée telle quelle. Renvoie le nombre de questions modifiées."""
+    gardée telle quelle et la méthode est alors retirée de la solution : jamais d'« Indication » ET de « Méthode »
+    à la suite (Natsu, 15/10/2026 : « il faut juste "Indication", le reste c'est la solution »). Renvoie le nombre
+    de questions modifiées."""
     n = 0
     for item in _items(structure):
         sol = item.get('solution')
-        if not isinstance(sol, dict) or item.get('hint'):
+        if not isinstance(sol, dict):
             continue
         hint, rest = split_method(sol.get('html') or '')
         if hint:
-            item['hint'] = {'type': 'text', 'html': hint}
+            if not item.get('hint'):
+                item['hint'] = {'type': 'text', 'html': hint}
             item['solution'] = {**sol, 'html': rest}
             n += 1
     return n

@@ -79,6 +79,23 @@ check('import : le champ « indice » d’une fiche est l’indication affichée
       s['blocks'][1].get('hint', {}).get('html') == '<p>Pense à $x^2$.</p>' and 'hint' not in s['blocks'][1].get('meta', {}))
 check('contrôle des formules : l’indication est vérifiée aussi',
       any('Pense' in h for _, h in importing.all_html(s)))
+# Indication écrite à part ET « Méthode : » en tête de solution : l'indication reste, la méthode quitte la solution
+# (Natsu, 15/10/2026 : jamais « Indication » puis « Méthode » à la suite).
+s2 = importing.to_structure({'cle': 'tst-ind2', 'type': 'exercice', 'blocs': [
+    {'type': 'question', 'html': '<p>Q.</p>', 'indice': '<p>Pense au TVI.</p>', 'solution': SOL}]})
+check('indice + méthode : l’indice reste l’indication, la solution ne commence plus par « Méthode »',
+      s2['blocks'][0]['hint']['html'] == '<p>Pense au TVI.</p>' and 'Méthode' not in s2['blocks'][0]['solution']['html']
+      and s2['blocks'][0]['solution']['html'].startswith('<p>Pour'), s2['blocks'][0])
+c15 = Content.objects.create(type='exercise', title='Doublon', author=User.objects.create_user('Fidni2', 'f2@x.fr', None),
+                             json_content={'version': '2.1', 'blocks': [{'id': 'q', 'type': 'question',
+                                           'content': {'type': 'text', 'html': '<p>Q.</p>'},
+                                           'hint': {'type': 'text', 'html': '<p>Pense au TVI.</p>'},
+                                           'solution': {'type': 'text', 'html': SOL}}]})
+importlib.import_module('apps.things.migrations.0015_methode_retiree_des_solutions').forwards(django_apps, None)
+c15.refresh_from_db()
+check('migration 0015 : contenu publié nettoyé (indication gardée, méthode retirée)',
+      c15.json_content['blocks'][0]['hint']['html'] == '<p>Pense au TVI.</p>'
+      and not c15.json_content['blocks'][0]['solution']['html'].startswith('<p><strong>Méthode'))
 
 # ---------------------------------------------------------------- migration des contenus publiés
 editorial = User.objects.create_user('Fidni', 'fidni@x.fr', None)
