@@ -271,7 +271,7 @@ IA_LANCEMENT = os.getenv('IA_LANCEMENT', 'processus')  # « aucun » : tests (tr
 # (environ 0,005 $ par copie), toujours vérifiées et publiées par le professeur.
 COPIES_ACTIVES = os.getenv('COPIES_ACTIVES', 'True') == 'True'
 COPIES_MODEL = os.getenv('COPIES_MODEL', 'claude-haiku-5-5')
-COPIES_EFFORT_TRANSCRIPTION = os.getenv('COPIES_EFFORT_TRANSCRIPTION', 'low')
+COPIES_EFFORT_TRANSCRIPTION = os.getenv('COPIES_EFFORT_TRANSCRIPTION', 'medium')
 COPIES_EFFORT_CORRECTION = os.getenv('COPIES_EFFORT_CORRECTION', 'high')
 COPIES_QUOTA_MOIS = int(os.getenv('COPIES_QUOTA_MOIS', '200'))  # copies corrigées par l'IA, par professeur et par mois
 COPIES_PAGES_MAX = int(os.getenv('COPIES_PAGES_MAX', '12'))  # pages d'une copie

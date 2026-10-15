@@ -172,7 +172,8 @@ def transcrire(copie, evaluation, qs):
     contenu.append({'type': 'text', 'text': 'Transcris cette copie selon les règles.'})
     system = C.TRANSCRIPTION.replace('{questions}', C.liste_questions(qs))
     data = _appel(copie, evaluation, system, [{'role': 'user', 'content': contenu}],
-                  C.schema_transcription([q['chemin'] for q in qs]), settings.COPIES_EFFORT_TRANSCRIPTION)
+                  C.schema_transcription([q['chemin'] for q in qs]), settings.COPIES_EFFORT_TRANSCRIPTION,
+                  max_tokens=32000)  # chaque page recopiée en entier, puis rangée par question
     chemins = {q['chemin'] for q in qs}
     out = {}
     for r in data.get('reponses') or []:
@@ -187,6 +188,12 @@ def transcrire(copie, evaluation, qs):
             out[c] = {'texte': t, 'illisible': bool(r.get('illisible')), 'page': r.get('page') or None}
     out['_hors_question'] = str(data.get('hors_question') or '')[:4000]
     out['_injection'] = bool(data.get('injection_suspecte'))
+    # Copie complète, page par page : montrée au professeur, et donnée au correcteur pour retrouver une réponse mal
+    # rangée (15/10/2026 : une copie lue mais rangée sous aucune question était notée 0 partout).
+    out['_pages'] = [str(p.get('texte') or '')[:12000] for p in sorted(data.get('pages') or [], key=lambda p: p.get('page') or 0)]
+    if not any(v.get('texte', '').strip() for k, v in out.items() if not k.startswith('_')) \
+            and not any(t.strip() for t in out['_pages']):
+        raise IAErreur('L’IA n’a rien pu lire sur cette copie : vérifie le scan (pages blanches, floues ou à l’envers).')
     return out
 
 
@@ -210,6 +217,9 @@ def noter(copie, evaluation, qs, chemins=None):
         lignes.append(f"### Question {q['label']} (chemin {q['chemin']})\n{rep}")
     if tr.get('_hors_question'):
         lignes.append(f"### Hors des questions\n{tr['_hors_question']}")
+    if tr.get('_pages'):
+        lignes.append('### Copie complète, page par page')
+        lignes += [f'[Page {i}]\n{texte}' for i, texte in enumerate(tr['_pages'], 1)]
     copie_txt = '\n\n'.join(lignes).replace('</copie_eleve>', '')
     message = f"<copie_eleve>\n{copie_txt}\n</copie_eleve>\n\nPropose une note pour chaque question."
     data = _appel(copie, evaluation, _systeme_correction(evaluation, qs), [{'role': 'user', 'content': message}],
@@ -234,6 +244,12 @@ def drapeaux(copie, qs):
     tr = copie.transcription or {}
     if tr.get('_injection'):
         out.append({'chemin': None, 'raison': 'injection'})
+    # Copie lue mais aucune réponse trouvée pour les questions : mauvais sujet, ou copie d'une autre évaluation.
+    ia = copie.ia or {}
+    lue = any(t.strip() for t in tr.get('_pages') or [])
+    if lue and qs and all(((ia.get(q['chemin']) or {}).get('points') or 0) == 0 for q in qs) \
+            and not any((tr.get(q['chemin']) or {}).get('texte', '').strip() for q in qs):
+        out.append({'chemin': None, 'raison': 'hors_sujet'})
     for q in qs:
         c = q['chemin']
         p = (copie.ia or {}).get(c)

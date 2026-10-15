@@ -268,9 +268,9 @@ APPELS.clear()
 traitement.traiter_evaluation(eid)
 copie_a.refresh_from_db()
 copie_s = Copie.objects.get(evaluation=ev, eleve=sara)
-check('appels au modèle des copies (Haiku 5.5), transcription en effort faible puis correction en effort élevé',
+check('appels au modèle des copies (Haiku 5.5), transcription en effort moyen puis correction en effort élevé',
       [a['model'] for a in APPELS] == ['claude-haiku-5-5'] * 4
-      and [a['effort'] for a in APPELS][:2] == ['low', 'high'] and APPELS[0]['format']['properties']['reponses'],
+      and [a['effort'] for a in APPELS][:2] == ['medium', 'high'] and APPELS[0]['format']['properties']['reponses'],
       [(a.get('model'), a.get('effort')) for a in APPELS])
 check('transcription : images des pages envoyées', sum(1 for b in APPELS[0]['messages'][0]['content']
                                                      if b.get('type') == 'image') == 3)
@@ -503,6 +503,39 @@ texte = api_ad.get(f'{b_ad}export/?type=csv').content.decode('utf-8')
 check('export : la ligne de l’élève sans compte', 'Karim Alaoui;' in texte, texte[:200])
 check('supprimer la copie (et ses pages)', api_ad.delete(f'{b_ad}copies/{cid_sc}/').status_code == 204
       and not Copie.objects.filter(pk=cid_sc).exists())
+
+# ---------------------------------------------------------------- copie lue mais réponses rangées sous aucune question
+r = api_ad.post(f'{b_ad}copies/', {'nom': 'Aymen'}, format='json')
+cid_mal = r.data['copie']['id']
+api_ad.post(f'{b_ad}copies/{cid_mal}/pages/', {'fichier': SimpleUploadedFile('a.jpg', jpeg(), 'image/jpeg')}, format='multipart')
+REPONSES[:] = [{'pages': [{'page': 1, 'texte': 'Ex n°1 : 1/ f(2) = 4'}], 'reponses': [], 'hors_question': '', 'nom_lu': 'Aymen',
+                'injection_suspecte': False},
+               {'questions': [{'chemin': 'q1', 'points': 2, 'commentaire': '', 'confiance': 0.8, 'illisible': False}],
+                'commentaire_global': ''}]
+APPELS.clear()
+api_ad.post(f'{b_ad}corriger/', {'copies': [cid_mal]}, format='json')
+traitement.traiter_evaluation(Copie.objects.get(pk=cid_mal).evaluation_id)
+c_mal = Copie.objects.get(pk=cid_mal)
+check('réponse mal rangée : le correcteur reçoit la copie complète page par page et la note',
+      'Copie complète, page par page' in APPELS[1]['messages'][0]['content'] and 'f(2) = 4' in APPELS[1]['messages'][0]['content']
+      and c_mal.ia['q1']['points'] == 2 and c_mal.transcription['_pages'] == ['Ex n°1 : 1/ f(2) = 4'], c_mal.ia)
+check('transcription en effort moyen, réponse longue permise', APPELS[0]['effort'] == 'medium')
+REPONSES[:] = [{'pages': [{'page': 1, 'texte': 'Exercice sur les vecteurs, rien à voir'}], 'reponses': [], 'hors_question': '',
+                'nom_lu': '', 'injection_suspecte': False},
+               {'questions': [{'chemin': q['chemin'], 'points': 0, 'commentaire': 'Aucune réponse.', 'confiance': 0.9,
+                               'illisible': False} for q in bareme.questions(SUJET)], 'commentaire_global': ''}]
+api_ad.post(f'{b_ad}copies/{cid_mal}/recorriger/', {}, format='json')
+traitement.traiter_evaluation(c_mal.evaluation_id)
+c_mal.refresh_from_db()
+check('copie d’un autre sujet : signalée au professeur (pas un 0 silencieux)',
+      any(d['raison'] == 'hors_sujet' for d in c_mal.drapeaux), c_mal.drapeaux)
+REPONSES[:] = [{'pages': [{'page': 1, 'texte': '  '}], 'reponses': [], 'hors_question': '', 'nom_lu': '',
+                'injection_suspecte': False}] * 2
+api_ad.post(f'{b_ad}copies/{cid_mal}/recorriger/', {}, format='json')
+traitement.traiter_evaluation(c_mal.evaluation_id)
+c_mal.refresh_from_db()
+check('scan illisible (rien lu) : erreur claire, pas de notes', c_mal.statut == 'erreur' and 'rien pu lire' in c_mal.error,
+      (c_mal.statut, c_mal.error))
 
 # ---------------------------------------------------------------- reprise
 Copie.objects.filter(pk=copie_s.pk).update(statut=Copie.EN_COURS, heartbeat=None)
