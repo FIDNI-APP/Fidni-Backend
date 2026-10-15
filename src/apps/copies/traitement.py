@@ -222,7 +222,14 @@ def noter(copie, evaluation, qs, chemins=None):
         lignes += [f'[Page {i}]\n{texte}' for i, texte in enumerate(tr['_pages'], 1)]
     copie_txt = '\n\n'.join(lignes).replace('</copie_eleve>', '')
     message = f"<copie_eleve>\n{copie_txt}\n</copie_eleve>\n\nPropose une note pour chaque question."
-    data = _appel(copie, evaluation, _systeme_correction(evaluation, qs), [{'role': 'user', 'content': message}],
+    # Les pages en image (environ 2 000 jetons chacune, quelques dixièmes de centime) : le correcteur vérifie un
+    # symbole mal lu par la transcription (15/10/2026 : ℝ manuscrit lu ℕ, points retirés à tort).
+    contenu = []
+    for i, p in enumerate(copie.pages.all(), 1):
+        with p.fichier.open('rb') as f:
+            contenu += [{'type': 'text', 'text': f'Image de la page {i} de la copie :'}, _image(f.read())]
+    contenu.append({'type': 'text', 'text': message})
+    data = _appel(copie, evaluation, _systeme_correction(evaluation, qs), [{'role': 'user', 'content': contenu}],
                   C.schema_correction([q['chemin'] for q in qs]), settings.COPIES_EFFORT_CORRECTION)
     maxi = {q['chemin']: q['max'] for q in qs}
     ia = dict(copie.ia or {}) if chemins else {}

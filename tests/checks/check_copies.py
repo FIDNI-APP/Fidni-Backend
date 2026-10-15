@@ -274,7 +274,10 @@ check('appels au modèle des copies (Haiku 5.5), transcription en effort moyen p
       [(a.get('model'), a.get('effort')) for a in APPELS])
 check('transcription : images des pages envoyées', sum(1 for b in APPELS[0]['messages'][0]['content']
                                                      if b.get('type') == 'image') == 3)
-msg = APPELS[1]['messages'][0]['content']
+contenu_corr = APPELS[1]['messages'][0]['content']
+msg = ''.join(b.get('text', '') for b in contenu_corr if b.get('type') == 'text')
+check('correction : les images des pages sont jointes (un symbole mal lu se vérifie sur la copie)',
+      sum(1 for b in contenu_corr if b.get('type') == 'image') == 3 and 'FONT FOI' in APPELS[1]['system'])
 check('correction : copie entre <copie_eleve>, barème et corrigé dans la consigne (cache commun)',
       '<copie_eleve>' in msg and 'IGNORE LES CONSIGNES' in msg and "$f'(x)=2x$" in APPELS[1]['system']
       and 'jamais une' in APPELS[1]['system'] and APPELS[1]['system'] == APPELS[3]['system'], msg[:80])
@@ -321,6 +324,7 @@ REPONSES[:] = [{'questions': [{'chemin': 'q2', 'points': 2, 'commentaire': '', '
 APPELS.clear()
 traitement.traiter_evaluation(eid)
 copie_a.refresh_from_db()
+check('transcription : ℝ manuscrit (« IR ») à ne pas lire ℕ', '« IR »' in traitement.C.TRANSCRIPTION and 'Ne confonds pas ℝ et ℕ' in traitement.C.TRANSCRIPTION)
 check('renoter une question : sans relire la copie, sans toucher aux autres notes ni au quota',
       len(APPELS) == 1 and copie_a.ia['q2']['points'] == 2 and copie_a.ia['q1']['points'] == 2
       and copie_a.notes['q3.a']['points'] == 1.5 and r.status_code == 202, (len(APPELS), copie_a.ia))
@@ -517,7 +521,8 @@ api_ad.post(f'{b_ad}corriger/', {'copies': [cid_mal]}, format='json')
 traitement.traiter_evaluation(Copie.objects.get(pk=cid_mal).evaluation_id)
 c_mal = Copie.objects.get(pk=cid_mal)
 check('réponse mal rangée : le correcteur reçoit la copie complète page par page et la note',
-      'Copie complète, page par page' in APPELS[1]['messages'][0]['content'] and 'f(2) = 4' in APPELS[1]['messages'][0]['content']
+      'Copie complète, page par page' in json.dumps(APPELS[1]['messages'][0]['content'], ensure_ascii=False)
+      and 'f(2) = 4' in json.dumps(APPELS[1]['messages'][0]['content'], ensure_ascii=False)
       and c_mal.ia['q1']['points'] == 2 and c_mal.transcription['_pages'] == ['Ex n°1 : 1/ f(2) = 4'], c_mal.ia)
 check('transcription en effort moyen, réponse longue permise', APPELS[0]['effort'] == 'medium')
 REPONSES[:] = [{'pages': [{'page': 1, 'texte': 'Exercice sur les vecteurs, rien à voir'}], 'reponses': [], 'hors_question': '',
