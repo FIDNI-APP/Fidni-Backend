@@ -39,6 +39,7 @@ ACTIONS = {
     'recherche',          # recherche lancée
     'onglet-activite',    # onglet « Activité » d'un contenu ouvert
     'onglet-solutions',   # onglet « Solutions des élèves » ouvert
+    'mode-sombre',        # bouton lune / soleil de la barre du haut
     # Audit du 10/10/2026 : gestes jusqu'ici invisibles.
     'partager',           # « Partager » d'un contenu
     'chrono-demarre',     # chrono d'un exercice lancé (seule la sauvegarde laissait une trace)

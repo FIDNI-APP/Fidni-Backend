@@ -410,6 +410,7 @@ TRACKED_ACTIONS = [
     ('rattrapage-liste', 'Évalué depuis le bandeau « Tu as ouvert… » de la liste'),
     ('onglet-activite', 'Onglet « Activité » ouvert'),
     ('onglet-solutions', 'Onglet « Solutions des élèves » ouvert'),
+    ('mode-sombre', 'Mode sombre / clair basculé'),
     ('imprimer', 'Impression / PDF'),
     ('recherche', 'Recherche'),
     ('visite-guidee', 'Visite guidée'),
