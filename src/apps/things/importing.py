@@ -662,6 +662,12 @@ def check_against_db(fiche: dict) -> tuple[list[str], list[str], dict]:
 
     kind = TYPES.get(fiche.get('type'))
     existing = Content.objects.filter(json_content__import__cle=fiche.get('cle')).first()
+    # « remplace » : id d'un contenu publié sans clé d'import (modifié dans l'éditeur avant le 15/10/2026, ou
+    # créé sur le site) que cette fiche met à jour, au même lien.
+    if existing is None and fiche.get('remplace') is not None:
+        existing = Content.objects.filter(pk=fiche['remplace']).first() if isinstance(fiche['remplace'], int) else None
+        if existing is None:
+            errors.append(f'« remplace » : contenu #{fiche["remplace"]} introuvable')
     if existing and existing.type != kind:
         errors.append(f'la clé « {fiche.get("cle")} » est déjà utilisée par un contenu de type {existing.type}')
     if not fiche.get('doublon_ok'):

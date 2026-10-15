@@ -152,6 +152,8 @@ def deposer(dossier):
     fiche, commentaires = _lire(dossier)
     cle = fiche['cle']
     existant = Content.objects.filter(json_content__import__cle=cle).only('id', 'title', 'type').first()
+    if existant is None and isinstance(fiche.get('remplace'), int):  # contenu publié visé par son id
+        existant = Content.objects.filter(pk=fiche['remplace']).only('id', 'title', 'type').first()
     src = fiche.get('source') if isinstance(fiche.get('source'), dict) else {}
     options = {
         'depot': DEPOT, 'cle': cle, 'document': src.get('document') or fiche.get('titre') or cle,

@@ -413,7 +413,14 @@ class ContentCreateSerializer(serializers.ModelSerializer):
             instance.theorems.set(theorems)
 
         if json_content is not None:
-            instance.json_content = json_content or {}
+            # L'éditeur ne connaît pas ces champs : gardés tels quels (avant le 15/10/2026, une modification
+            # sur le site effaçait « Proposé par », le bandeau « à vérifier » et la clé d'import).
+            ancien = instance.json_content if isinstance(instance.json_content, dict) else {}
+            nouveau = dict(json_content or {})
+            for cle in ('credit', 'a_verifier', 'import'):
+                if cle in ancien and cle not in nouveau:
+                    nouveau[cle] = ancien[cle]
+            instance.json_content = nouveau
         instance.save()
         if json_content is not None:
             ajouter_au_contenu(instance)  # théorèmes des questions (meta.theorems) → théorèmes du contenu

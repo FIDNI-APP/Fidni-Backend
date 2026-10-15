@@ -278,6 +278,28 @@ check('publié : version modifiée (titre, difficulté, texte), figure publiée,
       and cp.json_content.get('credit') and cp.json_content.get('a_verifier') is True
       and cp.chapters.count() == 1 and cp.class_levels.count() == 1, (r.status_code, cp and cp.title))
 
+# ---------------------------------------------------------------- l'éditeur du site garde crédit, bandeau et clé
+st_sans = {k: v for k, v in cp.json_content.items() if k not in ('credit', 'a_verifier', 'import')}
+r = ad.patch(f'/api/contents/{cp.id}/', {'json_content': st_sans}, format='json')
+cp.refresh_from_db()
+check('modifier sur le site garde « Proposé par », le bandeau « à vérifier » et la clé d’import', r.status_code == 200
+      and cp.json_content.get('credit') and cp.json_content.get('a_verifier') is True
+      and (cp.json_content.get('import') or {}).get('cle') == 'depot-editeur', (r.status_code, list(cp.json_content)))
+
+# « remplace » : un contenu publié qui a perdu sa clé (ancienne modification sur le site) est mis à jour au même lien.
+Content.objects.filter(pk=cp.pk).update(json_content=st_sans)
+call_command('ia_deposer', dossier(dict(FICHE, cle='depot-editeur', titre='Fiche retouchée à la main', remplace=cp.id)),
+             stdout=(s3 := io.StringIO()))
+jr = IAJob.objects.filter(options__cle='depot-editeur', status=IAJob.PRET).first()
+check('« remplace » : brouillon de mise à jour du contenu visé', jr and jr.options.get('remplacer')
+      and (jr.options.get('contenu') or {}).get('id') == cp.id and f'#{cp.id}' in s3.getvalue(), s3.getvalue())
+r = ad.post(f'/api/pilotage/ia/{jr.id}/publier/', {'a_verifier': True}, format='json')
+cp.refresh_from_db()
+check('publié : même contenu, clé et crédit retrouvés, pas de doublon', r.status_code == 200
+      and Content.objects.filter(title='Fiche retouchée à la main').count() == 1
+      and (cp.json_content.get('import') or {}).get('cle') == 'depot-editeur' and cp.json_content.get('credit'),
+      (r.status_code, getattr(r, 'data', None)))
+
 # ---------------------------------------------------------------- refus clairs
 bad = dict(FICHE, cle='depot-faux', titre='Fiche fausse', blocs=[{'type': 'question', 'html': '<p>?</p>', 'notions': ['tvi']}])
 call_command('ia_deposer', dossier(bad), stdout=io.StringIO())
