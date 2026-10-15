@@ -2,6 +2,7 @@ from django.urls import path
 from rest_framework.routers import DefaultRouter
 
 from . import views
+from apps.copies.urls import urlpatterns as copies_urls
 
 
 router = DefaultRouter()
@@ -30,4 +31,4 @@ urlpatterns = [
     # Skill stats
     path('<int:pk>/student-stats/', views.classroom_student_stats, name='classroom-student-stats'),
     path('<int:pk>/roster-stats/', views.classroom_roster_stats, name='classroom-roster-stats'),
-] + router.urls
+] + copies_urls + router.urls

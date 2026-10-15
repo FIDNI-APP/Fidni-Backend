@@ -2,6 +2,7 @@
 
 Configuration (fichier d'environnement du serveur, jamais dans le dépôt) :
   ANTHROPIC_API_KEY, ANTHROPIC_WORKSPACE_ID (la clé du compte l'exige), ANTHROPIC_MODEL (claude-opus-5-5).
+Modèle par appel (15/10/2026) : la correction des copies utilise un modèle bien moins cher (COPIES_MODEL).
 """
 import json
 import logging
@@ -35,6 +36,16 @@ def _requete(payload):
     return urllib.request.Request(URL, data=json.dumps(payload).encode(), headers=headers, method='POST')
 
 
+# Anciens modèles : réflexion à budget fixe (budget_tokens). Les autres (Opus 4.7+, 5.x, Haiku 5.5…) n'acceptent que la
+# réflexion adaptative, réglée par l'« effort » (budget_tokens y renvoie une erreur 400).
+_BUDGET_FIXE = ('claude-3', 'claude-haiku-4-5', 'claude-sonnet-4-5', 'claude-opus-4-5', 'claude-opus-4-1',
+                'claude-opus-4-6', 'claude-sonnet-4-6')
+
+
+def _adaptatif(model):
+    return not model.startswith(_BUDGET_FIXE)
+
+
 def _lire_flux(resp):
     """Assemble le texte de la réponse (les blocs de réflexion sont ignorés) et l'usage."""
     texte, usage, arret = [], {}, None
@@ -59,17 +70,31 @@ def _lire_flux(resp):
     return ''.join(texte), usage, arret
 
 
-def appeler(system, messages, *, max_tokens=None, reflexion=None):
-    """Envoie la conversation et renvoie (texte, usage). Réessaie sur surcharge ; sans réflexion si refusée."""
+def appeler(system, messages, *, max_tokens=None, reflexion=None, model=None, effort=None, format=None):
+    """Envoie la conversation et renvoie (texte, usage). Réessaie sur surcharge ; sans réflexion si refusée.
+
+    model : modèle de cet appel (par défaut ANTHROPIC_MODEL) ; effort : low|medium|high|xhigh|max (modèles récents) ;
+    format : schéma JSON imposé à la réponse (sorties structurées), le texte renvoyé est alors ce JSON."""
     if not configuree():
         raise IAErreur('Clé de l’API Anthropic absente : ajouter ANTHROPIC_API_KEY sur le serveur.')
+    model = model or settings.ANTHROPIC_MODEL
     max_tokens = max_tokens or settings.ANTHROPIC_MAX_TOKENS
     reflexion = settings.ANTHROPIC_THINKING if reflexion is None else reflexion
     # Consigne mise en cache (la même à chaque appel : moins cher, plus rapide).
-    payload = {'model': settings.ANTHROPIC_MODEL, 'max_tokens': max_tokens,
+    payload = {'model': model, 'max_tokens': max_tokens,
                'system': [{'type': 'text', 'text': system, 'cache_control': {'type': 'ephemeral'}}],
                'messages': messages, 'stream': True}
-    if reflexion:
+    if _adaptatif(model):
+        if reflexion:
+            payload['thinking'] = {'type': 'adaptive'}
+        sortie = {}
+        if effort:
+            sortie['effort'] = effort
+        if format:
+            sortie['format'] = {'type': 'json_schema', 'schema': format}
+        if sortie:
+            payload['output_config'] = sortie
+    elif reflexion:
         payload['thinking'] = {'type': 'enabled', 'budget_tokens': min(reflexion, max_tokens - 4000)}
     for essai in range(6):
         try:
@@ -77,6 +102,8 @@ def appeler(system, messages, *, max_tokens=None, reflexion=None):
                 texte, usage, arret = _lire_flux(resp)
             if arret == 'max_tokens':
                 raise IAErreur('Réponse de l’IA tronquée (document trop long) : découper le document et recommencer.')
+            if arret == 'refusal':
+                raise IAErreur('L’IA a refusé de traiter ce document (filtre de sécurité) : le traiter à la main.')
             return texte, usage
         except urllib.error.HTTPError as exc:
             corps = exc.read().decode('utf-8', 'replace')
@@ -89,7 +116,7 @@ def appeler(system, messages, *, max_tokens=None, reflexion=None):
                 continue
             if exc.code == 400 and 'max_tokens' in message and payload['max_tokens'] > 32000:
                 payload['max_tokens'] = 32000  # plafond du modèle plus bas que prévu
-                if 'thinking' in payload:
+                if 'budget_tokens' in payload.get('thinking', {}):
                     payload['thinking']['budget_tokens'] = min(payload['thinking']['budget_tokens'], 16000)
                 continue
             if exc.code in (429, 500, 502, 503, 529) and essai < 3:

@@ -55,6 +55,7 @@ INSTALLED_APPS = [
     'apps.ia.apps.IaConfig',
     'apps.notifications.apps.NotificationsConfig',
     'apps.documents.apps.DocumentsConfig',
+    'apps.copies.apps.CopiesConfig',
 ]
 
 MIDDLEWARE = [
@@ -266,6 +267,22 @@ ANTHROPIC_MAX_TOKENS = int(os.getenv('ANTHROPIC_MAX_TOKENS', '64000'))
 ANTHROPIC_THINKING = int(os.getenv('ANTHROPIC_THINKING', '16000'))
 IA_LANCEMENT = os.getenv('IA_LANCEMENT', 'processus')  # « aucun » : tests (traitement appelé directement)
 
+# Copies des élèves (Classes › Évaluations, 15/10/2026) : transcription et correction par un modèle bon marché
+# (environ 0,005 $ par copie), toujours vérifiées et publiées par le professeur.
+COPIES_ACTIVES = os.getenv('COPIES_ACTIVES', 'True') == 'True'
+COPIES_MODEL = os.getenv('COPIES_MODEL', 'claude-haiku-5-5')
+COPIES_EFFORT_TRANSCRIPTION = os.getenv('COPIES_EFFORT_TRANSCRIPTION', 'low')
+COPIES_EFFORT_CORRECTION = os.getenv('COPIES_EFFORT_CORRECTION', 'high')
+COPIES_QUOTA_MOIS = int(os.getenv('COPIES_QUOTA_MOIS', '200'))  # copies corrigées par l'IA, par professeur et par mois
+COPIES_PAGES_MAX = int(os.getenv('COPIES_PAGES_MAX', '12'))  # pages d'une copie
+COPIES_LOT_PAGES_MAX = int(os.getenv('COPIES_LOT_PAGES_MAX', '200'))  # pages du PDF de toute la classe
+COPIES_IMAGE_COTE = int(os.getenv('COPIES_IMAGE_COTE', '1568'))  # plus grand côté d'une page envoyée à l'IA (px)
+COPIES_MAX_PROCESSUS = int(os.getenv('COPIES_MAX_PROCESSUS', '2'))
+COPIES_CONSERVATION_MOIS = int(os.getenv('COPIES_CONSERVATION_MOIS', '12'))  # scans effacés ensuite
+COPIES_ROOT = os.getenv('COPIES_ROOT', os.path.join(MEDIA_ROOT, 'prive'))  # refusé par nginx (/media/prive/)
+# Prix du modèle des copies ($ par million de jetons) : suivi du coût dans Pilotage.
+COPIES_PRIX = {'input': 0.10, 'output': 0.50, 'cache_read': 0.01, 'cache_write': 0.125}
+
 # Lien « mot de passe oublié » : valable 2 h, et une seule fois (voir authentication/emails.py).
 PASSWORD_RESET_TIMEOUT = 2 * 60 * 60
 
@@ -296,6 +313,8 @@ REST_FRAMEWORK = {
         "proposed_solution": "20/hour",  # solutions d'élèves publiées (par utilisateur)
         "content_report": "20/hour",  # signalements d'erreurs sur les contenus (par utilisateur)
         "client_error": "30/hour",  # erreurs d'affichage envoyées par le navigateur (par IP)
+        "copies_upload": "600/hour",  # pages de copies envoyées (par professeur)
+        "copies_ia": "60/hour",  # corrections, découpages, imports de sujet par l’IA (par professeur)
     },
     "UNAUTHENTICATED_USER": None
 }

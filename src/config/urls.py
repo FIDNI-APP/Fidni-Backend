@@ -30,6 +30,7 @@ from apps.users import usage as usage_views
 from apps.skilliq import admin_api as quiz_admin
 from apps.users.my_stats import my_stats
 from apps.users.progression import apercu as progression_apercu, progression
+from apps.copies.urls import urlpatterns_api as copies_api_urls
 from apps.users import nouveautes, tableau
 from apps.things import reports as content_reports
 from apps.ia import views as ia_views
@@ -240,6 +241,8 @@ urlpatterns = [
 
     # Classrooms
     path('api/classrooms/', include('apps.classrooms.urls')),
+    # Copies corrigées (élève) et images signées des copies (apps/copies)
+    path('api/', include(copies_api_urls)),
 
     # Concours (ENSA / ENSAM / Médecine + tips + simulations)
     path('api/concours/', include('apps.concours.urls')),

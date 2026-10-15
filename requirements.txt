@@ -29,6 +29,7 @@ django-storages==1.14.6
 openai==1.58.1          # AI correction
 Pillow==12.3.0          # image handling (uploads)
 pymupdf==1.28.2         # IA (Pilotage) : nombre de pages, découpe des figures d'un PDF
+openpyxl==3.1.5         # copies des élèves : export des notes au format Excel
 pypandoc_binary==1.17   # IA (Pilotage) : lecture des documents Word (formules → LaTeX)
 olefile==0.47           # Documents : formules MathType / Éditeur d'équations 3.0 des .docx (objets OLE)
 opendataloader-pdf      # PDF parsing (requires Java 11+)

@@ -64,6 +64,8 @@ cat > /etc/cron.d/fidni <<'EOF'
 30 3 * * *  root  /opt/fidni/backend/deploy/ovh/sauvegarde.sh >> /var/log/fidni-sauvegarde.log 2>&1
 15 4 * * *  root  docker exec fidni-backend python manage.py purger_journaux >> /var/log/fidni-purges.log 2>&1
 0 5 * * 1   root  docker exec fidni-backend python manage.py purger_comptes_inactifs --appliquer >> /var/log/fidni-purges.log 2>&1
+30 4 * * *  root  docker exec fidni-backend python manage.py purger_copies >> /var/log/fidni-purges.log 2>&1
+*/10 * * * * root  docker exec fidni-backend python manage.py copies_traiter --reprendre >> /var/log/fidni-copies.log 2>&1
 EOF
 
 echo "✓ Serveur prêt. Déconnecte-toi puis reconnecte-toi pour utiliser docker sans sudo."

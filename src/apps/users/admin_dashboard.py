@@ -435,6 +435,8 @@ TRACKED_ACTIONS = [
     ('onglet-activite', 'Onglet « Activité » ouvert'),
     ('onglet-solutions', 'Onglet « Solutions des élèves » ouvert'),
     ('mode-sombre', 'Mode sombre / clair basculé'),
+    ('langue-ar', 'Interface passée en arabe'),
+    ('langue-fr', 'Interface repassée en français'),
     ('imprimer', 'Impression / PDF'),
     ('recherche', 'Recherche'),
     ('visite-guidee', 'Visite guidée'),

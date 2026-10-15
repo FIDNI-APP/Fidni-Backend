@@ -68,3 +68,13 @@ class ContentReportThrottle(UserRateThrottle):
 class ProposedSolutionThrottle(UserRateThrottle):
     """Publication de solutions d'élèves (texte + photos) : freine le spam."""
     scope = 'proposed_solution'
+
+
+class CopiesUploadThrottle(UserRateThrottle):
+    """Pages de copies envoyées par un professeur (une requête par fichier : une classe entière passe)."""
+    scope = 'copies_upload'
+
+
+class CopiesIAThrottle(UserRateThrottle):
+    """Demandes de correction par l'IA, découpages, imports de sujet (le quota mensuel limite le coût)."""
+    scope = 'copies_ia'

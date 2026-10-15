@@ -24,7 +24,7 @@ def _avatar(user):
 
 
 def _url(n):
-    if n.kind in (Notification.KIND_REPORT, Notification.KIND_QUIZ):
+    if n.kind in (Notification.KIND_REPORT, Notification.KIND_QUIZ, Notification.KIND_COPIE):
         return n.link
     # Page d'un exercice, d'une leçon ou d'un examen : on ouvre la discussion sur le commentaire,
     # avec le champ de réponse prêt (ContentDetail lit « ?commentaire= »).
