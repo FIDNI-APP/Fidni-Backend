@@ -161,6 +161,25 @@ c.force_authenticate(autre)
 r = c.get('/api/stats/tableau/?jours=30')
 check('un autre élève : ses données seulement', r.data['notes'] == [] and r.data['kpis']['secondes']['total'] == 999
       and r.data['kpis']['questions']['ratees'] == 1, r.data['kpis'])
+check('sans ?eleve : pas de champ « eleve »', 'eleve' not in r.data)
+
+# — Vue administrateur (?eleve=<id>, Pilotage › Membres, 16/10/2026) —
+for url in ('/api/stats/tableau/?jours=30', f'/api/stats/tableau/jour/?date={today.isoformat()}', '/api/stats/progression/'):
+    r = c.get(url + ('&' if '?' in url else '?') + f'eleve={eleve.id}')
+    check(f'élève qui vise un autre compte : 403 ({url.split("?")[0]})', r.status_code == 403, r.status_code)
+chef = User.objects.create_user('chef', 'chef@x.fr', 'Motdepasse-solide-42', is_staff=True, is_superuser=True)
+c.force_authenticate(chef)
+r = c.get(f'/api/stats/tableau/?jours=30&eleve={eleve.id}')
+check('admin : la progression de l’élève visé (notes 20 et 16, 2 700 s)', r.status_code == 200
+      and [n['note'] for n in r.data['notes']] == [20.0, 16.0] and r.data['kpis']['secondes']['total'] == 2700, r.status_code)
+check('admin : de qui il s’agit', r.data.get('eleve', {}).get('id') == eleve.id and r.data['eleve']['username'] == 'eleve', r.data.get('eleve'))
+r = c.get(f'/api/stats/tableau/jour/?date={(today - timedelta(days=2)).isoformat()}&eleve={eleve.id}')
+check('admin : détail d’un jour de l’élève', r.status_code == 200 and r.data['contenus'] and r.data['contenus'][0]['id'] == ex.id, r.data)
+r = c.get(f'/api/stats/progression/?eleve={eleve.id}')
+check('admin : progression par chapitre de l’élève', r.status_code == 200, r.status_code)
+check('admin : membre inconnu → 404', c.get('/api/stats/tableau/?jours=30&eleve=999999').status_code == 404)
+check('admin : id invalide → 404', c.get('/api/stats/tableau/?jours=30&eleve=abc').status_code == 404)
+check('admin sans ?eleve : sa propre progression (vide)', c.get('/api/stats/tableau/?jours=30').data['notes'] == [])
 
 print(f'\n{sum(results)}/{len(results)} vérifications réussies')
 sys.exit(0 if all(results) else 1)

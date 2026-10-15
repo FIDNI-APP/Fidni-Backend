@@ -221,10 +221,28 @@ def maitrise_par_chapitre(user):
     return {c['id']: c for c in maitrise.evaluer(user, getattr(getattr(user, 'profile', None), 'class_level', None))['chapters']}
 
 
+def eleve_vise(request):
+    """« ?eleve=<id> » (16/10/2026) : un administrateur regarde « Ma progression » d'un membre depuis Pilotage › Membres,
+    en lecture seule (ces calculs n'écrivent rien). Sans le paramètre : le compte connecté.
+    → (user, None), ou (None, réponse d'erreur) : 403 pour un non-administrateur, 404 pour un id inconnu."""
+    eid = request.query_params.get('eleve')
+    if not eid:
+        return request.user, None
+    if not request.user.is_superuser:
+        return None, Response({'detail': 'Réservé aux administrateurs.'}, status=403)
+    from django.contrib.auth.models import User
+    try:
+        return User.objects.get(pk=int(eid)), None
+    except (ValueError, User.DoesNotExist):
+        return None, Response({'detail': 'Membre introuvable.'}, status=404)
+
+
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def progression(request):
-    user = request.user
+    user, erreur = eleve_vise(request)
+    if erreur:
+        return erreur
     today = timezone.localdate()
     local = _local
     profile = getattr(user, 'profile', None)

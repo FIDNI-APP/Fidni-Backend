@@ -34,7 +34,7 @@ from apps.caracteristics.hubs import hub_url
 from apps.caracteristics.programme import chapitres_du_niveau
 from apps.skilliq.models import SkillQuestion
 from apps.users.my_stats import WEIGHT
-from apps.users.progression import TYPE_PATH, _collect, _local, _question_chapters
+from apps.users.progression import TYPE_PATH, _collect, _local, _question_chapters, eleve_vise
 
 PERIODES = (7, 30, 90, 0)
 POINTS_FAIBLES = 12         # théorèmes renvoyés au plus
@@ -144,7 +144,9 @@ def tableau(request):
         jours = -1
     if jours not in PERIODES:
         return Response({'error': 'jours : 7, 30, 90 ou 0 (depuis le début).'}, status=400)
-    user = request.user
+    user, erreur = eleve_vise(request)
+    if erreur:
+        return erreur
     today = timezone.localdate()
     d, level, programme, allowed, du_jour = _donnees(user)
     debut, fin = _bornes(jours, d, du_jour, today)
@@ -286,6 +288,9 @@ def tableau(request):
         'chapitres': chap_out,
         'temps': temps,
         'points_faibles': faibles,
+        # Vue administrateur (?eleve=) : de qui est cette progression (bandeau de la page).
+        **({'eleve': {'id': user.id, 'username': user.username,
+                      'nom': f'{user.first_name} {user.last_name}'.strip()}} if user != request.user else {}),
     })
 
 
@@ -353,7 +358,10 @@ def tableau_jour(request):
         day = date.fromisoformat(request.query_params.get('date', ''))
     except ValueError:
         return Response({'error': 'date : AAAA-MM-JJ.'}, status=400)
-    d, _level, _programme, _allowed, du_jour = _donnees(request.user)
+    user, erreur = eleve_vise(request)
+    if erreur:
+        return erreur
+    d, _level, _programme, _allowed, du_jour = _donnees(user)
     rows = defaultdict(lambda: {'secondes': 0, 'reussies': 0, 'partielles': 0, 'ratees': 0})
     for (jour, cid, _path), status in du_jour.items():
         if jour == day and status:
