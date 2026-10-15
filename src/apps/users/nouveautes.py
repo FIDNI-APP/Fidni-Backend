@@ -23,7 +23,16 @@ NOUVEAUTES = {
         'jusqu_au': date(2026, 12, 31),
         'profs': False,
     },
+    # Mode sombre (bouton lune / soleil), en ligne le 15/10/2026 vers 1 h 30 UTC : pour tout le monde, profs compris.
+    'mode-sombre-2026-10': {
+        'inscrits_avant': datetime(2026, 10, 15, 1, 30, tzinfo=dt_timezone.utc),
+        'jusqu_au': date(2026, 12, 31),
+        'profs': True,
+    },
 }
+
+# Gestes mesurés par fenêtre (UsageDaily kind « filtre », « nouveautes:<id>:<geste> », bloc `nouveautes` du Pilotage).
+GESTES = ('vue', 'finie', 'cta', 'passee')
 
 
 def a_voir(user, maintenant=None):

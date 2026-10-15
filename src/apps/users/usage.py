@@ -96,7 +96,9 @@ FILTER_RE = re.compile(
     r'|^auth:porte:[a-z0-9-]{1,30}$'
     # « Ce diagnostic te semble juste ? » de Ma progression (13/10/2026) : « prog:avis:a_consolider:oui »,
     # « prog:avis:objectif-verifier:non » (état d'un chapitre ou type d'objectif).
-    r'|^prog:avis:[a-z_-]{1,30}:(oui|non)$')
+    r'|^prog:avis:[a-z_-]{1,30}:(oui|non)$'
+    # Fenêtres « Nouveautés » (15/10/2026), geste par fenêtre : « nouveautes:mode-sombre-2026-10:cta ».
+    r'|^nouveautes:[a-z0-9-]{1,40}:(vue|finie|cta|passee)$')
 
 
 class UsageAnonThrottle(AnonRateThrottle):

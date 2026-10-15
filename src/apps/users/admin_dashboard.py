@@ -264,6 +264,7 @@ def overview(request):
         'funnel': _funnel(start, real),
         'auth_doors': _auth_doors(first),
         'avis_diagnostics': _avis_diagnostics(first),
+        'nouveautes': _nouveautes(first),
         'todo': {
             'reports_open': ContentReport.objects.filter(status=ContentReport.STATUS_OPEN).count(),
             'a_verifier': [_content_ref(c) for c in Content.objects.filter(json_content__a_verifier=True)
@@ -342,6 +343,29 @@ def _avis_diagnostics(first):
         row['total'] = total
         row['accord'] = round(row['oui'] * 100 / total) if total else None
     out.sort(key=lambda x: (-x['total'], x['sujet']))
+    return out
+
+
+NOUVEAUTES_PREFIX = 'nouveautes:'
+
+
+def _nouveautes(first):
+    """Fenêtres « Nouveautés » (users/nouveautes.py) : comptes réels qui l'ont vue (depuis toujours) et gestes de la
+    période (« nouveautes:<id>:<geste> »), une ligne par fenêtre du registre, la plus récente d'abord."""
+    from .nouveautes import GESTES, NOUVEAUTES
+    rows = (UsageDaily.objects.filter(kind=UsageDaily.KIND_FILTER, name__startswith=NOUVEAUTES_PREFIX, date__gte=first)
+            .values('name').annotate(c=Sum('count')))
+    gestes = {}
+    for r in rows:
+        nid, _, geste = r['name'][len(NOUVEAUTES_PREFIX):].rpartition(':')
+        if geste in GESTES:
+            gestes.setdefault(nid, {})[geste] = r['c'] or 0
+    reels = _real_users()
+    out = []
+    for nid, n in reversed(list(NOUVEAUTES.items())):
+        out.append({'id': nid, 'depuis': n['inscrits_avant'].date().isoformat(),
+                    'comptes': reels.filter(profile__nouveautes_vues__has_key=nid).count(),
+                    **{g: gestes.get(nid, {}).get(g, 0) for g in GESTES}})
     return out
 
 
@@ -454,10 +478,10 @@ TRACKED_ACTIONS = [
     ('prog-point-faible', 'Ma progression : point faible ouvert'),
     ('prog-onglet', 'Ma progression : onglet choisi'),
     ('quiz-decouvert', 'Page des quiz ouverte pour la première fois'),
-    ('nouveautes-vue', 'Nouveautés « Ma progression » : fenêtre montrée'),
-    ('nouveautes-finie', 'Nouveautés « Ma progression » : vue jusqu’au bout'),
-    ('nouveautes-cta', 'Nouveautés « Ma progression » : « Voir ma progression »'),
-    ('nouveautes-passee', 'Nouveautés « Ma progression » : fermée avant la fin'),
+    ('nouveautes-vue', 'Fenêtre « Nouveautés » : montrée'),
+    ('nouveautes-finie', 'Fenêtre « Nouveautés » : vue jusqu’au bout'),
+    ('nouveautes-cta', 'Fenêtre « Nouveautés » : bouton de la nouveauté'),
+    ('nouveautes-passee', 'Fenêtre « Nouveautés » : fermée avant la fin'),
     ('mode-revision', 'Liste de révision en mode révision'),
     ('barre-mobile', 'Barre d’onglets (téléphone)'),
     ('visite-auto', 'Visite guidée lancée automatiquement'),
