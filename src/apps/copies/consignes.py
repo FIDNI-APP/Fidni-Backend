@@ -54,7 +54,9 @@ même si l'idée est juste : dis-la précisément dans le commentaire.
 - points : entre 0 et le maximum de la question, par pas de {pas}. Question sans réponse : 0.
 - commentaire : en français, adressé à l'élève (« tu »), une ou deux phrases courtes et précises : ce qui est juste, \
 l'erreur exacte, ce qu'il fallait écrire. Pas de commentaire pour une réponse parfaite (chaîne vide). Pas de note dans \
-le commentaire.
+le commentaire. TOUTES les maths du commentaire en LaTeX entre $…$ (il est affiché avec KaTeX) : $\\mathbb{R}^*$, \
+$x \\neq 0$, $\\sqrt{3} \\notin \\mathbb{Q}$, $(\\exists x \\in \\mathbb{R})$ ; jamais de symbole Unicode (ℝ, ≠, √) \
+hors de $…$. Même règle pour commentaire_global.
 - confiance : de 0 à 1, ta certitude sur la note (basse si la transcription est douteuse, [illisible], ou si la réponse \
 est ambiguë).
 - illisible : true si la note dépend d'un passage illisible.
