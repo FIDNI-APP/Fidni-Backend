@@ -30,6 +30,7 @@ results = []
 PWD = 'Motdepasse-solide-42'
 NID = 'progression-2026-10'
 NS = 'mode-sombre-2026-10'
+VID = 'video-presentation-2026-10'  # pour tous, montrée en premier
 AVANT = datetime(2026, 10, 1, 12, 0, tzinfo=dt_timezone.utc)
 
 
@@ -64,17 +65,17 @@ chef = membre('chef_ancien', is_staff=True, is_superuser=True)
 
 # — Qui la voit —
 r = client().post('/api/auth/login/', {'identifier': 'ancien', 'password': PWD}, format='json')
-check('connexion : la réponse porte les nouveautés de l’ancien élève', r.status_code == 200 and r.data['user'].get('nouveautes') == [NID, NS], (r.status_code, r.data.get('user', {}).get('nouveautes')))
+check('connexion : la réponse porte les nouveautés de l’ancien élève', r.status_code == 200 and r.data['user'].get('nouveautes') == [VID, NID, NS], (r.status_code, r.data.get('user', {}).get('nouveautes')))
 r = client(ancien).get('/api/auth/user/')
-check('GET /auth/user/ : progression puis mode sombre (ordre du registre)', r.status_code == 200 and r.data.get('nouveautes') == [NID, NS], r.data.get('nouveautes'))
+check('GET /auth/user/ : progression puis mode sombre (ordre du registre)', r.status_code == 200 and r.data.get('nouveautes') == [VID, NID, NS], r.data.get('nouveautes'))
 r = client(nouveau).get('/api/auth/user/')
-check('inscrit entre les deux : le mode sombre seulement', r.data.get('nouveautes') == [NS], r.data.get('nouveautes'))
+check('inscrit entre les deux : le mode sombre seulement', r.data.get('nouveautes') == [VID, NS], r.data.get('nouveautes'))
 r = client(tardif).get('/api/auth/user/')
-check('inscrit après le mode sombre : rien', r.data.get('nouveautes') == [], r.data.get('nouveautes'))
+check('inscrit après le mode sombre : la vidéo seulement', r.data.get('nouveautes') == [VID], r.data.get('nouveautes'))
 r = client(prof).get('/api/auth/user/')
-check('prof : le mode sombre, pas Ma progression', r.data.get('nouveautes') == [NS], r.data.get('nouveautes'))
+check('prof : le mode sombre, pas Ma progression', r.data.get('nouveautes') == [VID, NS], r.data.get('nouveautes'))
 r = client(chef).get('/api/auth/user/')
-check('équipe inscrite avant : les deux', r.data.get('nouveautes') == [NID, NS], r.data.get('nouveautes'))
+check('équipe inscrite avant : les deux', r.data.get('nouveautes') == [VID, NID, NS], r.data.get('nouveautes'))
 r = client(nouveau).get('/api/users/ancien/')
 check('profil d’un autre : pas de champ nouveautes', r.status_code == 200 and 'nouveautes' not in r.data, (r.status_code, list(r.data)[:12]))
 r = client(chef).get('/api/users/ancien/')
@@ -86,7 +87,7 @@ check('anonyme : 401', r.status_code == 401, r.status_code)
 r = client(ancien).post('/api/nouveautes/inconnue/vue/')
 check('id inconnu : 404', r.status_code == 404, r.status_code)
 r = client(ancien).post(f'/api/nouveautes/{NID}/vue/')
-check('vue : 200, reste le mode sombre', r.status_code == 200 and r.data == {'a_voir': [NS]}, (r.status_code, r.data))
+check('vue : 200, reste le mode sombre', r.status_code == 200 and r.data == {'a_voir': [VID, NS]}, (r.status_code, r.data))
 ancien.profile.refresh_from_db()
 premiere = ancien.profile.nouveautes_vues.get(NID)
 check('date de la première vue retenue', bool(premiere), ancien.profile.nouveautes_vues)
@@ -94,20 +95,26 @@ r = client(ancien).post(f'/api/nouveautes/{NID}/vue/')
 ancien.profile.refresh_from_db()
 check('second POST : idempotent (même date)', r.status_code == 200 and ancien.profile.nouveautes_vues.get(NID) == premiere)
 r = client(ancien).get('/api/auth/user/')
-check('après vue : /auth/user/ ne la propose plus', r.data.get('nouveautes') == [NS], r.data.get('nouveautes'))
+check('après vue : /auth/user/ ne la propose plus', r.data.get('nouveautes') == [VID, NS], r.data.get('nouveautes'))
 r = client().post('/api/auth/login/', {'identifier': 'ancien', 'password': PWD}, format='json')
-check('après vue : la connexion ne la propose plus', r.status_code == 200 and r.data['user'].get('nouveautes') == [NS], r.data.get('user', {}).get('nouveautes'))
+check('après vue : la connexion ne la propose plus', r.status_code == 200 and r.data['user'].get('nouveautes') == [VID, NS], r.data.get('user', {}).get('nouveautes'))
 r = client(chef).get('/api/auth/user/')
-check('vue par un compte : pas par les autres', r.data.get('nouveautes') == [NID, NS])
+check('vue par un compte : pas par les autres', r.data.get('nouveautes') == [VID, NID, NS])
 r = client(ancien).post(f'/api/nouveautes/{NS}/vue/')
-check('mode sombre vu à son tour : plus rien', r.status_code == 200 and r.data == {'a_voir': []}, r.data)
+check('mode sombre vu à son tour : plus rien', r.status_code == 200 and r.data == {'a_voir': [VID]}, r.data)
 r = client(prof).post(f'/api/nouveautes/{NS}/vue/')
-check('prof : mode sombre marqué vu', r.data == {'a_voir': []}, r.data)
+check('prof : mode sombre marqué vu', r.data == {'a_voir': [VID]}, r.data)
+
+# — Vidéo de présentation : aussi pour un compte créé aujourd'hui, et vue une fois —
+du_jour = membre('du_jour', joined=datetime(2026, 11, 2, 9, 0, tzinfo=dt_timezone.utc))
+check('inscrit aujourd’hui : la vidéo', a_voir(du_jour, maintenant=datetime(2026, 11, 2, 10, 0, tzinfo=dt_timezone.utc)) == [VID])
+r = client(du_jour).post(f'/api/nouveautes/{VID}/vue/')
+check('vidéo vue : plus rien', r.status_code == 200 and r.data == {'a_voir': []}, r.data)
 
 # — Dans le temps —
 fin = NOUVEAUTES[NID]['jusqu_au']
 dernier = datetime(fin.year, fin.month, fin.day, 20, 0, tzinfo=dt_timezone.utc)
-check('encore proposée le dernier jour', a_voir(chef, maintenant=dernier) == [NID, NS])
+check('encore proposée le dernier jour', a_voir(chef, maintenant=dernier) == [VID, NID, NS])
 check('plus proposée après jusqu_au', a_voir(chef, maintenant=dernier + timedelta(days=1)) == [])
 
 # — PATCH /users/me/ ne peut pas l'écrire —
@@ -141,7 +148,7 @@ pc.force_authenticate(chef)
 r = pc.get('/api/pilotage/?jours=7')
 bloc = {n['id']: n for n in (r.data.get('nouveautes') or [])} if r.status_code == 200 else {}
 check('Pilotage : une ligne par fenêtre, la plus récente d’abord',
-      [n['id'] for n in r.data.get('nouveautes', [])] == [NS, NID], (r.status_code, r.data.get('nouveautes')))
+      [n['id'] for n in r.data.get('nouveautes', [])] == [VID, NS, NID], (r.status_code, r.data.get('nouveautes')))
 check('Pilotage : comptes réels qui l’ont vue (équipe exclue)', bloc.get(NS, {}).get('comptes') == 2 and bloc.get(NID, {}).get('comptes') == 1,
       {k: v.get('comptes') for k, v in bloc.items()})
 check('Pilotage : gestes de la période', {g: bloc.get(NS, {}).get(g) for g in ('vue', 'finie', 'cta', 'passee')} == {'vue': 2, 'finie': 0, 'cta': 1, 'passee': 1},

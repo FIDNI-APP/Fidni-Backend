@@ -29,6 +29,15 @@ NOUVEAUTES = {
         'jusqu_au': date(2026, 12, 31),
         'profs': True,
     },
+    # Vidéo de présentation sur YouTube (15/10/2026) : une annonce, pas une nouveauté du site. Pour tous les comptes,
+    # nouveaux inscrits compris (`inscrits_avant: None`), et montrée avant les autres (`prioritaire`).
+    'video-presentation-2026-10': {
+        'inscrits_avant': None,
+        'depuis': date(2026, 10, 15),
+        'jusqu_au': date(2026, 12, 31),
+        'profs': True,
+        'prioritaire': True,
+    },
 }
 
 # Gestes mesurés par fenêtre (UsageDaily kind « filtre », « nouveautes:<id>:<geste> », bloc `nouveautes` du Pilotage).
@@ -44,13 +53,14 @@ def a_voir(user, maintenant=None):
     prof = bool(profile and profile.user_type == 'teacher')
     maintenant = maintenant or timezone.now()
     jour = timezone.localdate(maintenant)
-    return [
+    ids = [
         nid for nid, n in NOUVEAUTES.items()
         if nid not in vues
         and jour <= n['jusqu_au']
-        and user.date_joined < n['inscrits_avant']
+        and (n['inscrits_avant'] is None or user.date_joined < n['inscrits_avant'])
         and (n['profs'] or not prof)
     ]
+    return sorted(ids, key=lambda nid: not NOUVEAUTES[nid].get('prioritaire'))  # tri stable : sinon l'ordre du registre
 
 
 @api_view(['POST'])

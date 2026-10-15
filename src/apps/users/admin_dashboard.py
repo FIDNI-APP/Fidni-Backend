@@ -363,7 +363,7 @@ def _nouveautes(first):
     reels = _real_users()
     out = []
     for nid, n in reversed(list(NOUVEAUTES.items())):
-        out.append({'id': nid, 'depuis': n['inscrits_avant'].date().isoformat(),
+        out.append({'id': nid, 'depuis': (n.get('depuis') or n['inscrits_avant'].date()).isoformat(),
                     'comptes': reels.filter(profile__nouveautes_vues__has_key=nid).count(),
                     **{g: gestes.get(nid, {}).get(g, 0) for g in GESTES}})
     return out
