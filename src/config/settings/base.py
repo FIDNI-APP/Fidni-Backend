@@ -270,7 +270,10 @@ IA_LANCEMENT = os.getenv('IA_LANCEMENT', 'processus')  # « aucun » : tests (tr
 # Copies des élèves (Classes › Évaluations, 15/10/2026) : transcription et correction par un modèle bon marché
 # (environ 0,005 $ par copie), toujours vérifiées et publiées par le professeur.
 COPIES_ACTIVES = os.getenv('COPIES_ACTIVES', 'True') == 'True'
-COPIES_MODEL = os.getenv('COPIES_MODEL', 'claude-haiku-5-5')
+COPIES_MODEL = os.getenv('COPIES_MODEL', 'claude-haiku-5-5')  # lecture des copies, noms, sujets privés
+# Correction (note par question) : Sonnet 5.5, bien meilleur que Haiku pour les erreurs de raisonnement (choix de
+# Natsu, 15/10/2026, après une négation fausse notée au maximum par Haiku) ; environ 0,05 à 0,08 $ par copie.
+COPIES_MODEL_CORRECTION = os.getenv('COPIES_MODEL_CORRECTION', 'claude-sonnet-5-5')
 COPIES_EFFORT_TRANSCRIPTION = os.getenv('COPIES_EFFORT_TRANSCRIPTION', 'medium')
 COPIES_EFFORT_CORRECTION = os.getenv('COPIES_EFFORT_CORRECTION', 'high')
 COPIES_QUOTA_MOIS = int(os.getenv('COPIES_QUOTA_MOIS', '200'))  # copies corrigées par l'IA, par professeur et par mois
@@ -281,7 +284,11 @@ COPIES_MAX_PROCESSUS = int(os.getenv('COPIES_MAX_PROCESSUS', '2'))
 COPIES_CONSERVATION_MOIS = int(os.getenv('COPIES_CONSERVATION_MOIS', '12'))  # scans effacés ensuite
 COPIES_ROOT = os.getenv('COPIES_ROOT', os.path.join(MEDIA_ROOT, 'prive'))  # refusé par nginx (/media/prive/)
 # Prix du modèle des copies ($ par million de jetons) : suivi du coût dans Pilotage.
-COPIES_PRIX = {'input': 0.10, 'output': 0.50, 'cache_read': 0.01, 'cache_write': 0.125}
+COPIES_PRIX = {
+    'claude-haiku-5-5': {'input': 0.10, 'output': 0.50, 'cache_read': 0.01, 'cache_write': 0.125},
+    'claude-sonnet-5-5': {'input': 2.00, 'output': 10.00, 'cache_read': 0.20, 'cache_write': 2.50},
+    'claude-opus-5-5': {'input': 4.00, 'output': 20.00, 'cache_read': 0.20, 'cache_write': 5.00},
+}
 
 # Lien « mot de passe oublié » : valable 2 h, et une seule fois (voir authentication/emails.py).
 PASSWORD_RESET_TIMEOUT = 2 * 60 * 60

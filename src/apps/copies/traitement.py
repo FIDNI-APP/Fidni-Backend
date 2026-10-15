@@ -98,8 +98,9 @@ def _compter(obj, usage):
     obj.usage['appels'] = obj.usage.get('appels', 0) + 1
 
 
-def cout(usage):
-    p = settings.COPIES_PRIX
+def cout(usage, model=None):
+    prix = settings.COPIES_PRIX
+    p = prix.get(model or settings.COPIES_MODEL) or prix.get(settings.COPIES_MODEL) or next(iter(prix.values()))
     return round((usage.get('input_tokens', 0) * p['input'] + usage.get('output_tokens', 0) * p['output']
                   + usage.get('cache_read_input_tokens', 0) * p['cache_read']
                   + usage.get('cache_creation_input_tokens', 0) * p['cache_write']) / 1e6, 5)
@@ -117,22 +118,23 @@ def quota_restant(user):
     return max(0, settings.COPIES_QUOTA_MOIS - (u.copies if u else 0))
 
 
-def _facturer(evaluation, usage_appel):
+def _facturer(evaluation, usage_appel, model=None):
     """Ajoute le coût d'un appel au professeur (mois en cours)."""
     owner_id = evaluation.classroom.owner_id
     u, _ = UsageCopies.objects.get_or_create(user_id=owner_id, mois=_mois())
-    UsageCopies.objects.filter(pk=u.pk).update(cout_usd=F('cout_usd') + cout(usage_appel))
+    UsageCopies.objects.filter(pk=u.pk).update(cout_usd=F('cout_usd') + cout(usage_appel, model))
 
 
-def _appel(obj, evaluation, system, messages, schema, effort, max_tokens=16000):
+def _appel(obj, evaluation, system, messages, schema, effort, max_tokens=16000, model=None):
     """Appel au modèle des copies, réponse JSON (sortie structurée, ou extraite du texte en secours)."""
-    texte, usage = ia_client.appeler(system, messages, max_tokens=max_tokens, model=settings.COPIES_MODEL,
+    model = model or settings.COPIES_MODEL
+    texte, usage = ia_client.appeler(system, messages, max_tokens=max_tokens, model=model,
                                      effort=effort, format=schema)
     _compter(obj, usage)
     if evaluation is not None and evaluation is not obj:
         _compter(evaluation, usage)
     if evaluation is not None:
-        _facturer(evaluation, usage)
+        _facturer(evaluation, usage, model)
     try:
         return json.loads(texte)
     except ValueError:
@@ -230,7 +232,8 @@ def noter(copie, evaluation, qs, chemins=None):
             contenu += [{'type': 'text', 'text': f'Image de la page {i} de la copie :'}, _image(f.read())]
     contenu.append({'type': 'text', 'text': message})
     data = _appel(copie, evaluation, _systeme_correction(evaluation, qs), [{'role': 'user', 'content': contenu}],
-                  C.schema_correction([q['chemin'] for q in qs]), settings.COPIES_EFFORT_CORRECTION)
+                  C.schema_correction([q['chemin'] for q in qs]), settings.COPIES_EFFORT_CORRECTION,
+                  model=settings.COPIES_MODEL_CORRECTION)
     maxi = {q['chemin']: q['max'] for q in qs}
     ia = dict(copie.ia or {}) if chemins else {}
     for r in data.get('questions') or []:
