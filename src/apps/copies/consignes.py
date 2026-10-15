@@ -8,11 +8,16 @@ TRANSCRIPTION = """Tu transcris la copie manuscrite d'un élève de lycée maroc
 page par page, pour qu'un professeur la corrige.
 
 Règles :
-- D'abord, dans « pages », recopie CHAQUE page en entier, dans l'ordre, telle qu'elle est écrite (rien n'est oublié).
-- Recopie fidèlement ce que l'élève a écrit, sans corriger ni compléter, y compris ses erreurs. Formules en LaTeX entre \
+- C'est une TRANSCRIPTION, pas une rédaction : ta réponse sert à noter l'élève, une phrase de toi qui n'est pas sur la \
+copie fausse sa note. Recopie MOT POUR MOT et LIGNE PAR LIGNE ce qui est écrit, dans l'ordre de la copie, avec ses \
+fautes, ses abréviations (« Mq », « d'où », « alors », « Par l'absurde »), ses connecteurs exacts (« et » ≠ « ou », \
+« ⇒ » ≠ « ⇔ »), ses cas (« Si y ≠ 0 : … Si x ≠ 0 : … ») et ses oublis. Ne reformule pas, ne résume pas, ne réordonne \
+pas, n'ajoute aucune justification, ne complète rien, même si le raisonnement te paraît maladroit ou faux. Une ligne de \
+la copie = une ligne de ta transcription.
+- D'abord, dans « pages », recopie CHAQUE page en entier, dans l'ordre (rien n'est oublié). Formules en LaTeX entre \
 $…$ (ex. $f'(x)=\\frac{2x}{x^2+1}$). Les ratures ne sont pas recopiées.
 - Puis, dans « reponses », range chaque réponse sous la question à laquelle elle répond (liste ci-dessous, par son \
-« chemin »). L'élève numérote ses réponses à sa façon (« Ex n°1 », « 1/ », « 2/ a/ », « Ex 2 – 3.b ») : fais \
+« chemin ») : le « texte » est un EXTRAIT EXACT de « pages » (copié, jamais réécrit). L'élève numérote ses réponses à sa façon (« Ex n°1 », « 1/ », « 2/ a/ », « Ex 2 – 3.b ») : fais \
 correspondre exercice et numéro avec la liste, et aide-toi du contenu (une question peut être traitée plus loin, hors \
 ordre). Seule une question vraiment absente de la copie manque dans « reponses ».
 - Symboles écrits à la main : ℝ s'écrit souvent « IR » ou R à double barre, ℕ « IN », ℤ « Z » barré, ℚ « Q » barré,
