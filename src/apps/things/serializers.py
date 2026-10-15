@@ -217,11 +217,13 @@ class ContentListSerializer(serializers.ModelSerializer):
     total_points = serializers.IntegerField(read_only=True)
     item_count = serializers.IntegerField(read_only=True)
     json_content = serializers.JSONField(required=False)
+    # Étiquette de l'établissement sur les cartes (15/10/2026) ; « school » est déjà chargé (listing.py).
+    school = serializers.SerializerMethodField()
 
     class Meta:
         model = Content
         fields = [
-            'id', 'display_id', 'type', 'title', 'json_content', 'difficulty',
+            'id', 'display_id', 'type', 'title', 'json_content', 'difficulty', 'school',
             'author', 'subject', 'class_levels', 'chapters', 'theorems',
             'comment_count', 'created_at', 'view_count', 'vote_count', 'like_count', 'dislike_count',
             'user_vote', 'user_save', 'user_complete',
@@ -240,6 +242,10 @@ class ContentListSerializer(serializers.ModelSerializer):
         data['section_count'] = get_section_count(json_content)
         data['expected_minutes'] = expected_minutes(json_content)
         return data
+
+    def get_school(self, obj):
+        s = obj.school
+        return {'id': s.id, 'name': s.name, 'city': s.city} if s else None
 
     def get_chapters(self, obj):
         # `levels` : niveaux du chapitre (programme officiel, 11/10/2026) ; la carte lie au chapitre qui existe au

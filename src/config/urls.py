@@ -198,6 +198,7 @@ urlpatterns = [
     path('api/pilotage/ia/import/', ia_views.nouvel_import, name='pilotage-ia-import'),
     path('api/pilotage/ia/<int:pk>/', ia_views.job_detail, name='pilotage-ia-detail'),
     path('api/pilotage/ia/<int:pk>/corriger/', ia_views.job_corriger, name='pilotage-ia-corriger'),
+    path('api/pilotage/ia/<int:pk>/editeur/', ia_views.job_editeur, name='pilotage-ia-editeur'),
     path('api/pilotage/ia/<int:pk>/relancer/', ia_views.job_relancer, name='pilotage-ia-relancer'),
     path('api/pilotage/ia/<int:pk>/publier/', ia_views.job_publier, name='pilotage-ia-publier'),
     path('api/pilotage/ia/<int:pk>/appliquer/', ia_views.job_appliquer, name='pilotage-ia-appliquer'),

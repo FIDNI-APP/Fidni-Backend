@@ -532,6 +532,26 @@ def _with_credit(structure: dict, fiche: dict) -> dict:
     return structure
 
 
+def _appliquer_edition(content, edition: dict):
+    """Titre et classement choisis dans l'éditeur (ids déjà vérifiés à l'enregistrement du brouillon)."""
+    from apps.caracteristics.models import Chapter, ClassLevel, School, Subfield, Theorem
+    content.title = edition['title']
+    if content.type != 'lesson':
+        content.difficulty = edition.get('difficulty') or content.difficulty
+    if content.type == 'exam':
+        content.duration_minutes = edition.get('duration_minutes')
+        content.is_national_exam = bool(edition.get('is_national_exam'))
+        content.national_year = edition.get('national_year') if content.is_national_exam else None
+    content.school = School.objects.filter(pk=edition.get('school')).first() if edition.get('school') else None
+    content.save()
+    chapters = list(Chapter.objects.filter(pk__in=edition.get('chapters') or []))
+    content.class_levels.set(ClassLevel.objects.filter(pk__in=edition.get('class_levels') or []))
+    content.chapters.set(chapters)
+    content.theorems.set(Theorem.objects.filter(pk__in=edition.get('theorems') or []))
+    subfields = {c.subfield_id for c in chapters if c.subfield_id} | set(edition.get('subfields') or [])
+    content.subfields.set(Subfield.objects.filter(pk__in=subfields))
+
+
 def all_html(structure: dict):
     """Tous les textes HTML d'une structure convertie (pour les vérifications de formules)."""
     for b in structure.get('blocks', []):
@@ -668,8 +688,23 @@ def editorial_author():
     return user
 
 
-def import_fiche(fiche: dict, base_dir: str, *, api_base: str = 'https://api.fidni.fr', author=None):
-    """Crée ou met à jour le contenu (clé identique = mise à jour). Tout ou rien."""
+def remplacer_sources(obj, src_map: dict):
+    """Remplace les liens d'images (« figures/x.png ») dans tous les textes d'une structure."""
+    if isinstance(obj, str):
+        for rel, url in src_map.items():
+            obj = obj.replace(f'"{rel}"', f'"{url}"')
+        return obj
+    if isinstance(obj, list):
+        return [remplacer_sources(x, src_map) for x in obj]
+    if isinstance(obj, dict):
+        return {k: remplacer_sources(v, src_map) for k, v in obj.items()}
+    return obj
+
+
+def import_fiche(fiche: dict, base_dir: str, *, api_base: str = 'https://api.fidni.fr', author=None, edition=None):
+    """Crée ou met à jour le contenu (clé identique = mise à jour). Tout ou rien.
+    `edition` : la version modifiée à la main dans l'éditeur (Pilotage › À valider, apps/ia/views.job_editeur) :
+    sa structure et son classement remplacent ceux de la fiche ; figures, crédit et clé viennent de la fiche."""
     from django.contrib.contenttypes.models import ContentType
     from django.core.files import File
     from django.db import transaction
@@ -720,7 +755,12 @@ def import_fiche(fiche: dict, base_dir: str, *, api_base: str = 'https://api.fid
                 att.save()
             src_map[rel] = f'{api_base.rstrip("/")}/api/files/{att.id}/download/'
 
-        structure = to_structure(fiche, src_map)
+        if edition:
+            import copy
+            st = {k: v for k, v in copy.deepcopy(edition['json_content']).items() if k not in ('credit', 'a_verifier', 'import')}
+            structure = _with_credit(remplacer_sources(st, src_map), fiche)
+        else:
+            structure = to_structure(fiche, src_map)
         structure['import'] = {
             'cle': fiche['cle'], 'source': fiche.get('source'), 'importe_le': timezone.now().isoformat(),
         }
@@ -730,6 +770,8 @@ def import_fiche(fiche: dict, base_dir: str, *, api_base: str = 'https://api.fid
         content.chapters.set(res['chapters'])
         content.theorems.set(res['theorems'])
         content.subfields.set(res['subfields'])
+        if edition:
+            _appliquer_edition(content, edition)
         for att in old_files:  # figures de la version précédente
             att.file.delete(save=False)
             att.delete()

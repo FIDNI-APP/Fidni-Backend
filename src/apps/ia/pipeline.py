@@ -374,12 +374,30 @@ def traiter_correction(job):
 
 # --------------------------------------------------------------------------- import : publication
 
-def apercus(job):
-    """Structures converties (rendu du site), figures en data URI, pour la relecture."""
-    out = []
+def figures_data_uri(job):
+    """{« figures/nom » : data URI} : les figures du brouillon, affichables sans les publier."""
     figures = job.result.get('figures') or {}
-    src_map = {f'figures/{n}': f'data:image/png;base64,{v[1]}' for n, v in figures.items()}
+    return {f'figures/{n}': f'data:image/png;base64,{v[1]}' for n, v in figures.items()}
+
+
+DIFF_FICHE = {'easy': 'facile', 'medium': 'moyen', 'hard': 'difficile'}
+
+
+def apercus(job):
+    """Structures converties (rendu du site), figures en data URI, pour la relecture. Une fiche modifiée dans
+    l'éditeur (result['editions'][cle]) montre sa version modifiée."""
+    out = []
+    src_map = figures_data_uri(job)
+    editions = job.result.get('editions') or {}
     for f in job.result.get('fiches') or []:
+        e = editions.get(f.get('cle')) if isinstance(f, dict) else None
+        if e:
+            out.append({'cle': f.get('cle'), 'titre': e['title'], 'type': importing.TYPES.get(f.get('type')),
+                        'niveaux': e.get('niveaux') or [], 'chapitres': e.get('chapitres') or [],
+                        'theoremes': e.get('theoremes_noms') or [], 'difficulte': DIFF_FICHE.get(e.get('difficulty')),
+                        'examen': f.get('examen'), 'edite': True,
+                        'structure': importing._with_credit(importing.remplacer_sources(e['json_content'], src_map), f)})
+            continue
         try:
             out.append({'cle': f.get('cle'), 'titre': f.get('titre'), 'type': importing.TYPES.get(f.get('type')),
                         'niveaux': f.get('niveaux') or [], 'chapitres': f.get('chapitres') or [],
@@ -418,7 +436,8 @@ def publier(job, *, a_verifier, doublon_ok, auteur):
                 fh.write(base64.b64decode(b64))
         for f in fiches:
             fiche = dict(f, a_verifier=bool(a_verifier), doublon_ok=bool(doublon_ok))
-            content, _ = importing.import_fiche(fiche, d, api_base=getattr(settings, 'IA_API_BASE', 'https://api.fidni.fr'))
+            content, _ = importing.import_fiche(fiche, d, api_base=getattr(settings, 'IA_API_BASE', 'https://api.fidni.fr'),
+                                               edition=(r.get('editions') or {}).get(f.get('cle')))
             js = dict(content.json_content)
             js['import']['ia'] = {'travail': job.pk, 'publie_par': auteur.username}
             Content.objects.filter(pk=content.pk).update(json_content=js)

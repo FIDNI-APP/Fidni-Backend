@@ -69,6 +69,11 @@ def carte(job):
     except Exception:  # fiche mal formée : la carte le dit par ses erreurs
         theoremes = []
     publies = r.get('publies') or []
+    e = (r.get('editions') or {}).get(f.get('cle'))  # modifiée dans l'éditeur
+    if e:
+        from .pipeline import DIFF_FICHE
+        f = {**f, 'titre': e['title'], 'niveaux': e.get('niveaux') or [], 'chapitres': e.get('chapitres') or [],
+             'difficulte': DIFF_FICHE.get(e.get('difficulty'))}
     return {
         'id': job.id, 'status': job.status, 'etape': job.etape, 'error': job.error,
         'created_at': job.created_at.isoformat(), 'updated_at': job.updated_at.isoformat(),
@@ -90,6 +95,7 @@ def carte(job):
         'a_verifier': f.get('a_verifier', True) is not False,
         'remplace': job.options.get('contenu') if job.options.get('remplacer') else None,
         'publie': publies[0] if publies else None,
+        'edite': bool(e),
         'corrections': sum(1 for h in job.history or [] if h.get('qui') not in ('Claude', None)
                            and h.get('texte') not in ('Rejeté',) and not str(h.get('texte', '')).startswith('Publié')),
     }

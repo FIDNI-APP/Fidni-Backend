@@ -233,6 +233,51 @@ ad.post(f'/api/pilotage/ia/{je2.id}/publier/', {'a_verifier': True}, format='jso
 ce.refresh_from_db()
 check('mise à jour sans établissement trouvé : celui du contenu est gardé', ce.school_id == ibn.id)
 
+# ---------------------------------------------------------------- modifier à la main dans l'éditeur (15/10/2026)
+call_command('ia_deposer', dossier(dict(FICHE, cle='depot-editeur', titre='Fiche à retoucher')), stdout=io.StringIO())
+je = IAJob.objects.get(options__cle='depot-editeur')
+r = ad.get(f'/api/pilotage/ia/{je.id}/editeur/')
+ed = r.data if r.status_code == 200 else {}
+check('éditeur : le brouillon au format d’un contenu (niveaux, chapitres résolus, figure en data URI)',
+      ed.get('type') == 'exercise' and ed.get('title') == 'Fiche à retoucher' and ed.get('difficulty') == 'easy'
+      and len(ed.get('class_levels') or []) == 1 and len(ed.get('chapters') or []) == 1
+      and 'data:image/png;base64,' in json.dumps(ed.get('json_content')) and ed.get('edite') is False, r.status_code)
+check('éditeur réservé à l’administrateur', el.get(f'/api/pilotage/ia/{je.id}/editeur/').status_code == 403)
+st = ed['json_content']
+st['blocks'][1]['content']['html'] = '<p>Calculer la dérivée $f\'(x)$ (modifié à la main).</p>'
+corps = {'type': 'exercise', 'title': 'Fiche retouchée à la main', 'json_content': st, 'difficulty': 'medium',
+         'class_levels': [x['id'] for x in ed['class_levels']], 'chapters': [x['id'] for x in ed['chapters']],
+         'theorems': [], 'school': None, 'subject': (ed.get('subject') or {}).get('id')}
+r = ad.post(f'/api/pilotage/ia/{je.id}/editeur/', corps, format='json')
+je.refresh_from_db()
+e = (je.result.get('editions') or {}).get('depot-editeur') or {}
+check('enregistré dans le brouillon, figure ramenée à « figures/courbe.png »', r.status_code == 200
+      and e.get('title') == 'Fiche retouchée à la main' and 'figures/courbe.png' in json.dumps(e.get('json_content'))
+      and 'data:image' not in json.dumps(e.get('json_content')), (r.status_code, getattr(r, 'data', None)))
+carte = next((j for j in ad.get('/api/pilotage/brouillons/').data['results'] if j['id'] == je.id), {})
+check('carte : version modifiée (titre, difficulté), marquée « modifiée »', carte.get('titre') == 'Fiche retouchée à la main'
+      and carte.get('difficulte') == 'moyen' and carte.get('edite') is True, carte)
+ap = (ad.get(f'/api/pilotage/ia/{je.id}/').data.get('apercus') or [{}])[0]
+check('aperçu : version modifiée', 'modifié à la main' in json.dumps(ap.get('structure'), ensure_ascii=False)
+      and ap.get('edite') is True, ap.get('titre'))
+check('rouvert dans l’éditeur : la version modifiée', ad.get(f'/api/pilotage/ia/{je.id}/editeur/').data.get('title')
+      == 'Fiche retouchée à la main')
+r = ad.post(f'/api/pilotage/ia/{je.id}/corriger/', {'instruction': 'Change tout.'}, format='json')
+check('correction par l’IA refusée après une modification à la main (repartirait de l’origine)', r.status_code == 409, r.status_code)
+mauvais = dict(corps, json_content={'version': '2.1', 'blocks': [{'id': 'b', 'type': 'question', 'content': {
+    'html': '<p><img src="data:image/png;base64,AAAA"></p>'}}]})
+check('image collée en data URI refusée', ad.post(f'/api/pilotage/ia/{je.id}/editeur/', mauvais, format='json').status_code == 400)
+check('niveau inconnu refusé', ad.post(f'/api/pilotage/ia/{je.id}/editeur/', dict(corps, class_levels=[99999]),
+                                       format='json').status_code == 400)
+r = ad.post(f'/api/pilotage/ia/{je.id}/publier/', {'a_verifier': True}, format='json')
+cp = Content.objects.filter(json_content__import__cle='depot-editeur').first()
+txt = json.dumps(cp.json_content, ensure_ascii=False) if cp else ''
+check('publié : version modifiée (titre, difficulté, texte), figure publiée, crédit et bandeau gardés',
+      r.status_code == 200 and cp.title == 'Fiche retouchée à la main' and cp.difficulty == 'medium'
+      and 'modifié à la main' in txt and '/api/files/' in txt and 'figures/courbe.png' not in txt
+      and cp.json_content.get('credit') and cp.json_content.get('a_verifier') is True
+      and cp.chapters.count() == 1 and cp.class_levels.count() == 1, (r.status_code, cp and cp.title))
+
 # ---------------------------------------------------------------- refus clairs
 bad = dict(FICHE, cle='depot-faux', titre='Fiche fausse', blocs=[{'type': 'question', 'html': '<p>?</p>', 'notions': ['tvi']}])
 call_command('ia_deposer', dossier(bad), stdout=io.StringIO())

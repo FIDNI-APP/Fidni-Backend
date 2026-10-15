@@ -226,6 +226,9 @@ def job_corriger(request, pk):
     job = get_object_or_404(IAJob, pk=pk, kind=IAJob.IMPORT)
     if (bloque := _pret(job)):
         return bloque
+    if (job.result or {}).get('editions'):
+        return Response({'detail': 'Ce brouillon a été modifié dans l’éditeur : la correction par l’IA repartirait de la '
+                                   'version d’origine. Continue dans l’éditeur.'}, status=status.HTTP_409_CONFLICT)
     instruction = (request.data.get('instruction') or '').strip()
     if not instruction:
         return Response({'instruction': 'Écrire la demande.'}, status=status.HTTP_400_BAD_REQUEST)
@@ -313,3 +316,131 @@ def job_rejeter(request, pk):
     job.save()
     job.files.all().delete()  # le document n'est plus utile
     return Response(_resume(job))
+
+
+def _fiche_du_job(job, cle):
+    fiches = [f for f in (job.result or {}).get('fiches') or [] if isinstance(f, dict)]
+    if not fiches:
+        return None
+    return next((f for f in fiches if f.get('cle') == cle), None) if cle else fiches[0]
+
+
+def _pour_editeur(job, fiche):
+    """Le brouillon au format d'un contenu (GET /contents/<id>/) pour l'éditeur du site : sa version modifiée s'il y
+    en a une, sinon la fiche convertie ; figures en data URI (affichables sans être publiées)."""
+    from apps.caracteristics.models import Chapter, ClassLevel, School, Subject, Theorem
+    from apps.things import importing
+    src_map = pipeline.figures_data_uri(job)
+    e = ((job.result or {}).get('editions') or {}).get(fiche.get('cle'))
+    if e:
+        def noms(model, ids):
+            return [{'id': o.id, 'name': o.name} for o in model.objects.filter(pk__in=ids or [])]
+        school = School.objects.filter(pk=e.get('school')).first() if e.get('school') else None
+        return {
+            'type': importing.TYPES.get(fiche.get('type')), 'title': e['title'], 'difficulty': e.get('difficulty'),
+            'class_levels': noms(ClassLevel, e.get('class_levels')), 'chapters': noms(Chapter, e.get('chapters')),
+            'theorems': noms(Theorem, e.get('theorems')),
+            'subject': ({'id': s.id, 'name': s.name} if (s := Subject.objects.filter(pk=e.get('subject')).first()) else None),
+            'school': {'id': school.id, 'name': school.name, 'city': school.city} if school else None,
+            'duration_minutes': e.get('duration_minutes'), 'is_national_exam': bool(e.get('is_national_exam')),
+            'national_year': e.get('national_year'),
+            'json_content': importing.remplacer_sources(e['json_content'], src_map), 'edite': True,
+        }
+    _, _, res = importing.check_against_db(fiche)
+    ex = fiche.get('examen') or {}
+    school = res.get('school')
+    return {
+        'type': importing.TYPES.get(fiche.get('type')), 'title': fiche.get('titre') or '',
+        'difficulty': importing.DIFFICULTIES.get(fiche.get('difficulte')),
+        'class_levels': [{'id': o.id, 'name': o.name} for o in res.get('levels') or []],
+        'chapters': [{'id': o.id, 'name': o.name} for o in res.get('chapters') or []],
+        'theorems': [{'id': o.id, 'name': o.name} for o in res.get('theorems') or []],
+        'subject': {'id': res['subject'].id, 'name': res['subject'].name} if res.get('subject') else None,
+        'school': {'id': school.id, 'name': school.name, 'city': school.city} if school else None,
+        'duration_minutes': ex.get('duree_minutes'), 'is_national_exam': bool(ex.get('national')),
+        'national_year': ex.get('annee'),
+        'json_content': importing.to_structure(fiche, src_map), 'edite': False,
+    }
+
+
+@api_view(['GET', 'POST'])
+@permission_classes([IsSuperuser])
+@parser_classes([JSONParser])
+def job_editeur(request, pk):
+    """Modifier un brouillon à la main dans l'éditeur du site (Pilotage › À valider, Natsu 15/10/2026) : GET le donne
+    au format d'un contenu, POST (même corps que POST /contents/) enregistre la version modifiée dans le brouillon
+    (result['editions'][clé]) ; « Valider et publier » publie ensuite cette version. ?fiche=<clé> (défaut : la première)."""
+    import json
+    from apps.caracteristics.models import Chapter, ClassLevel, School, Subject, Theorem
+    job = get_object_or_404(IAJob, pk=pk, kind=IAJob.IMPORT)
+    fiche = _fiche_du_job(job, request.query_params.get('fiche'))
+    if fiche is None:
+        return Response({'detail': 'Fiche introuvable dans ce brouillon.'}, status=status.HTTP_404_NOT_FOUND)
+    if request.method == 'GET':
+        return Response(_pour_editeur(job, fiche))
+    if (bloque := _pret(job)):
+        return bloque
+    d = request.data if isinstance(request.data, dict) else {}
+    title = str(d.get('title') or '').strip()
+    st = d.get('json_content')
+    erreurs = {}
+    if not 3 <= len(title) <= 200:
+        erreurs['title'] = 'Un titre de 3 à 200 caractères.'
+    if not isinstance(st, dict) or not (isinstance(st.get('blocks'), list) or isinstance(st.get('sections'), list)):
+        erreurs['json_content'] = 'Contenu illisible.'
+
+    def ids(cle, model):
+        v = d.get(cle) or []
+        if not isinstance(v, list) or not all(isinstance(x, int) for x in v):
+            erreurs[cle] = 'Liste d’identifiants attendue.'
+            return []
+        ok = set(model.objects.filter(pk__in=v).values_list('pk', flat=True))
+        if len(ok) != len(set(v)):
+            erreurs[cle] = 'Identifiant inconnu.'
+        return sorted(ok)
+
+    levels, chapters, theorems = ids('class_levels', ClassLevel), ids('chapters', Chapter), ids('theorems', Theorem)
+    if not levels:
+        erreurs.setdefault('class_levels', 'Au moins un niveau.')
+    if not chapters:
+        erreurs.setdefault('chapters', 'Au moins un chapitre.')
+    kind = pipeline.importing.TYPES.get(fiche.get('type'))
+    diff = d.get('difficulty')
+    if kind != 'lesson' and diff not in ('easy', 'medium', 'hard'):
+        erreurs['difficulty'] = 'Facile, moyen ou difficile.'
+    school = d.get('school')
+    if school is not None and not (isinstance(school, int) and School.objects.filter(pk=school).exists()):
+        erreurs['school'] = 'Établissement inconnu.'
+    subject = d.get('subject')
+    if subject is not None and not (isinstance(subject, int) and Subject.objects.filter(pk=subject).exists()):
+        erreurs['subject'] = 'Matière inconnue.'
+    if erreurs:
+        return Response(erreurs, status=status.HTTP_400_BAD_REQUEST)
+    # Les figures du brouillon (data URI pour l'éditeur) redeviennent « figures/nom » : publiées avec le contenu.
+    inverse = {uri: rel for rel, uri in pipeline.figures_data_uri(job).items()}
+    texte = json.dumps(st, ensure_ascii=False)
+    for uri, rel in inverse.items():
+        texte = texte.replace(uri, rel)
+    if 'data:image' in texte:
+        return Response({'json_content': 'Image collée dans le texte : ajoute-la avec le bouton image de l’éditeur.'},
+                        status=status.HTTP_400_BAD_REQUEST)
+    if len(texte) > 2_000_000:
+        return Response({'json_content': 'Contenu trop long.'}, status=status.HTTP_400_BAD_REQUEST)
+    noms_niveaux = list(ClassLevel.objects.filter(pk__in=levels).values_list('name', flat=True))
+    noms_chapitres = [c.name for c in Chapter.objects.filter(pk__in=chapters)]
+    job.result.setdefault('editions', {})[fiche['cle']] = {
+        'title': title, 'difficulty': diff if kind != 'lesson' else None, 'subject': subject,
+        'class_levels': levels, 'chapters': chapters, 'theorems': theorems, 'school': school,
+        'subfields': [x for x in (d.get('subfields') or []) if isinstance(x, int)],
+        'duration_minutes': d.get('duration_minutes') if isinstance(d.get('duration_minutes'), int) else None,
+        'is_national_exam': bool(d.get('is_national_exam')),
+        'national_year': d.get('national_year') if isinstance(d.get('national_year'), int) else None,
+        'json_content': json.loads(texte),
+        'niveaux': noms_niveaux, 'chapitres': noms_chapitres,
+        'theoremes_noms': list(Theorem.objects.filter(pk__in=theorems).values_list('name', flat=True)),
+        'par': request.user.username, 'le': timezone.now().isoformat(),
+    }
+    job.history.append({'date': timezone.now().isoformat(), 'qui': request.user.username,
+                        'texte': 'Modifié dans l’éditeur'})
+    job.save()
+    return Response({'ok': True, 'id': job.id})
