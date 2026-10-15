@@ -12,6 +12,7 @@ urlpatterns = [
     path('<int:cid>/evaluations/<int:eid>/pages/<int:pid>/', views.supprimer_page, name='copies-page'),
     path('<int:cid>/evaluations/<int:eid>/copies/<int:pk>/', views.copie, name='copies-copie'),
     path('<int:cid>/evaluations/<int:eid>/copies/<int:pk>/ordre/', views.ordonner_pages, name='copies-ordre'),
+    path('<int:cid>/evaluations/<int:eid>/copies/<int:pk>/pages/', views.ajouter_pages_copie, name='copies-pages-copie'),
     path('<int:cid>/evaluations/<int:eid>/copies/<int:pk>/recorriger/', views.recorriger, name='copies-recorriger'),
     path('<int:cid>/evaluations/<int:eid>/corriger/', views.corriger, name='copies-corriger'),
     path('<int:cid>/evaluations/<int:eid>/publier/', views.publier, name='copies-publier'),

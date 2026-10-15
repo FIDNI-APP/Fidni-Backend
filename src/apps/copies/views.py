@@ -5,9 +5,11 @@ Professeur (propriétaire de la classe ; tout autre compte reçoit 404) :
     /api/classrooms/<cid>/evaluations/<eid>/                   GET · PATCH (titre, barème, consignes, sujet) · DELETE
     …/<eid>/sujet/import/                                      POST : sujet privé depuis un PDF (lu par l'IA)
     …/<eid>/copies/                                            GET : un élève par ligne, avec sa copie
+                                                               POST {nom} : copie d'un élève sans compte
+    …/<eid>/copies/<id>/pages/                                 POST : ajoute des pages à cette copie
     …/<eid>/eleves/<sid>/pages/                                POST : ajoute des pages (photo ou PDF)
     …/<eid>/pages/<pid>/                                       DELETE
-    …/<eid>/copies/<id>/                                       GET (correction) · PATCH (notes, valider)
+    …/<eid>/copies/<id>/                                       GET (correction) · PATCH (notes, valider) · DELETE
     …/<eid>/copies/<id>/ordre/                                 POST {pages: [ids]}
     …/<eid>/copies/<id>/recorriger/                            POST {chemins?}
     …/<eid>/corriger/                                          POST {copies: [ids] | 'toutes'}
@@ -80,6 +82,13 @@ def _url_lot(lot, n, user):
 
 def _eleve(u):
     return {'id': u.id, 'username': u.username}
+
+
+def _qui(c):
+    """Élève de la copie : compte Fidni, ou nom tapé par le professeur (élève sans compte)."""
+    if c.eleve_id:
+        return {'id': c.eleve_id, 'username': c.eleve.username, 'sans_compte': False}
+    return {'id': None, 'username': c.nom, 'sans_compte': True}
 
 
 def _note(evaluation, copie, qs):
@@ -285,37 +294,45 @@ def importer_sujet(request, cid, eid):
 
 # --------------------------------------------------------------------------- copies (professeur)
 
-@api_view(['GET'])
-@permission_classes([IsAuthenticated])
-def copies(request, cid, eid):
-    """Un élève par ligne (membres actuels, puis anciens membres qui ont une copie)."""
-    e = _evaluation(request, cid, eid)
-    qs = questions(e.sujet, e.maxima)
-    par_eleve = {c.eleve_id: c for c in e.copies.select_related('eleve').prefetch_related('pages')}
+def _lignes(e):
+    """(élève ou None, nom affiché, membre ?, copie ou None) : membres, anciens membres, puis élèves sans compte."""
+    tout = list(e.copies.select_related('eleve'))
+    par_eleve = {c.eleve_id: c for c in tout if c.eleve_id}
     membres = [m.student for m in ClassroomMembership.objects.filter(classroom=e.classroom)
                .select_related('student').order_by('student__username')]
-    lignes, vus = [], set()
-    for u in membres + [c.eleve for c in par_eleve.values() if c.eleve_id not in {m.id for m in membres}]:
-        if u.id in vus:
-            continue
-        vus.add(u.id)
-        c = par_eleve.get(u.id)
-        lignes.append({'eleve': _eleve(u), 'membre': u in membres,
-                       'copie': _resume_copie(c, e, qs) if c else None})
+    ids = {m.id for m in membres}
+    out = [(u, u.username, True, par_eleve.get(u.id)) for u in membres]
+    out += [(c.eleve, c.eleve.username, False, c) for c in sorted(par_eleve.values(), key=lambda c: c.eleve.username)
+            if c.eleve_id not in ids]
+    out += [(None, c.nom, False, c) for c in sorted((c for c in tout if not c.eleve_id), key=lambda c: c.nom.lower())]
+    return out
+
+
+@api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
+def copies(request, cid, eid):
+    """GET : un élève par ligne. POST {nom} : nouvelle copie d'un élève sans compte Fidni."""
+    e = _evaluation(request, cid, eid)
+    qs = questions(e.sujet, e.maxima)
+    if request.method == 'POST':
+        nom = ' '.join(str(request.data.get('nom') or '').split())[:120]
+        if not nom:
+            return _err('Écris le nom de l’élève.')
+        if e.copies.filter(eleve__isnull=True, nom__iexact=nom).exists():
+            return _err('Il y a déjà une copie à ce nom.')
+        c = Copie.objects.create(evaluation=e, nom=nom)
+        return Response({'eleve': _qui(c), 'membre': False, 'sans_compte': True,
+                         'copie': _resume_copie(c, e, qs)}, status=201)
+    lignes = [{'eleve': _eleve(u) if u else {'id': None, 'username': nom}, 'membre': membre, 'sans_compte': u is None,
+               'copie': _resume_copie(c, e, qs) if c else None}
+              for u, nom, membre, c in _lignes(e)]
     return Response({'copies': lignes, 'quota_restant': traitement.quota_restant(request.user)})
 
 
-@api_view(['POST'])
-@permission_classes([IsAuthenticated])
-@throttle_classes([CopiesUploadThrottle])
-def ajouter_pages(request, cid, eid, sid):
-    e = _evaluation(request, cid, eid)
-    if not ClassroomMembership.objects.filter(classroom=e.classroom, student_id=sid).exists():
-        return _err('Cet élève n’est pas dans la classe.', 404)
-    f = request.FILES.get('fichier')
+def _deposer(e, copie, f):
+    """Ajoute les pages d'un fichier (photo ou PDF) à une copie → Response."""
     if f is None:
         return _err('Aucun fichier.')
-    copie, _ = Copie.objects.get_or_create(evaluation=e, eleve_id=sid)
     if copie.statut == Copie.EN_COURS:
         return _err('Correction en cours : attends qu’elle se termine.', 409)
     deja = copie.pages.count()
@@ -332,8 +349,29 @@ def ajouter_pages(request, cid, eid, sid):
         if copie.statut == Copie.VIDE:
             copie.statut = Copie.DEPOSEE
             copie.save(update_fields=['statut', 'updated_at'])
-    qs = questions(e.sujet, e.maxima)
-    return Response(_resume_copie(copie, e, qs), status=201)
+    return Response(_resume_copie(copie, e, questions(e.sujet, e.maxima)), status=201)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+@throttle_classes([CopiesUploadThrottle])
+def ajouter_pages_copie(request, cid, eid, pk):
+    e = _evaluation(request, cid, eid)
+    return _deposer(e, get_object_or_404(Copie, pk=pk, evaluation=e), request.FILES.get('fichier'))
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+@throttle_classes([CopiesUploadThrottle])
+def ajouter_pages(request, cid, eid, sid):
+    e = _evaluation(request, cid, eid)
+    if not ClassroomMembership.objects.filter(classroom=e.classroom, student_id=sid).exists():
+        return _err('Cet élève n’est pas dans la classe.', 404)
+    f = request.FILES.get('fichier')
+    if f is None:
+        return _err('Aucun fichier.')
+    copie, _ = Copie.objects.get_or_create(evaluation=e, eleve_id=sid)
+    return _deposer(e, copie, f)
 
 
 @api_view(['DELETE'])
@@ -374,7 +412,7 @@ def _detail_copie(e, c, user, prof=True):
     out = {
         'id': c.id, 'statut': c.statut, 'etape': c.etape, 'error': c.error,
         'evaluation': _resume_evaluation(e, compter=False),
-        'eleve': _eleve(c.eleve),
+        'eleve': _qui(c),
         'questions': _questions_publiques(qs),
         'finales': finales,
         **_note(e, c, qs),
@@ -385,7 +423,7 @@ def _detail_copie(e, c, user, prof=True):
         'publiee_le': c.publiee_le.isoformat() if c.publiee_le else None,
     }
     if prof:
-        ordre = list(e.copies.exclude(statut=Copie.VIDE).order_by('eleve__username').values_list('id', flat=True))
+        ordre = [cp.id for _u, _n, _m, cp in _lignes(e) if cp and cp.statut != Copie.VIDE]
         i = ordre.index(c.id) if c.id in ordre else -1
         out.update({
             'transcription': c.transcription, 'ia': c.ia, 'notes': c.notes, 'drapeaux': c.drapeaux,
@@ -396,7 +434,7 @@ def _detail_copie(e, c, user, prof=True):
     return out
 
 
-@api_view(['GET', 'PATCH'])
+@api_view(['GET', 'PATCH', 'DELETE'])
 @permission_classes([IsAuthenticated])
 def copie(request, cid, eid, pk):
     e = _evaluation(request, cid, eid)
@@ -405,6 +443,9 @@ def copie(request, cid, eid, pk):
         return Response(_detail_copie(e, c, request.user))
     if c.statut == Copie.EN_COURS:
         return _err('Correction en cours : attends qu’elle se termine.', 409)
+    if request.method == 'DELETE':
+        c.delete()  # pages et fichiers avec (signal)
+        return Response(status=204)
     d = request.data
     qs = questions(e.sujet, e.maxima)
     maxi = {q['chemin']: q['max'] for q in qs}
@@ -521,7 +562,8 @@ def publier(request, cid, eid):
     from apps.notifications.models import Notification
     e = _evaluation(request, cid, eid)
     voulues = request.data.get('copies', 'validees')
-    qs = e.copies.filter(statut=Copie.VALIDEE, publiee_le__isnull=True).select_related('eleve')
+    # Un élève sans compte ne peut rien recevoir : seules les copies d'élèves inscrits sont publiées.
+    qs = e.copies.filter(statut=Copie.VALIDEE, publiee_le__isnull=True, eleve__isnull=False).select_related('eleve')
     if isinstance(voulues, list):
         qs = qs.filter(pk__in=voulues)
     elif voulues != 'validees':
@@ -538,7 +580,8 @@ def publier(request, cid, eid):
                 defaults={'title': e.titre[:200], 'link': f'/mes-copies/{c.id}', 'actor': request.user,
                           'excerpt': 'Ta copie corrigée est disponible.', 'count': 1, 'updated_at': maintenant,
                           'read_at': None})
-    return Response({'publiees': n})
+    sans_compte = e.copies.filter(statut=Copie.VALIDEE, eleve__isnull=True).count()
+    return Response({'publiees': n, 'sans_compte': sans_compte})
 
 
 @api_view(['GET'])
@@ -561,19 +604,14 @@ def exporter(request, cid, eid):
     entete = ['Élève', 'Statut'] + [f"{q['label']} (/{q['max']:g})" for q in qs] + \
         [f'Total (/{sum(q["max"] for q in qs):g})', f'Note (/{e.note_sur})']
     lignes = []
-    par_eleve = {c.eleve_id: c for c in e.copies.select_related('eleve')}
-    membres = [m.student for m in ClassroomMembership.objects.filter(classroom=e.classroom)
-               .select_related('student').order_by('student__username')]
-    eleves = membres + [c.eleve for c in par_eleve.values() if c.eleve_id not in {m.id for m in membres}]
     statuts = dict(Copie.STATUTS)
-    for u in eleves:
-        c = par_eleve.get(u.id)
+    for _u, nom_eleve, _membre, c in _lignes(e):
         if c is None:
-            lignes.append([u.username, 'Pas de copie'] + [None] * (len(qs) + 2))
+            lignes.append([nom_eleve, 'Pas de copie'] + [None] * (len(qs) + 2))
             continue
         fin = notes_finales(e, c, qs)
         pts, _m, note = total(e, c, qs)
-        lignes.append([u.username, statuts.get(c.statut, c.statut)] + [fin[q['chemin']]['points'] for q in qs]
+        lignes.append([nom_eleve, statuts.get(c.statut, c.statut)] + [fin[q['chemin']]['points'] for q in qs]
                       + [pts, note])
     nom = f"notes-{e.titre[:40]}".replace('/', '-').replace('"', '')
     if fmt == 'xlsx':
@@ -664,7 +702,8 @@ def lot(request, cid, eid, lid):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def confirmer_lot(request, cid, eid, lid):
-    """Crée les copies d'après le découpage validé par le professeur : [{pages: [1, 2], eleve_id}]."""
+    """Crée les copies d'après le découpage validé par le professeur : [{pages: [1, 2], eleve_id}] ; un groupe
+    {pages, nom} sans eleve_id devient la copie d'un élève sans compte."""
     e = _evaluation(request, cid, eid)
     lt = get_object_or_404(Lot, pk=lid, evaluation=e)
     if lt.statut != Lot.PRET:
@@ -674,23 +713,29 @@ def confirmer_lot(request, cid, eid, lid):
     if not isinstance(groupes, list):
         return _err('Découpage invalide.')
     vus_eleves, vues_pages, propres = set(), set(), []
+    noms = set()
     for g in groupes:
-        if not isinstance(g, dict) or not g.get('eleve_id'):
+        nom = ' '.join(str(g.get('nom') or '').split())[:120] if isinstance(g, dict) else ''
+        if not isinstance(g, dict) or not (g.get('eleve_id') or nom):
             continue  # pages laissées de côté (non attribuées)
         try:
-            sid = int(g['eleve_id'])
+            sid = int(g['eleve_id']) if g.get('eleve_id') else None
             pages_g = [int(p) for p in g.get('pages') or []]
         except (TypeError, ValueError):
             return _err('Découpage invalide.')
-        if sid not in membres:
+        if sid is not None and sid not in membres:
             return _err('Un élève choisi n’est pas dans la classe.')
-        if sid in vus_eleves:
+        if (sid is not None and sid in vus_eleves) or (sid is None and nom.lower() in noms):
             return _err('Un élève a reçu deux copies : regroupe ses pages.')
+        if sid is None:
+            noms.add(nom.lower())
+            sid = ('nom', nom)
         if not pages_g or any(not 1 <= p <= lt.nb_pages or p in vues_pages for p in pages_g):
             return _err('Pages invalides ou attribuées deux fois.')
         if len(pages_g) > settings.COPIES_PAGES_MAX:
             return _err(f'{settings.COPIES_PAGES_MAX} pages au plus par copie.')
-        vus_eleves.add(sid)
+        if not isinstance(sid, tuple):
+            vus_eleves.add(sid)
         vues_pages.update(pages_g)
         propres.append((sid, pages_g))
     if not propres:
@@ -703,7 +748,13 @@ def confirmer_lot(request, cid, eid, lid):
         pdf = f.read()
     crees = 0
     for sid, pages_g in propres:
-        c, _ = Copie.objects.get_or_create(evaluation=e, eleve_id=sid)
+        if isinstance(sid, tuple):  # élève sans compte : même nom = même copie
+            c = e.copies.filter(eleve__isnull=True, nom__iexact=sid[1]).first() or Copie(evaluation=e, nom=sid[1])
+            if c.publiee_le:
+                continue
+            c.save()
+        else:
+            c, _ = Copie.objects.get_or_create(evaluation=e, eleve_id=sid)
         if c.statut == Copie.EN_COURS:
             continue
         for p in list(c.pages.all()):

@@ -76,7 +76,10 @@ class Copie(models.Model):
 
     evaluation = models.ForeignKey(Evaluation, on_delete=models.CASCADE, related_name='copies')
     # Suppression du compte de l'élève : sa copie disparaît avec lui.
-    eleve = models.ForeignKey(User, on_delete=models.CASCADE, related_name='copies_evaluees')
+    # Élève sans compte Fidni (15/10/2026) : pas d'élève, seulement le nom tapé par le professeur ; la copie est
+    # corrigée, notée et exportée comme les autres, mais personne ne la voit sur le site à part le professeur.
+    eleve = models.ForeignKey(User, on_delete=models.CASCADE, related_name='copies_evaluees', null=True, blank=True)
+    nom = models.CharField(max_length=120, blank=True, default='')
     statut = models.CharField(max_length=12, choices=STATUTS, default=VIDE, db_index=True)
     # Transcription par l'IA : {chemin: {texte, illisible, page}} ; "_hors_question" : texte hors des questions.
     transcription = models.JSONField(default=dict, blank=True)

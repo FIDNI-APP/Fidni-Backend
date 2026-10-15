@@ -56,6 +56,9 @@ from .serializers import (
 # ────────────────────────────────────────────────────────────────────
 
 def _is_teacher(user) -> bool:
+    # L'administrateur compte comme enseignant (tester les classes et les copies sans changer de profil).
+    if getattr(user, 'is_superuser', False):
+        return True
     prof = getattr(user, 'profile', None)
     return bool(prof and prof.user_type == 'teacher')
 

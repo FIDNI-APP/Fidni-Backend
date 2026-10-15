@@ -469,6 +469,41 @@ classe_b.delete()
 check('classe supprimée : copies et fichiers effacés', sum(len(f) for _, _, f in os.walk(PRIVE)) == avant
       and not Copie.objects.filter(evaluation_id=e4.id).exists())
 
+# ---------------------------------------------------------------- élève sans compte Fidni
+api_ad = APIClient()
+api_ad.force_authenticate(admin)
+r = api_ad.post('/api/classrooms/', {'name': 'Classe test admin'}, format='json')
+check('l’administrateur peut créer une classe (comme un enseignant)', r.status_code == 201, getattr(r, 'data', r))
+cl_ad = r.data['id']
+r = api_ad.post(f'/api/classrooms/{cl_ad}/evaluations/', {'content_id': contenu.id}, format='json')
+b_ad = f'/api/classrooms/{cl_ad}/evaluations/{r.data["id"]}/'
+r = api_ad.post(f'{b_ad}copies/', {'nom': '  Karim   Alaoui '}, format='json')
+check('copie d’un élève sans compte : créée avec le nom tapé', r.status_code == 201
+      and r.data['eleve'] == {'id': None, 'username': 'Karim Alaoui', 'sans_compte': True}, getattr(r, 'data', r))
+cid_sc = r.data['copie']['id']
+check('même nom deux fois : refusé', api_ad.post(f'{b_ad}copies/', {'nom': 'karim alaoui'}, format='json').status_code == 400)
+check('nom vide : refusé', api_ad.post(f'{b_ad}copies/', {'nom': '  '}, format='json').status_code == 400)
+r = api_ad.post(f'{b_ad}copies/{cid_sc}/pages/', {'fichier': SimpleUploadedFile('k.jpg', jpeg(), 'image/jpeg')},
+                format='multipart')
+check('pages déposées sur la copie sans compte', r.status_code == 201 and r.data['nb_pages'] == 1, getattr(r, 'data', r))
+r = api_ad.get(f'{b_ad}copies/')
+check('liste : la ligne sans compte, avec sa copie', [l['eleve']['username'] for l in r.data['copies']] == ['Karim Alaoui']
+      and r.data['copies'][0]['sans_compte'] and r.data['copies'][0]['copie']['nb_pages'] == 1)
+check('autre professeur : ne voit pas la copie sans compte',
+      APIClient().get(f'{b_ad}copies/{cid_sc}/').status_code in (401, 403))
+REPONSES[:] = [TRANSCRIPTION_S, NOTES_S]
+api_ad.post(f'{b_ad}corriger/', {'copies': 'toutes'}, format='json')
+traitement.traiter_evaluation(Copie.objects.get(pk=cid_sc).evaluation_id)
+r = api_ad.patch(f'{b_ad}copies/{cid_sc}/', {'valider': True}, format='json')
+check('corrigée par l’IA puis validée', r.status_code == 200 and r.data['statut'] == 'validee'
+      and r.data['eleve']['username'] == 'Karim Alaoui', getattr(r, 'data', r))
+r = api_ad.post(f'{b_ad}publier/', {'copies': 'validees'}, format='json')
+check('publier : rien à envoyer à un élève sans compte', r.data == {'publiees': 0, 'sans_compte': 1}, r.data)
+texte = api_ad.get(f'{b_ad}export/?type=csv').content.decode('utf-8')
+check('export : la ligne de l’élève sans compte', 'Karim Alaoui;' in texte, texte[:200])
+check('supprimer la copie (et ses pages)', api_ad.delete(f'{b_ad}copies/{cid_sc}/').status_code == 204
+      and not Copie.objects.filter(pk=cid_sc).exists())
+
 # ---------------------------------------------------------------- reprise
 Copie.objects.filter(pk=copie_s.pk).update(statut=Copie.EN_COURS, heartbeat=None)
 traitement.reprendre()
