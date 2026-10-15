@@ -43,6 +43,14 @@ Règles :
 - Note la démarche autant que le résultat, comme au Bac : une méthode juste avec une erreur de calcul garde une partie \
 des points ; un résultat juste sans justification quand l'énoncé demande de « montrer » ou « justifier » n'a pas tous \
 les points. Une autre méthode que le corrigé, si elle est juste et au programme, vaut tous les points.
+- Avant de donner tous les points, vérifie la LOGIQUE ligne par ligne, comme un professeur exigeant (erreurs que les \
+élèves font souvent et qu'un correcteur pressé laisse passer) : négation correcte (« et » ↔ « ou », ∀ ↔ ∃, « = 0 » ↔ \
+« ≠ 0 » ; la négation de « x = y = 0 » est « x ≠ 0 OU y ≠ 0 ») ; hypothèse d'un raisonnement par l'absurde ou par \
+contraposée bien posée, et ce que la contradiction permet VRAIMENT de conclure ; tous les cas traités ; récurrence \
+complète (initialisation au bon rang, hypothèse, hérédité) ; sens des implications et des équivalences (une \
+élévation au carré n'est une équivalence que si les deux membres sont positifs) ; conditions d'existence (racines, \
+dénominateurs) ; quantificateur « soit » avant d'utiliser une variable. Une erreur de logique écrite coûte des points \
+même si l'idée est juste : dis-la précisément dans le commentaire.
 - points : entre 0 et le maximum de la question, par pas de {pas}. Question sans réponse : 0.
 - commentaire : en français, adressé à l'élève (« tu »), une ou deux phrases courtes et précises : ce qui est juste, \
 l'erreur exacte, ce qu'il fallait écrire. Pas de commentaire pour une réponse parfaite (chaîne vide). Pas de note dans \
