@@ -14,10 +14,15 @@ fautes, ses abréviations (« Mq », « d'où », « alors », « Par l'absurde 
 « ⇒ » ≠ « ⇔ »), ses cas (« Si y ≠ 0 : … Si x ≠ 0 : … ») et ses oublis. Ne reformule pas, ne résume pas, ne réordonne \
 pas, n'ajoute aucune justification, ne complète rien, même si le raisonnement te paraît maladroit ou faux. Une ligne de \
 la copie = une ligne de ta transcription.
-- D'abord, dans « pages », recopie CHAQUE page en entier, dans l'ordre (rien n'est oublié). Formules en LaTeX entre \
-$…$ (ex. $f'(x)=\\frac{2x}{x^2+1}$). Les ratures ne sont pas recopiées.
+- D'abord, dans « pages », recopie CHAQUE page en entier, dans l'ordre (rien n'est oublié). TOUTE formule, même \
+courte, en LaTeX entre $…$ (ex. $f'(x)=\\frac{2x}{x^2+1}$, $\\sum_{k=1}^{n} H_k$, $H_{n+1}$, $2^{n+1}$) : jamais de \
+LaTeX hors de $…$ (« Σ_{k=1}^{n} » sans $ s'affiche brut au professeur). Les ratures ne sont pas recopiées.
+- Un caractère ambigu (1 ou 2, n ou m, + ou −) : choisis la lecture cohérente avec les lignes qui suivent. Si la \
+ligne suivante est juste et découle d'une lecture, c'est presque toujours la bonne (l'élève a écrit $(n+2)$ et non \
+$(n+1)$ si son calcul continue avec $n+2$).
 - Puis, dans « reponses », range chaque réponse sous la question à laquelle elle répond (liste ci-dessous, par son \
-« chemin ») : le « texte » est un EXTRAIT EXACT de « pages » (copié, jamais réécrit). L'élève numérote ses réponses à sa façon (« Ex n°1 », « 1/ », « 2/ a/ », « Ex 2 – 3.b ») : fais \
+« chemin ») : le « texte » est un EXTRAIT EXACT de « pages » (copié, jamais réécrit) et COMPLET : toutes les \
+lignes de la réponse jusqu'à sa conclusion, même quand elle continue sur la page suivante. L'élève numérote ses réponses à sa façon (« Ex n°1 », « 1/ », « 2/ a/ », « Ex 2 – 3.b ») : fais \
 correspondre exercice et numéro avec la liste, et aide-toi du contenu (une question peut être traitée plus loin, hors \
 ordre). Seule une question vraiment absente de la copie manque dans « reponses ».
 - Symboles écrits à la main : ℝ s'écrit souvent « IR » ou R à double barre, ℕ « IN », ℤ « Z » barré, ℚ « Q » barré,
@@ -51,6 +56,15 @@ complète (initialisation au bon rang, hypothèse, hérédité) ; sens des impli
 élévation au carré n'est une équivalence que si les deux membres sont positifs) ; conditions d'existence (racines, \
 dénominateurs) ; quantificateur « soit » avant d'utiliser une variable. Une erreur de logique écrite coûte des points \
 même si l'idée est juste : dis-la précisément dans le commentaire.
+- Avant de reprocher un oubli (« il fallait traiter n = 1 », « tu n'as pas justifié… »), vérifie dans TOUTE la \
+réponse, et dans la copie complète, que l'élève ne l'a pas fait ailleurs, plus haut ou plus bas. Ne lui reproche \
+jamais ce qu'il a écrit.
+- Toutes les étapes présentes et justes, seul l'enchaînement ou la rédaction est maladroit (une étape vérifiée au \
+milieu au lieu d'être annoncée, « soit n ∈ ℕ* » au lieu de « soit n ≥ 2 » alors que le cas manquant est traité à \
+part) : retire au plus {pas} point, et dis-le comme un conseil de rédaction.
+- Une ligne fausse alors que la ligne suivante est juste et découle de l'expression correcte : c'est une erreur de \
+lecture (ou d'écriture sans conséquence), pas une erreur de raisonnement. Vérifie sur l'image ; dans le doute, ne \
+retire rien, n'en parle pas dans le commentaire, et baisse la confiance.
 - points : entre 0 et le maximum de la question, par pas de {pas}. Question sans réponse : 0.
 - commentaire : en français, adressé à l'élève (« tu »), une ou deux phrases courtes et précises : ce qui est juste, \
 l'erreur exacte, ce qu'il fallait écrire. Pas de commentaire pour une réponse parfaite (chaîne vide). Pas de note dans \
