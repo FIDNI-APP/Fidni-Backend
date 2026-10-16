@@ -425,6 +425,9 @@ def _features():
 
 # Actions mesurées par le navigateur (apps/users/usage.py) : pas de membres distincts sur la période,
 # seulement le nombre de fois et les personnes distinctes jour par jour, additionnées.
+# Retirées le 16/10/2026 (plus jamais envoyées : onglet Activité et anciens boutons de Ma progression) :
+# onglet-activite, prog-cours, prog-quiz, prog-chapitre-action, prog-calcul, prog-activite-detail,
+# prog-objectif, prog-objectif-exercice, prog-fiche.
 TRACKED_ACTIONS = [
     ('voir-solution', 'Voir la solution d’une question'),
     ('voir-indication', 'Voir l’indication d’une question'),
@@ -432,7 +435,6 @@ TRACKED_ACTIONS = [
     ('tout-reussi', '« Tout réussi »'),
     ('trouve-apres-solution', '« Tu avais trouvé ? » (sous une solution)'),
     ('rattrapage-liste', 'Évalué depuis le bandeau « Tu as ouvert… » de la liste'),
-    ('onglet-activite', 'Onglet « Activité » ouvert'),
     ('onglet-solutions', 'Onglet « Solutions des élèves » ouvert'),
     ('mode-sombre', 'Mode sombre / clair basculé'),
     ('langue-ar', 'Interface passée en arabe'),
@@ -458,15 +460,7 @@ TRACKED_ACTIONS = [
     ('accueil-pour-toi', 'Accueil : contenu « Pour toi »'),
     ('annoncer-ds', '« Annoncer mon DS »'),
     ('prog-entrainer', 'Ma progression : « S’entraîner »'),
-    ('prog-cours', 'Ma progression : « Le cours »'),
-    ('prog-quiz', 'Ma progression : « Quiz »'),
-    ('prog-objectif', 'Ma progression : bouton de l’objectif'),
-    ('prog-objectif-exercice', 'Ma progression : exercice proposé par l’objectif'),
-    ('prog-fiche', 'Ma progression : « En faire une fiche »'),
     ('prog-chapitre', 'Ma progression : détail d’un chapitre ouvert'),
-    ('prog-chapitre-action', 'Ma progression : action d’un chapitre'),
-    ('prog-calcul', 'Ma progression : « Comment c’est calculé ? »'),
-    ('prog-activite-detail', 'Ma progression : « Mon activité »'),
     ('accueil-objectif', 'Accueil : bouton « Où j’en suis »'),
     ('accueil-progression', 'Accueil : « Ma progression › »'),
     ('quiz-refait', 'Quiz de chapitre repassé'),
