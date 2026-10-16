@@ -183,6 +183,79 @@
      "theoremes": [
       "Irrationalité de √2"
      ]
+    },
+    {
+     "question": "Lesquels de ces nombres sont décimaux ?",
+     "bonnes": [
+      "$\\dfrac{7}{40}$",
+      "$\\dfrac{21}{75}$"
+     ],
+     "distracteurs": [
+      "$\\dfrac{1}{3}$",
+      "$\\dfrac{5}{12}$",
+      "$\\dfrac{4}{30}$"
+     ],
+     "explication": "Une fraction irréductible $\\dfrac{a}{b}$ est décimale si et seulement si $b$ n’a pas d’autre facteur premier que $2$ et $5$. $\\dfrac{7}{40} = 0{,}175$ car $40 = 2^3 \\times 5$ ; $\\dfrac{21}{75} = \\dfrac{7}{25} = 0{,}28$ : il faut d’abord simplifier. $\\dfrac{1}{3} = 0{,}333\\ldots$ ne s’arrête jamais, $12 = 2^2 \\times 3$, et $\\dfrac{4}{30} = \\dfrac{2}{15}$ avec $15 = 3 \\times 5$ : un dénominateur multiple de $10$ ne suffit pas.",
+     "difficulte": "medium",
+     "cible": "Programme : caractérisation des nombres décimaux (erreurs classiques : juger sans simplifier, confondre $\\dfrac{1}{3}$ et $0{,}33$).",
+     "theoremes": [
+      "Caractérisation des nombres décimaux"
+     ]
+    },
+    {
+     "question": "Quelles égalités sont vraies ?",
+     "bonnes": [
+      "$\\dfrac{1}{\\sqrt{3} - 1} = \\dfrac{\\sqrt{3} + 1}{2}$",
+      "$\\dfrac{1}{\\sqrt{5} + 2} = \\sqrt{5} - 2$"
+     ],
+     "distracteurs": [
+      "$\\dfrac{1}{\\sqrt{3} - 1} = \\dfrac{\\sqrt{3} + 1}{4}$",
+      "$\\dfrac{1}{\\sqrt{5} + 2} = \\dfrac{\\sqrt{5} - 2}{3}$",
+      "$\\dfrac{1}{\\sqrt{2} - 1} = \\sqrt{2} - 1$"
+     ],
+     "explication": "On multiplie par l’expression conjuguée et on utilise $(a - b)(a + b) = a^2 - b^2$ : $(\\sqrt{3} - 1)(\\sqrt{3} + 1) = 3 - 1 = 2$ et $(\\sqrt{5} + 2)(\\sqrt{5} - 2) = 5 - 4 = 1$. Pièges : écrire $3 + 1$ au lieu de $3 - 1$, oublier d’élever $2$ au carré ($5 - 2$), ou ne pas changer le signe : $\\dfrac{1}{\\sqrt{2} - 1} = \\sqrt{2} + 1$.",
+     "difficulte": "medium",
+     "cible": "Programme : rendre rationnel un dénominateur par l’expression conjuguée (erreurs de signe et de carré).",
+     "theoremes": [
+      "Multiplication par l'expression conjuguée"
+     ]
+    },
+    {
+     "question": "Sachant que $\\sqrt{2} \\notin \\mathbb{Q}$, lesquels de ces nombres sont rationnels ?",
+     "bonnes": [
+      "$\\dfrac{\\sqrt{50}}{\\sqrt{2}}$",
+      "$\\left(3 - \\sqrt{2}\\right)\\left(3 + \\sqrt{2}\\right)$"
+     ],
+     "distracteurs": [
+      "$\\dfrac{\\sqrt{2}}{2}$",
+      "$\\left(\\sqrt{2} + 1\\right)^2$",
+      "$\\sqrt{\\dfrac{9}{2}}$"
+     ],
+     "explication": "$\\dfrac{\\sqrt{50}}{\\sqrt{2}} = \\sqrt{25} = 5$ et $(3 - \\sqrt{2})(3 + \\sqrt{2}) = 9 - 2 = 7$. Les trois autres s’écrivent $r + s\\sqrt{2}$ avec $r$, $s$ rationnels et $s \\neq 0$ : ils sont irrationnels, sinon $\\sqrt{2}$ serait rationnel. $\\dfrac{\\sqrt{2}}{2}$ n’est pas un quotient d’entiers, $(\\sqrt{2} + 1)^2 = 3 + 2\\sqrt{2}$ (le double produit reste) et $\\sqrt{\\dfrac{9}{2}} = \\dfrac{3}{\\sqrt{2}} = \\dfrac{3\\sqrt{2}}{2}$, pas $\\dfrac{3}{2}$.",
+     "difficulte": "hard",
+     "cible": "Programme : distinguer rationnels et irrationnels (erreurs classiques : « une fraction est rationnelle », oubli du double produit).",
+     "theoremes": [
+      "Irrationalité de √2",
+      "Propriétés des racines carrées"
+     ]
+    },
+    {
+     "question": "Pour tous réels $a$ et $b$ non nuls et tout entier relatif $n$, quelles égalités sont toujours vraies ?",
+     "bonnes": [
+      "$(ab)^n = a^n\\,b^n$",
+      "$a^{-n} = \\dfrac{1}{a^n}$"
+     ],
+     "distracteurs": [
+      "$(a + b)^n = a^n + b^n$",
+      "$a^{-n} = -a^n$",
+      "$a^n \\times b^n = (ab)^{2n}$"
+     ],
+     "explication": "Une puissance se distribue sur un produit : $(ab)^n = a^n\\,b^n$ ; et par définition $a^{-n} = \\dfrac{1}{a^n}$ (par exemple $2^{-3} = \\dfrac{1}{8}$, qui est positif). Elle ne se distribue pas sur une somme : $(1 + 1)^2 = 4 \\neq 1^2 + 1^2$. On n’additionne les exposants que pour une même base : $a^n \\times a^m = a^{n+m}$, alors que $a^n \\times b^n = (ab)^n$.",
+     "difficulte": "easy",
+     "cible": "Programme : propriétés des puissances (exposant négatif, puissance d’une somme).",
+     "theoremes": [
+      "Propriétés des puissances"
+     ]
     }
    ]
   },
@@ -368,6 +441,78 @@
      "theoremes": [
       "PGCD et PPCM par la décomposition en facteurs premiers"
      ]
+    },
+    {
+     "question": "On veut savoir si $143$ est premier. On sait que $11^2 = 121 < 143 < 169 = 13^2$. Quelles affirmations sont vraies ?",
+     "bonnes": [
+      "Il suffit de tester la divisibilité de $143$ par les nombres premiers $2$, $3$, $5$, $7$ et $11$.",
+      "$143$ n’est pas premier."
+     ],
+     "distracteurs": [
+      "$143$ est premier : il n’est divisible ni par $2$, ni par $3$, ni par $5$, ni par $7$.",
+      "Un entier impair, qui ne se termine pas par $5$ et dont la somme des chiffres n’est pas divisible par $3$, est toujours premier.",
+      "Un entier $n \\geq 2$ qui n’a aucun diviseur premier $p$ tel que $p^2 \\leq n$ peut quand même ne pas être premier."
+     ],
+     "explication": "Si $n = ab$ avec $2 \\leq a \\leq b$, alors $a^2 \\leq ab = n$ : un entier non premier a un diviseur premier $p$ tel que $p^2 \\leq n$. Pour $143$, on teste donc $2$, $3$, $5$, $7$ et $11$ : $143 = 11 \\times 13$. S’arrêter aux nombres premiers à un chiffre oublie $11$ ; et $143$ (impair, ne finissant pas par $5$, somme des chiffres $8$) montre que les critères de $2$, $3$ et $5$ ne suffisent pas.",
+     "difficulte": "medium",
+     "cible": "Programme : test de primalité par les diviseurs premiers $p \\leq \\sqrt{n}$ (erreurs classiques : s’arrêter trop tôt, se fier aux seuls critères de divisibilité).",
+     "theoremes": [
+      "Test de primalité (diviseurs premiers ≤ √n)"
+     ]
+    },
+    {
+     "question": "Soient $a$, $b$ et $c$ des entiers naturels non nuls. Quelles affirmations sont toujours vraies ?",
+     "bonnes": [
+      "Si $a \\mid b$ et $b \\mid c$, alors $a \\mid c$.",
+      "Si $a \\mid b$ et $a \\mid c$, alors $a \\mid (b + c)$."
+     ],
+     "distracteurs": [
+      "Si $a \\mid (b + c)$, alors $a \\mid b$ et $a \\mid c$.",
+      "Si $a \\mid bc$, alors $a \\mid b$ ou $a \\mid c$.",
+      "Si $a \\mid c$ et $b \\mid c$, alors $ab \\mid c$."
+     ],
+     "explication": "Si $b = ka$ et $c = k'b$, alors $c = (k'k)\\,a$ ; si $b = ka$ et $c = k'a$, alors $b + c = (k + k')\\,a$. Les réciproques et « généralisations » sont fausses : $3 \\mid 1 + 2$ mais $3 \\nmid 1$ ; $6 \\mid 2 \\times 3$ mais $6 \\nmid 2$ et $6 \\nmid 3$ ; $4 \\mid 12$ et $6 \\mid 12$ mais $24 \\nmid 12$.",
+     "difficulte": "medium",
+     "cible": "Programme : propriétés de la divisibilité (transitivité, somme ; erreur classique : réciproque fausse).",
+     "theoremes": [
+      "Propriétés de la divisibilité"
+     ]
+    },
+    {
+     "question": "Quelles affirmations sont vraies pour tout entier naturel $n$ ?",
+     "bonnes": [
+      "$n$ est divisible par $6$ si et seulement s’il est pair et que la somme de ses chiffres est divisible par $3$.",
+      "$n$ est divisible par $4$ si et seulement si le nombre formé par ses deux derniers chiffres est divisible par $4$."
+     ],
+     "distracteurs": [
+      "$n$ est divisible par $4$ si et seulement si son chiffre des unités est divisible par $4$.",
+      "$n$ est divisible par $8$ si et seulement s’il est divisible par $2$ et par $4$.",
+      "$n$ est divisible par $3$ si et seulement si son chiffre des unités est divisible par $3$."
+     ],
+     "explication": "$6 = 2 \\times 3$ avec $2$ et $3$ premiers entre eux : être divisible par $6$, c’est l’être par $2$ et par $3$. Pour $4$, comme $100 = 4 \\times 25$, seuls les deux derniers chiffres comptent. Contre-exemples : $14$ finit par $4$ mais $4 \\nmid 14$ ; $4$ est divisible par $2$ et par $4$ mais pas par $8$ ($2$ et $4$ ne sont pas premiers entre eux) ; $13$ finit par $3$ mais $3 \\nmid 13$.",
+     "difficulte": "medium",
+     "cible": "Programme : critères de divisibilité par $3$, $4$ et $6$ (erreurs classiques : regarder le seul chiffre des unités, multiplier des diviseurs non premiers entre eux).",
+     "theoremes": [
+      "Critères de divisibilité"
+     ]
+    },
+    {
+     "question": "Soit $n$ un entier naturel impair. Quels nombres sont toujours pairs ?",
+     "bonnes": [
+      "$n^2 + 1$",
+      "$5n + 3$"
+     ],
+     "distracteurs": [
+      "$n(n+2)$",
+      "$\\dfrac{n+1}{2}$",
+      "$(n+1)^2 - 1$"
+     ],
+     "explication": "$n$ impair donne $n^2$ et $5n$ impairs (produits d’impairs), et impair $+$ impair $=$ pair : $n^2 + 1$ et $5n + 3$ sont pairs. $n(n+2)$ est un produit de deux impairs, donc impair (à ne pas confondre avec $n(n+1)$) ; $(n+1)^2 - 1$ est pair moins impair, donc impair ; $\\dfrac{n+1}{2}$ vaut $1$ pour $n = 1$ et $2$ pour $n = 3$ : sa parité dépend de $n$.",
+     "difficulte": "medium",
+     "cible": "Programme : parité d’une somme et d’un produit (erreur classique : confondre $n(n+2)$ et $n(n+1)$).",
+     "theoremes": [
+      "Parité de la somme et du produit"
+     ]
     }
    ]
   },
@@ -490,6 +635,80 @@
      "explication": "$(AB) \\parallel (CD)$ équivaut à $\\overrightarrow{AB}$ et $\\overrightarrow{CD}$ colinéaires ; un coefficient négatif convient. Des longueurs égales ne disent rien de la direction. $\\overrightarrow{AB} + \\overrightarrow{CD} = \\overrightarrow{AD}$ revient à $C = B$, sans parallélisme imposé.",
      "difficulte": "hard",
      "cible": "Programme : parallélisme de droites et colinéarité.",
+     "theoremes": [
+      "Condition de colinéarité de deux vecteurs"
+     ]
+    },
+    {
+     "question": "Dans un triangle $ABC$, $I$ est le milieu de $[AB]$ et $J$ celui de $[AC]$. Quelles égalités sont vraies ?",
+     "bonnes": [
+      "$\\overrightarrow{IJ} = \\dfrac{1}{2}\\,\\overrightarrow{BC}$",
+      "$\\overrightarrow{BI} = \\overrightarrow{IA}$"
+     ],
+     "distracteurs": [
+      "$\\overrightarrow{IJ} = \\dfrac{1}{2}\\,\\overrightarrow{CB}$",
+      "$\\overrightarrow{IA} = \\overrightarrow{IB}$",
+      "$\\overrightarrow{AJ} = 2\\,\\overrightarrow{AC}$"
+     ],
+     "explication": "$I$ milieu de $[AB]$ équivaut à $\\overrightarrow{AI} = \\overrightarrow{IB}$, soit $\\overrightarrow{BI} = \\overrightarrow{IA}$ ; de même $\\overrightarrow{AJ} = \\dfrac{1}{2}\\,\\overrightarrow{AC}$. Avec Chasles : $\\overrightarrow{IJ} = \\overrightarrow{IA} + \\overrightarrow{AJ} = \\dfrac{1}{2}\\left(\\overrightarrow{BA} + \\overrightarrow{AC}\\right) = \\dfrac{1}{2}\\,\\overrightarrow{BC}$. $IA = IB$ en longueur, mais $\\overrightarrow{IA}$ et $\\overrightarrow{IB}$ sont opposés ; et c’est $\\overrightarrow{AC} = 2\\,\\overrightarrow{AJ}$, pas l’inverse.",
+     "difficulte": "medium",
+     "cible": "Programme : caractérisation vectorielle du milieu (erreurs classiques : confondre longueurs égales et vecteurs égaux, sens du vecteur).",
+     "theoremes": [
+      "Caractérisation vectorielle du milieu d'un segment",
+      "Relation de Chasles"
+     ]
+    },
+    {
+     "question": "$A$, $B$, $C$ et $D$ sont quatre points du plan, trois à trois non alignés. Quelles conditions garantissent que $ABCD$ est un parallélogramme ?",
+     "bonnes": [
+      "$\\overrightarrow{AB} = \\overrightarrow{DC}$",
+      "$\\overrightarrow{AB} + \\overrightarrow{AD} = \\overrightarrow{AC}$"
+     ],
+     "distracteurs": [
+      "$\\overrightarrow{AB} = \\overrightarrow{CD}$",
+      "$AB = DC$",
+      "$\\overrightarrow{AB}$ et $\\overrightarrow{DC}$ sont colinéaires."
+     ],
+     "explication": "$ABCD$ est un parallélogramme si et seulement si $\\overrightarrow{AB} = \\overrightarrow{DC}$ (ou, ce qui revient au même, $\\overrightarrow{AD} = \\overrightarrow{BC}$). Or $\\overrightarrow{AB} + \\overrightarrow{AD} = \\overrightarrow{AC}$ donne $\\overrightarrow{AD} = \\overrightarrow{AC} - \\overrightarrow{AB} = \\overrightarrow{BC}$. $\\overrightarrow{AB} = \\overrightarrow{CD}$ fait de $ABDC$ un parallélogramme : l’ordre des lettres compte. Des longueurs égales ne fixent pas la direction, et des vecteurs seulement colinéaires donnent un trapèze.",
+     "difficulte": "medium",
+     "cible": "Programme : caractérisation vectorielle d’un parallélogramme (erreurs classiques : ordre des sommets, longueurs au lieu de vecteurs).",
+     "theoremes": [
+      "Caractérisation vectorielle d'un parallélogramme"
+     ]
+    },
+    {
+     "question": "$ABC$ est un triangle et $M$ le point tel que $\\overrightarrow{AM} = \\overrightarrow{AB} + \\overrightarrow{AC}$. Quelles affirmations sont vraies ?",
+     "bonnes": [
+      "$ABMC$ est un parallélogramme.",
+      "Le milieu $I$ de $[BC]$ est aussi le milieu de $[AM]$."
+     ],
+     "distracteurs": [
+      "$ABCM$ est un parallélogramme.",
+      "$M$ est le milieu de $[BC]$.",
+      "$\\overrightarrow{AM} = \\overrightarrow{BC}$"
+     ],
+     "explication": "$\\overrightarrow{CM} = \\overrightarrow{CA} + \\overrightarrow{AM} = \\overrightarrow{AB}$ : $ABMC$ est un parallélogramme, donc ses diagonales $[AM]$ et $[BC]$ ont le même milieu. $ABCM$ demanderait $\\overrightarrow{AB} = \\overrightarrow{MC}$, faux ici. Le milieu $I$ de $[BC]$ vérifie $\\overrightarrow{AI} = \\dfrac{1}{2}\\left(\\overrightarrow{AB} + \\overrightarrow{AC}\\right)$ : il manque le facteur $\\dfrac{1}{2}$. Enfin $\\overrightarrow{BC} = \\overrightarrow{AC} - \\overrightarrow{AB}$ est une différence.",
+     "difficulte": "hard",
+     "cible": "Programme : construire le point $M$ tel que $\\overrightarrow{AM} = \\overrightarrow{AB} + \\overrightarrow{AC}$ et l’interpréter (parallélogramme, milieu).",
+     "theoremes": [
+      "Caractérisation vectorielle d'un parallélogramme",
+      "Caractérisation vectorielle du milieu d'un segment"
+     ]
+    },
+    {
+     "question": "$\\vec{u}$ et $\\vec{v}$ sont deux vecteurs non colinéaires et $\\vec{w} = 2\\,\\vec{u} - \\vec{v}$. Quels vecteurs sont colinéaires à $\\vec{w}$ ?",
+     "bonnes": [
+      "$-4\\,\\vec{u} + 2\\,\\vec{v}$",
+      "$\\vec{u} - \\dfrac{1}{2}\\,\\vec{v}$"
+     ],
+     "distracteurs": [
+      "$2\\,\\vec{u} + \\vec{v}$",
+      "$4\\,\\vec{u} - \\vec{v}$",
+      "$-\\vec{u} + 2\\,\\vec{v}$"
+     ],
+     "explication": "$-4\\,\\vec{u} + 2\\,\\vec{v} = -2\\,\\vec{w}$ et $\\vec{u} - \\dfrac{1}{2}\\,\\vec{v} = \\dfrac{1}{2}\\,\\vec{w}$. Comme $\\vec{u}$ et $\\vec{v}$ ne sont pas colinéaires, $a\\,\\vec{u} + b\\,\\vec{v} = k\\,\\vec{w}$ impose $a = 2k$ et $b = -k$ : les deux coefficients sont multipliés par le même $k$. $2\\,\\vec{u} + \\vec{v}$ change un seul signe, $4\\,\\vec{u} - \\vec{v}$ ne multiplie qu’un coefficient, $-\\vec{u} + 2\\,\\vec{v}$ échange les coefficients.",
+     "difficulte": "medium",
+     "cible": "Programme : colinéarité de vecteurs de la forme $a\\,\\vec{u} + b\\,\\vec{v}$ (erreurs classiques : ne multiplier qu’un coefficient, erreur de signe).",
      "theoremes": [
       "Condition de colinéarité de deux vecteurs"
      ]

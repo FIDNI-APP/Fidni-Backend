@@ -465,6 +465,80 @@
      "theoremes": [
       "Méthode de dichotomie"
      ]
+    },
+    {
+     "question": "Quelles limites sont égales à $0$ ?",
+     "bonnes": [
+      "$\\lim\\limits_{x \\to 0} \\dfrac{1 - \\cos x}{x}$",
+      "$\\lim\\limits_{x \\to 0} \\dfrac{\\sin^2 x}{x}$"
+     ],
+     "distracteurs": [
+      "$\\lim\\limits_{x \\to 0} \\dfrac{\\sin x}{x}$",
+      "$\\lim\\limits_{x \\to 0} \\dfrac{1 - \\cos x}{x^2}$",
+      "$\\lim\\limits_{x \\to 0} \\dfrac{\\sin 3x}{x}$"
+     ],
+     "explication": "$\\dfrac{1 - \\cos x}{x} = x \\times \\dfrac{1 - \\cos x}{x^2} \\to 0 \\times \\dfrac12 = 0$ et $\\dfrac{\\sin^2 x}{x} = \\sin x \\times \\dfrac{\\sin x}{x} \\to 0 \\times 1 = 0$. Faux : « $\\dfrac{0}{0}$ donne $0$ » est une erreur, $\\dfrac{\\sin x}{x} \\to 1$ ; $\\dfrac{1 - \\cos x}{x^2} \\to \\dfrac12$ (à ne pas confondre avec $\\dfrac{1 - \\cos x}{x}$) ; $\\dfrac{\\sin 3x}{x} = 3 \\times \\dfrac{\\sin 3x}{3x} \\to 3$.",
+     "difficulte": "medium",
+     "cible": "Programme : limites trigonométriques usuelles en $0$ (erreurs classiques : « $\\frac00 = 0$ », confondre $\\frac{1 - \\cos x}{x}$ et $\\frac{1 - \\cos x}{x^2}$).",
+     "theoremes": [
+      "Limites trigonométriques usuelles"
+     ]
+    },
+    {
+     "question": "On sait que $\\lim\\limits_{x \\to +\\infty} f(x) = +\\infty$ et $\\lim\\limits_{x \\to +\\infty} g(x) = -\\infty$. Que peut-on affirmer à coup sûr ?",
+     "bonnes": [
+      "$\\lim\\limits_{x \\to +\\infty} \\left(f(x) - g(x)\\right) = +\\infty$",
+      "$\\lim\\limits_{x \\to +\\infty} f(x)\\,g(x) = -\\infty$"
+     ],
+     "distracteurs": [
+      "$\\lim\\limits_{x \\to +\\infty} \\left(f(x) + g(x)\\right) = 0$",
+      "$\\lim\\limits_{x \\to +\\infty} \\dfrac{f(x)}{g(x)} = -1$",
+      "$\\lim\\limits_{x \\to +\\infty} f(x)\\,g(x)$ est une forme indéterminée."
+     ],
+     "explication": "$f - g = f + (-g)$ : « $+\\infty + \\infty$ » donne $+\\infty$ ; « $+\\infty \\times (-\\infty)$ » donne $-\\infty$, ce n’est pas une forme indéterminée. En revanche « $+\\infty - \\infty$ » et « $\\dfrac{\\infty}{\\infty}$ » sont indéterminées : avec $g(x) = -x$, $f(x) = x + 1$ donne $f + g \\to 1$ et $f(x) = 2x$ donne $f + g \\to +\\infty$ ; $f(x) = x$ donne $\\dfrac{f}{g} \\to -1$ mais $f(x) = x^2$ donne $\\dfrac{f}{g} \\to -\\infty$.",
+     "difficulte": "medium",
+     "cible": "Programme : opérations sur les limites et formes indéterminées (erreurs classiques : « $\\infty - \\infty = 0$ », « $\\frac{\\infty}{\\infty} = 1$ », croire « $\\infty \\times \\infty$ » indéterminée).",
+     "theoremes": [
+      "Opérations sur les limites"
+     ]
+    },
+    {
+     "question": "Quelles fonctions sont continues sur $\\mathbb{R}$ ?",
+     "bonnes": [
+      "$x \\mapsto \\sqrt{x^2 + 1} - x$",
+      "$x \\mapsto \\dfrac{\\sin x}{x^2 + 1}$"
+     ],
+     "distracteurs": [
+      "$x \\mapsto \\dfrac{x}{x^2 - 1}$",
+      "$x \\mapsto \\sqrt{x^2 - 1}$",
+      "$x \\mapsto \\cos\\left(\\dfrac{1}{x}\\right)$"
+     ],
+     "explication": "$x^2 + 1 > 0$ : $\\sqrt{x^2 + 1}$ est la composée de fonctions continues, et une différence de fonctions continues est continue ; $\\dfrac{\\sin x}{x^2 + 1}$ est un quotient de fonctions continues dont le dénominateur ne s’annule pas. Faux : $\\dfrac{x}{x^2 - 1}$ n’est pas définie en $\\pm 1$ ; $\\sqrt{x^2 - 1}$ n’est pas définie sur $]-1\\,;1[$ ; $\\cos\\left(\\dfrac1x\\right)$ n’est pas définie en $0$ : $\\cos$ est continue, mais la composée ne l’est que là où $\\dfrac1x$ existe.",
+     "difficulte": "easy",
+     "cible": "Programme : continuité par opérations et composition (erreur classique : oublier l’ensemble de définition, valeurs interdites du dénominateur ou de la racine).",
+     "theoremes": [
+      "Opérations sur les fonctions continues",
+      "Limite et continuité d'une fonction composée"
+     ]
+    },
+    {
+     "question": "On étudie $\\lim\\limits_{x \\to +\\infty} \\left(\\sqrt{x^2 + x} - x\\right)$. Quelles affirmations sont vraies ?",
+     "bonnes": [
+      "C’est une forme indéterminée « $\\infty - \\infty$ », qu’on lève en multipliant par l’expression conjuguée $\\sqrt{x^2 + x} + x$.",
+      "Cette limite vaut $\\dfrac{1}{2}$."
+     ],
+     "distracteurs": [
+      "Cette limite vaut $0$, car $\\sqrt{x^2 + x}$ « se comporte comme » $x$.",
+      "Cette limite vaut $+\\infty$, car $\\sqrt{x^2 + x} > x$.",
+      "Cette limite vaut $1$."
+     ],
+     "explication": "$\\sqrt{x^2 + x} - x = \\dfrac{(x^2 + x) - x^2}{\\sqrt{x^2 + x} + x} = \\dfrac{x}{x\\left(\\sqrt{1 + \\frac1x} + 1\\right)} = \\dfrac{1}{\\sqrt{1 + \\frac1x} + 1} \\to \\dfrac12$. Faux : « $\\sqrt{x^2 + x} \\approx x$ » ne dit rien de la différence ; être positive ne la fait pas tendre vers $+\\infty$ ; $1$ vient d’un dénominateur réduit à $\\sqrt{x^2 + x}$ (le $+x$ oublié).",
+     "difficulte": "medium",
+     "cible": "Programme : forme indéterminée $\\infty - \\infty$ levée par l’expression conjuguée (erreurs classiques : conclure $0$ ou $+\\infty$ sans calcul, conjuguée mal développée).",
+     "theoremes": [
+      "Multiplication par l'expression conjuguée",
+      "Opérations sur les limites"
+     ]
     }
    ]
   },
@@ -727,6 +801,98 @@
      "cible": "Programme : récurrence et encadrement des termes.",
      "theoremes": [
       "Raisonnement par récurrence"
+     ]
+    },
+    {
+     "question": "Quelles suites sont convergentes ?",
+     "bonnes": [
+      "$\\left(\\left(-\\dfrac{2}{3}\\right)^n\\right)_{n \\geq 0}$",
+      "$\\left(\\dfrac{1}{\\sqrt{n}}\\right)_{n \\geq 1}$"
+     ],
+     "distracteurs": [
+      "$\\left((-1)^n\\right)_{n \\geq 0}$",
+      "$\\left(\\left(-\\dfrac{3}{2}\\right)^n\\right)_{n \\geq 0}$",
+      "$\\left(1{,}01^n\\right)_{n \\geq 0}$"
+     ],
+     "explication": "$(q^n)$ converge si et seulement si $-1 < q \\leq 1$ : avec $q = -\\dfrac23$, elle tend vers $0$ ; $\\dfrac{1}{\\sqrt n} \\to 0$ (suite de référence $\\dfrac{1}{n^\\alpha}$, $\\alpha > 0$). Faux : $(-1)^n$ est bornée mais oscille entre $-1$ et $1$ ; $q = -\\dfrac32 < -1$ : les termes alternent de signe et leur valeur absolue tend vers $+\\infty$ ; $1{,}01 > 1$, donc $1{,}01^n \\to +\\infty$, même si la raison est proche de $1$.",
+     "difficulte": "easy",
+     "cible": "Programme : limites des suites de référence $(q^n)$ et $\\left(\\frac{1}{n^\\alpha}\\right)$ (erreurs classiques : « bornée donc convergente », $q$ négatif, raison proche de $1$).",
+     "theoremes": [
+      "Limites des suites de référence"
+     ]
+    },
+    {
+     "question": "Pour tout $n \\in \\mathbb{N}$, $u_n < v_n$. Quelles affirmations sont vraies ?",
+     "bonnes": [
+      "Si $\\lim\\limits_{n \\to +\\infty} u_n = +\\infty$, alors $\\lim\\limits_{n \\to +\\infty} v_n = +\\infty$.",
+      "Si $(v_n)$ est majorée, alors $(u_n)$ est majorée."
+     ],
+     "distracteurs": [
+      "Si $\\lim\\limits_{n \\to +\\infty} v_n = +\\infty$, alors $\\lim\\limits_{n \\to +\\infty} u_n = +\\infty$.",
+      "Si $(u_n)$ et $(v_n)$ convergent, alors $\\lim\\limits_{n \\to +\\infty} u_n < \\lim\\limits_{n \\to +\\infty} v_n$.",
+      "Si $(v_n)$ converge, alors $(u_n)$ converge."
+     ],
+     "explication": "Comparaison : une suite plus grande qu’une suite qui tend vers $+\\infty$ tend vers $+\\infty$ ; si $v_n \\leq M$, alors $u_n < M$. Faux : la comparaison ne marche pas dans l’autre sens ($u_n = 0$, $v_n = n + 1$) ; le passage à la limite transforme $<$ en $\\leq$ ($u_n = 0$ et $v_n = \\dfrac{1}{n+1}$ ont la même limite $0$) ; $u_n = -n$ et $v_n = 1$ : $(v_n)$ converge, pas $(u_n)$.",
+     "difficulte": "medium",
+     "cible": "Programme : limites et ordre, suites majorées (erreurs classiques : comparer dans le mauvais sens, garder l’inégalité stricte à la limite).",
+     "theoremes": [
+      "Limites et ordre",
+      "Suite majorée, minorée, monotone"
+     ]
+    },
+    {
+     "question": "La suite $(u_n)$ converge vers $2$. Quelles affirmations sont vraies ?",
+     "bonnes": [
+      "$\\lim\\limits_{n \\to +\\infty} \\sqrt{u_n + 2} = 2$",
+      "$\\lim\\limits_{n \\to +\\infty} \\cos(\\pi u_n) = 1$"
+     ],
+     "distracteurs": [
+      "$\\lim\\limits_{n \\to +\\infty} \\dfrac{1}{u_n - 2} = 0$",
+      "$\\lim\\limits_{n \\to +\\infty} u_{2n} = 4$",
+      "$\\lim\\limits_{n \\to +\\infty} \\dfrac{u_{n+1}}{u_n} = 2$"
+     ],
+     "explication": "Si $u_n \\to 2$ et $f$ est continue en $2$, alors $f(u_n) \\to f(2)$ : $\\sqrt{2 + 2} = 2$ et $\\cos(2\\pi) = 1$. Faux : $u_n - 2 \\to 0$, donc $\\left|\\dfrac{1}{u_n - 2}\\right| \\to +\\infty$ (« $\\dfrac10$ » n’est pas $0$) ; $(u_{2n})$ est une suite extraite, elle a la même limite $2$ ; $\\dfrac{u_{n+1}}{u_n} \\to \\dfrac22 = 1$.",
+     "difficulte": "medium",
+     "cible": "Programme : limite de $(f(u_n))$ quand $f$ est continue (erreurs classiques : $u_{2n} \\to 2\\ell$, $\\frac{u_{n+1}}{u_n} \\to \\ell$, « $\\frac10 = 0$ »).",
+     "theoremes": [
+      "Limite et continuité d'une fonction composée"
+     ]
+    },
+    {
+     "question": "$u_0 = 5$ et $u_{n+1} = \\dfrac{1}{3}u_n + 2$ pour tout $n$. On pose $v_n = u_n - 3$. Quelles affirmations sont vraies ?",
+     "bonnes": [
+      "$(v_n)$ est géométrique de raison $\\dfrac{1}{3}$.",
+      "$v_0 + v_1 + \\dots + v_n = 3\\left(1 - \\dfrac{1}{3^{n+1}}\\right)$"
+     ],
+     "distracteurs": [
+      "$(u_n)$ est géométrique de raison $\\dfrac{1}{3}$.",
+      "$v_n = 5 \\times \\left(\\dfrac{1}{3}\\right)^n$",
+      "$\\lim\\limits_{n \\to +\\infty} u_n = 0$"
+     ],
+     "explication": "$v_{n+1} = \\dfrac13 u_n + 2 - 3 = \\dfrac13(u_n - 3) = \\dfrac13 v_n$, avec $v_0 = 5 - 3 = 2$. Donc $v_n = 2\\left(\\dfrac13\\right)^n$ et $v_0 + \\dots + v_n = 2 \\times \\dfrac{1 - \\left(\\frac13\\right)^{n+1}}{1 - \\frac13} = 3\\left(1 - \\dfrac{1}{3^{n+1}}\\right)$ ($n + 1$ termes). Faux : $(u_n)$ n’est pas géométrique ($\\dfrac{u_1}{u_0} = \\dfrac{11}{15}$, $\\dfrac{u_2}{u_1} = \\dfrac{29}{33}$) ; le premier terme de $(v_n)$ est $v_0 = 2$, pas $u_0$ ; $u_n = 3 + v_n \\to 3$, pas $0$.",
+     "difficulte": "medium",
+     "cible": "Programme : suite auxiliaire géométrique et somme de termes consécutifs (erreurs classiques : prendre $u_0$ comme premier terme de $(v_n)$, oublier de revenir à $u_n$, compter $n$ termes au lieu de $n + 1$).",
+     "theoremes": [
+      "Suite auxiliaire arithmétique ou géométrique",
+      "Somme de termes consécutifs"
+     ]
+    },
+    {
+     "question": "$f$ est dérivable sur un intervalle $I$ avec $|f'(x)| \\leq \\dfrac{1}{2}$ pour tout $x \\in I$, $f(I) \\subset I$, $u_0 \\in I$, $u_{n+1} = f(u_n)$, et $\\ell \\in I$ vérifie $f(\\ell) = \\ell$. Quelles affirmations sont vraies pour tout $n$ ?",
+     "bonnes": [
+      "$|u_{n+1} - \\ell| \\leq \\dfrac{1}{2}|u_n - \\ell|$",
+      "$|u_n - \\ell| \\leq \\left(\\dfrac{1}{2}\\right)^n |u_0 - \\ell|$"
+     ],
+     "distracteurs": [
+      "$|u_n - \\ell| \\leq \\left(\\dfrac{1}{2}\\right)^n$",
+      "$u_{n+1} - \\ell = \\dfrac{1}{2}(u_n - \\ell)$",
+      "$(u_n)$ est monotone."
+     ],
+     "explication": "Inégalité des accroissements finis entre $u_n$ et $\\ell$ (tous deux dans $I$) : $|f(u_n) - f(\\ell)| \\leq \\dfrac12 |u_n - \\ell|$, c’est-à-dire $|u_{n+1} - \\ell| \\leq \\dfrac12 |u_n - \\ell|$ ; par récurrence, $|u_n - \\ell| \\leq \\left(\\dfrac12\\right)^n |u_0 - \\ell|$, d’où $u_n \\to \\ell$. Faux, avec $f(x) = -\\dfrac{x}{2}$ sur $\\mathbb{R}$, $\\ell = 0$, $u_0 = 4$ : $|u_1 - \\ell| = 2 > \\dfrac12$ (le facteur $|u_0 - \\ell|$ ne s’oublie pas) ; $u_1 = -2 \\neq \\dfrac12 u_0$ (une inégalité, pas une égalité) ; $(u_n) = 4, -2, 1, \\dots$ n’est pas monotone.",
+     "difficulte": "hard",
+     "cible": "Programme 2ème Bac SM : inégalité des accroissements finis appliquée aux suites $u_{n+1} = f(u_n)$ (1.3.17 ; erreurs classiques : oublier $|u_0 - \\ell|$, transformer l’inégalité en égalité).",
+     "theoremes": [
+      "Inégalité des accroissements finis"
      ]
     }
    ]
@@ -1007,6 +1173,82 @@
      "cible": "Programme : inégalités par les accroissements finis.",
      "theoremes": [
       "Inégalité des accroissements finis"
+     ]
+    },
+    {
+     "question": "$f$ est dérivable sur un intervalle ouvert $I$ et $a \\in I$. Quelles affirmations sont vraies ?",
+     "bonnes": [
+      "Si $f$ admet un extremum local en $a$, alors $f'(a) = 0$.",
+      "Si $f'$ s’annule en $a$ en changeant de signe, alors $f$ admet un extremum local en $a$."
+     ],
+     "distracteurs": [
+      "Si $f'(a) = 0$, alors $f$ admet un extremum local en $a$.",
+      "Si $f$ est strictement croissante sur $I$, alors $f'(x) > 0$ pour tout $x \\in I$.",
+      "Si $f$ admet un maximum local en $a$ et est deux fois dérivable, alors $f''(a) < 0$."
+     ],
+     "explication": "Un extremum local en un point intérieur annule la dérivée ; réciproquement, une dérivée qui s’annule en changeant de signe donne un extremum. Faux, avec $x^3$ en $0$ : $f'(0) = 0$ sans extremum, et $x^3$ est strictement croissante alors que $f'(0) = 0$ ($f' \\geq 0$, nulle en des points isolés, suffit) ; $-x^4$ a un maximum en $0$ et pourtant $f''(0) = 0$.",
+     "difficulte": "medium",
+     "cible": "Programme : extremum et annulation de la dérivée, signe de $f'$ et sens de variation (erreurs classiques : « $f'(a) = 0$ donc extremum », « strictement croissante donc $f' > 0$ »).",
+     "theoremes": [
+      "Extremum et annulation de la dérivée",
+      "Signe de la dérivée et sens de variation"
+     ]
+    },
+    {
+     "question": "$f$ est dérivable à droite et à gauche en $a$, avec $f'_d(a) = 2$ et $f'_g(a) = -2$. Quelles affirmations sont vraies ?",
+     "bonnes": [
+      "$f$ n’est pas dérivable en $a$.",
+      "La courbe de $f$ admet au point d’abscisse $a$ deux demi-tangentes, de coefficients directeurs $2$ et $-2$ : c’est un point anguleux."
+     ],
+     "distracteurs": [
+      "$f$ est dérivable en $a$ et $f'(a) = 0$, moyenne de $2$ et de $-2$.",
+      "La courbe de $f$ admet une tangente horizontale au point d’abscisse $a$.",
+      "$f$ n’est pas continue en $a$."
+     ],
+     "explication": "$f$ est dérivable en $a$ si et seulement si $f'_d(a)$ et $f'_g(a)$ existent et sont égales : ici $2 \\neq -2$. Chaque nombre dérivé donne une demi-tangente, d’où un point anguleux (exemple : $|x^2 - 4|$ en $2$, avec $4$ et $-4$). Pas de tangente du tout, donc pas de tangente horizontale, et on ne fait pas de moyenne. Enfin, dérivable à droite et à gauche entraîne continue à droite et à gauche : $f$ est continue en $a$ ; non dérivable ne veut pas dire non continue.",
+     "difficulte": "medium",
+     "cible": "Programme : dérivabilité à droite et à gauche, demi-tangentes (erreurs classiques : confondre non dérivable et non continue, « moyenner » les nombres dérivés).",
+     "theoremes": [
+      "Dérivabilité à droite et à gauche"
+     ]
+    },
+    {
+     "question": "Soit $f(x) = \\dfrac{2x - 1}{x + 1}$ sur $]-1\\,;+\\infty[$. Quelles affirmations sont vraies ?",
+     "bonnes": [
+      "$f'(x) = \\dfrac{3}{(x + 1)^2}$",
+      "La tangente à la courbe de $f$ au point d’abscisse $0$ a pour équation $y = 3x - 1$."
+     ],
+     "distracteurs": [
+      "$f'(x) = \\dfrac{-3}{(x + 1)^2}$",
+      "$f'(x) = 2$",
+      "La tangente à la courbe de $f$ au point d’abscisse $0$ a pour équation $y = -x + 3$."
+     ],
+     "explication": "$\\left(\\dfrac{u}{v}\\right)' = \\dfrac{u'v - uv'}{v^2}$ : $\\dfrac{2(x + 1) - (2x - 1)}{(x + 1)^2} = \\dfrac{3}{(x + 1)^2}$. Tangente : $y = f'(0)(x - 0) + f(0) = 3x - 1$. Faux : $\\dfrac{-3}{(x+1)^2}$ vient de $uv' - u'v$ (ordre inversé) ; $2 = \\dfrac{u'}{v'}$ n’est pas la dérivée d’un quotient ; $y = -x + 3$ échange $f(0) = -1$ et $f'(0) = 3$.",
+     "difficulte": "easy",
+     "cible": "Programme : dérivée d’un quotient et équation de la tangente $y = f'(a)(x - a) + f(a)$ (erreurs classiques : ordre de $u'v - uv'$, « $\\left(\\frac uv\\right)' = \\frac{u'}{v'}$ », rôles de $f(a)$ et $f'(a)$ échangés).",
+     "theoremes": [
+      "Dérivée d'une somme, d'un produit, d'un quotient",
+      "Équation de la tangente"
+     ]
+    },
+    {
+     "question": "Quelles affirmations sont vraies ?",
+     "bonnes": [
+      "La droite d’équation $x = 1$ est un axe de symétrie de la courbe de $x \\mapsto x^2 - 2x$.",
+      "Le point $\\Omega(1\\,;2)$ est un centre de symétrie de la courbe de $x \\mapsto \\dfrac{2x}{x - 1}$."
+     ],
+     "distracteurs": [
+      "$x \\mapsto x^3 + 1$ est impaire.",
+      "$x \\mapsto \\sin\\left(\\dfrac{x}{2}\\right)$ est périodique de période $\\pi$.",
+      "Si $f$ est paire et dérivable sur $\\mathbb{R}$, alors $f'$ est paire."
+     ],
+     "explication": "Avec $f(x) = x^2 - 2x$ : $f(2 - x) = f(x)$, donc $x = 1$ est un axe de symétrie. Avec $g(x) = \\dfrac{2x}{x - 1}$ : $2 - x \\neq 1$ quand $x \\neq 1$, et $g(2 - x) + g(x) = 4 = 2 \\times 2$, donc $\\Omega(1\\,;2)$ est un centre de symétrie. Faux : $x^3 + 1$ vaut $0$ en $-1$ et $2$ en $1$, la constante empêche l’imparité ; $\\sin\\left(\\dfrac x2\\right)$ a pour période $4\\pi$ (on multiplie $2\\pi$ par $2$), et $\\sin\\left(\\dfrac{\\pi}{2}\\right) = 1 \\neq \\sin 0$ ; la dérivée d’une fonction paire est impaire ($x^4$ donne $4x^3$).",
+     "difficulte": "medium",
+     "cible": "Programme : éléments de symétrie et périodicité d’une courbe (erreurs classiques : oublier la constante, période de $\\sin(ax)$, parité de la dérivée).",
+     "theoremes": [
+      "Centre et axe de symétrie d'une courbe",
+      "Fonctions paires et impaires",
+      "Fonction périodique"
      ]
     }
    ]

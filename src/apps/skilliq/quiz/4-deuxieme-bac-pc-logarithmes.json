@@ -1,0 +1,278 @@
+{
+ "niveau": "2ème Bac PC/SVT",
+ "chapitres": [
+  {
+   "chapitre": "Fonctions logarithmiques",
+   "questions": [
+    {
+     "question": "Pour tous réels $a > 0$ et $b > 0$, quelle égalité est toujours vraie ?",
+     "bonne": "$\\ln(ab) = \\ln a + \\ln b$",
+     "distracteurs": [
+      "$\\ln(a + b) = \\ln a + \\ln b$",
+      "$\\ln(a + b) = \\ln a \\times \\ln b$",
+      "$\\ln\\left(\\dfrac{a}{b}\\right) = \\dfrac{\\ln a}{\\ln b}$"
+     ],
+     "explication": "Le logarithme transforme un produit en somme : $\\ln(ab) = \\ln a + \\ln b$. Il n’y a aucune formule pour $\\ln(a + b)$ (ex. $a = b = 1$ : $\\ln 2 \\neq 0$), et $\\ln\\left(\\dfrac{a}{b}\\right) = \\ln a - \\ln b$, pas un quotient de logarithmes.",
+     "difficulte": "easy",
+     "cible": "Programme : propriété fondamentale du logarithme (erreur classique : $\\ln(a + b) = \\ln a + \\ln b$).",
+     "theoremes": [
+      "Dérivée et propriétés du logarithme"
+     ]
+    },
+    {
+     "question": "Quelle est la dérivée de $f(x) = \\ln(x^2 + 1)$ sur $\\mathbb{R}$ ?",
+     "bonne": "$f'(x) = \\dfrac{2x}{x^2 + 1}$",
+     "distracteurs": [
+      "$f'(x) = \\dfrac{1}{x^2 + 1}$",
+      "$f'(x) = \\dfrac{1}{2x}$",
+      "$f'(x) = \\dfrac{2x}{\\ln(x^2 + 1)}$"
+     ],
+     "explication": "$(\\ln u)' = \\dfrac{u'}{u}$ avec $u = x^2 + 1 > 0$ et $u' = 2x$. Oublier $u'$ donne $\\dfrac{1}{x^2+1}$ ; $\\dfrac{1}{2x}$ dérive le mauvais morceau ; diviser par $\\ln u$ confond avec la dérivée d’un quotient.",
+     "difficulte": "easy",
+     "cible": "Programme : dérivée de $\\ln u$ (erreur classique : oublier $u'$ dans $\\dfrac{u'}{u}$).",
+     "theoremes": [
+      "Dérivée logarithmique (u′/u)"
+     ]
+    },
+    {
+     "question": "Quel est l’ensemble des solutions de l’inéquation $\\ln x < 1$ ?",
+     "bonne": "$]0\\,;e[$",
+     "distracteurs": [
+      "$]-\\infty\\,;e[$",
+      "$]1\\,;e[$",
+      "$]0\\,;1[$"
+     ],
+     "explication": "$\\ln$ est définie sur $]0\\,;+\\infty[$ et strictement croissante, et $1 = \\ln e$ : $\\ln x < \\ln e \\iff 0 < x < e$. Oublier le domaine donne $]-\\infty\\,;e[$ ; $\\ln x$ est négatif (donc $< 1$) sur $]0\\,;1[$, qu’il ne faut pas exclure ; $]0\\,;1[$ résout $\\ln x < 0$.",
+     "difficulte": "easy",
+     "cible": "Programme : inéquations logarithmiques (erreur classique : oublier le domaine $x > 0$ ou croire $\\ln x > 0$ sur $]0\\,;1[$).",
+     "theoremes": [
+      "Dérivée et propriétés du logarithme"
+     ]
+    },
+    {
+     "question": "$\\log$ désigne le logarithme décimal. Quelle est la solution de l’équation $10^x = 7$ ?",
+     "bonne": "$x = \\log 7$",
+     "distracteurs": [
+      "$x = \\ln 7$",
+      "$x = \\dfrac{7}{10}$",
+      "$x = \\dfrac{\\ln 10}{\\ln 7}$"
+     ],
+     "explication": "$\\log(10^x) = x$ pour tout réel $x$, donc $10^x = 7 \\iff x = \\log 7 = \\dfrac{\\ln 7}{\\ln 10}$. $\\ln 7$ résout $e^x = 7$ ; $\\dfrac{7}{10}$ traite $10^x$ comme $10x$ ; $\\dfrac{\\ln 10}{\\ln 7}$ inverse le quotient.",
+     "difficulte": "easy",
+     "cible": "Programme : logarithme décimal et équation $10^x = a$ (erreur classique : confondre $\\log$ et $\\ln$).",
+     "theoremes": [
+      "Logarithme décimal"
+     ]
+    },
+    {
+     "question": "Soit $f(x) = \\ln|x - 2|$. Sur l’intervalle $]-\\infty\\,;2[$, on a :",
+     "bonne": "$f$ est dérivable et $f'(x) = \\dfrac{1}{x - 2}$",
+     "distracteurs": [
+      "$f$ est dérivable et $f'(x) = \\dfrac{1}{2 - x}$",
+      "$f$ est dérivable et $f'(x) = \\dfrac{-1}{(x - 2)^2}$",
+      "$f$ n’est pas définie, car $x - 2 < 0$"
+     ],
+     "explication": "Sur $]-\\infty\\,;2[$, $f(x) = \\ln(2 - x)$, définie car $2 - x > 0$, et $f'(x) = \\dfrac{-1}{2 - x} = \\dfrac{1}{x - 2}$ : $(\\ln|u|)' = \\dfrac{u'}{u}$ partout où $u \\neq 0$. $\\dfrac{1}{2-x}$ oublie le signe de $u'$ ; $\\dfrac{-1}{(x-2)^2}$ est la dérivée de $\\dfrac{1}{x-2}$ ; la valeur absolue rend $f$ définie pour $x \\neq 2$.",
+     "difficulte": "medium",
+     "cible": "Programme : $\\ln|u|$ et sa dérivée (erreur classique : confondre le domaine de $\\ln u$ et celui de $\\ln|u|$).",
+     "theoremes": [
+      "Dérivée logarithmique (u′/u)",
+      "Dérivée et propriétés du logarithme"
+     ]
+    },
+    {
+     "question": "Quel est l’ensemble des solutions de l’équation $\\ln x + \\ln(x - 2) = \\ln 3$ ?",
+     "bonne": "$\\{3\\}$",
+     "distracteurs": [
+      "$\\{-1\\,;3\\}$",
+      "$\\left\\{\\dfrac{5}{2}\\right\\}$",
+      "$\\emptyset$"
+     ],
+     "explication": "Domaine : $x > 2$. Alors $\\ln\\big(x(x-2)\\big) = \\ln 3 \\iff x^2 - 2x - 3 = 0 \\iff x = 3$ ou $x = -1$ ; seul $3$ est dans le domaine. $\\{-1\\,;3\\}$ oublie le domaine ; $\\dfrac{5}{2}$ vient de $\\ln x + \\ln(x-2) = \\ln(2x - 2)$, faux.",
+     "difficulte": "medium",
+     "cible": "Programme : équations logarithmiques (erreur classique : oublier le domaine ou écrire $\\ln a + \\ln b = \\ln(a + b)$).",
+     "theoremes": [
+      "Dérivée et propriétés du logarithme"
+     ]
+    },
+    {
+     "question": "Laquelle de ces limites est exacte ?",
+     "bonne": "$\\lim\\limits_{x \\to 0^+} x \\ln x = 0$",
+     "distracteurs": [
+      "$\\lim\\limits_{x \\to +\\infty} \\dfrac{\\ln x}{x} = +\\infty$",
+      "$\\lim\\limits_{x \\to 0^+} \\dfrac{\\ln x}{x} = 0$",
+      "$\\lim\\limits_{x \\to 0} \\dfrac{\\ln(1 + x)}{x} = 0$"
+     ],
+     "explication": "Limite de référence : $\\lim\\limits_{0^+} x \\ln x = 0$. Les autres : $\\dfrac{\\ln x}{x} \\to 0$ en $+\\infty$ (croissances comparées, pas $+\\infty$) ; en $0^+$, $\\dfrac{\\ln x}{x} = \\dfrac{1}{x} \\times \\ln x \\to -\\infty$ (pas de forme indéterminée) ; $\\dfrac{\\ln(1+x)}{x} \\to 1$ (nombre dérivé de $\\ln$ en $1$).",
+     "difficulte": "medium",
+     "cible": "Programme : limites usuelles du logarithme (erreur classique : orienter à l’envers les croissances comparées).",
+     "theoremes": [
+      "Limites usuelles du logarithme"
+     ]
+    },
+    {
+     "question": "Que vaut $\\lim\\limits_{x \\to 0} \\dfrac{\\ln(1 + 3x)}{x}$ ?",
+     "bonne": "$3$",
+     "distracteurs": [
+      "$1$",
+      "$\\dfrac{1}{3}$",
+      "$0$"
+     ],
+     "explication": "$\\dfrac{\\ln(1 + 3x)}{x} = 3 \\times \\dfrac{\\ln(1 + X)}{X}$ avec $X = 3x \\to 0$, et $\\dfrac{\\ln(1+X)}{X} \\to 1$ : la limite vaut $3$. Répondre $1$ applique la limite de référence sans adapter la variable ; $\\dfrac{1}{3}$ divise au lieu de multiplier ; $0$ vient de « $\\ln 1 = 0$ » en oubliant la forme $\\dfrac{0}{0}$.",
+     "difficulte": "medium",
+     "cible": "Programme : limite $\\lim\\limits_{x \\to 0} \\dfrac{\\ln(1+x)}{x} = 1$ (erreur classique : appliquer la limite de référence sans changement de variable).",
+     "theoremes": [
+      "Limites usuelles du logarithme"
+     ]
+    },
+    {
+     "question": "Pour tout $x > 0$, $\\log_3(9x)$ est égal à :",
+     "bonne": "$2 + \\log_3 x$",
+     "distracteurs": [
+      "$2\\log_3 x$",
+      "$3 + \\log_3 x$",
+      "$\\dfrac{\\ln(9x)}{3}$"
+     ],
+     "explication": "$\\log_3 y = \\dfrac{\\ln y}{\\ln 3}$ a les mêmes propriétés de calcul que $\\ln$ : $\\log_3(9x) = \\log_3 9 + \\log_3 x$, et $\\log_3 9 = \\dfrac{\\ln 9}{\\ln 3} = \\dfrac{2\\ln 3}{\\ln 3} = 2$. $2\\log_3 x$ transforme le produit en produit ; $\\log_3 9 \\neq 3$ ; et $\\log_3 y = \\dfrac{\\ln y}{\\ln 3}$, pas $\\dfrac{\\ln y}{3}$.",
+     "difficulte": "medium",
+     "cible": "Programme : calcul sur le logarithme de base $a$ (erreur classique : $\\log_a y = \\dfrac{\\ln y}{a}$).",
+     "theoremes": [
+      "Fonction logarithme de base a"
+     ]
+    },
+    {
+     "question": "$\\log$ désigne le logarithme décimal. Quel est l’ensemble des solutions de l’inéquation $\\log x \\le -2$ ?",
+     "bonne": "$]0\\,;0{,}01]$",
+     "distracteurs": [
+      "$]-\\infty\\,;0{,}01]$",
+      "$[0{,}01\\,;+\\infty[$",
+      "$]0\\,;e^{-2}]$"
+     ],
+     "explication": "$\\log$ est définie sur $]0\\,;+\\infty[$, strictement croissante, et $-2 = \\log 10^{-2}$ : $\\log x \\le -2 \\iff 0 < x \\le 0{,}01$. $]-\\infty\\,;0{,}01]$ oublie le domaine ; $[0{,}01\\,;+\\infty[$ renverse le sens alors que $\\log$ est croissante ; $e^{-2}$ confond $\\log$ et $\\ln$.",
+     "difficulte": "medium",
+     "cible": "Programme : inéquations avec le logarithme décimal (erreur classique : confondre $\\log$ et $\\ln$, oublier $x > 0$).",
+     "theoremes": [
+      "Logarithme décimal"
+     ]
+    },
+    {
+     "question": "Pour quels réels $x$ a-t-on $\\ln\\big((x - 1)(x - 3)\\big) = \\ln(x - 1) + \\ln(x - 3)$ ?",
+     "bonne": "Exactement pour $x \\in\\, ]3\\,;+\\infty[$",
+     "distracteurs": [
+      "Exactement pour $x \\in\\, ]-\\infty\\,;1[\\, \\cup\\, ]3\\,;+\\infty[$",
+      "Pour tout $x \\in \\mathbb{R} \\setminus \\{1\\,;3\\}$",
+      "Exactement pour $x \\in\\, ]1\\,;3[$"
+     ],
+     "explication": "Le membre de droite exige $x - 1 > 0$ et $x - 3 > 0$, soit $x > 3$ ; l’égalité y est alors vraie. Le membre de gauche est défini aussi sur $]-\\infty\\,;1[$, mais pas celui de droite : $\\ln(ab) = \\ln a + \\ln b$ demande $a > 0$ et $b > 0$, pas seulement $ab > 0$. Sur $]1\\,;3[$, $(x-1)(x-3) < 0$ : rien n’est défini.",
+     "difficulte": "hard",
+     "cible": "Programme : $\\ln(ab) = \\ln a + \\ln b$ et ses hypothèses (erreur classique : l’appliquer sans condition de signe sur $a$ et $b$).",
+     "theoremes": [
+      "Dérivée et propriétés du logarithme"
+     ]
+    },
+    {
+     "question": "Quel est l’ensemble des solutions dans $\\mathbb{R}$ de l’équation $\\ln(x^2) = 2\\ln 3$ ?",
+     "bonne": "$\\{-3\\,;3\\}$",
+     "distracteurs": [
+      "$\\{3\\}$",
+      "$\\{-\\sqrt{6}\\,;\\sqrt{6}\\}$",
+      "$\\{\\sqrt{6}\\}$"
+     ],
+     "explication": "$\\ln(x^2)$ est défini pour tout $x \\neq 0$, et $\\ln(x^2) = 2\\ln|x|$, pas $2\\ln x$. L’équation donne $x^2 = 9$, soit $x = -3$ ou $x = 3$. $\\{3\\}$ vient de $\\ln(x^2) = 2\\ln x$ (ce qui exclut à tort les négatifs) ; $\\sqrt 6$ vient de $2\\ln 3 = \\ln 6$ au lieu de $\\ln 9$.",
+     "difficulte": "hard",
+     "cible": "Programme : $\\ln(x^2) = 2\\ln|x|$ (erreur classique : écrire $2\\ln x$ et perdre les solutions négatives).",
+     "theoremes": [
+      "Dérivée et propriétés du logarithme"
+     ]
+    },
+    {
+     "question": "Que vaut $\\lim\\limits_{x \\to +\\infty} x \\ln\\left(1 + \\dfrac{1}{x}\\right)$ ?",
+     "bonne": "$1$",
+     "distracteurs": [
+      "$0$",
+      "$+\\infty$",
+      "$e$"
+     ],
+     "explication": "Forme indéterminée « $\\infty \\times 0$ ». Avec $X = \\dfrac{1}{x} \\to 0^+$ : $x \\ln\\left(1 + \\dfrac1x\\right) = \\dfrac{\\ln(1 + X)}{X} \\to 1$. $0$ ne retient que $\\ln\\left(1+\\dfrac1x\\right) \\to 0$, et $+\\infty$ que $x \\to +\\infty$ ; $e$ est la limite de $\\left(1 + \\dfrac1x\\right)^x$, pas de son logarithme.",
+     "difficulte": "hard",
+     "cible": "Programme : limite $\\lim\\limits_{X \\to 0} \\dfrac{\\ln(1+X)}{X} = 1$ (erreur classique : conclure trop vite sur une forme « $\\infty \\times 0$ »).",
+     "theoremes": [
+      "Limites usuelles du logarithme"
+     ]
+    },
+    {
+     "question": "Pour tout réel $x > 0$, quelles égalités sont vraies ?",
+     "bonnes": [
+      "$\\ln\\left(\\dfrac{1}{x}\\right) = -\\ln x$",
+      "$\\ln(x^3) = 3\\ln x$"
+     ],
+     "distracteurs": [
+      "$\\ln(x + 1) = \\ln x + \\ln 1$",
+      "$\\ln\\left(\\dfrac{1}{x}\\right) = \\dfrac{1}{\\ln x}$",
+      "$(\\ln x)^2 = 2\\ln x$"
+     ],
+     "explication": "$\\ln\\left(\\dfrac1x\\right) = \\ln 1 - \\ln x = -\\ln x$ et $\\ln(x^n) = n\\ln x$. Faux : $\\ln(x+1) \\neq \\ln x + \\ln 1 = \\ln x$ (pas de formule pour une somme) ; $\\dfrac{1}{\\ln x}$ confond inverse du nombre et opposé du logarithme ($x = e$ : $-1 \\neq 1$) ; $(\\ln x)^2$ est le carré du logarithme, $2\\ln x = \\ln(x^2)$ ($x = e$ : $1 \\neq 2$).",
+     "difficulte": "easy",
+     "cible": "Programme : calcul sur les logarithmes (erreur classique : confondre $\\ln(x^2)$ et $(\\ln x)^2$, $\\ln\\frac1x$ et $\\frac{1}{\\ln x}$).",
+     "theoremes": [
+      "Dérivée et propriétés du logarithme"
+     ]
+    },
+    {
+     "question": "Soit $x \\in\\, ]0\\,;1[$. Quelles affirmations sont vraies ?",
+     "bonnes": [
+      "$\\ln(x^2) < \\ln x$",
+      "$\\ln(1 - x) < 0$"
+     ],
+     "distracteurs": [
+      "$\\ln(x^2) > \\ln x$",
+      "$\\ln x > -1$",
+      "$\\ln\\left(\\dfrac{1}{x}\\right) < 0$"
+     ],
+     "explication": "Sur $]0\\,;1[$ : $x^2 < x$ et $\\ln$ est strictement croissante, donc $\\ln(x^2) < \\ln x$ ; $1 - x \\in\\, ]0\\,;1[$, donc $\\ln(1-x) < 0$. Faux : « le carré est plus grand » ne vaut que pour $x > 1$ ; $\\ln x > -1$ échoue pour $x < \\dfrac1e$ (ex. $x = 0{,}1$) ; $\\dfrac1x > 1$ donc $\\ln\\dfrac1x > 0$.",
+     "difficulte": "hard",
+     "cible": "Programme : signe et monotonie de $\\ln$ (erreur classique : raisonner comme sur $]1\\,;+\\infty[$ quand $x \\in\\, ]0\\,;1[$).",
+     "theoremes": [
+      "Dérivée et propriétés du logarithme"
+     ]
+    },
+    {
+     "question": "Parmi ces limites, lesquelles valent $0$ ?",
+     "bonnes": [
+      "$\\lim\\limits_{x \\to +\\infty} \\dfrac{\\ln x}{x^2}$",
+      "$\\lim\\limits_{x \\to 0^+} x^2 \\ln x$"
+     ],
+     "distracteurs": [
+      "$\\lim\\limits_{x \\to 0^+} \\dfrac{\\ln x}{x}$",
+      "$\\lim\\limits_{x \\to 1} \\dfrac{\\ln x}{x - 1}$",
+      "$\\lim\\limits_{x \\to +\\infty} \\dfrac{x}{\\ln x}$"
+     ],
+     "explication": "En $+\\infty$ : $\\dfrac{\\ln x}{x^2} = \\dfrac{\\ln x}{x} \\times \\dfrac{1}{x} \\to 0 \\times 0 = 0$ ; en $0^+$ : $x^2 \\ln x = x \\times x\\ln x \\to 0 \\times 0 = 0$ (limites de référence $\\dfrac{\\ln x}{x} \\to 0$ en $+\\infty$ et $x \\ln x \\to 0$ en $0^+$). Les autres : en $0^+$, $\\dfrac{\\ln x}{x} = \\dfrac{1}{x} \\times \\ln x \\to -\\infty$ (pas de forme indéterminée) ; $\\dfrac{\\ln x}{x - 1} \\to 1$ (nombre dérivé de $\\ln$ en $1$) ; $\\dfrac{x}{\\ln x} \\to +\\infty$, inverse de $\\dfrac{\\ln x}{x}$ qui tend vers $0$ par valeurs positives.",
+     "difficulte": "medium",
+     "cible": "Programme : limites usuelles du logarithme et leurs conséquences (erreur classique : orienter à l’envers $\\dfrac{\\ln x}{x}$ ou croire $\\dfrac{\\ln x}{x}$ indéterminée en $0^+$).",
+     "theoremes": [
+      "Limites usuelles du logarithme"
+     ]
+    },
+    {
+     "question": "$\\log$ désigne le logarithme décimal. Quelles égalités sont vraies ?",
+     "bonnes": [
+      "$\\log 1000 = 3$",
+      "$\\log x = \\dfrac{\\ln x}{\\ln 10}$ pour tout $x > 0$"
+     ],
+     "distracteurs": [
+      "$\\log(2 + 5) = \\log 2 + \\log 5$",
+      "$\\log x = \\dfrac{\\ln x}{10}$ pour tout $x > 0$",
+      "$\\log 0{,}001 = -2$"
+     ],
+     "explication": "Par définition, $\\log x = \\dfrac{\\ln x}{\\ln 10}$ pour $x > 0$, d’où $\\log(10^n) = n$ : $\\log 1000 = \\log 10^3 = 3$. Faux : $\\log 2 + \\log 5 = \\log 10 = 1$, alors que $\\log 7 \\neq 1$ (pas de formule pour une somme) ; on divise par $\\ln 10$, pas par $10$ ; $0{,}001 = 10^{-3}$, donc $\\log 0{,}001 = -3$.",
+     "difficulte": "medium",
+     "cible": "Programme : logarithme décimal (erreur classique : $\\log x = \\dfrac{\\ln x}{10}$, mal compter les zéros, ou $\\log(a + b) = \\log a + \\log b$).",
+     "theoremes": [
+      "Logarithme décimal"
+     ]
+    }
+   ]
+  }
+ ]
+}

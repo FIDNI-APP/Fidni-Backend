@@ -199,6 +199,78 @@
      "theoremes": [
       "Raisonnement par récurrence"
      ]
+    },
+    {
+     "question": "Quelles propositions sont vraies ?",
+     "bonnes": [
+      "$\\forall x \\in \\mathbb{R},\\ \\exists y \\in \\mathbb{R} : y > x^2$",
+      "$\\exists n \\in \\mathbb{N},\\ \\forall m \\in \\mathbb{N} : n \\leq m$"
+     ],
+     "distracteurs": [
+      "$\\exists y \\in \\mathbb{R},\\ \\forall x \\in \\mathbb{R} : y > x^2$",
+      "$\\forall n \\in \\mathbb{N},\\ \\exists m \\in \\mathbb{N} : m < n$",
+      "$\\exists!\\, x \\in \\mathbb{R} : x^2 = 4$"
+     ],
+     "explication": "$y = x^2 + 1$ convient pour chaque $x$, et $n = 0$ est inférieur à tout entier naturel. En échangeant $\\forall x$ et $\\exists y$, le même $y$ devrait dépasser tous les $x^2$ : la négation $\\forall y,\\ \\exists x : y \\leq x^2$ est vraie (prendre $x = \\sqrt{|y|}$). La négation de la 4e est $\\exists n,\\ \\forall m : m \\geq n$, vraie pour $n = 0$. Enfin $x^2 = 4$ a deux solutions, $2$ et $-2$.",
+     "difficulte": "medium",
+     "cible": "Programme : ordre des quantificateurs et négation d’une proposition quantifiée.",
+     "theoremes": [
+      "Négation d'une proposition quantifiée"
+     ]
+    },
+    {
+     "question": "Pour $x \\in \\mathbb{R}$, quelles implications sont fausses (un contre-exemple suffit) ?",
+     "bonnes": [
+      "$x^2 = 4 \\Rightarrow x = 2$",
+      "$x^2 \\geq x \\Rightarrow x \\geq 1$"
+     ],
+     "distracteurs": [
+      "$x^2 < 1 \\Rightarrow x < 1$",
+      "$\\sqrt{x^2} = x \\Rightarrow x \\geq 0$",
+      "$x^2 \\leq x \\Rightarrow x \\leq 1$"
+     ],
+     "explication": "Contre-exemples : $x = -2$ pour la première, $x = 0$ pour la deuxième ($0 \\geq 0$ mais $0 < 1$ : on ne divise pas par $x$ sans connaître son signe). Les trois autres sont vraies : $x^2 < 1 \\iff -1 < x < 1$ ; $\\sqrt{x^2} = |x|$, et $|x| = x$ impose $x \\geq 0$ ; $x^2 \\leq x \\iff x(x - 1) \\leq 0 \\iff 0 \\leq x \\leq 1$.",
+     "difficulte": "medium",
+     "cible": "Programme : raisonnement par contre-exemple (erreur classique : oublier les négatifs, diviser par $x$).",
+     "theoremes": [
+      "Raisonnement par contre-exemple"
+     ]
+    },
+    {
+     "question": "Quelles affirmations sont vraies ?",
+     "bonnes": [
+      "Pour tout $n \\in \\mathbb{Z}$, $n^2 + 3n$ est pair.",
+      "Pour tout $x \\in \\mathbb{R}$, $|x| + |x - 1| \\geq 1$."
+     ],
+     "distracteurs": [
+      "Pour tout $n \\in \\mathbb{Z}$, $n^2 + 1$ est impair.",
+      "Pour tout $x \\in \\mathbb{R}$, $|x| + |x - 1| = 2x - 1$.",
+      "Pour tout $x \\in \\mathbb{R}$, $\\sqrt{x^2 - 2x + 1} = x - 1$."
+     ],
+     "explication": "Disjonction des cas. $n^2 + 3n = n(n + 3)$ : si $n$ est pair, $n$ l’est ; si $n$ est impair, $n + 3$ est pair. Pour $|x| + |x - 1|$ : $1 - 2x \\geq 1$ si $x < 0$, $1$ si $0 \\leq x \\leq 1$, $2x - 1 \\geq 1$ si $x > 1$. Les fausses ne traitent qu’un cas : $n^2 + 1$ est pair pour $n$ impair ; $2x - 1$ ne vaut que pour $x \\geq 1$ ; $\\sqrt{(x - 1)^2} = |x - 1|$, qui vaut $1 - x$ si $x < 1$.",
+     "difficulte": "medium",
+     "cible": "Programme : raisonnement par disjonction des cas (erreur classique : ne traiter qu’un cas).",
+     "theoremes": [
+      "Raisonnement par disjonction des cas"
+     ]
+    },
+    {
+     "question": "Quelles équivalences sont correctes ?",
+     "bonnes": [
+      "Pour $x \\in \\mathbb{R}$ : $x^2 = 2x \\iff (x = 0 \\text{ ou } x = 2)$",
+      "Pour $a, b > 0$ : $a < b \\iff a^2 < b^2$"
+     ],
+     "distracteurs": [
+      "Pour $x \\in \\mathbb{R}$ : $x^2 = 2x \\iff x = 2$",
+      "Pour $x \\geq 0$ : $\\sqrt{x} = x - 2 \\iff x = (x - 2)^2$",
+      "Pour $a, b \\in \\mathbb{R}^*$ : $a < b \\iff \\dfrac{1}{a} > \\dfrac{1}{b}$"
+     ],
+     "explication": "$x^2 = 2x \\iff x(x - 2) = 0$ ; diviser par $x$ fait perdre $x = 0$. Pour $a, b > 0$, $b^2 - a^2 = (b - a)(b + a)$ avec $b + a > 0$ : même signe que $b - a$. Élever au carré n’est une équivalence que si les deux membres sont positifs : $x = 1$ vérifie $1 = (1 - 2)^2$ mais $\\sqrt{1} \\neq -1$ (il faut $x \\geq 2$). Passer à l’inverse exige que $a$ et $b$ aient le même signe : $-1 < 1$, et pourtant $\\dfrac{1}{-1} = -1 < 1 = \\dfrac{1}{1}$.",
+     "difficulte": "medium",
+     "cible": "Programme : raisonnement par équivalences successives (erreur classique : élever au carré ou diviser sans condition).",
+     "theoremes": [
+      "Raisonnement par équivalences successives"
+     ]
     }
    ]
   },
@@ -383,6 +455,78 @@
      "cible": "Programme : composée et surjectivité.",
      "theoremes": [
       "Composée de deux bijections"
+     ]
+    },
+    {
+     "question": "Quelles applications sont injectives ?",
+     "bonnes": [
+      "$f : [0\\,;+\\infty[ \\to \\mathbb{R},\\ x \\mapsto x^2$",
+      "$f : \\mathbb{N} \\to \\mathbb{N},\\ n \\mapsto 2n$"
+     ],
+     "distracteurs": [
+      "$f : \\mathbb{R} \\to \\mathbb{R},\\ x \\mapsto x^2$",
+      "$f : \\mathbb{R} \\to \\mathbb{R},\\ x \\mapsto |x - 1|$",
+      "$f : \\mathbb{R}^* \\to \\mathbb{R},\\ x \\mapsto x + \\dfrac{1}{x}$"
+     ],
+     "explication": "Pour $x, x' \\geq 0$, $x^2 = x'^2$ donne $x = x'$ ; et $2n = 2n'$ donne $n = n'$ ($n \\mapsto 2n$ est injective sans être surjective : $1$ n’a pas d’antécédent). Les autres confondent deux éléments : $(-1)^2 = 1^2$ ; $|0 - 1| = |2 - 1| = 1$ ; $2 + \\dfrac{1}{2} = \\dfrac{1}{2} + 2$. L’injectivité dépend de l’ensemble de départ.",
+     "difficulte": "medium",
+     "cible": "Programme : caractérisation d’une injection (erreur classique : oublier l’ensemble de départ).",
+     "theoremes": [
+      "Caractérisation d'une injection, d'une surjection, d'une bijection"
+     ]
+    },
+    {
+     "question": "Quelles applications sont bijectives ?",
+     "bonnes": [
+      "$f : \\mathbb{Z} \\to \\mathbb{Z},\\ n \\mapsto n + 1$",
+      "$f : \\mathbb{R} \\setminus \\{1\\} \\to \\mathbb{R} \\setminus \\{1\\},\\ x \\mapsto \\dfrac{x + 1}{x - 1}$"
+     ],
+     "distracteurs": [
+      "$f : \\mathbb{N} \\to \\mathbb{N},\\ n \\mapsto n + 1$",
+      "$f : \\mathbb{R} \\to [0\\,;+\\infty[,\\ x \\mapsto x^2$",
+      "$f : [0\\,;+\\infty[ \\to \\mathbb{R},\\ x \\mapsto \\sqrt{x}$"
+     ],
+     "explication": "Bijective : tout $y$ de l’arrivée a exactement un antécédent. Dans $\\mathbb{Z}$, $n + 1 = m$ a pour unique solution $n = m - 1$. Pour $y \\neq 1$, $\\dfrac{x + 1}{x - 1} = y \\iff x = \\dfrac{y + 1}{y - 1}$, et la valeur $1$ n’est jamais atteinte. Dans $\\mathbb{N}$, $0$ n’a pas d’antécédent ; $x^2$ est surjective sur $[0\\,;+\\infty[$ mais pas injective ($\\pm 1$) ; $\\sqrt{x}$ est injective, mais $-1$ n’a pas d’antécédent.",
+     "difficulte": "hard",
+     "cible": "Programme : caractérisation d’une bijection (erreur classique : ignorer les ensembles de départ et d’arrivée).",
+     "theoremes": [
+      "Caractérisation d'une injection, d'une surjection, d'une bijection"
+     ]
+    },
+    {
+     "question": "Soit $f : \\mathbb{R} \\to \\mathbb{R}$, $f(x) = x^2$. Quelles égalités sont vraies ?",
+     "bonnes": [
+      "$f\\left(\\left]-1\\,;2\\right[\\right) = \\left[0\\,;4\\right[$",
+      "$f^{-1}\\left([1\\,;4]\\right) = [-2\\,;-1] \\cup [1\\,;2]$"
+     ],
+     "distracteurs": [
+      "$f\\left(\\left]-1\\,;2\\right[\\right) = \\left]1\\,;4\\right[$",
+      "$f\\left(\\left]-1\\,;2\\right[\\right) = \\left]0\\,;4\\right[$",
+      "$f^{-1}\\left([1\\,;4]\\right) = [1\\,;2]$"
+     ],
+     "explication": "L’image directe n’est pas l’intervalle des images des bornes : $f$ décroît sur $\\left]-1\\,;0\\right]$ (images dans $[0\\,;1[$) puis croît sur $[0\\,;2[$ (images dans $[0\\,;4[$) ; $0 = f(0)$ est atteint, $4$ ne l’est pas. L’image réciproque est l’ensemble des $x$ tels que $1 \\leq x^2 \\leq 4$, soit $1 \\leq |x| \\leq 2$ : il ne faut pas oublier les négatifs.",
+     "difficulte": "medium",
+     "cible": "Programme : image directe et image réciproque d’une partie (erreur classique : prendre les images des bornes).",
+     "theoremes": [
+      "Image directe et image réciproque d'une partie"
+     ]
+    },
+    {
+     "question": "Soient $f : E \\to F$, $A$ et $A'$ deux parties de $E$, $B$ une partie de $F$. Quelles affirmations sont vraies pour toute application $f$ ?",
+     "bonnes": [
+      "$f(A \\cup A') = f(A) \\cup f(A')$",
+      "$A \\subset f^{-1}\\left(f(A)\\right)$"
+     ],
+     "distracteurs": [
+      "$f(A \\cap A') = f(A) \\cap f(A')$",
+      "$f^{-1}\\left(f(A)\\right) = A$",
+      "$f\\left(f^{-1}(B)\\right) = B$"
+     ],
+     "explication": "$y \\in f(A \\cup A')$ s’écrit $f(x)$ avec $x \\in A$ ou $x \\in A'$ ; et tout $x \\in A$ vérifie $f(x) \\in f(A)$. Contre-exemples avec $f(x) = x^2$ sur $\\mathbb{R}$ : $A = \\{-1\\}$, $A' = \\{1\\}$ donnent $f(A \\cap A') = \\varnothing$ mais $f(A) \\cap f(A') = \\{1\\}$ ; $f^{-1}\\left(f(\\{1\\})\\right) = \\{-1\\,;1\\}$ ; $f\\left(f^{-1}(\\{-1\\})\\right) = \\varnothing$. Seules les inclusions $f(A \\cap A') \\subset f(A) \\cap f(A')$ et $f\\left(f^{-1}(B)\\right) \\subset B$ sont vraies.",
+     "difficulte": "hard",
+     "cible": "Programme : propriétés de l’image directe et de l’image réciproque (erreur classique : croire que $f^{-1}$ « annule » $f$).",
+     "theoremes": [
+      "Image directe et image réciproque d'une partie"
      ]
     }
    ]
@@ -583,6 +727,78 @@
      "cible": "Programme : caractérisation du PGCD.",
      "theoremes": [
       "PGCD, PPCM et algorithme d'Euclide"
+     ]
+    },
+    {
+     "question": "Soient $a$, $b$, $c$ des entiers relatifs, $a \\neq 0$. Quelles implications sont toujours vraies ?",
+     "bonnes": [
+      "Si $a \\mid b$ et $a \\mid c$, alors $a \\mid 2b - 3c$.",
+      "Si $a \\mid b$ et $b \\mid c$, alors $a \\mid c$."
+     ],
+     "distracteurs": [
+      "Si $a \\mid bc$, alors $a \\mid b$ ou $a \\mid c$.",
+      "Si $a \\mid b + c$, alors $a \\mid b$ et $a \\mid c$.",
+      "Si $a \\mid c$ et $b \\mid c$, alors $ab \\mid c$."
+     ],
+     "explication": "Avec $b = ak$ et $c = ak'$ : $2b - 3c = a(2k - 3k')$ (combinaison linéaire). Avec $b = ak$ et $c = bk'$ : $c = a(kk')$ (transitivité). Contre-exemples : $6 \\mid 2 \\times 3$ mais $6$ ne divise ni $2$ ni $3$ ; $2 \\mid 1 + 1$ mais $2 \\nmid 1$ ; avec $a = b = c = 2$, $a \\mid c$ et $b \\mid c$, mais $4 \\nmid 2$.",
+     "difficulte": "medium",
+     "cible": "Programme : propriétés de la divisibilité (transitivité, combinaisons linéaires).",
+     "theoremes": [
+      "Propriétés de la divisibilité"
+     ]
+    },
+    {
+     "question": "Quels entiers sont premiers ?",
+     "bonnes": [
+      "$127$",
+      "$211$"
+     ],
+     "distracteurs": [
+      "$91$",
+      "$169$",
+      "$221$"
+     ],
+     "explication": "On teste les nombres premiers $p$ tels que $p^2 \\leq n$. Pour $127$ : $2, 3, 5, 7, 11$ ne le divisent pas ($13^2 = 169 > 127$). Pour $211$ : $2, 3, 5, 7, 11, 13$ ne le divisent pas ($17^2 = 289 > 211$). Mais $91 = 7 \\times 13$, $169 = 13^2$ (il faut tester $p = 13$, car $13^2 \\leq 169$ : l’inégalité est large) et $221 = 13 \\times 17$ (s’arrêter à $11$ ne suffit pas, $13^2 = 169 \\leq 221$).",
+     "difficulte": "medium",
+     "cible": "Programme : test de primalité (erreur classique : s’arrêter trop tôt, ou exclure $p = \\sqrt{n}$).",
+     "theoremes": [
+      "Test de primalité (diviseurs premiers ≤ √n)"
+     ]
+    },
+    {
+     "question": "Soient $a, b \\in \\mathbb{N}^*$. Quelles égalités sont toujours vraies ?",
+     "bonnes": [
+      "$\\mathrm{PGCD}(a, b) \\times \\mathrm{PPCM}(a, b) = ab$",
+      "$\\mathrm{PGCD}(a, a + b) = \\mathrm{PGCD}(a, b)$"
+     ],
+     "distracteurs": [
+      "$\\mathrm{PPCM}(a, b) = ab$",
+      "$\\mathrm{PGCD}(2a, 2b) = \\mathrm{PGCD}(a, b)$",
+      "$\\mathrm{PGCD}(a^2, b) = \\mathrm{PGCD}(a, b)^2$"
+     ],
+     "explication": "Avec les décompositions en facteurs premiers, le PGCD prend les plus petits exposants et le PPCM les plus grands : leur produit redonne $ab$. Un diviseur commun de $a$ et $b$ divise $a + b$, et un diviseur commun de $a$ et $a + b$ divise $(a + b) - a = b$ : mêmes diviseurs communs. Contre-exemples : $\\mathrm{PPCM}(4, 6) = 12 \\neq 24$ ; $\\mathrm{PGCD}(8, 12) = 4 = 2 \\times \\mathrm{PGCD}(4, 6)$ ; $\\mathrm{PGCD}(4, 2) = 2 \\neq 2^2$.",
+     "difficulte": "medium",
+     "cible": "Programme : propriétés du PGCD et du PPCM (erreur classique : $\\mathrm{PPCM}(a, b) = ab$ sans hypothèse).",
+     "theoremes": [
+      "PGCD, PPCM et algorithme d'Euclide"
+     ]
+    },
+    {
+     "question": "Quelles affirmations sont vraies pour tout entier naturel $n$ ?",
+     "bonnes": [
+      "Si $n$ est impair, alors $n^2 \\equiv 1 \\ [8]$.",
+      "$n^3 \\equiv n \\ [3]$"
+     ],
+     "distracteurs": [
+      "$n^2 \\equiv 0 \\ [5]$ ou $n^2 \\equiv 1 \\ [5]$",
+      "Si $n \\equiv 3 \\ [6]$, alors $n \\equiv 3 \\ [12]$.",
+      "$10^n \\equiv 1 \\ [11]$"
+     ],
+     "explication": "$n = 2k + 1$ donne $n^2 = 4k(k + 1) + 1$, et $k(k + 1)$ est pair. Modulo $3$, $n \\equiv 0, 1$ ou $2$ et $n^3 \\equiv 0, 1$ ou $8 \\equiv 2$ : on retrouve $n$. Contre-exemples : $2^2 = 4 \\ [5]$ (le résultat « $0$ ou $1$ » vaut modulo $4$, pas $5$) ; $9 \\equiv 3 \\ [6]$ mais $9 \\not\\equiv 3 \\ [12]$ (seule la réciproque est vraie) ; $10 \\equiv -1 \\ [11]$, donc $10^n \\equiv (-1)^n$ et $10^1 \\equiv 10 \\ [11]$.",
+     "difficulte": "hard",
+     "cible": "Programme : congruences modulo $n$ (erreur classique : généraliser un résultat vu pour un autre module).",
+     "theoremes": [
+      "Congruences modulo n"
      ]
     }
    ]
