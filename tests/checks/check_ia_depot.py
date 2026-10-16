@@ -217,6 +217,27 @@ check('ambigu levé par la ville', importing.trouver_ecole({'nom': 'Lycée Al Kh
 ecole, avert = importing.trouver_ecole('Lycée Imaginaire')
 check('introuvable : laissé vide avec un avertissement (pas d’erreur)', ecole is None and 'introuvable' in avert, avert)
 check('format refusé', any('ecole' in e for e in importing.validate(dict(FICHE, ecole={'ville': 'Rabat'}))[0]))
+# « Groupe scolaire Sanaa » (M. Haddar) : plusieurs « Sanaa » dans la liste ; Natsu a choisi Sanaa 5, Hay-Hassani.
+s5 = School.objects.get_or_create(name='Sanaa 5', city='Hay-Hassani', defaults={'kind': 'prive'})[0]  # liste officielle
+for n_, v_ in (('Sanaa 3', 'Hay-Hassani'), ('Sanaa', 'Safi')):
+    School.objects.get_or_create(name=n_, city=v_, defaults={'kind': 'prive'})
+check('alias : « Groupe scolaire Sanaa » → Sanaa 5 (Hay-Hassani)', importing.trouver_ecole('Groupe scolaire Sanaa') == (s5, None)
+      and importing.trouver_ecole('GROUPE SCOLAIRE SANAA') == (s5, None))
+check('alias ignoré quand la ville est donnée', importing.trouver_ecole({'nom': 'Sanaa', 'ville': 'Safi'})[0].city == 'Safi')
+import importlib  # noqa: E402
+from django.apps import apps as django_apps  # noqa: E402
+mig16 = importlib.import_module('apps.things.migrations.0016_ecole_sanaa')
+avant16 = Content.objects.create(type='exercise', title='Ordre ex1', author=User.objects.create_user('Fidni16', 'f16@x.fr', None),
+                                 json_content={'version': '2.1', 'blocks': [], 'import': {'cle': 'ordre-tcs-ex1'}})
+autre16 = Content.objects.create(type='exercise', title='Autre', author=avant16.author, school=ibn,
+                                 json_content={'version': '2.1', 'blocks': [], 'import': {'cle': 'ordre-tcs-ex2'}})
+hors16 = Content.objects.create(type='exercise', title='Hors liste', author=avant16.author,
+                                json_content={'version': '2.1', 'blocks': [], 'import': {'cle': 'autre-cle'}})
+mig16.forwards(django_apps, None)
+for c_ in (avant16, autre16, hors16):
+    c_.refresh_from_db()
+check('migration 0016 : fiche Sanaa sans école → Sanaa 5 ; école choisie à la main gardée ; autres clés intactes',
+      avant16.school == s5 and autre16.school == ibn and hors16.school is None, (avant16.school, autre16.school, hors16.school))
 call_command('ia_deposer', dossier(dict(FICHE, cle='depot-ecole', titre='Avec établissement', ecole='Lycée Ibn Sina'), []),
              stdout=io.StringIO())
 je = IAJob.objects.get(options__cle='depot-ecole')

@@ -577,16 +577,27 @@ def _ecole_valide(ecole) -> bool:
             and (ecole.get('ville') is None or isinstance(ecole.get('ville'), str)))
 
 
+# Noms d'en-tête qui ne sont pas ceux de la liste officielle → (nom, ville) de la liste. « Groupe scolaire Sanaa »
+# (M. Haddar) : plusieurs « Sanaa » dans la liste, Natsu a choisi Sanaa 5, Hay-Hassani (16/10/2026).
+ALIAS_ECOLES = {
+    'groupe scolaire sanaa': ('Sanaa 5', 'Hay-Hassani'),
+    'gs sanaa': ('Sanaa 5', 'Hay-Hassani'),
+    'sanaa': ('Sanaa 5', 'Hay-Hassani'),
+}
+
+
 def trouver_ecole(ecole):
     """Établissement de la liste officielle (caracteristics.School) → (école ou None, avertissement ou None).
     Recherche par mots normalisés (comme le formulaire du site), nom exact d'abord ; introuvable ou ambigu : vide,
-    avec un avertissement (l'import continue)."""
+    avec un avertissement (l'import continue). Les noms d'ALIAS_ECOLES (sans ville) sont d'abord traduits."""
     from apps.caracteristics.models import School, school_search_key
 
     if not ecole or not _ecole_valide(ecole):
         return None, None
     nom = (ecole if isinstance(ecole, str) else ecole['nom']).strip()
     ville = '' if isinstance(ecole, str) else (ecole.get('ville') or '').strip()
+    if not ville and school_search_key(nom) in ALIAS_ECOLES:
+        nom, ville = ALIAS_ECOLES[school_search_key(nom)]
     qs = School.objects.all()
     for mot in school_search_key(nom, ville).split():
         qs = qs.filter(search__contains=mot)
