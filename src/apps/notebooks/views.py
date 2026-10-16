@@ -1,5 +1,5 @@
 from rest_framework import viewsets, status
-from rest_framework.decorators import action
+from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django.shortcuts import get_object_or_404
@@ -153,7 +153,8 @@ class NotebookLessonEntryAnnotationViewSet(viewsets.ModelViewSet):
 
         return NotebookAnnotation.objects.filter(
             user=self.request.user,
-            lesson=lesson_entry.lesson
+            lesson=lesson_entry.lesson,
+            surface='cahier',
         ).order_by('created_at')
 
     def list(self, request, *args, **kwargs):
@@ -179,7 +180,8 @@ class NotebookLessonEntryAnnotationViewSet(viewsets.ModelViewSet):
                 # Delete existing annotations for this lesson (not lesson_entry)
                 NotebookAnnotation.objects.filter(
                     user=request.user,
-                    lesson=lesson_entry.lesson
+                    lesson=lesson_entry.lesson,
+                    surface='cahier',
                 ).delete()
 
                 # Create new annotations
@@ -331,3 +333,39 @@ class NotebookViewSet(viewsets.ModelViewSet):
 
 
 # NotebookSectionViewSet removed - replaced by NotebookChapterViewSet with lesson entries
+
+# --------------------------------------------------------------------------- annotations sur la page d'une leçon
+ANNOTATIONS_MAX = 500
+TYPES_ANNOTATION = {t for t, _ in NotebookAnnotation.ANNOTATION_TYPES}
+
+
+def _annotation_valide(a):
+    pos = a.get('position') if isinstance(a, dict) else None
+    return (isinstance(a, dict) and isinstance(a.get('id'), str) and 0 < len(a['id']) <= 100
+            and a.get('type') in TYPES_ANNOTATION and isinstance(pos, dict)
+            and all(isinstance(pos.get(k, 0), (int, float)) or pos.get(k) is None for k in ('x', 'y', 'width', 'height'))
+            and isinstance(a.get('color', ''), str) and len(a.get('color', '')) <= 7
+            and isinstance(a.get('content', ''), str) and len(a.get('content', '')) <= 5000
+            and isinstance(a.get('path', ''), str) and len(a.get('path', '')) <= 200000)
+
+
+@api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
+def lesson_annotations(request, pk):
+    """Annotations de l'élève sur la page d'une leçon (16/10/2026), comme dans le cahier : GET → {annotations},
+    POST {annotations: [...]} remplace toutes celles de cette page. Rangées à part de celles du cahier
+    (surface « lecon ») : les positions sont en px sur une feuille d'une autre largeur."""
+    lesson = get_object_or_404(Content, pk=pk, type=Content.TYPE_LESSON)
+    qs = NotebookAnnotation.objects.filter(user=request.user, lesson=lesson, surface='lecon')
+    if request.method == 'GET':
+        return Response({'annotations': [a.to_frontend_format() for a in qs.order_by('created_at')]})
+    annotations = request.data.get('annotations')
+    if not isinstance(annotations, list) or len(annotations) > ANNOTATIONS_MAX:
+        return Response({'error': f'annotations : une liste de {ANNOTATIONS_MAX} éléments au plus.'}, status=400)
+    if not all(_annotation_valide(a) for a in annotations) or len({a['id'] for a in annotations}) != len(annotations):
+        return Response({'error': 'annotation mal formée.'}, status=400)
+    with transaction.atomic():
+        qs.delete()
+        NotebookAnnotation.objects.bulk_create([
+            NotebookAnnotation.from_frontend_format(request.user, lesson, a, surface='lecon') for a in annotations])
+    return Response({'count': len(annotations)})

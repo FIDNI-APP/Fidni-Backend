@@ -58,5 +58,38 @@ r = c.post('/api/notebooks/create_notebook/', {'subject_id': subject.id, 'class_
 check('deuxième cahier de même matière et même niveau, autre nom : accepté', r.status_code == 201
       and Notebook.objects.filter(user=alice, class_level=level).count() == 2, (r.status_code, getattr(r, 'data', None)))
 
+# — Annotations sur la page d'une leçon (16/10/2026), à part de celles du cahier —
+from apps.notebooks.models import NotebookAnnotation  # noqa: E402
+from apps.things.models import Content  # noqa: E402
+lecon = Content.objects.create(type='lesson', title='Leçon annotée', author=alice, json_content={'version': '1.0', 'sections': []})
+exo = Content.objects.create(type='exercise', title='Exercice', author=alice, json_content={'version': '2.1', 'blocks': []})
+URL = f'/api/lessons/{lecon.id}/annotations/'
+NOTE = {'id': 'note-1', 'type': 'note', 'color': '#e9c46a', 'position': {'x': 10, 'y': 20, 'width': 200, 'height': 96},
+        'content': 'À revoir'}
+SURL = {'id': 'highlight-1', 'type': 'highlight', 'color': '#7cc59a', 'position': {'x': 1, 'y': 2, 'width': 30, 'height': 8}}
+check('visiteur : refusé', APIClient().get(URL).status_code in (401, 403))
+check('leçon sans annotation : liste vide', c.get(URL).data == {'annotations': []})
+r = c.post(URL, {'annotations': [NOTE, SURL]}, format='json')
+check('enregistrement', r.status_code == 200 and r.data['count'] == 2, (r.status_code, getattr(r, 'data', None)))
+got = c.get(URL).data['annotations']
+check('relues telles quelles', [a['id'] for a in got] == ['note-1', 'highlight-1'] and got[0]['content'] == 'À revoir'
+      and got[0]['position']['x'] == 10, got)
+NotebookAnnotation.objects.create(user=alice, lesson=lecon, surface='cahier', annotation_id='note-1', annotation_type='note',
+                                  position_x=0, position_y=0, content='dans le cahier')
+r = c.post(URL, {'annotations': [SURL]}, format='json')
+check('remplacement : celles du cahier ne sont pas touchées',
+      r.status_code == 200 and NotebookAnnotation.objects.filter(lesson=lecon, surface='cahier').count() == 1
+      and NotebookAnnotation.objects.filter(lesson=lecon, surface='lecon').count() == 1)
+bob = User.objects.create_user('bob', 'bob@x.fr', 'Motdepasse-solide-42')
+cb = APIClient()
+cb.force_authenticate(bob)
+check('un autre élève ne voit pas celles d’alice', cb.get(URL).data == {'annotations': []})
+check('un exercice : 404', c.get(f'/api/lessons/{exo.id}/annotations/').status_code == 404)
+check('type inconnu : 400', c.post(URL, {'annotations': [dict(NOTE, type='image')]}, format='json').status_code == 400)
+check('ids en double : 400', c.post(URL, {'annotations': [NOTE, NOTE]}, format='json').status_code == 400)
+check('pas une liste : 400', c.post(URL, {'annotations': 'x'}, format='json').status_code == 400)
+check('trop d’annotations : 400', c.post(URL, {'annotations': [dict(SURL, id=f'h{i}') for i in range(501)]},
+                                         format='json').status_code == 400)
+
 print(f'\n{sum(results)}/{len(results)} vérifications réussies')
 sys.exit(0 if all(results) else 1)

@@ -49,7 +49,7 @@ from apps.authentication.views import (
 from apps.interactions.views import RevisionListViewSet, track_study_time, get_taxonomy_time_stats
 from apps.interactions.devoirs import UpcomingTestViewSet
 from apps.notebooks.views import (
-    NotebookViewSet, NotebookChapterViewSet, NotebookLessonEntryAnnotationViewSet
+    NotebookViewSet, NotebookChapterViewSet, NotebookLessonEntryAnnotationViewSet, lesson_annotations
 )
 from apps.learningpath.views import (
     LearningPathViewSet, PathChapterViewSet,
@@ -125,6 +125,8 @@ urlpatterns = [
     path('api/notebooks/<int:notebook_pk>/chapters/<int:chapter_pk>/lesson_entry/<int:lesson_entry_pk>/annotations/',
          NotebookLessonEntryAnnotationViewSet.as_view({'get': 'list', 'post': 'create'}),
          name='lesson-entry-annotations'),
+    # Annotations sur la page d'une leçon (16/10/2026), à part de celles du cahier
+    path('api/lessons/<int:pk>/annotations/', lesson_annotations, name='lesson-annotations'),
     
     # Authentication
     path('api/auth/login/', LoginView.as_view(), name='login'),

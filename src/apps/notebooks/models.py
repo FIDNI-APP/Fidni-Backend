@@ -81,8 +81,13 @@ class NotebookAnnotation(models.Model):
         ('pen', 'Dessin'),
     ]
 
+    # Où l'annotation a été faite (16/10/2026) : la liseuse du cahier ou la page de la leçon. Positions en px sur
+    # des feuilles de largeurs différentes : chaque surface garde les siennes.
+    SURFACES = [('cahier', 'Cahier'), ('lecon', 'Page de la leçon')]
+
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notebook_annotations')
     lesson = models.ForeignKey(Content, on_delete=models.CASCADE, related_name='annotations')
+    surface = models.CharField(max_length=10, choices=SURFACES, default='cahier')
     annotation_id = models.CharField(max_length=100)  # ID unique de l'annotation côté frontend
     annotation_type = models.CharField(max_length=20, choices=ANNOTATION_TYPES)
     position_x = models.FloatField()  # Position X de l'annotation
@@ -97,7 +102,7 @@ class NotebookAnnotation(models.Model):
 
     class Meta:
         app_label = 'notebooks'
-        unique_together = ['user', 'lesson', 'annotation_id']
+        unique_together = ['user', 'lesson', 'surface', 'annotation_id']
         ordering = ['created_at']
     
     def __str__(self):
@@ -120,12 +125,13 @@ class NotebookAnnotation(models.Model):
         }
     
     @classmethod
-    def from_frontend_format(cls, user, lesson, annotation_data):
+    def from_frontend_format(cls, user, lesson, annotation_data, surface='cahier'):
         """Crée une annotation à partir des données du frontend"""
         position = annotation_data.get('position', {})
         return cls(
             user=user,
             lesson=lesson,
+            surface=surface,
             annotation_id=annotation_data['id'],
             annotation_type=annotation_data['type'],
             position_x=position.get('x', 0),
