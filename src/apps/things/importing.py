@@ -615,6 +615,23 @@ def trouver_ecole(ecole):
                   + (f' ({", ".join(villes)}…)' if villes else '') + ' : précise la ville ; laissé vide')
 
 
+def chapitres_principaux(chapters, levels):
+    """Chapitres d'un exercice ou d'un examen (16/10/2026) : à chaque niveau, seulement le dernier dans l'ordre du
+    programme (un élève qui ouvre « Limites et continuité » n'a pas encore vu la dérivation). Un chapitre absent du
+    programme compte comme le premier ; un chapitre d'aucun des niveaux est gardé. Ordre d'origine conservé."""
+    from apps.caracteristics.programme import RANG_ABSENT, rang
+
+    garder = set()
+    for lvl in levels:
+        du_niveau = [c for c in chapters if c.class_levels.filter(pk=lvl.pk).exists()]
+        if du_niveau:
+            r = rang(lvl.name)
+            garder.add(max(du_niveau, key=lambda c: (-1 if r[c.name] == RANG_ABSENT else r[c.name], c.id)).pk)
+    level_ids = [lvl.pk for lvl in levels]
+    garder |= {c.pk for c in chapters if not c.class_levels.filter(pk__in=level_ids).exists()}
+    return [c for c in chapters if c.pk in garder] or list(chapters)
+
+
 def _match(model_qs, names: list[str], what: str, errors: list[str], **filters):
     found = []
     choices = list(model_qs.filter(**filters).values_list('name', flat=True))
@@ -672,6 +689,15 @@ def check_against_db(fiche: dict) -> tuple[list[str], list[str], dict]:
             warnings.append(f'le théorème « {th.name} » n’est rattaché à aucun des chapitres indiqués')
 
     kind = TYPES.get(fiche.get('type'))
+    # Exercice, examen : rangé seulement dans le DERNIER chapitre du programme dont il a besoin (Natsu, 16/10/2026) ;
+    # les chapitres d'avant sont des prérequis (un DS de dérivabilité n'est pas un devoir de « Limites et continuité »).
+    if kind in ('exercise', 'exam') and len(chapters) > 1:
+        gardes = chapitres_principaux(chapters, levels)
+        retires = [c.name for c in chapters if c not in gardes]
+        if retires:
+            warnings.append(f'chapitres : rangé dans « {" », « ".join(c.name for c in gardes)} » seulement '
+                            f'(dernier chapitre du programme utilisé) ; prérequis retirés : {", ".join(retires)}')
+            chapters = gardes
     existing = Content.objects.filter(json_content__import__cle=fiche.get('cle')).first()
     # « remplace » : id d'un contenu publié sans clé d'import (modifié dans l'éditeur avant le 15/10/2026, ou
     # créé sur le site) que cette fiche met à jour, au même lien.

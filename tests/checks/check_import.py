@@ -178,6 +178,41 @@ check('théorème hors des chapitres indiqués : averti', any('Loi binomiale' in
 e, _, res = importing.check_against_db({**EXO, 'niveaux': ['2ème Bac PC'], 'chapitres': ['Limites et continuité']})
 check('ancien nom de niveau « 2ème Bac PC » accepté (→ 2ème Bac PC/SVT)', e == [] and [lv.name for lv in res['levels']]
       == ['2ème Bac PC/SVT'], (e, [lv.name for lv in res['levels']]))
+# Exercice, examen : seulement le dernier chapitre du programme utilisé (Natsu, 16/10/2026).
+e, w, res = importing.check_against_db({**EXO, 'chapitres': ['Limites et continuité', 'Dérivation et étude des fonctions']})
+check('DS de dérivabilité : rangé dans « Dérivation » seulement, limites = prérequis (averti)',
+      e == [] and [c.name for c in res['chapters']] == ['Dérivation et étude des fonctions']
+      and any('prérequis retirés : Limites et continuité' in x for x in w), ([c.name for c in res['chapters']], w))
+_, _, res = importing.check_against_db({**EXO, 'chapitres': ['Dérivation et étude des fonctions', 'Fonctions logarithmiques']})
+check('dernier chapitre dans l’ordre du programme, quel que soit l’ordre de la fiche',
+      [c.name for c in res['chapters']] == ['Fonctions logarithmiques'], [c.name for c in res['chapters']])
+_, _, res = importing.check_against_db({**EXO, 'type': 'lecon', 'chapitres': ['Limites et continuité', 'Dérivation et étude des fonctions']})
+check('leçon : tous ses chapitres gardés', len(res['chapters']) == 2, [c.name for c in res['chapters']])
+
+import importlib  # noqa: E402
+from django.apps import apps as django_apps  # noqa: E402
+from django.contrib.auth.models import User as _U  # noqa: E402
+from apps.caracteristics.models import Chapter as _Ch, ClassLevel as _CL  # noqa: E402
+from apps.things.models import Content as _C  # noqa: E402
+_sm = _CL.objects.get(name='2ème Bac SM')
+_lim = _Ch.objects.get(name='Limites et continuité', class_levels=_sm)
+_der = _Ch.objects.get(name='Dérivation et étude des fonctions', class_levels=_sm)
+_auteur = _U.objects.create_user('mig17', 'mig17@x.fr', None)
+_ds = _C.objects.create(type='exam', title='DS dérivabilité', author=_auteur, json_content={'version': '2.1', 'blocks': []})
+_ds.class_levels.set([_sm]); _ds.chapters.set([_lim, _der])  # noqa: E702
+_lc = _C.objects.create(type='lesson', title='Leçon deux chapitres', author=_auteur, json_content={'version': '1.0', 'sections': []})
+_lc.class_levels.set([_sm]); _lc.chapters.set([_lim, _der])  # noqa: E702
+_m17 = importlib.import_module('apps.things.migrations.0017_chapitre_principal')
+_m17.forwards(django_apps, None)
+_ds.refresh_from_db()
+check('migration 0017 : DS publié ramené à « Dérivation », chapitre retiré noté',
+      list(_ds.chapters.all()) == [_der] and _ds.json_content.get('chapitres_retires') == [_lim.pk], _ds.json_content)
+check('migration 0017 : leçon intacte', _lc.chapters.count() == 2)
+_m17.backwards(django_apps, None)
+_ds.refresh_from_db()
+check('migration 0017 inverse : chapitres remis', set(_ds.chapters.all()) == {_lim, _der}
+      and 'chapitres_retires' not in _ds.json_content)
+_ds.delete(); _lc.delete(); _auteur.delete()  # noqa: E702  (la suite compte les contenus)
 
 out = io.StringIO()
 with redirect_stdout(out):
