@@ -1,0 +1,582 @@
+{
+ "niveau": "2ème Bac SM",
+ "chapitres": [
+  {
+   "chapitre": "Fonctions logarithmiques",
+   "questions": [
+    {
+     "question": "Pour tous réels $a > 0$ et $b > 0$, quelle égalité est toujours vraie ?",
+     "bonne": "$\\ln(ab) = \\ln a + \\ln b$",
+     "distracteurs": [
+      "$\\ln(a + b) = \\ln a + \\ln b$",
+      "$\\ln(a + b) = \\ln a \\times \\ln b$",
+      "$\\ln\\left(\\dfrac{a}{b}\\right) = \\dfrac{\\ln a}{\\ln b}$"
+     ],
+     "explication": "Le logarithme transforme un produit en somme : $\\ln(ab) = \\ln a + \\ln b$. Il n’y a aucune formule pour $\\ln(a + b)$ (ex. $a = b = 1$ : $\\ln 2 \\neq 0$), et $\\ln\\left(\\dfrac{a}{b}\\right) = \\ln a - \\ln b$, pas un quotient de logarithmes.",
+     "difficulte": "easy",
+     "cible": "Programme : propriété fondamentale du logarithme (erreur classique : $\\ln(a + b) = \\ln a + \\ln b$).",
+     "theoremes": [
+      "Dérivée et propriétés du logarithme"
+     ]
+    },
+    {
+     "question": "Quelle est la dérivée de $f(x) = \\ln(x^2 + 1)$ sur $\\mathbb{R}$ ?",
+     "bonne": "$f'(x) = \\dfrac{2x}{x^2 + 1}$",
+     "distracteurs": [
+      "$f'(x) = \\dfrac{1}{x^2 + 1}$",
+      "$f'(x) = \\dfrac{1}{2x}$",
+      "$f'(x) = \\dfrac{2x}{\\ln(x^2 + 1)}$"
+     ],
+     "explication": "$(\\ln u)' = \\dfrac{u'}{u}$ avec $u = x^2 + 1 > 0$ et $u' = 2x$. Oublier $u'$ donne $\\dfrac{1}{x^2+1}$ ; $\\dfrac{1}{2x}$ dérive le mauvais morceau ; diviser par $\\ln u$ confond avec la dérivée d’un quotient.",
+     "difficulte": "easy",
+     "cible": "Programme : dérivée de $\\ln u$ (erreur classique : oublier $u'$ dans $\\dfrac{u'}{u}$).",
+     "theoremes": [
+      "Dérivée logarithmique (u′/u)"
+     ]
+    },
+    {
+     "question": "Quel est l’ensemble des solutions de l’inéquation $\\ln x < 1$ ?",
+     "bonne": "$]0\\,;e[$",
+     "distracteurs": [
+      "$]-\\infty\\,;e[$",
+      "$]1\\,;e[$",
+      "$]0\\,;1[$"
+     ],
+     "explication": "$\\ln$ est définie sur $]0\\,;+\\infty[$ et strictement croissante, et $1 = \\ln e$ : $\\ln x < \\ln e \\iff 0 < x < e$. Oublier le domaine donne $]-\\infty\\,;e[$ ; $\\ln x$ est négatif (donc $< 1$) sur $]0\\,;1[$, qu’il ne faut pas exclure ; $]0\\,;1[$ résout $\\ln x < 0$.",
+     "difficulte": "easy",
+     "cible": "Programme : inéquations logarithmiques (erreur classique : oublier le domaine $x > 0$ ou croire $\\ln x > 0$ sur $]0\\,;1[$).",
+     "theoremes": [
+      "Dérivée et propriétés du logarithme"
+     ]
+    },
+    {
+     "question": "$\\log$ désigne le logarithme décimal. La solution de l’équation $10^x = 7$ est :",
+     "bonne": "$x = \\log 7$",
+     "distracteurs": [
+      "$x = \\ln 7$",
+      "$x = \\dfrac{7}{10}$",
+      "$x = \\log_7 10$"
+     ],
+     "explication": "$\\log$ est la réciproque de $x \\mapsto 10^x$ : $10^x = 7 \\iff x = \\log 7 = \\dfrac{\\ln 7}{\\ln 10}$. $\\ln 7$ résout $e^x = 7$ ; $\\dfrac{7}{10}$ traite $10^x$ comme $10x$ ; $\\log_7 10 = \\dfrac{1}{\\log 7}$ inverse les rôles.",
+     "difficulte": "easy",
+     "cible": "Programme : logarithme décimal et équation $10^x = a$ (erreur classique : confondre $\\log$ et $\\ln$).",
+     "theoremes": [
+      "Logarithme décimal"
+     ]
+    },
+    {
+     "question": "Soit $f(x) = \\ln|x - 2|$. Sur l’intervalle $]-\\infty\\,;2[$, on a :",
+     "bonne": "$f$ est dérivable et $f'(x) = \\dfrac{1}{x - 2}$",
+     "distracteurs": [
+      "$f$ est dérivable et $f'(x) = \\dfrac{1}{2 - x}$",
+      "$f$ est dérivable et $f'(x) = \\dfrac{-1}{(x - 2)^2}$",
+      "$f$ n’est pas définie, car $x - 2 < 0$"
+     ],
+     "explication": "Sur $]-\\infty\\,;2[$, $f(x) = \\ln(2 - x)$, définie car $2 - x > 0$, et $f'(x) = \\dfrac{-1}{2 - x} = \\dfrac{1}{x - 2}$ : $(\\ln|u|)' = \\dfrac{u'}{u}$ partout où $u \\neq 0$. $\\dfrac{1}{2-x}$ oublie le signe de $u'$ ; $\\dfrac{-1}{(x-2)^2}$ est la dérivée de $\\dfrac{1}{x-2}$ ; la valeur absolue rend $f$ définie pour $x \\neq 2$.",
+     "difficulte": "medium",
+     "cible": "Programme : $\\ln|u|$ et sa dérivée (erreur classique : confondre le domaine de $\\ln u$ et celui de $\\ln|u|$).",
+     "theoremes": [
+      "Dérivée logarithmique (u′/u)",
+      "Dérivée et propriétés du logarithme"
+     ]
+    },
+    {
+     "question": "Quel est l’ensemble des solutions de l’équation $\\ln x + \\ln(x - 2) = \\ln 3$ ?",
+     "bonne": "$\\{3\\}$",
+     "distracteurs": [
+      "$\\{-1\\,;3\\}$",
+      "$\\left\\{\\dfrac{5}{2}\\right\\}$",
+      "$\\emptyset$"
+     ],
+     "explication": "Domaine : $x > 2$. Alors $\\ln\\big(x(x-2)\\big) = \\ln 3 \\iff x^2 - 2x - 3 = 0 \\iff x = 3$ ou $x = -1$ ; seul $3$ est dans le domaine. $\\{-1\\,;3\\}$ oublie le domaine ; $\\dfrac{5}{2}$ vient de $\\ln x + \\ln(x-2) = \\ln(2x - 2)$, faux.",
+     "difficulte": "medium",
+     "cible": "Programme : équations logarithmiques (erreur classique : oublier le domaine ou écrire $\\ln a + \\ln b = \\ln(a + b)$).",
+     "theoremes": [
+      "Dérivée et propriétés du logarithme"
+     ]
+    },
+    {
+     "question": "Laquelle de ces limites est exacte ?",
+     "bonne": "$\\lim\\limits_{x \\to 0^+} x \\ln x = 0$",
+     "distracteurs": [
+      "$\\lim\\limits_{x \\to +\\infty} \\dfrac{\\ln x}{x} = +\\infty$",
+      "$\\lim\\limits_{x \\to 0^+} \\dfrac{\\ln x}{x} = 0$",
+      "$\\lim\\limits_{x \\to 0} \\dfrac{\\ln(1 + x)}{x} = 0$"
+     ],
+     "explication": "Limite de référence : $\\lim\\limits_{0^+} x \\ln x = 0$. Les autres : $\\dfrac{\\ln x}{x} \\to 0$ en $+\\infty$ (croissances comparées, pas $+\\infty$) ; en $0^+$, $\\dfrac{\\ln x}{x} = \\dfrac{1}{x} \\times \\ln x \\to -\\infty$ (pas de forme indéterminée) ; $\\dfrac{\\ln(1+x)}{x} \\to 1$ (nombre dérivé de $\\ln$ en $1$).",
+     "difficulte": "medium",
+     "cible": "Programme : limites usuelles du logarithme (erreur classique : orienter à l’envers les croissances comparées).",
+     "theoremes": [
+      "Limites usuelles du logarithme"
+     ]
+    },
+    {
+     "question": "Que vaut $\\lim\\limits_{x \\to 0} \\dfrac{\\ln(1 + 3x)}{x}$ ?",
+     "bonne": "$3$",
+     "distracteurs": [
+      "$1$",
+      "$\\dfrac{1}{3}$",
+      "$0$"
+     ],
+     "explication": "$\\dfrac{\\ln(1 + 3x)}{x} = 3 \\times \\dfrac{\\ln(1 + X)}{X}$ avec $X = 3x \\to 0$, et $\\dfrac{\\ln(1+X)}{X} \\to 1$ : la limite vaut $3$. Répondre $1$ applique la limite de référence sans adapter la variable ; $\\dfrac{1}{3}$ divise au lieu de multiplier ; $0$ vient de « $\\ln 1 = 0$ » en oubliant la forme $\\dfrac{0}{0}$.",
+     "difficulte": "medium",
+     "cible": "Programme : limite $\\lim\\limits_{x \\to 0} \\dfrac{\\ln(1+x)}{x} = 1$ (erreur classique : appliquer la limite de référence sans changement de variable).",
+     "theoremes": [
+      "Limites usuelles du logarithme"
+     ]
+    },
+    {
+     "question": "Soit $a \\in\\, ]0\\,;1[$. La fonction $\\log_a$ (logarithme de base $a$) est :",
+     "bonne": "strictement décroissante sur $]0\\,;+\\infty[$ et positive sur $]0\\,;1[$",
+     "distracteurs": [
+      "strictement croissante sur $]0\\,;+\\infty[$ et négative sur $]0\\,;1[$",
+      "strictement décroissante sur $]0\\,;+\\infty[$ et négative sur $]0\\,;1[$",
+      "strictement croissante sur $]0\\,;+\\infty[$ et positive sur $]0\\,;1[$"
+     ],
+     "explication": "$\\log_a x = \\dfrac{\\ln x}{\\ln a}$ avec $\\ln a < 0$ : on multiplie $\\ln$ par un négatif, donc sens de variation et signe s’inversent. Sur $]0\\,;1[$, $\\ln x < 0$ donc $\\log_a x > 0$. « croissante et négative sur $]0\\,;1[$ » est le comportement de $\\ln$, valable seulement pour $a > 1$.",
+     "difficulte": "medium",
+     "cible": "Programme : logarithme de base $a$ (erreur classique : oublier que $\\ln a < 0$ quand $0 < a < 1$).",
+     "theoremes": [
+      "Fonction logarithme de base a"
+     ]
+    },
+    {
+     "question": "Pour tout $x > 0$, $\\log_3(9x)$ est égal à :",
+     "bonne": "$2 + \\log_3 x$",
+     "distracteurs": [
+      "$2\\log_3 x$",
+      "$3 + \\log_3 x$",
+      "$\\dfrac{\\ln(9x)}{3}$"
+     ],
+     "explication": "$\\log_3$ a les propriétés de $\\ln$ : $\\log_3(9x) = \\log_3 9 + \\log_3 x = 2 + \\log_3 x$, car $9 = 3^2$. $2\\log_3 x$ transforme le produit en produit ; $\\log_3 9 \\neq 3$ ; et $\\log_3 y = \\dfrac{\\ln y}{\\ln 3}$, pas $\\dfrac{\\ln y}{3}$.",
+     "difficulte": "medium",
+     "cible": "Programme : calcul sur le logarithme de base $a$ (erreur classique : $\\log_a y = \\dfrac{\\ln y}{a}$).",
+     "theoremes": [
+      "Fonction logarithme de base a"
+     ]
+    },
+    {
+     "question": "$\\log$ désigne le logarithme décimal. Quel est l’ensemble des solutions de l’inéquation $\\log x \\le -2$ ?",
+     "bonne": "$]0\\,;0{,}01]$",
+     "distracteurs": [
+      "$]-\\infty\\,;0{,}01]$",
+      "$[0{,}01\\,;+\\infty[$",
+      "$]0\\,;e^{-2}]$"
+     ],
+     "explication": "$\\log$ est définie sur $]0\\,;+\\infty[$, strictement croissante, et $-2 = \\log 10^{-2}$ : $\\log x \\le -2 \\iff 0 < x \\le 0{,}01$. $]-\\infty\\,;0{,}01]$ oublie le domaine ; $[0{,}01\\,;+\\infty[$ renverse le sens alors que $\\log$ est croissante ; $e^{-2}$ confond $\\log$ et $\\ln$.",
+     "difficulte": "medium",
+     "cible": "Programme : inéquations avec le logarithme décimal (erreur classique : confondre $\\log$ et $\\ln$, oublier $x > 0$).",
+     "theoremes": [
+      "Logarithme décimal"
+     ]
+    },
+    {
+     "question": "Pour quels réels $x$ a-t-on $\\ln\\big((x - 1)(x - 3)\\big) = \\ln(x - 1) + \\ln(x - 3)$ ?",
+     "bonne": "Exactement pour $x \\in\\, ]3\\,;+\\infty[$",
+     "distracteurs": [
+      "Exactement pour $x \\in\\, ]-\\infty\\,;1[\\, \\cup\\, ]3\\,;+\\infty[$",
+      "Pour tout $x \\in \\mathbb{R} \\setminus \\{1\\,;3\\}$",
+      "Exactement pour $x \\in\\, ]1\\,;3[$"
+     ],
+     "explication": "Le membre de droite exige $x - 1 > 0$ et $x - 3 > 0$, soit $x > 3$ ; l’égalité y est alors vraie. Le membre de gauche est défini aussi sur $]-\\infty\\,;1[$, mais pas celui de droite : $\\ln(ab) = \\ln a + \\ln b$ demande $a > 0$ et $b > 0$, pas seulement $ab > 0$. Sur $]1\\,;3[$, $(x-1)(x-3) < 0$ : rien n’est défini.",
+     "difficulte": "hard",
+     "cible": "Programme : $\\ln(ab) = \\ln a + \\ln b$ et ses hypothèses (erreur classique : l’appliquer sans condition de signe sur $a$ et $b$).",
+     "theoremes": [
+      "Dérivée et propriétés du logarithme"
+     ]
+    },
+    {
+     "question": "Quel est l’ensemble des solutions dans $\\mathbb{R}$ de l’équation $\\ln(x^2) = 2\\ln 3$ ?",
+     "bonne": "$\\{-3\\,;3\\}$",
+     "distracteurs": [
+      "$\\{3\\}$",
+      "$\\{-\\sqrt{6}\\,;\\sqrt{6}\\}$",
+      "$\\{\\sqrt{6}\\}$"
+     ],
+     "explication": "$\\ln(x^2)$ est défini pour tout $x \\neq 0$, et $\\ln(x^2) = 2\\ln|x|$, pas $2\\ln x$. L’équation donne $x^2 = 9$, soit $x = -3$ ou $x = 3$. $\\{3\\}$ vient de $\\ln(x^2) = 2\\ln x$ (ce qui exclut à tort les négatifs) ; $\\sqrt 6$ vient de $2\\ln 3 = \\ln 6$ au lieu de $\\ln 9$.",
+     "difficulte": "hard",
+     "cible": "Programme : $\\ln(x^2) = 2\\ln|x|$ (erreur classique : écrire $2\\ln x$ et perdre les solutions négatives).",
+     "theoremes": [
+      "Dérivée et propriétés du logarithme"
+     ]
+    },
+    {
+     "question": "Que vaut $\\lim\\limits_{x \\to +\\infty} x \\ln\\left(1 + \\dfrac{1}{x}\\right)$ ?",
+     "bonne": "$1$",
+     "distracteurs": [
+      "$0$",
+      "$+\\infty$",
+      "$e$"
+     ],
+     "explication": "Forme indéterminée « $\\infty \\times 0$ ». Avec $X = \\dfrac{1}{x} \\to 0^+$ : $x \\ln\\left(1 + \\dfrac1x\\right) = \\dfrac{\\ln(1 + X)}{X} \\to 1$. $0$ ne retient que $\\ln\\left(1+\\dfrac1x\\right) \\to 0$, et $+\\infty$ que $x \\to +\\infty$ ; $e$ est la limite de $\\left(1 + \\dfrac1x\\right)^x$, pas de son logarithme.",
+     "difficulte": "hard",
+     "cible": "Programme : limite $\\lim\\limits_{X \\to 0} \\dfrac{\\ln(1+X)}{X} = 1$ (erreur classique : conclure trop vite sur une forme « $\\infty \\times 0$ »).",
+     "theoremes": [
+      "Limites usuelles du logarithme"
+     ]
+    },
+    {
+     "question": "Pour tout réel $x > 0$, quelles égalités sont vraies ?",
+     "bonnes": [
+      "$\\ln\\left(\\dfrac{1}{x}\\right) = -\\ln x$",
+      "$\\ln(x^3) = 3\\ln x$"
+     ],
+     "distracteurs": [
+      "$\\ln(x + 1) = \\ln x + \\ln 1$",
+      "$\\ln\\left(\\dfrac{1}{x}\\right) = \\dfrac{1}{\\ln x}$",
+      "$(\\ln x)^2 = 2\\ln x$"
+     ],
+     "explication": "$\\ln\\left(\\dfrac1x\\right) = \\ln 1 - \\ln x = -\\ln x$ et $\\ln(x^n) = n\\ln x$. Faux : $\\ln(x+1) \\neq \\ln x + \\ln 1 = \\ln x$ (pas de formule pour une somme) ; $\\dfrac{1}{\\ln x}$ confond inverse du nombre et opposé du logarithme ($x = e$ : $-1 \\neq 1$) ; $(\\ln x)^2$ est le carré du logarithme, $2\\ln x = \\ln(x^2)$ ($x = e$ : $1 \\neq 2$).",
+     "difficulte": "easy",
+     "cible": "Programme : calcul sur les logarithmes (erreur classique : confondre $\\ln(x^2)$ et $(\\ln x)^2$, $\\ln\\frac1x$ et $\\frac{1}{\\ln x}$).",
+     "theoremes": [
+      "Dérivée et propriétés du logarithme"
+     ]
+    },
+    {
+     "question": "Soit $x \\in\\, ]0\\,;1[$. Quelles affirmations sont vraies ?",
+     "bonnes": [
+      "$\\ln(x^2) < \\ln x$",
+      "$\\ln(1 - x) < 0$"
+     ],
+     "distracteurs": [
+      "$\\ln(x^2) > \\ln x$",
+      "$\\ln x > -1$",
+      "$\\ln\\left(\\dfrac{1}{x}\\right) < 0$"
+     ],
+     "explication": "Sur $]0\\,;1[$ : $x^2 < x$ et $\\ln$ est strictement croissante, donc $\\ln(x^2) < \\ln x$ ; $1 - x \\in\\, ]0\\,;1[$, donc $\\ln(1-x) < 0$. Faux : « le carré est plus grand » ne vaut que pour $x > 1$ ; $\\ln x > -1$ échoue pour $x < \\dfrac1e$ (ex. $x = 0{,}1$) ; $\\dfrac1x > 1$ donc $\\ln\\dfrac1x > 0$.",
+     "difficulte": "hard",
+     "cible": "Programme : signe et monotonie de $\\ln$ (erreur classique : raisonner comme sur $]1\\,;+\\infty[$ quand $x \\in\\, ]0\\,;1[$).",
+     "theoremes": [
+      "Dérivée et propriétés du logarithme"
+     ]
+    },
+    {
+     "question": "Quelles limites sont égales à $0$ ?",
+     "bonnes": [
+      "$\\lim\\limits_{x \\to +\\infty} \\dfrac{\\ln x}{x^2}$",
+      "$\\lim\\limits_{x \\to 0^+} x^2 \\ln x$"
+     ],
+     "distracteurs": [
+      "$\\lim\\limits_{x \\to 0^+} \\dfrac{\\ln x}{x}$",
+      "$\\lim\\limits_{x \\to 1} \\dfrac{\\ln x}{x - 1}$",
+      "$\\lim\\limits_{x \\to +\\infty} \\dfrac{x}{\\ln x}$"
+     ],
+     "explication": "Croissances comparées : $\\dfrac{\\ln x}{x^n} \\to 0$ en $+\\infty$ et $x^n \\ln x \\to 0$ en $0^+$. Les autres : en $0^+$, $\\dfrac{\\ln x}{x} = \\dfrac1x \\times \\ln x \\to -\\infty$ (pas de forme indéterminée) ; $\\dfrac{\\ln x}{x-1} \\to 1$ (nombre dérivé de $\\ln$ en $1$) ; $\\dfrac{x}{\\ln x} \\to +\\infty$, c’est l’inverse de $\\dfrac{\\ln x}{x}$.",
+     "difficulte": "medium",
+     "cible": "Programme : limites usuelles du logarithme (erreur classique : croissances comparées mal orientées).",
+     "theoremes": [
+      "Limites usuelles du logarithme"
+     ]
+    },
+    {
+     "question": "$\\log$ désigne le logarithme décimal. Quelles égalités sont vraies (pour $x > 0$) ?",
+     "bonnes": [
+      "$\\log 1000 = 3$",
+      "$\\log_2 x = \\dfrac{\\log x}{\\log 2}$"
+     ],
+     "distracteurs": [
+      "$\\log(2 + 5) = \\log 2 + \\log 5$",
+      "$\\log x = \\dfrac{\\ln 10}{\\ln x}$",
+      "$\\log_2 x = \\dfrac{\\ln x}{2}$"
+     ],
+     "explication": "$\\log(10^n) = n$, donc $\\log 1000 = 3$. $\\log_2 x = \\dfrac{\\ln x}{\\ln 2} = \\dfrac{\\ln x / \\ln 10}{\\ln 2 / \\ln 10} = \\dfrac{\\log x}{\\log 2}$. Faux : $\\log 2 + \\log 5 = \\log 10 = 1 \\neq \\log 7$ ; $\\log x = \\dfrac{\\ln x}{\\ln 10}$, quotient inversé ; on divise par $\\ln 2$, pas par $2$.",
+     "difficulte": "medium",
+     "cible": "Programme : logarithme décimal et de base $a$ (erreur classique : $\\log_a x = \\dfrac{\\ln x}{a}$, ou $\\log(a+b) = \\log a + \\log b$).",
+     "theoremes": [
+      "Logarithme décimal",
+      "Fonction logarithme de base a"
+     ]
+    }
+   ]
+  },
+  {
+   "chapitre": "Fonctions exponentielles",
+   "questions": [
+    {
+     "question": "Pour tous réels $a$ et $b$, quelle égalité est toujours vraie ?",
+     "bonne": "$e^{a + b} = e^a \\times e^b$",
+     "distracteurs": [
+      "$e^{a + b} = e^a + e^b$",
+      "$e^{ab} = e^a \\times e^b$",
+      "$e^{a - b} = e^a - e^b$"
+     ],
+     "explication": "L’exponentielle transforme une somme en produit : $e^{a+b} = e^a e^b$. Contre-exemples pour $a = b = 1$ : $e^2 \\neq 2e$ ; $e^{1} \\neq e^2$ ; et pour $a = b$, $e^0 = 1 \\neq 0$. On a en fait $e^{a-b} = \\dfrac{e^a}{e^b}$.",
+     "difficulte": "easy",
+     "cible": "Programme : propriété fondamentale de l’exponentielle (erreur classique : $e^{a+b} = e^a + e^b$).",
+     "theoremes": [
+      "Dérivée et propriétés de l'exponentielle"
+     ]
+    },
+    {
+     "question": "Pour tout réel $x$, $(e^x)^3$ est égal à :",
+     "bonne": "$e^{3x}$",
+     "distracteurs": [
+      "$e^{x^3}$",
+      "$3e^x$",
+      "$e^{x + 3}$"
+     ],
+     "explication": "$(e^x)^n = e^{nx}$ : les exposants se multiplient. $e^{x^3}$ élève l’exposant au cube ; $3e^x = e^x + e^x + e^x$ ; $e^{x+3} = e^3 e^x$. Pour $x = 1$ : $e^3$, mais $e^1$, $3e$ et $e^4$.",
+     "difficulte": "easy",
+     "cible": "Programme : $(e^a)^n = e^{na}$ (erreur classique : $(e^x)^n = e^{x^n}$).",
+     "theoremes": [
+      "Dérivée et propriétés de l'exponentielle"
+     ]
+    },
+    {
+     "question": "Quelle est la dérivée de $f(x) = e^{x^2}$ sur $\\mathbb{R}$ ?",
+     "bonne": "$f'(x) = 2x\\,e^{x^2}$",
+     "distracteurs": [
+      "$f'(x) = e^{x^2}$",
+      "$f'(x) = x^2\\,e^{x^2 - 1}$",
+      "$f'(x) = 2x\\,e^{2x}$"
+     ],
+     "explication": "$(e^u)' = u' e^u$ avec $u = x^2$, $u' = 2x$. $e^{x^2}$ oublie $u'$ ; $x^2 e^{x^2 - 1}$ applique à tort la règle des puissances $(x^n)' = nx^{n-1}$ ; $2x e^{2x}$ dérive aussi l’exposant à l’intérieur de l’exponentielle.",
+     "difficulte": "easy",
+     "cible": "Programme : dérivée de $e^u$ (erreur classique : oublier $u'$).",
+     "theoremes": [
+      "Dérivée et propriétés de l'exponentielle"
+     ]
+    },
+    {
+     "question": "Pour $a > 0$ et $x \\in \\mathbb{R}$, le nombre $a^x$ est défini par :",
+     "bonne": "$a^x = e^{x \\ln a}$",
+     "distracteurs": [
+      "$a^x = e^{a \\ln x}$",
+      "$a^x = e^x \\ln a$",
+      "$a^x = a\\,e^x$"
+     ],
+     "explication": "Par définition, $a^x = e^{x\\ln a}$ (d’où $\\ln(a^x) = x\\ln a$), valable pour tout réel $x$. $e^{a\\ln x} = x^a$ n’existe que pour $x > 0$ : c’est l’autre puissance. $e^x \\ln a$ et $a e^x$ ne valent pas $a^x$ (pour $a = e^2$, $x = 1$ : $e^2$, mais $2e$ et $e^3$).",
+     "difficulte": "easy",
+     "cible": "Programme : définition de $a^x$ (erreur classique : confondre $a^x$ et $x^a$).",
+     "theoremes": [
+      "Fonction exponentielle de base a"
+     ]
+    },
+    {
+     "question": "Quel est l’ensemble des solutions de l’équation $e^{2x} - e^x - 2 = 0$ ?",
+     "bonne": "$\\{\\ln 2\\}$",
+     "distracteurs": [
+      "$\\{-1\\,;2\\}$",
+      "$\\{2\\}$",
+      "$\\{0\\}$"
+     ],
+     "explication": "Avec $X = e^x > 0$ : $X^2 - X - 2 = 0 \\iff X = 2$ ou $X = -1$. Or $e^x = -1$ est impossible, et $e^x = 2 \\iff x = \\ln 2$. $\\{-1\\,;2\\}$ s’arrête à $X$ ; $\\{2\\}$ oublie de passer au logarithme ; $\\{0\\}$ vient d’une mauvaise factorisation ($X = 1$).",
+     "difficulte": "medium",
+     "cible": "Programme : équations exponentielles par changement de variable (erreur classique : garder $e^x = $ négatif ou oublier de revenir à $x$).",
+     "theoremes": [
+      "Dérivée et propriétés de l'exponentielle"
+     ]
+    },
+    {
+     "question": "Quel est l’ensemble des solutions de l’inéquation $e^{1 - x} > 1$ ?",
+     "bonne": "$]-\\infty\\,;1[$",
+     "distracteurs": [
+      "$]1\\,;+\\infty[$",
+      "$]-\\infty\\,;0[$",
+      "$]-\\infty\\,;1]$"
+     ],
+     "explication": "$1 = e^0$ et $\\exp$ est strictement croissante : $e^{1-x} > e^0 \\iff 1 - x > 0 \\iff x < 1$. $]1\\,;+\\infty[$ inverse le sens à cause du « $-x$ » ; $]-\\infty\\,;0[$ écrit $1 = e^1$ ; la borne $1$ est exclue car l’inégalité est stricte.",
+     "difficulte": "medium",
+     "cible": "Programme : inéquations exponentielles (erreur classique : $1 = e^1$ au lieu de $e^0$, ou sens inversé).",
+     "theoremes": [
+      "Dérivée et propriétés de l'exponentielle"
+     ]
+    },
+    {
+     "question": "Laquelle de ces limites est exacte ?",
+     "bonne": "$\\lim\\limits_{x \\to -\\infty} x\\,e^x = 0$",
+     "distracteurs": [
+      "$\\lim\\limits_{x \\to -\\infty} x\\,e^x = -\\infty$",
+      "$\\lim\\limits_{x \\to +\\infty} \\dfrac{e^x}{x^3} = 0$",
+      "$\\lim\\limits_{x \\to 0} \\dfrac{e^x - 1}{x} = 0$"
+     ],
+     "explication": "Limite de référence : $x e^x \\to 0$ en $-\\infty$ (l’exponentielle l’emporte). Les autres : $-\\infty$ ne regarde que le facteur $x$ ; $\\dfrac{e^x}{x^n} \\to +\\infty$ en $+\\infty$ (pas $0$, l’exponentielle est au numérateur) ; $\\dfrac{e^x - 1}{x} \\to 1$, nombre dérivé de $\\exp$ en $0$.",
+     "difficulte": "medium",
+     "cible": "Programme : limites usuelles de l’exponentielle (erreur classique : croissances comparées $\\dfrac{e^x}{x^n}$ mal orientées).",
+     "theoremes": [
+      "Limites usuelles de l'exponentielle"
+     ]
+    },
+    {
+     "question": "Que vaut $\\lim\\limits_{x \\to 0} \\dfrac{e^{2x} - 1}{x}$ ?",
+     "bonne": "$2$",
+     "distracteurs": [
+      "$1$",
+      "$\\dfrac{1}{2}$",
+      "$0$"
+     ],
+     "explication": "$\\dfrac{e^{2x} - 1}{x} = 2 \\times \\dfrac{e^X - 1}{X}$ avec $X = 2x \\to 0$, et $\\dfrac{e^X - 1}{X} \\to 1$ : la limite vaut $2$. $1$ applique la limite de référence sans changer de variable ; $\\dfrac12$ divise au lieu de multiplier ; $0$ ignore la forme $\\dfrac00$.",
+     "difficulte": "medium",
+     "cible": "Programme : limite $\\lim\\limits_{x \\to 0} \\dfrac{e^x - 1}{x} = 1$ (erreur classique : oublier le changement de variable).",
+     "theoremes": [
+      "Limites usuelles de l'exponentielle"
+     ]
+    },
+    {
+     "question": "Quelle est la dérivée de $f(x) = 2^x$ sur $\\mathbb{R}$ ?",
+     "bonne": "$f'(x) = \\ln 2 \\times 2^x$",
+     "distracteurs": [
+      "$f'(x) = x \\times 2^{x - 1}$",
+      "$f'(x) = 2^x$",
+      "$f'(x) = \\dfrac{2^x}{\\ln 2}$"
+     ],
+     "explication": "$2^x = e^{x\\ln 2}$, donc $f'(x) = \\ln 2 \\times e^{x \\ln 2} = \\ln 2 \\times 2^x$. $x \\cdot 2^{x-1}$ applique la règle de $x^n$ à une exponentielle ; $2^x$ ne vaut que pour la base $e$ ; diviser par $\\ln 2$ confond avec une primitive.",
+     "difficulte": "medium",
+     "cible": "Programme : dérivée de $a^x$ (erreur classique : dériver $a^x$ comme $x^n$).",
+     "theoremes": [
+      "Fonction exponentielle de base a"
+     ]
+    },
+    {
+     "question": "Pour $x > 0$, quelle est la dérivée de $f(x) = x^{\\sqrt{2}}$ ?",
+     "bonne": "$f'(x) = \\sqrt{2}\\,x^{\\sqrt{2} - 1}$",
+     "distracteurs": [
+      "$f'(x) = x^{\\sqrt{2}} \\ln x$",
+      "$f'(x) = \\sqrt{2}\\,x^{\\sqrt{2}}$",
+      "$f'(x) = \\ln\\sqrt{2} \\times x^{\\sqrt{2}}$"
+     ],
+     "explication": "$x^{\\sqrt2} = e^{\\sqrt2 \\ln x}$, donc $f'(x) = \\dfrac{\\sqrt2}{x} e^{\\sqrt2\\ln x} = \\sqrt2\\, x^{\\sqrt2 - 1}$ : la règle $(x^r)' = r x^{r-1}$ reste vraie pour $r$ réel. $x^{\\sqrt2}\\ln x$ dérive par rapport à l’exposant ; $\\ln\\sqrt2 \\times x^{\\sqrt2}$ traite $x^{\\sqrt2}$ comme une exponentielle de base $a$ ; $\\sqrt2\\,x^{\\sqrt2}$ oublie le « $-1$ ».",
+     "difficulte": "medium",
+     "cible": "Programme : puissances à exposant réel $x^r = e^{r\\ln x}$ (erreur classique : confondre $x^a$ et $a^x$).",
+     "theoremes": [
+      "Dérivée et propriétés de l'exponentielle",
+      "Fonction exponentielle de base a"
+     ]
+    },
+    {
+     "question": "Quelle est la solution de l’équation $2^x = 3$ ?",
+     "bonne": "$x = \\dfrac{\\ln 3}{\\ln 2}$",
+     "distracteurs": [
+      "$x = \\ln 3 - \\ln 2$",
+      "$x = \\dfrac{3}{2}$",
+      "$x = \\dfrac{\\ln 2}{\\ln 3}$"
+     ],
+     "explication": "$2^x = 3 \\iff e^{x\\ln 2} = 3 \\iff x \\ln 2 = \\ln 3 \\iff x = \\dfrac{\\ln 3}{\\ln 2}$ ($= \\log_2 3$). $\\ln 3 - \\ln 2 = \\ln\\dfrac32$ confond quotient de logarithmes et logarithme d’un quotient ; $\\dfrac32$ traite $2^x$ comme $2x$ ; $\\dfrac{\\ln 2}{\\ln 3}$ inverse le quotient.",
+     "difficulte": "medium",
+     "cible": "Programme : équations exponentielles de base $a$ (erreur classique : $\\dfrac{\\ln a}{\\ln b} = \\ln a - \\ln b$).",
+     "theoremes": [
+      "Fonction exponentielle de base a"
+     ]
+    },
+    {
+     "question": "Que vaut $\\lim\\limits_{x \\to +\\infty} x^{10} e^{-x}$ ?",
+     "bonne": "$0$",
+     "distracteurs": [
+      "$+\\infty$",
+      "$1$",
+      "La limite n’existe pas (forme indéterminée)."
+     ],
+     "explication": "$x^{10} e^{-x} = \\dfrac{x^{10}}{e^x}$ et $\\lim\\limits_{+\\infty} \\dfrac{e^x}{x^n} = +\\infty$, donc la limite vaut $0$ : l’exponentielle l’emporte sur toute puissance, quel que soit l’exposant. « Forme indéterminée » n’est pas une conclusion : on la lève avec les croissances comparées.",
+     "difficulte": "hard",
+     "cible": "Programme : croissances comparées $\\dfrac{e^x}{x^n}$ (erreur classique : croire qu’une grande puissance de $x$ l’emporte).",
+     "theoremes": [
+      "Limites usuelles de l'exponentielle"
+     ]
+    },
+    {
+     "question": "Soit $f(x) = \\left(\\dfrac{1}{2}\\right)^x$ sur $\\mathbb{R}$. Laquelle de ces affirmations est vraie ?",
+     "bonne": "$f$ est strictement décroissante et $\\lim\\limits_{x \\to +\\infty} f(x) = 0$",
+     "distracteurs": [
+      "$f$ est strictement croissante et $\\lim\\limits_{x \\to +\\infty} f(x) = +\\infty$",
+      "$f$ est strictement décroissante et $\\lim\\limits_{x \\to +\\infty} f(x) = -\\infty$",
+      "$f$ est strictement décroissante et $\\lim\\limits_{x \\to -\\infty} f(x) = 0$"
+     ],
+     "explication": "$f(x) = e^{x\\ln(1/2)} = e^{-x\\ln 2}$ : $f' = -\\ln 2 \\times f < 0$, et $-x\\ln 2 \\to -\\infty$ en $+\\infty$, d’où $f \\to 0$. $f > 0$ partout : jamais $-\\infty$. En $-\\infty$, $-x\\ln 2 \\to +\\infty$ donc $f \\to +\\infty$, pas $0$ ; « croissante » est le cas $a > 1$.",
+     "difficulte": "hard",
+     "cible": "Programme : exponentielle de base $a$ avec $0 < a < 1$ (erreur classique : $\\ln a < 0$ rendrait $a^x$ négatif).",
+     "theoremes": [
+      "Fonction exponentielle de base a"
+     ]
+    },
+    {
+     "question": "En étudiant $g(x) = e^x - x - 1$ ($g'(x) = e^x - 1$), que peut-on affirmer ?",
+     "bonne": "$e^x \\ge x + 1$ pour tout réel $x$, avec égalité seulement en $x = 0$",
+     "distracteurs": [
+      "$e^x \\ge x + 1$ seulement pour $x \\ge 0$",
+      "$e^x \\ge x + 1$ pour tout réel $x$, avec égalité en $x = 0$ et en $x = 1$",
+      "$e^x > x + 1$ pour tout réel $x$"
+     ],
+     "explication": "$g' < 0$ sur $]-\\infty\\,;0[$ et $g' > 0$ sur $]0\\,;+\\infty[$ : $g$ a un minimum en $0$, $g(0) = 0$, donc $g \\ge 0$ sur $\\mathbb{R}$ et $g(x) = 0$ seulement pour $x = 0$. L’inégalité vaut aussi pour $x < 0$ ; en $x = 1$, $e > 2$ ; « $>$ » partout est faux car $e^0 = 0 + 1$.",
+     "difficulte": "hard",
+     "cible": "Programme : étude de fonction et inégalité $e^x \\ge x + 1$ (erreur classique : ne conclure que sur $[0\\,;+\\infty[$ ou oublier le cas d’égalité).",
+     "theoremes": [
+      "Dérivée et propriétés de l'exponentielle"
+     ]
+    },
+    {
+     "question": "Pour tout réel $x$, quelles égalités sont vraies ?",
+     "bonnes": [
+      "$e^{-x} = \\dfrac{1}{e^x}$",
+      "$\\ln(e^x) = x$"
+     ],
+     "distracteurs": [
+      "$e^{\\ln x} = x$",
+      "$e^{-x} = -e^x$",
+      "$e^{2x} = 2e^x$"
+     ],
+     "explication": "$e^{-x} e^x = e^0 = 1$, et $\\ln(e^x) = x$ pour tout réel $x$ car $e^x > 0$. Faux : $e^{\\ln x} = x$ exige $x > 0$ ($\\ln x$ n’existe pas sinon) ; $e^{-x} > 0$ ne peut pas valoir $-e^x < 0$ ; $e^{2x} = (e^x)^2$, pas $2e^x$ ($x = 1$ : $e^2 \\neq 2e$).",
+     "difficulte": "easy",
+     "cible": "Programme : $\\exp$ et $\\ln$ réciproques (erreur classique : écrire $e^{\\ln x} = x$ sans la condition $x > 0$).",
+     "theoremes": [
+      "Dérivée et propriétés de l'exponentielle"
+     ]
+    },
+    {
+     "question": "Quelles équations n’ont aucune solution dans $\\mathbb{R}$ ?",
+     "bonnes": [
+      "$e^x + 2 = 0$",
+      "$e^{2x} + 3e^x + 2 = 0$"
+     ],
+     "distracteurs": [
+      "$e^{-x} = 2$",
+      "$e^x = \\dfrac{1}{2}$",
+      "$e^{x^2} = 1$"
+     ],
+     "explication": "$e^x > 0$ : $e^x = -2$ est impossible ; avec $X = e^x$, $X^2 + 3X + 2 = 0$ donne $X = -1$ ou $X = -2$, tous deux négatifs. Les autres ont des solutions : $e^{-x} = 2 \\iff x = -\\ln 2$ ; $e^x = \\dfrac12 \\iff x = -\\ln 2$ ($e^x$ peut être inférieur à $1$) ; $e^{x^2} = 1 \\iff x^2 = 0 \\iff x = 0$.",
+     "difficulte": "hard",
+     "cible": "Programme : équations exponentielles (erreur classique : garder $e^x$ égal à un négatif, ou croire $e^x \\ge 1$ ou $e^{-x} < 0$).",
+     "theoremes": [
+      "Dérivée et propriétés de l'exponentielle"
+     ]
+    },
+    {
+     "question": "Quelles limites valent $+\\infty$ ?",
+     "bonnes": [
+      "$\\lim\\limits_{x \\to +\\infty} \\dfrac{e^x}{x^2}$",
+      "$\\lim\\limits_{x \\to +\\infty} \\left(e^x - x\\right)$"
+     ],
+     "distracteurs": [
+      "$\\lim\\limits_{x \\to -\\infty} x^2 e^x$",
+      "$\\lim\\limits_{x \\to +\\infty} x\\,e^{-x}$",
+      "$\\lim\\limits_{x \\to 0} \\dfrac{e^x - 1}{x}$"
+     ],
+     "explication": "$\\dfrac{e^x}{x^n} \\to +\\infty$ en $+\\infty$ ; $e^x - x = x\\left(\\dfrac{e^x}{x} - 1\\right) \\to +\\infty$. Les autres : $x^n e^x \\to 0$ en $-\\infty$ ; $x e^{-x} = \\dfrac{x}{e^x} \\to 0$ en $+\\infty$ ; $\\dfrac{e^x - 1}{x} \\to 1$ (nombre dérivé de $\\exp$ en $0$).",
+     "difficulte": "medium",
+     "cible": "Programme : limites usuelles de l’exponentielle (erreur classique : $x^n e^x$ en $-\\infty$ et $x e^{-x}$ en $+\\infty$ pris pour des limites infinies).",
+     "theoremes": [
+      "Limites usuelles de l'exponentielle"
+     ]
+    },
+    {
+     "question": "Soit $a > 0$. Quelles propriétés sont vraies pour tous réels $x$ et $y$ ?",
+     "bonnes": [
+      "$a^{x + y} = a^x \\times a^y$",
+      "$(a^x)^y = a^{xy}$"
+     ],
+     "distracteurs": [
+      "$(a^x)^y = a^{x^y}$",
+      "$a^{-x} = -a^x$",
+      "$x \\mapsto a^x$ est strictement croissante sur $\\mathbb{R}$"
+     ],
+     "explication": "$a^x = e^{x\\ln a}$ : $a^{x+y} = e^{(x+y)\\ln a} = a^x a^y$ et $(a^x)^y = e^{y \\cdot x\\ln a} = a^{xy}$. Faux : $a^{x^y}$ élève l’exposant à la puissance ; $a^{-x} = \\dfrac{1}{a^x} > 0$ ; $x \\mapsto a^x$ n’est strictement croissante que si $a > 1$ (décroissante si $0 < a < 1$, constante si $a = 1$).",
+     "difficulte": "hard",
+     "cible": "Programme : exponentielle de base $a$ (erreur classique : croire $a^x$ toujours croissante, ou $(a^x)^y = a^{x^y}$).",
+     "theoremes": [
+      "Fonction exponentielle de base a"
+     ]
+    }
+   ]
+  }
+ ]
+}

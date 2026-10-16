@@ -1,0 +1,604 @@
+{
+ "niveau": "Tronc commun Sciences",
+ "chapitres": [
+  {
+   "chapitre": "Ordre dans ℝ",
+   "questions": [
+    {
+     "question": "Soient $a$, $b$ et $c$ trois réels tels que $a < b$ et $c < 0$. Laquelle de ces affirmations est toujours vraie ?",
+     "bonne": "$ac > bc$",
+     "distracteurs": [
+      "$ac < bc$",
+      "$\\dfrac{a}{c} < \\dfrac{b}{c}$",
+      "$a - c > b - c$"
+     ],
+     "explication": "Multiplier (ou diviser) les deux membres par un nombre strictement négatif change le sens de l’inégalité : $ac > bc$ et $\\dfrac{a}{c} > \\dfrac{b}{c}$. En revanche, ajouter ou retrancher le même nombre conserve le sens : $a - c < b - c$.",
+     "difficulte": "easy",
+     "cible": "Programme : ordre et multiplication (erreur classique : garder le sens en multipliant par un négatif).",
+     "theoremes": [
+      "Ordre et opérations"
+     ]
+    },
+    {
+     "question": "Soient $a$ et $b$ deux réels tels que $a < 0 < b$. Laquelle de ces inégalités est toujours vraie ?",
+     "bonne": "$\\dfrac{1}{a} < \\dfrac{1}{b}$",
+     "distracteurs": [
+      "$\\dfrac{1}{a} > \\dfrac{1}{b}$",
+      "$a^2 < b^2$",
+      "$-a < -b$"
+     ],
+     "explication": "$\\dfrac{1}{a} < 0 < \\dfrac{1}{b}$ : l’inverse ne renverse l’ordre que pour deux nombres de même signe. $a^2 < b^2$ est faux pour $a = -3$, $b = 1$ ; et passer aux opposés renverse l’ordre : $-a > 0 > -b$.",
+     "difficulte": "medium",
+     "cible": "Programme : ordre et inverse (erreur classique : renverser l’ordre pour deux nombres de signes contraires).",
+     "theoremes": [
+      "Ordre et opérations"
+     ]
+    },
+    {
+     "question": "Soit $x$ un réel de l’intervalle $[-3 ; 2]$. Quel est l’ensemble des valeurs prises par $x^2$ ?",
+     "bonne": "$[0 ; 9]$",
+     "distracteurs": [
+      "$[4 ; 9]$",
+      "$[0 ; 4]$",
+      "$[-6 ; 9]$"
+     ],
+     "explication": "On découpe : si $-3 \\leq x \\leq 0$, alors $0 \\leq x^2 \\leq 9$ ; si $0 \\leq x \\leq 2$, alors $0 \\leq x^2 \\leq 4$. Donc $x^2 \\in [0 ; 9]$ ($0$ est atteint en $x = 0$). Élever au carré les bornes oublie que l’intervalle contient $0$ ; un carré n’est jamais négatif.",
+     "difficulte": "medium",
+     "cible": "Programme : encadrement d’un carré (erreur classique : élever au carré un encadrement contenant des négatifs).",
+     "theoremes": [
+      "Ordre et opérations"
+     ]
+    },
+    {
+     "question": "Soient $a$ et $b$ deux réels tels que $2 \\leq a \\leq 5$ et $1 \\leq b \\leq 3$. Quel encadrement de $a - b$ est correct ?",
+     "bonne": "$-1 \\leq a - b \\leq 4$",
+     "distracteurs": [
+      "$1 \\leq a - b \\leq 2$",
+      "$-1 \\leq a - b \\leq 2$",
+      "$1 \\leq a - b \\leq 4$"
+     ],
+     "explication": "On n’a pas le droit de soustraire deux encadrements membre à membre. On encadre $-b$ : $-3 \\leq -b \\leq -1$, puis on additionne : $2 - 3 \\leq a - b \\leq 5 - 1$. Les autres encadrements sont faux : $a = 2$, $b = 3$ donne $-1$ et $a = 5$, $b = 1$ donne $4$.",
+     "difficulte": "easy",
+     "cible": "Programme : encadrement d’une différence (erreur classique : soustraire les encadrements borne à borne).",
+     "theoremes": [
+      "Ordre et opérations"
+     ]
+    },
+    {
+     "question": "Soient $a$ et $b$ deux réels tels que $1 \\leq a \\leq 3$ et $2 \\leq b \\leq 5$. Quel encadrement de $\\dfrac{a}{b}$ est correct ?",
+     "bonne": "$\\dfrac{1}{5} \\leq \\dfrac{a}{b} \\leq \\dfrac{3}{2}$",
+     "distracteurs": [
+      "$\\dfrac{1}{2} \\leq \\dfrac{a}{b} \\leq \\dfrac{3}{5}$",
+      "$\\dfrac{1}{5} \\leq \\dfrac{a}{b} \\leq \\dfrac{3}{5}$",
+      "$\\dfrac{1}{2} \\leq \\dfrac{a}{b} \\leq \\dfrac{3}{2}$"
+     ],
+     "explication": "On encadre l’inverse (nombres positifs, l’ordre se renverse) : $\\dfrac{1}{5} \\leq \\dfrac{1}{b} \\leq \\dfrac{1}{2}$, puis on multiplie des encadrements de nombres positifs : $\\dfrac{1}{5} \\leq a \\times \\dfrac{1}{b} \\leq \\dfrac{3}{2}$. Diviser borne à borne est faux : $a = 3$, $b = 2$ donne $\\dfrac{3}{2}$ et $a = 1$, $b = 5$ donne $\\dfrac{1}{5}$.",
+     "difficulte": "medium",
+     "cible": "Programme : encadrement d’un quotient (erreur classique : diviser les encadrements borne à borne).",
+     "theoremes": [
+      "Ordre et opérations"
+     ]
+    },
+    {
+     "question": "Soient $a = \\sqrt{11} - \\sqrt{10}$ et $b = \\sqrt{8} - \\sqrt{7}$. On écrit $a = \\dfrac{1}{\\sqrt{11} + \\sqrt{10}}$ et $b = \\dfrac{1}{\\sqrt{8} + \\sqrt{7}}$. Quelle conclusion est correctement justifiée ?",
+     "bonne": "$a < b$, car $\\sqrt{11} + \\sqrt{10} > \\sqrt{8} + \\sqrt{7} > 0$ et deux positifs sont rangés dans l’ordre inverse de leurs inverses.",
+     "distracteurs": [
+      "$a > b$, car $\\sqrt{11} + \\sqrt{10} > \\sqrt{8} + \\sqrt{7} > 0$.",
+      "$a > b$, car $\\sqrt{11} > \\sqrt{8}$ et $\\sqrt{10} > \\sqrt{7}$.",
+      "$a = b$, car $11 - 10 = 8 - 7 = 1$."
+     ],
+     "explication": "Pour des réels strictement positifs, $x > y \\iff \\dfrac{1}{x} < \\dfrac{1}{y}$ : le plus grand dénominateur donne le plus petit nombre, donc $a < b$. On ne peut pas soustraire deux inégalités de même sens, et $\\sqrt{11} - \\sqrt{10} \\neq \\sqrt{11 - 10}$.",
+     "difficulte": "hard",
+     "cible": "Programme : comparaison par l’expression conjuguée (erreur classique : oublier que l’inverse renverse l’ordre).",
+     "theoremes": [
+      "Ordre et opérations"
+     ]
+    },
+    {
+     "question": "Soient $a$ et $b$ deux réels tels que $a^2 < b^2$. Que peut-on affirmer à coup sûr ?",
+     "bonne": "$|a| < |b|$",
+     "distracteurs": [
+      "$a < b$",
+      "$|a| < b$",
+      "$a^3 < b^3$"
+     ],
+     "explication": "$a^2 = |a|^2$ et $b^2 = |b|^2$ ; or deux réels positifs sont rangés dans le même ordre que leurs carrés, d’où $|a| < |b|$. Avec $a = 0$ et $b = -1$ : $a^2 < b^2$ mais $a > b$, $|a| > b$ et $a^3 > b^3$.",
+     "difficulte": "hard",
+     "cible": "Programme : comparer deux nombres par leurs carrés (erreur classique : oublier l’hypothèse « nombres positifs »).",
+     "theoremes": [
+      "Ordre et opérations",
+      "Propriétés de la valeur absolue"
+     ]
+    },
+    {
+     "question": "Quel est l’ensemble des solutions dans $\\mathbb{R}$ de l’équation $|2x - 1| = 5$ ?",
+     "bonne": "$\\{-2 ; 3\\}$",
+     "distracteurs": [
+      "$\\{3\\}$",
+      "$\\{-3 ; 3\\}$",
+      "$\\{-3 ; 2\\}$"
+     ],
+     "explication": "$|X| = 5 \\iff X = 5$ ou $X = -5$ : $2x - 1 = 5$ donne $x = 3$ et $2x - 1 = -5$ donne $x = -2$. Garder seulement $x = 3$ oublie un cas ; les solutions ne sont pas opposées, car c’est $2x - 1$, pas $x$, qui vaut $\\pm 5$.",
+     "difficulte": "easy",
+     "cible": "Programme : équation $|X| = r$ (erreur classique : oublier le cas $X = -r$).",
+     "theoremes": [
+      "Propriétés de la valeur absolue"
+     ]
+    },
+    {
+     "question": "Quel est l’ensemble des solutions dans $\\mathbb{R}$ de l’équation $|x^2 - 1| = x^2 - 1$ ?",
+     "bonne": "$]-\\infty ; -1] \\cup [1 ; +\\infty[$",
+     "distracteurs": [
+      "$[-1 ; 1]$",
+      "$\\{-1 ; 1\\}$",
+      "$\\mathbb{R}$"
+     ],
+     "explication": "$|X| = X \\iff X \\geq 0$. Ici $x^2 - 1 \\geq 0 \\iff x^2 \\geq 1 \\iff x \\leq -1$ ou $x \\geq 1$. $[-1 ; 1]$ correspond à $|X| = -X$, $\\{-1 ; 1\\}$ ne garde que $X = 0$, et $|X| = X$ est faux pour $X < 0$ (par exemple $x = 0$).",
+     "difficulte": "medium",
+     "cible": "Programme : définition de la valeur absolue (erreur classique : croire que $|X| = X$ toujours, ou ne garder que $X = 0$).",
+     "theoremes": [
+      "Propriétés de la valeur absolue"
+     ]
+    },
+    {
+     "question": "Quel est l’ensemble des solutions dans $\\mathbb{R}$ de l’inéquation $|x - 2| \\geq 2$ ?",
+     "bonne": "$]-\\infty ; 0] \\cup [4 ; +\\infty[$",
+     "distracteurs": [
+      "$[0 ; 4]$",
+      "$]-\\infty ; 0[ \\cup ]4 ; +\\infty[$",
+      "$[4 ; +\\infty[$"
+     ],
+     "explication": "$|x - 2|$ est la distance de $x$ à $2$ : $|X| \\geq r \\iff X \\geq r$ ou $X \\leq -r$, soit $x \\geq 4$ ou $x \\leq 0$. Les bornes sont incluses (inégalité large) ; $[0 ; 4]$ est la solution de $|x - 2| \\leq 2$, et $[4 ; +\\infty[$ oublie le cas $x - 2 \\leq -2$.",
+     "difficulte": "medium",
+     "cible": "Programme : inéquation $|X| \\geq r$ (erreur classique : oublier un cas ou confondre avec $|X| \\leq r$).",
+     "theoremes": [
+      "Valeur absolue et intervalles (|x − a| ≤ r)"
+     ]
+    },
+    {
+     "question": "Un réel $x$ vérifie $2{,}1 \\leq x \\leq 2{,}5$. Lequel de ces nombres est à coup sûr une valeur approchée de $x$ à $0{,}2$ près ?",
+     "bonne": "$2{,}3$",
+     "distracteurs": [
+      "$2{,}1$",
+      "$2{,}5$",
+      "$2{,}2$"
+     ],
+     "explication": "$a$ est une valeur approchée de $x$ à $r$ près si $|x - a| \\leq r$. Le centre $2{,}3$ convient : $-0{,}2 \\leq x - 2{,}3 \\leq 0{,}2$. Les bornes $2{,}1$ et $2{,}5$ ne sont des valeurs approchées qu’à $0{,}4$ près (l’amplitude), et $2{,}2$ seulement à $0{,}3$ près ($x = 2{,}5$).",
+     "difficulte": "medium",
+     "cible": "Programme : approximation à une précision donnée (erreur classique : prendre une borne au lieu du centre de l’encadrement).",
+     "theoremes": [
+      "Approximation d'un nombre à une précision donnée",
+      "Valeur absolue et intervalles (|x − a| ≤ r)"
+     ]
+    },
+    {
+     "question": "Pour tous réels $a$ et $b$, laquelle de ces affirmations est toujours vraie ?",
+     "bonne": "$|a + b| \\leq |a| + |b|$",
+     "distracteurs": [
+      "$|a + b| = |a| + |b|$",
+      "$|a + b| \\geq |a| + |b|$",
+      "$|a - b| \\leq |a| - |b|$"
+     ],
+     "explication": "C’est l’inégalité triangulaire. L’égalité est fausse pour $a = 1$, $b = -1$ : $|a + b| = 0$ alors que $|a| + |b| = 2$ (même exemple pour $\\geq$). Avec $a = 0$, $b = 1$ : $|a - b| = 1$ et $|a| - |b| = -1$.",
+     "difficulte": "easy",
+     "cible": "Programme : inégalité triangulaire (erreur classique : $|a + b| = |a| + |b|$).",
+     "theoremes": [
+      "Inégalité triangulaire"
+     ]
+    },
+    {
+     "question": "Soient $x$ et $y$ deux réels tels que $|x| \\leq 1$ et $|y| \\leq 2$. Quelle majoration de $|x - y|$ est justifiée ?",
+     "bonne": "$|x - y| \\leq 3$",
+     "distracteurs": [
+      "$|x - y| \\leq 1$",
+      "$|x - y| \\leq 2$",
+      "$|x - y| \\leq -1$"
+     ],
+     "explication": "Inégalité triangulaire : $|x - y| = |x + (-y)| \\leq |x| + |-y| = |x| + |y| \\leq 3$. On ne soustrait pas les majorants : avec $x = 1$ et $y = -2$, $|x - y| = 3$, ce qui exclut $1$ et $2$ ; et une valeur absolue n’est jamais majorée par $-1$.",
+     "difficulte": "medium",
+     "cible": "Programme : majoration par l’inégalité triangulaire (erreur classique : soustraire les majorants pour $|x - y|$).",
+     "theoremes": [
+      "Inégalité triangulaire"
+     ]
+    },
+    {
+     "question": "Pour deux réels $a$ et $b$, à quelle condition exacte (nécessaire et suffisante) a-t-on $|a + b| = |a| + |b|$ ?",
+     "bonne": "$ab \\geq 0$",
+     "distracteurs": [
+      "$ab > 0$",
+      "$a \\geq 0$ et $b \\geq 0$",
+      "$a = b$"
+     ],
+     "explication": "L’égalité a lieu si et seulement si $a$ et $b$ sont de même signe, c’est-à-dire $ab \\geq 0$. $ab > 0$ oublie le cas $a = 0$ ou $b = 0$ ; « $a \\geq 0$ et $b \\geq 0$ » oublie deux négatifs ($a = b = -1$ : $|-2| = 2 = |a| + |b|$) ; $a = b$ suffit mais n’est pas nécessaire ($a = 1$, $b = 2$).",
+     "difficulte": "hard",
+     "cible": "Programme : cas d’égalité de l’inégalité triangulaire (erreur classique : oublier le cas de deux négatifs ou d’un nombre nul).",
+     "theoremes": [
+      "Inégalité triangulaire"
+     ]
+    },
+    {
+     "question": "Soient $a$ et $b$ deux réels tels que $a < b < 0$. Quelles inégalités sont toujours vraies ?",
+     "bonnes": [
+      "$a^2 > b^2$",
+      "$\\dfrac{1}{a} > \\dfrac{1}{b}$"
+     ],
+     "distracteurs": [
+      "$a^2 < b^2$",
+      "$\\dfrac{1}{a} < \\dfrac{1}{b}$",
+      "$-a < -b$"
+     ],
+     "explication": "Pour $a = -3$ et $b = -1$ : $a^2 = 9 > 1 = b^2$ et $\\dfrac{1}{a} = -\\dfrac{1}{3} > -1 = \\dfrac{1}{b}$. Entre deux négatifs, le carré et l’inverse renversent l’ordre ; passer aux opposés aussi : $-a = 3 > 1 = -b$.",
+     "difficulte": "medium",
+     "cible": "Programme : ordre, carré et inverse pour des nombres négatifs (erreur classique : appliquer les règles des nombres positifs).",
+     "theoremes": [
+      "Ordre et opérations"
+     ]
+    },
+    {
+     "question": "Pour tous réels $a$ et $b$, quelles égalités ou inégalités sont toujours vraies ?",
+     "bonnes": [
+      "$|ab| = |a|\\,|b|$",
+      "$|a - b| \\leq |a| + |b|$"
+     ],
+     "distracteurs": [
+      "$|a + b| = |a| + |b|$",
+      "$|a - b| = |a| - |b|$",
+      "$|-a| = a$"
+     ],
+     "explication": "La valeur absolue est multiplicative, et $|a - b| = |a + (-b)| \\leq |a| + |-b| = |a| + |b|$ (inégalité triangulaire). Elle n’est pas additive : $a = 1$, $b = -1$ donne $|a + b| = 0 \\neq 2$ ; $a = 0$, $b = 1$ donne $|a - b| = 1 \\neq -1$ ; et $|-a| = |a|$, qui vaut $1 \\neq a$ pour $a = -1$.",
+     "difficulte": "medium",
+     "cible": "Programme : propriétés de la valeur absolue (erreur classique : la croire additive, ou $|-a| = a$).",
+     "theoremes": [
+      "Propriétés de la valeur absolue",
+      "Inégalité triangulaire"
+     ]
+    },
+    {
+     "question": "Quels nombres sont solutions de l’inéquation $|x - 1| < 2$ ?",
+     "bonnes": [
+      "$0$",
+      "$2{,}9$"
+     ],
+     "distracteurs": [
+      "$3$",
+      "$-1$",
+      "$-2$"
+     ],
+     "explication": "$|x - 1| < 2$ : la distance de $x$ à $1$ est strictement inférieure à $2$, soit $x \\in\\, ]-1 ; 3[$. $0$ et $2{,}9$ conviennent ; $3$ et $-1$ sont à distance exactement $2$ (bornes exclues, inégalité stricte) ; $-2$ est solution de $|x + 1| < 2$ (centre lu comme $-1$).",
+     "difficulte": "medium",
+     "cible": "Programme : inéquation $|x - a| < r$ (erreur classique : bornes incluses, ou centre de signe faux).",
+     "theoremes": [
+      "Valeur absolue et intervalles (|x − a| ≤ r)"
+     ]
+    },
+    {
+     "question": "Quelles implications sont vraies pour tout réel $x$ ?",
+     "bonnes": [
+      "$x > 2 \\Rightarrow x^2 > 4$",
+      "$x^2 < 4 \\Rightarrow x < 2$"
+     ],
+     "distracteurs": [
+      "$x^2 > 4 \\Rightarrow x > 2$",
+      "$x < 2 \\Rightarrow x^2 < 4$",
+      "$x > 2 \\Rightarrow \\dfrac{1}{x} > \\dfrac{1}{2}$"
+     ],
+     "explication": "Si $x > 2 > 0$, les carrés de positifs gardent l’ordre : $x^2 > 4$. Si $x^2 < 4$, alors $|x| < 2$, donc $-2 < x < 2$. Les réciproques sont fausses : $x = -3$ donne $x^2 = 9 > 4$ et $x < 2$. Enfin, l’inverse renverse l’ordre des positifs : $x > 2 \\Rightarrow \\dfrac{1}{x} < \\dfrac{1}{2}$.",
+     "difficulte": "hard",
+     "cible": "Programme : ordre et carré (erreur classique : confondre une implication et sa réciproque, oublier les négatifs).",
+     "theoremes": [
+      "Ordre et opérations"
+     ]
+    }
+   ]
+  },
+  {
+   "chapitre": "Équations, inéquations et systèmes",
+   "questions": [
+    {
+     "question": "Soit l’équation $ax^2 + bx + c = 0$ avec $a \\neq 0$ et $\\Delta = b^2 - 4ac < 0$. Que peut-on affirmer ?",
+     "bonne": "Elle n’admet aucune solution dans $\\mathbb{R}$.",
+     "distracteurs": [
+      "Elle admet une solution double $x = -\\dfrac{b}{2a}$.",
+      "Elle admet deux solutions $x = \\dfrac{-b \\pm \\sqrt{-\\Delta}}{2a}$.",
+      "Elle admet deux solutions opposées."
+     ],
+     "explication": "Si $\\Delta < 0$, $\\sqrt{\\Delta}$ n’existe pas et $a\\left[\\left(x + \\dfrac{b}{2a}\\right)^2 - \\dfrac{\\Delta}{4a^2}\\right]$ ne s’annule jamais. La solution double correspond à $\\Delta = 0$ ; remplacer $\\Delta$ par $-\\Delta$ sous la racine n’a aucun fondement.",
+     "difficulte": "easy",
+     "cible": "Programme : discriminant d’un trinôme (erreur classique : confondre les cas $\\Delta < 0$ et $\\Delta = 0$).",
+     "theoremes": [
+      "Discriminant et racines d'un trinôme",
+      "Forme canonique d'un trinôme"
+     ]
+    },
+    {
+     "question": "Pour quelle valeur du réel $m$ l’équation $x^2 - 4x + m = 0$ admet-elle une solution double ?",
+     "bonne": "$m = 4$",
+     "distracteurs": [
+      "$m = -4$",
+      "$m = 16$",
+      "$m = 2$"
+     ],
+     "explication": "Solution double $\\iff \\Delta = 0$ : $\\Delta = (-4)^2 - 4 \\times 1 \\times m = 16 - 4m = 0$, d’où $m = 4$ (la solution est alors $x = 2$). $m = 16$ oublie le facteur $4a$, $m = -4$ vient d’une erreur de signe, et $m = 2$ confond $m$ avec la racine double.",
+     "difficulte": "medium",
+     "cible": "Programme : condition de racine double (erreur classique : oublier le facteur $4a$ dans $\\Delta$).",
+     "theoremes": [
+      "Discriminant et racines d'un trinôme"
+     ]
+    },
+    {
+     "question": "Soit l’équation $ax^2 + bx + c = 0$ où $a$ et $c$ sont deux réels non nuls de signes contraires. Que peut-on affirmer ?",
+     "bonne": "Elle admet toujours deux solutions distinctes, de signes contraires.",
+     "distracteurs": [
+      "Elle admet deux solutions distinctes seulement si $b \\neq 0$.",
+      "Elle admet toujours deux solutions distinctes, de même signe.",
+      "Elle n’admet aucune solution dans $\\mathbb{R}$."
+     ],
+     "explication": "$ac < 0$ donne $-4ac > 0$, donc $\\Delta = b^2 - 4ac > 0$ quel que soit $b$ (même $b = 0$). Le produit des racines vaut $\\dfrac{c}{a} < 0$ : elles sont de signes contraires.",
+     "difficulte": "hard",
+     "cible": "Programme : signe de $\\Delta$ et produit des racines (erreur classique : croire qu’il faut connaître $b$).",
+     "theoremes": [
+      "Discriminant et racines d'un trinôme",
+      "Somme et produit des racines"
+     ]
+    },
+    {
+     "question": "Soit le trinôme $P(x) = ax^2 + bx + c$ avec $a \\neq 0$ et $\\Delta < 0$. Quel est le signe de $P(x)$ ?",
+     "bonne": "Du signe de $a$ pour tout réel $x$.",
+     "distracteurs": [
+      "Du signe de $-a$ pour tout réel $x$.",
+      "Strictement positif pour tout réel $x$.",
+      "Du signe de $a$ à l’extérieur des racines, de $-a$ entre elles."
+     ],
+     "explication": "Si $\\Delta < 0$, $P$ ne s’annule pas et garde le signe de $a$ partout. Il n’est strictement positif que si $a > 0$ (par exemple $-x^2 - 1 < 0$), et il n’y a pas de racines entre lesquelles changer de signe : ce cas est celui de $\\Delta > 0$.",
+     "difficulte": "easy",
+     "cible": "Programme : signe du trinôme (erreur classique : « $\\Delta < 0$ donc toujours positif »).",
+     "theoremes": [
+      "Signe du trinôme"
+     ]
+    },
+    {
+     "question": "Quel est l’ensemble des solutions dans $\\mathbb{R}$ de l’inéquation $x^2 - x - 6 < 0$ ?",
+     "bonne": "$]-2 ; 3[$",
+     "distracteurs": [
+      "$]-\\infty ; -2[ \\cup ]3 ; +\\infty[$",
+      "$[-2 ; 3]$",
+      "$]-3 ; 2[$"
+     ],
+     "explication": "$\\Delta = 1 + 24 = 25$, racines $-2$ et $3$. Le trinôme est du signe de $a = 1 > 0$ à l’extérieur des racines, donc négatif strictement entre elles. Inégalité stricte : bornes exclues. $-3$ et $2$ sont les racines de $x^2 + x - 6$ (erreur de signe sur $b$).",
+     "difficulte": "medium",
+     "cible": "Programme : inéquation du second degré (erreur classique : inverser l’intérieur et l’extérieur des racines).",
+     "theoremes": [
+      "Signe du trinôme",
+      "Discriminant et racines d'un trinôme"
+     ]
+    },
+    {
+     "question": "Quel est l’ensemble des solutions dans $\\mathbb{R}$ de l’inéquation $x^2 \\geq 9$ ?",
+     "bonne": "$]-\\infty ; -3] \\cup [3 ; +\\infty[$",
+     "distracteurs": [
+      "$[3 ; +\\infty[$",
+      "$[-3 ; 3]$",
+      "$]-\\infty ; -3[ \\cup ]3 ; +\\infty[$"
+     ],
+     "explication": "$x^2 - 9 = (x - 3)(x + 3)$ est du signe de $a = 1 > 0$ à l’extérieur des racines $-3$ et $3$, bornes incluses car l’inégalité est large. « $x \\geq 3$ » oublie les négatifs ($(-4)^2 = 16 \\geq 9$), et $[-3 ; 3]$ est la solution de $x^2 \\leq 9$.",
+     "difficulte": "medium",
+     "cible": "Programme : signe de $x^2 - k$ (erreur classique : « $x^2 \\geq 9 \\iff x \\geq 3$ », oubli d’un cas).",
+     "theoremes": [
+      "Signe du trinôme"
+     ]
+    },
+    {
+     "question": "Quel est l’ensemble des solutions dans $\\mathbb{R}$ de l’inéquation $x^2 + 2x + 3 > 0$ ?",
+     "bonne": "$\\mathbb{R}$",
+     "distracteurs": [
+      "$\\varnothing$",
+      "$\\mathbb{R} \\setminus \\{-1\\}$",
+      "$]-1 ; +\\infty[$"
+     ],
+     "explication": "$\\Delta = 4 - 12 = -8 < 0$ : le trinôme ne s’annule pas et a le signe de $a = 1 > 0$, donc il est strictement positif partout. « $\\Delta < 0$ donc pas de solution » confond équation et inéquation ; exclure $-1$ correspond au cas $\\Delta = 0$.",
+     "difficulte": "hard",
+     "cible": "Programme : signe du trinôme quand $\\Delta < 0$ (erreur classique : confondre « l’équation n’a pas de solution » et « l’inéquation n’a pas de solution »).",
+     "theoremes": [
+      "Signe du trinôme",
+      "Discriminant et racines d'un trinôme"
+     ]
+    },
+    {
+     "question": "Quel est l’ensemble des solutions dans $\\mathbb{R}$ de l’inéquation $\\dfrac{x^2 - x}{x + 2} \\geq 0$ ?",
+     "bonne": "$]-2 ; 0] \\cup [1 ; +\\infty[$",
+     "distracteurs": [
+      "$[-2 ; 0] \\cup [1 ; +\\infty[$",
+      "$]-2 ; 0[ \\cup ]1 ; +\\infty[$",
+      "$]-\\infty ; -2[ \\cup [0 ; 1]$"
+     ],
+     "explication": "$x^2 - x = x(x - 1)$ est positif à l’extérieur de $0$ et $1$, et $x + 2 > 0$ pour $x > -2$. Le tableau de signes donne $]-2 ; 0] \\cup [1 ; +\\infty[$ : $0$ et $1$ annulent le quotient (inclus, inégalité large), mais $-2$ est une valeur interdite (toujours exclue). Le dernier ensemble est celui où le quotient est $\\leq 0$.",
+     "difficulte": "medium",
+     "cible": "Programme : inéquation quotient (erreur classique : inclure la valeur interdite).",
+     "theoremes": [
+      "Signe du trinôme",
+      "Signe de ax + b"
+     ]
+    },
+    {
+     "question": "L’équation $2x^2 - 6x + 1 = 0$ admet deux racines $x_1$ et $x_2$. Sans les calculer, que valent leur somme et leur produit ?",
+     "bonne": "$x_1 + x_2 = 3$ et $x_1 x_2 = \\dfrac{1}{2}$",
+     "distracteurs": [
+      "$x_1 + x_2 = -3$ et $x_1 x_2 = \\dfrac{1}{2}$",
+      "$x_1 + x_2 = 6$ et $x_1 x_2 = 1$",
+      "$x_1 + x_2 = 3$ et $x_1 x_2 = 2$"
+     ],
+     "explication": "$x_1 + x_2 = -\\dfrac{b}{a} = \\dfrac{6}{2} = 3$ et $x_1 x_2 = \\dfrac{c}{a} = \\dfrac{1}{2}$ ($\\Delta = 28 > 0$). Pièges : oublier le signe « $-$ » de $-\\dfrac{b}{a}$, oublier de diviser par $a$, ou inverser le quotient $\\dfrac{c}{a}$.",
+     "difficulte": "easy",
+     "cible": "Programme : somme et produit des racines (erreur classique : $x_1 + x_2 = \\dfrac{b}{a}$ ou oubli de diviser par $a$).",
+     "theoremes": [
+      "Somme et produit des racines"
+     ]
+    },
+    {
+     "question": "Deux réels ont pour somme $7$ et pour produit $12$. De quelle équation sont-ils les solutions ?",
+     "bonne": "$x^2 - 7x + 12 = 0$",
+     "distracteurs": [
+      "$x^2 + 7x + 12 = 0$",
+      "$x^2 - 12x + 7 = 0$",
+      "$x^2 + 7x - 12 = 0$"
+     ],
+     "explication": "Deux réels de somme $S$ et de produit $P$ sont les solutions de $x^2 - Sx + P = 0$ : ici $x^2 - 7x + 12 = (x - 3)(x - 4)$. Avec $+7x$, les solutions sont $-3$ et $-4$ ; échanger $S$ et $P$ ou les signes ne convient pas.",
+     "difficulte": "medium",
+     "cible": "Programme : équation de somme et produit donnés (erreur classique : $x^2 + Sx + P = 0$).",
+     "theoremes": [
+      "Somme et produit des racines"
+     ]
+    },
+    {
+     "question": "Le réel $2$ est une solution de l’équation $3x^2 - 5x - 2 = 0$. Quelle est l’autre solution ?",
+     "bonne": "$-\\dfrac{1}{3}$",
+     "distracteurs": [
+      "$\\dfrac{1}{3}$",
+      "$-1$",
+      "$3$"
+     ],
+     "explication": "Produit des racines : $2 \\times x_2 = \\dfrac{c}{a} = -\\dfrac{2}{3}$, d’où $x_2 = -\\dfrac{1}{3}$ (et la somme $\\dfrac{5}{3}$ le confirme). $-1$ vient de $2x_2 = c$ sans diviser par $a$, $3$ de $x_1 + x_2 = 5$ sans diviser par $a$, et $\\dfrac{1}{3}$ d’une erreur de signe.",
+     "difficulte": "medium",
+     "cible": "Programme : seconde racine par le produit $\\dfrac{c}{a}$ (erreur classique : oublier de diviser par $a$).",
+     "theoremes": [
+      "Somme et produit des racines"
+     ]
+    },
+    {
+     "question": "Quel est le déterminant du système $\\begin{cases} 2x + 3y = 5 \\\\ x - y = 0 \\end{cases}$ ?",
+     "bonne": "$-5$",
+     "distracteurs": [
+      "$5$",
+      "$1$",
+      "$-1$"
+     ],
+     "explication": "Pour $\\begin{cases} ax + by = c \\\\ a'x + b'y = c' \\end{cases}$, $\\Delta = ab' - a'b = 2 \\times (-1) - 1 \\times 3 = -5$. $5$ correspond à $a'b - ab'$ (ordre inversé), $1$ à $ab' + a'b$ et $-1$ à $aa' + bb'$ (produits en ligne au lieu des produits croisés).",
+     "difficulte": "easy",
+     "cible": "Programme : déterminant d’un système $2 \\times 2$ (erreur classique : ordre des produits croisés).",
+     "theoremes": [
+      "Méthode du déterminant (Cramer) pour un système 2×2"
+     ]
+    },
+    {
+     "question": "Un système de deux équations du premier degré à deux inconnues a un déterminant nul. Que peut-on affirmer ?",
+     "bonne": "Il n’a pas de solution unique : il n’en a aucune ou une infinité.",
+     "distracteurs": [
+      "Il n’a aucune solution.",
+      "Il a une infinité de solutions.",
+      "Il a une unique solution, le couple $(0 ; 0)$."
+     ],
+     "explication": "$\\Delta = 0$ signifie que les deux équations ont des coefficients proportionnels (droites parallèles) : droites strictement parallèles, aucune solution ; droites confondues, une infinité. Par exemple $x + y = 1$, $2x + 2y = 3$ n’a aucune solution, alors que $x + y = 1$, $2x + 2y = 2$ en a une infinité.",
+     "difficulte": "medium",
+     "cible": "Programme : méthode du déterminant (erreur classique : « $\\Delta = 0$ donc aucune solution »).",
+     "theoremes": [
+      "Méthode du déterminant (Cramer) pour un système 2×2"
+     ]
+    },
+    {
+     "question": "Pour quelles valeurs du réel $m$ le système $\\begin{cases} mx + y = 1 \\\\ x + my = 1 \\end{cases}$ admet-il une unique solution ?",
+     "bonne": "$m \\neq 1$ et $m \\neq -1$",
+     "distracteurs": [
+      "$m \\neq 1$",
+      "$m \\neq 0$",
+      "$m \\neq -1$"
+     ],
+     "explication": "Unique solution $\\iff \\Delta \\neq 0$, avec $\\Delta = m \\times m - 1 \\times 1 = m^2 - 1 = (m - 1)(m + 1)$. Il faut exclure les deux racines : pour $m = -1$ le système n’a aucune solution, pour $m = 1$ il en a une infinité ; $m = 0$ donne $\\Delta = -1 \\neq 0$.",
+     "difficulte": "hard",
+     "cible": "Programme : système à paramètre (erreur classique : $m^2 = 1 \\iff m = 1$, oubli d’un cas).",
+     "theoremes": [
+      "Méthode du déterminant (Cramer) pour un système 2×2"
+     ]
+    },
+    {
+     "question": "Quels nombres sont solutions de l’équation $2x^2 + x - 3 = 0$ ?",
+     "bonnes": [
+      "$1$",
+      "$-\\dfrac{3}{2}$"
+     ],
+     "distracteurs": [
+      "$-1$",
+      "$\\dfrac{3}{2}$",
+      "$-3$"
+     ],
+     "explication": "$\\Delta = 1 + 24 = 25$, donc $x = \\dfrac{-1 \\pm 5}{4}$ : $1$ et $-\\dfrac{3}{2}$. Oublier le « $-$ » de $-b$ donne $-1$ et $\\dfrac{3}{2}$ (racines de $2x^2 - x - 3$) ; diviser par $a$ au lieu de $2a$ donne $2$ et $-3$.",
+     "difficulte": "medium",
+     "cible": "Programme : racines d’un trinôme (erreur classique : $\\dfrac{b \\pm \\sqrt{\\Delta}}{2a}$, ou division par $a$ au lieu de $2a$).",
+     "theoremes": [
+      "Discriminant et racines d'un trinôme"
+     ]
+    },
+    {
+     "question": "Quels réels vérifient l’inéquation $-x^2 + 2x + 3 > 0$ ?",
+     "bonnes": [
+      "$0$",
+      "$\\dfrac{5}{2}$"
+     ],
+     "distracteurs": [
+      "$3$",
+      "$4$",
+      "$-2$"
+     ],
+     "explication": "Racines : $-1$ et $3$ ($\\Delta = 16$). Comme $a = -1 < 0$, le trinôme est positif strictement entre les racines : solutions $]-1 ; 3[$. $3$ annule le trinôme (inégalité stricte) ; $4$ et $-2$ seraient solutions si l’on oubliait que $a < 0$.",
+     "difficulte": "medium",
+     "cible": "Programme : signe du trinôme avec $a < 0$ (erreur classique : « positif à l’extérieur des racines » sans regarder le signe de $a$).",
+     "theoremes": [
+      "Signe du trinôme"
+     ]
+    },
+    {
+     "question": "On considère l’équation $x^2 - 3x - 10 = 0$, de racines $x_1$ et $x_2$. Quelles affirmations sont vraies ?",
+     "bonnes": [
+      "$x_1 + x_2 = 3$",
+      "$-2$ est une racine."
+     ],
+     "distracteurs": [
+      "$x_1 + x_2 = -3$",
+      "$x_1 x_2 = 10$",
+      "$2$ est une racine."
+     ],
+     "explication": "$x_1 + x_2 = -\\dfrac{b}{a} = 3$ et $x_1 x_2 = \\dfrac{c}{a} = -10$ ; les racines sont $5$ et $-2$ : $(-2)^2 + 6 - 10 = 0$, alors que $4 - 6 - 10 = -12 \\neq 0$. Pièges : oublier le signe « $-$ » de $-\\dfrac{b}{a}$ ou celui de $c$.",
+     "difficulte": "easy",
+     "cible": "Programme : somme et produit des racines (erreur classique : signes de $-\\dfrac{b}{a}$ et de $\\dfrac{c}{a}$).",
+     "theoremes": [
+      "Somme et produit des racines",
+      "Discriminant et racines d'un trinôme"
+     ]
+    },
+    {
+     "question": "On considère le système $\\begin{cases} 2x - y = 1 \\\\ 4x - 2y = k \\end{cases}$ où $k$ est un réel. Quelles affirmations sont vraies ?",
+     "bonnes": [
+      "Son déterminant est nul.",
+      "Pour $k = 2$, il admet une infinité de solutions."
+     ],
+     "distracteurs": [
+      "Il admet une unique solution pour tout $k$.",
+      "Pour $k = 2$, il n’admet aucune solution.",
+      "Il n’admet aucune solution, quel que soit $k$."
+     ],
+     "explication": "$\\Delta = 2 \\times (-2) - 4 \\times (-1) = 0$ : pas de solution unique. Pour $k = 2$, la seconde équation est le double de la première (droites confondues) : infinité de solutions. Pour $k \\neq 2$, droites strictement parallèles : aucune solution. « $\\Delta = 0$ donc aucune solution » oublie le cas $k = 2$.",
+     "difficulte": "hard",
+     "cible": "Programme : système de déterminant nul (erreur classique : « $\\Delta = 0$ donc aucune solution »).",
+     "theoremes": [
+      "Méthode du déterminant (Cramer) pour un système 2×2",
+      "Méthodes de substitution et de combinaison linéaire"
+     ]
+    },
+    {
+     "question": "Dans un repère, on considère la droite $(D) : 2x - y + 1 = 0$. Quel point appartient au demi-plan ouvert d’inéquation $2x - y + 1 > 0$ ?",
+     "bonne": "$A(1 ; 2)$",
+     "distracteurs": [
+      "$B(0 ; 1)$",
+      "$C(0 ; 2)$",
+      "$E(1 ; 4)$"
+     ],
+     "explication": "On remplace les coordonnées dans $2x - y + 1$ : $A$ donne $2 - 2 + 1 = 1 > 0$. $B$ donne $0$ : il est sur $(D)$, exclue du demi-plan ouvert. $C$ donne $-1 < 0$ (il vérifie $y > 2x + 1$, sens inversé en isolant $y$ : $2x - y + 1 > 0 \\iff y < 2x + 1$). $E$ donne $2 - 4 + 1 = -1 < 0$ ; oublier le signe de $-y$ donnerait $7$.",
+     "difficulte": "medium",
+     "cible": "Programme : régionnement du plan (erreur classique : changer le sens en isolant $y$, ou garder un point de la droite dans un demi-plan ouvert).",
+     "theoremes": [
+      "Régionnement du plan par une droite"
+     ]
+    }
+   ]
+  }
+ ]
+}
