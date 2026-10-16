@@ -463,7 +463,10 @@ def sections(nb):
     return list(NotebookSection.objects.filter(notebook=nb).order_by('order').values_list('chapter__name', flat=True))
 
 
-check('cahier 2ème SM : sections = programme, dans son ordre', sections(nb2) == [c['nom'] for c in P.PROGRAMME[SM2]], sections(nb2))
+# Depuis 0003, la dérivation passe avant les suites en 2ème Bac SM : notebooks 0004 renumérote ensuite les sections
+# (pas ici : la suite rejoue 0003, qui doit rester sans écriture). Sections du programme, dans son ordre après tri.
+check('cahier 2ème SM : sections = programme, dans son ordre', sorted(sections(nb2), key=lambda n: P.rang(SM2)[n])
+      == [c['nom'] for c in P.PROGRAMME[SM2]], sections(nb2))
 check('cahier 1ère SM : section repointée, Produit vectoriel créé, ordre du programme',
       sections(nb1) == [c['nom'] for c in P.PROGRAMME[SM1]] and NotebookSection.objects.get(pk=s_trig.pk).chapter_id == trigo.id, sections(nb1))
 check('cahier Tronc commun : ordre du programme', sections(nbtc) == [c['nom'] for c in P.PROGRAMME[TC]], sections(nbtc))

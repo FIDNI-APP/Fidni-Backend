@@ -194,8 +194,14 @@ check('0003 : cibles des opérations au programme, au bon niveau', all(
     and all(op['vers'] in P.DOMAINE_CHAPITRE and op['de'] not in P.DOMAINE_CHAPITRE for op in D['fusions'])
     and 'Espaces vectoriels' not in [op['de'] for op in D['fusions']])
 # Vrai au moment d'écrire 0003. Si programme.py change APRÈS le déploiement de 0003, adapter ce test, jamais 0003.
-check('0003 : programme, domaines et alias figés = programme.py',
-      {N(n): v for n, v in D['programme'].items()} == {n: [(c['nom'], c['domaine']) for c in ch] for n, ch in P.PROGRAMME.items()}
+# Changé après 0003 : en 2ème Bac SM, la dérivation passe avant les suites (Natsu, 16/10/2026 ; cahiers : notebooks 0004).
+_fige = {N(n): list(v) for n, v in D['programme'].items()}
+_sm2 = [tuple(x) for x in _fige[P.SM2]]
+_i, _j = _sm2.index(('Suites numériques', 'Analyse')), _sm2.index(('Dérivation et étude des fonctions', 'Analyse'))
+_sm2[_i], _sm2[_j] = _sm2[_j], _sm2[_i]
+_fige[P.SM2] = _sm2
+check('0003 : programme, domaines et alias figés = programme.py (ordre de 2ème Bac SM changé depuis)',
+      {n: [tuple(x) for x in v] for n, v in _fige.items()} == {n: [(c['nom'], c['domaine']) for c in ch] for n, ch in P.PROGRAMME.items()}
       and D['domaine_theoreme'] == P.DOMAINE_THEOREME
       and sorted(map(tuple, ((a, N(n), tuple(v)) for a, n, v in D['alias_chapitres'])))
       == sorted((a, n, tuple(v)) for a, r_ in P.ALIAS_CHAPITRES.items() for n, v in r_.items())

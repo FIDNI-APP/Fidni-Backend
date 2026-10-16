@@ -212,6 +212,11 @@ _m17.backwards(django_apps, None)
 _ds.refresh_from_db()
 check('migration 0017 inverse : chapitres remis', set(_ds.chapters.all()) == {_lim, _der}
       and 'chapitres_retires' not in _ds.json_content)
+_suites = _Ch.objects.get(name='Suites numériques', class_levels=_sm)
+_ds.chapters.set([_suites, _der])
+importlib.import_module('apps.things.migrations.0018_chapitre_principal_ordre_sm').forwards(django_apps, None)
+check('2ème Bac SM : dérivation avant suites (ordre de M. Haddar) → un DS fonctions + suites va dans « Suites »',
+      list(_ds.chapters.all()) == [_suites], [c.name for c in _ds.chapters.all()])
 _ds.delete(); _lc.delete(); _auteur.delete()  # noqa: E702  (la suite compte les contenus)
 
 out = io.StringIO()
