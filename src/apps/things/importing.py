@@ -568,6 +568,89 @@ def all_html(structure: dict):
             yield ss['id'], ss['content']['html']
 
 
+# --------------------------------------------------------------------------- doublons d'énoncé
+# Natsu, 16/10/2026 : aucun doublon sur le site. Le titre ne suffisait pas (un même exercice déposé deux fois sous
+# deux titres, ou une série importée deux fois) : on compare aussi l'ÉNONCÉ (questions, sans solutions ni
+# indications) aux contenus publiés et aux brouillons en attente du même type. Un même exercice repris dans un devoir
+# n'est pas un doublon (types différents).
+SEUIL_DOUBLON = 0.85
+
+
+def _texte_comparable(htmls) -> str:
+    """Énoncé réduit à ses lettres et chiffres (balises, espaces, ponctuation et habillage LaTeX retirés)."""
+    s = ' '.join(h for h in htmls if isinstance(h, str))
+    s = re.sub(r'<[^>]+>', ' ', s)
+    s = re.sub(r'\\(left|right|displaystyle|limits|quad|qquad|[,;:!])', '', s).replace('dfrac', 'frac').replace('tfrac', 'frac')
+    return re.sub(r'[^0-9a-zà-ÿ\\]+', '', unicodedata.normalize('NFC', s.lower()))
+
+
+def _enonce_fiche(fiche: dict) -> str:
+    htmls = []
+
+    def walk(blocs):
+        for b in blocs or []:
+            if isinstance(b, dict):
+                htmls.append(b.get('html'))
+                for sq in b.get('sous_questions') or []:
+                    if isinstance(sq, dict):
+                        htmls.append(sq.get('html'))
+                walk(b.get('blocs'))
+    walk(fiche.get('blocs'))
+    return _texte_comparable(htmls)
+
+
+def _enonce_structure(structure) -> str:
+    htmls = []
+    if isinstance(structure, dict):
+        for b in structure.get('blocks') or []:
+            htmls.append((b.get('content') or {}).get('html'))
+            for sq in b.get('subQuestions') or []:
+                htmls.append((sq.get('content') or {}).get('html'))
+    return _texte_comparable(htmls)
+
+
+def _ressemblance(a: str, b: str) -> float:
+    if not a or not b:
+        return 0.0
+    m = difflib.SequenceMatcher(None, a, b, autojunk=False)
+    if m.real_quick_ratio() < SEUIL_DOUBLON or m.quick_ratio() < SEUIL_DOUBLON:
+        return 0.0
+    return m.ratio()
+
+
+def doublons_d_enonce(fiche: dict, kind: str, exclure_pk=None) -> list[str]:
+    """Erreurs « doublon probable » : même énoncé (≥ 85 % de ressemblance) qu'un contenu publié ou qu'un brouillon en
+    attente du même type (autre clé). Rien si la fiche a "doublon_ok": true (vérifié à la main)."""
+    from apps.things.models import Content
+
+    moi = _enonce_fiche(fiche)
+    if len(moi) < 40:  # énoncé trop court pour juger
+        return []
+    erreurs = []
+    for c in Content.objects.filter(type=kind).exclude(pk=exclure_pk).only('id', 'title', 'display_id', 'json_content'):
+        if ((c.json_content or {}).get('import') or {}).get('cle') == fiche.get('cle'):
+            continue
+        r = _ressemblance(moi, _enonce_structure(c.json_content))
+        if r >= SEUIL_DOUBLON:
+            erreurs.append(f'doublon probable : même énoncé ({r:.0%}) que le contenu publié #{c.display_id} « {c.title} »'
+                           ' (ne pas déposer ; "doublon_ok": true seulement si vérifié à la main)')
+    try:
+        from apps.ia.models import IAJob
+        brouillons = IAJob.objects.filter(status__in=(IAJob.PRET, IAJob.ERREUR)).only('id', 'result')
+    except Exception:  # application IA absente (tests isolés)
+        brouillons = []
+    type_fiche = fiche.get('type')
+    for job in brouillons:
+        for f in ((job.result or {}).get('fiches') or []):
+            if not isinstance(f, dict) or f.get('cle') == fiche.get('cle') or f.get('type') != type_fiche:
+                continue
+            r = _ressemblance(moi, _enonce_fiche(f))
+            if r >= SEUIL_DOUBLON:
+                erreurs.append(f'doublon probable : même énoncé ({r:.0%}) que le brouillon {job.id} « {f.get("titre", "")} »'
+                               ' (ne pas déposer ; "doublon_ok": true seulement si vérifié à la main)')
+    return erreurs
+
+
 # --------------------------------------------------------------------------- base de données
 
 def _ecole_valide(ecole) -> bool:
@@ -763,6 +846,8 @@ def check_against_db(fiche: dict) -> tuple[list[str], list[str], dict]:
             if normalize_text(c.title) == title_key:
                 errors.append(f'doublon probable : même titre que #{c.display_id} « {c.title} »'
                               ' (changer le titre ou mettre "doublon_ok": true)')
+        if kind in ('exercise', 'exam'):
+            errors += doublons_d_enonce(fiche, kind, getattr(existing, 'pk', None))
     school, avert_ecole = trouver_ecole(fiche.get('ecole'))
     if avert_ecole:
         warnings.append(avert_ecole)

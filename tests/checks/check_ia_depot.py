@@ -241,16 +241,16 @@ check('migration 0016 : fiche Sanaa sans école → Sanaa 5 ; école choisie à 
 call_command('ia_deposer', dossier(dict(FICHE, cle='depot-ecole', titre='Avec établissement', ecole='Lycée Ibn Sina'), []),
              stdout=io.StringIO())
 je = IAJob.objects.get(options__cle='depot-ecole')
-r = ad.post(f'/api/pilotage/ia/{je.id}/publier/', {'a_verifier': True}, format='json')
+r = ad.post(f'/api/pilotage/ia/{je.id}/publier/', {'a_verifier': True, 'doublon_ok': True}, format='json')
 ce = Content.objects.filter(json_content__import__cle='depot-ecole').first()
 check('publié avec son établissement (« Donné au Lycée Ibn Sina »)', r.status_code == 200 and ce and ce.school_id == ibn.id,
-      r.status_code)
+      (r.status_code, getattr(r, "data", None)))
 call_command('ia_deposer', dossier(dict(FICHE, cle='depot-ecole', titre='Avec établissement', ecole='Lycée Imaginaire'), []),
              stdout=io.StringIO())
 je2 = IAJob.objects.get(options__cle='depot-ecole', status=IAJob.PRET)
 check('brouillon : avertissement visible si l’établissement est introuvable',
       any('introuvable' in a for c in je2.result['controles'] for a in c['avertissements']))
-ad.post(f'/api/pilotage/ia/{je2.id}/publier/', {'a_verifier': True}, format='json')
+ad.post(f'/api/pilotage/ia/{je2.id}/publier/', {'a_verifier': True, 'doublon_ok': True}, format='json')
 ce.refresh_from_db()
 check('mise à jour sans établissement trouvé : celui du contenu est gardé', ce.school_id == ibn.id)
 
@@ -290,7 +290,7 @@ mauvais = dict(corps, json_content={'version': '2.1', 'blocks': [{'id': 'b', 'ty
 check('image collée en data URI refusée', ad.post(f'/api/pilotage/ia/{je.id}/editeur/', mauvais, format='json').status_code == 400)
 check('niveau inconnu refusé', ad.post(f'/api/pilotage/ia/{je.id}/editeur/', dict(corps, class_levels=[99999]),
                                        format='json').status_code == 400)
-r = ad.post(f'/api/pilotage/ia/{je.id}/publier/', {'a_verifier': True}, format='json')
+r = ad.post(f'/api/pilotage/ia/{je.id}/publier/', {'a_verifier': True, 'doublon_ok': True}, format='json')
 cp = Content.objects.filter(json_content__import__cle='depot-editeur').first()
 txt = json.dumps(cp.json_content, ensure_ascii=False) if cp else ''
 check('publié : version modifiée (titre, difficulté, texte), figure publiée, crédit et bandeau gardés',
@@ -314,7 +314,7 @@ call_command('ia_deposer', dossier(dict(FICHE, cle='depot-editeur', titre='Fiche
 jr = IAJob.objects.filter(options__cle='depot-editeur', status=IAJob.PRET).first()
 check('« remplace » : brouillon de mise à jour du contenu visé', jr and jr.options.get('remplacer')
       and (jr.options.get('contenu') or {}).get('id') == cp.id and f'#{cp.id}' in s3.getvalue(), s3.getvalue())
-r = ad.post(f'/api/pilotage/ia/{jr.id}/publier/', {'a_verifier': True}, format='json')
+r = ad.post(f'/api/pilotage/ia/{jr.id}/publier/', {'a_verifier': True, 'doublon_ok': True}, format='json')
 cp.refresh_from_db()
 check('publié : même contenu, clé et crédit retrouvés, pas de doublon', r.status_code == 200
       and Content.objects.filter(title='Fiche retouchée à la main').count() == 1

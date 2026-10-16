@@ -229,6 +229,22 @@ _ds.chapters.set([_der])
 importlib.import_module('apps.things.migrations.0019_chapitres_corriges').forwards(django_apps, None)
 check('migration 0019 : DS1 2020 publié remis dans « Limites et continuité »', list(_ds.chapters.all()) == [_lim],
       [c.name for c in _ds.chapters.all()])
+# Doublons d'énoncé (Natsu, 16/10/2026) : même énoncé qu'un contenu publié du même type, même sous un autre titre.
+_copie = _C.objects.create(type='exercise', title='Titre tout autre', author=_auteur,
+                           json_content={**importing.to_structure(EXO), 'import': {'cle': 'autre-cle'}})
+e, _, _ = importing.check_against_db({**EXO, 'titre': 'Un titre jamais vu'})
+check('doublon d’énoncé (autre titre) : refusé', any('même énoncé' in x and 'Titre tout autre' in x for x in e), e)
+_presque = json.loads(json.dumps(EXO).replace('Calculer', 'Calculez'))
+e, _, _ = importing.check_against_db({**_presque, 'titre': 'Un titre jamais vu'})
+check('doublon d’énoncé à la forme près : refusé aussi', any('même énoncé' in x for x in e), e)
+e, _, _ = importing.check_against_db({**EXO, 'titre': 'Un titre jamais vu', 'doublon_ok': True})
+check('« doublon_ok » (vérifié à la main) : accepté', not any('même énoncé' in x for x in e), e)
+_copie.delete()
+_devoir = _C.objects.create(type='exam', title='Devoir qui reprend l’exercice', author=_auteur,
+                            json_content={**importing.to_structure(EXO), 'import': {'cle': 'devoir-cle'}})
+e, _, _ = importing.check_against_db({**EXO, 'titre': 'Un titre jamais vu'})
+check('même énoncé dans un devoir (autre type) : pas un doublon', not any('même énoncé' in x for x in e), e)
+_devoir.delete()
 _ds.delete(); _lc.delete(); _auteur.delete()  # noqa: E702  (la suite compte les contenus)
 
 out = io.StringIO()
