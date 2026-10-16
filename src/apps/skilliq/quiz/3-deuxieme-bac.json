@@ -894,6 +894,22 @@
      "theoremes": [
       "Inégalité des accroissements finis"
      ]
+    },
+    {
+     "question": "$u_0 = 0$ et $u_{n+1} = \\dfrac{2u_n + 1}{u_n + 2}$ pour tout $n$. Avec la suite auxiliaire $v_n = \\dfrac{u_n - 1}{u_n + 1}$, on trouve que $(u_n)$ converge vers :",
+     "bonne": "$1$",
+     "distracteurs": [
+      "$-1$",
+      "$2$",
+      "$\\dfrac{1}{2}$"
+     ],
+     "explication": "Les termes restent positifs, donc $u_n + 1 \\neq 0$. $v_{n+1} = \\dfrac{2u_n + 1 - (u_n + 2)}{2u_n + 1 + u_n + 2} = \\dfrac{u_n - 1}{3(u_n + 1)} = \\dfrac13 v_n$ : $(v_n)$ est géométrique de raison $\\dfrac13$, de premier terme $v_0 = -1$, donc $v_n \\to 0$. Comme $u_n = \\dfrac{1 + v_n}{1 - v_n}$, $u_n \\to 1$. Faux : $-1$ est l’autre solution de $\\ell = \\dfrac{2\\ell + 1}{\\ell + 2}$, mais une suite positive ne peut pas y tendre ; $2 = \\dfrac21$ est le quotient des coefficients de $u_n$, pas une limite ; $\\dfrac12$ n’est que $u_1$.",
+     "difficulte": "hard",
+     "cible": "Programme : suites $u_{n+1} = \\frac{au_n + b}{cu_n + d}$ étudiées avec une suite auxiliaire géométrique (1.1.1 ; erreurs classiques : garder le mauvais point fixe, revenir mal de $v_n$ à $u_n$).",
+     "theoremes": [
+      "Suite auxiliaire arithmétique ou géométrique",
+      "Suites récurrentes u(n+1) = f(u(n))"
+     ]
     }
    ]
   },
@@ -1249,6 +1265,70 @@
       "Centre et axe de symétrie d'une courbe",
       "Fonctions paires et impaires",
       "Fonction périodique"
+     ]
+    },
+    {
+     "question": "Quelles formules de dérivation sont justes (sur un intervalle où la fonction est dérivable) ?",
+     "bonnes": [
+      "$(\\tan x)' = 1 + \\tan^2 x$",
+      "$\\left(\\dfrac{1}{x}\\right)' = -\\dfrac{1}{x^2}$"
+     ],
+     "distracteurs": [
+      "$\\left(\\sqrt{x}\\right)' = \\dfrac{1}{\\sqrt{x}}$",
+      "$(\\cos x)' = \\sin x$",
+      "$\\left(x^n\\right)' = n\\,x^{n+1}$"
+     ],
+     "explication": "$(\\tan x)' = \\dfrac{1}{\\cos^2 x} = 1 + \\tan^2 x$ et $\\left(\\dfrac1x\\right)' = -\\dfrac{1}{x^2}$. Faux : $\\left(\\sqrt x\\right)' = \\dfrac{1}{2\\sqrt x}$ (le $2$ oublié) ; $(\\cos x)' = -\\sin x$ (le signe oublié) ; $\\left(x^n\\right)' = n\\,x^{n-1}$ : l’exposant diminue de $1$.",
+     "difficulte": "easy",
+     "cible": "Programme : dérivées des fonctions usuelles (erreurs classiques : $\\frac{1}{\\sqrt x}$ au lieu de $\\frac{1}{2\\sqrt x}$, signe de $(\\cos x)'$, exposant $n + 1$).",
+     "theoremes": [
+      "Dérivées des fonctions usuelles"
+     ]
+    },
+    {
+     "question": "Sur $]0\\,;+\\infty[$, la fonction $f(x) = x + \\dfrac{4}{x}$ admet un minimum égal à :",
+     "bonne": "$4$",
+     "distracteurs": [
+      "$2$",
+      "$-4$",
+      "$5$"
+     ],
+     "explication": "$f'(x) = 1 - \\dfrac{4}{x^2} = \\dfrac{(x - 2)(x + 2)}{x^2}$ : sur $]0\\,;+\\infty[$, $f'$ est négative avant $2$ et positive après. $f$ est donc minimale en $x = 2$, et ce minimum vaut $f(2) = 2 + 2 = 4$. Faux : $2$ est l’abscisse du minimum, pas sa valeur ; $-4 = f(-2)$, mais $-2$ n’est pas dans $]0\\,;+\\infty[$ ; $5 = f(1)$ n’est qu’une valeur prise.",
+     "difficulte": "medium",
+     "cible": "Programme : valeur minimale par l’étude du signe de $f'$ (1.2.12 ; erreurs classiques : donner l’abscisse au lieu de la valeur, garder un point critique hors de l’intervalle).",
+     "theoremes": [
+      "Extremum et annulation de la dérivée",
+      "Signe de la dérivée et sens de variation"
+     ]
+    },
+    {
+     "question": "On sait que $\\lim\\limits_{x \\to +\\infty} f(x) = +\\infty$ et $\\lim\\limits_{x \\to +\\infty} \\dfrac{f(x)}{x} = 0$. La courbe de $f$ admet au voisinage de $+\\infty$ :",
+     "bonne": "une branche parabolique de direction l’axe des abscisses.",
+     "distracteurs": [
+      "une asymptote horizontale d’équation $y = 0$.",
+      "une branche parabolique de direction l’axe des ordonnées.",
+      "une asymptote oblique de coefficient directeur $0$."
+     ],
+     "explication": "$f(x) \\to +\\infty$ exclut toute asymptote horizontale, et $\\dfrac{f(x)}{x} \\to 0$ : la courbe « monte » moins vite que toute droite, d’où une branche parabolique de direction $(Ox)$ (exemple : $\\sqrt x$). Faux : $y = 0$ supposerait $f(x) \\to 0$, pas $\\dfrac{f(x)}{x} \\to 0$ ; la direction $(Oy)$ correspond à $\\dfrac{f(x)}{x} \\to \\pm\\infty$ ; une asymptote $y = 0 \\cdot x + b$ supposerait $f(x)$ de limite finie $b$.",
+     "difficulte": "medium",
+     "cible": "Programme : branches infinies (erreurs classiques : confondre $\\frac{f(x)}{x} \\to 0$ et $f(x) \\to 0$, intervertir les directions $(Ox)$ et $(Oy)$).",
+     "theoremes": [
+      "Branches infinies et asymptotes"
+     ]
+    },
+    {
+     "question": "Soit $f(x) = x^2 - x$. En quel point de la courbe de $f$ la tangente est-elle parallèle à la droite d’équation $y = 3x + 1$ ?",
+     "bonne": "Au point de coordonnées $(2\\,;2)$.",
+     "distracteurs": [
+      "Au point de coordonnées $(2\\,;7)$.",
+      "Au point de coordonnées $(3\\,;6)$.",
+      "Au point de coordonnées $(-1\\,;2)$."
+     ],
+     "explication": "Deux droites sont parallèles si elles ont le même coefficient directeur : on résout $f'(a) = 2a - 1 = 3$, d’où $a = 2$ et le point $(2\\,;f(2)) = (2\\,;2)$. Faux : $7 = 3 \\times 2 + 1$ est l’ordonnée sur la droite, pas sur la courbe ; en $3$, $f'(3) = 5 \\neq 3$ ; en $-1$, $f'(-1) = -3$ et non $3$ (erreur de signe).",
+     "difficulte": "easy",
+     "cible": "Programme : coefficient directeur de la tangente $f'(a)$ (erreurs classiques : prendre l’ordonnée sur la droite, résoudre $f(a) = 3$ au lieu de $f'(a) = 3$).",
+     "theoremes": [
+      "Équation de la tangente"
      ]
     }
    ]

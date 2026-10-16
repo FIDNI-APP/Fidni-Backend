@@ -288,6 +288,36 @@
      "theoremes": [
       "Ordre et opérations"
      ]
+    },
+    {
+     "question": "Quelle inéquation a pour ensemble de solutions l’intervalle $[-1 ; 5]$ ?",
+     "bonne": "$|x - 2| \\leq 3$",
+     "distracteurs": [
+      "$|x + 2| \\leq 3$",
+      "$|x - 2| \\leq 6$",
+      "$|x - 2| < 3$"
+     ],
+     "explication": "$[a ; b]$ est l’ensemble des $x$ tels que $|x - c| \\leq r$, avec le centre $c = \\dfrac{a + b}{2} = 2$ et le rayon $r = \\dfrac{b - a}{2} = 3$. $|x + 2| \\leq 3$ donne $[-5 ; 1]$ (centre de signe faux), $|x - 2| \\leq 6$ prend la longueur pour le rayon, et $|x - 2| < 3$ donne l’intervalle ouvert $]-1 ; 5[$.",
+     "difficulte": "easy",
+     "cible": "Programme : intervalle et valeur absolue (erreur classique : rayon = longueur, ou centre de signe faux).",
+     "theoremes": [
+      "Valeur absolue et intervalles (|x − a| ≤ r)"
+     ]
+    },
+    {
+     "question": "En étudiant le signe de la différence $(x^2 + 1) - 2x$, que peut-on affirmer pour tout réel $x$ ?",
+     "bonne": "$x^2 + 1 \\geq 2x$",
+     "distracteurs": [
+      "$x^2 + 1 > 2x$",
+      "$x^2 + 1 \\leq 2x$",
+      "$x^2 + 1 \\geq 2x$ seulement pour $x \\geq 0$"
+     ],
+     "explication": "$(x^2 + 1) - 2x = (x - 1)^2 \\geq 0$, donc $x^2 + 1 \\geq 2x$ pour tout réel $x$. L’inégalité n’est pas stricte : il y a égalité pour $x = 1$. Elle est vraie aussi pour $x < 0$ (et même évidente : $2x < 0 < x^2 + 1$).",
+     "difficulte": "medium",
+     "cible": "Programme : comparaison par le signe de la différence (erreur classique : inégalité stricte malgré le cas d’égalité).",
+     "theoremes": [
+      "Ordre et opérations"
+     ]
     }
    ]
   },
@@ -596,6 +626,21 @@
      "cible": "Programme : régionnement du plan (erreur classique : changer le sens en isolant $y$, ou garder un point de la droite dans un demi-plan ouvert).",
      "theoremes": [
       "Régionnement du plan par une droite"
+     ]
+    },
+    {
+     "question": "Quel est l’ensemble des solutions dans $\\mathbb{R}$ de l’inéquation $(1 - x)(2x + 1) \\leq 0$ ?",
+     "bonne": "$\\left]-\\infty ; -\\dfrac{1}{2}\\right] \\cup [1 ; +\\infty[$",
+     "distracteurs": [
+      "$\\left[-\\dfrac{1}{2} ; 1\\right]$",
+      "$\\left]-\\infty ; -\\dfrac{1}{2}\\right[ \\cup ]1 ; +\\infty[$",
+      "$\\left]-\\infty ; -1\\right] \\cup \\left[\\dfrac{1}{2} ; +\\infty\\right[$"
+     ],
+     "explication": "$1 - x$ est du signe de son coefficient $-1$ à droite de $1$ (négatif pour $x > 1$), et $2x + 1$ est positif pour $x > -\\dfrac{1}{2}$. Le tableau de signes donne un produit négatif ou nul pour $x \\leq -\\dfrac{1}{2}$ ou $x \\geq 1$ (ex. $x = 0$ donne $1 > 0$). $\\left[-\\dfrac{1}{2} ; 1\\right]$ oublie le coefficient $-1$ de $x$ ; les bornes sont incluses ; les racines sont $1$ et $-\\dfrac{1}{2}$, pas $-1$ et $\\dfrac{1}{2}$.",
+     "difficulte": "medium",
+     "cible": "Programme : signe de $ax + b$ dans un tableau de signes (erreur classique : ignorer un coefficient $a$ négatif).",
+     "theoremes": [
+      "Signe de ax + b"
      ]
     }
    ]

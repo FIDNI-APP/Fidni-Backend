@@ -256,6 +256,70 @@
      "theoremes": [
       "Propriétés des puissances"
      ]
+    },
+    {
+     "question": "Laquelle de ces affirmations sur les ensembles de nombres est vraie ?",
+     "bonne": "$\\mathbb{D} \\subset \\mathbb{Q}$ : tout nombre décimal s’écrit $\\dfrac{a}{10^n}$ avec $a \\in \\mathbb{Z}$ et $n \\in \\mathbb{N}$.",
+     "distracteurs": [
+      "$\\mathbb{Q} \\subset \\mathbb{D}$ : tout rationnel s’écrit avec un nombre fini de chiffres après la virgule.",
+      "$-3 \\notin \\mathbb{D}$, car un nombre décimal s’écrit avec une virgule.",
+      "$\\sqrt{2} \\in \\mathbb{D}$, car la calculatrice affiche $\\sqrt{2} = 1{,}414213562$."
+     ],
+     "explication": "Un décimal s’écrit $\\dfrac{a}{10^n}$ : c’est un quotient d’entiers, donc $\\mathbb{D} \\subset \\mathbb{Q}$. La réciproque est fausse : $\\dfrac{1}{3} = 0{,}333\\ldots$ n’est pas décimal. $-3 = \\dfrac{-3}{10^0}$ est décimal ($\\mathbb{Z} \\subset \\mathbb{D}$). La calculatrice n’affiche qu’une valeur approchée : $\\sqrt{2}$ est irrationnel, donc pas décimal.",
+     "difficulte": "easy",
+     "cible": "Programme : inclusions $\\mathbb{N} \\subset \\mathbb{Z} \\subset \\mathbb{D} \\subset \\mathbb{Q} \\subset \\mathbb{R}$ (erreurs classiques : « décimal = avec une virgule », valeur affichée prise pour la valeur exacte).",
+     "theoremes": [
+      "Caractérisation des nombres décimaux",
+      "Irrationalité de √2"
+     ]
+    },
+    {
+     "question": "Soit $x$ un réel non nul tel que $x + \\dfrac{1}{x} = 3$. Que vaut $x^2 + \\dfrac{1}{x^2}$ ?",
+     "bonne": "$7$",
+     "distracteurs": [
+      "$9$",
+      "$8$",
+      "$11$"
+     ],
+     "explication": "On élève au carré avec $(a+b)^2 = a^2 + 2ab + b^2$ : $\\left(x + \\dfrac{1}{x}\\right)^2 = x^2 + 2 \\times x \\times \\dfrac{1}{x} + \\dfrac{1}{x^2} = x^2 + 2 + \\dfrac{1}{x^2}$, donc $x^2 + \\dfrac{1}{x^2} = 9 - 2 = 7$. $9$ oublie le double produit, $8$ oublie le facteur $2$ du double produit, $11$ ajoute $2$ au lieu de le retrancher.",
+     "difficulte": "medium",
+     "cible": "Programme : écriture adaptée d’une expression à l’aide d’une identité remarquable (erreur classique : oubli du double produit).",
+     "theoremes": [
+      "Identités remarquables"
+     ]
+    },
+    {
+     "question": "Quelle est l’écriture scientifique de $0{,}0042 \\times 10^{5}$ ?",
+     "bonne": "$4{,}2 \\times 10^{2}$",
+     "distracteurs": [
+      "$4{,}2 \\times 10^{8}$",
+      "$42 \\times 10^{1}$",
+      "$4{,}2 \\times 10^{-2}$"
+     ],
+     "explication": "$0{,}0042 = 4{,}2 \\times 10^{-3}$, donc le nombre vaut $4{,}2 \\times 10^{-3+5} = 4{,}2 \\times 10^{2} = 420$. $10^{8}$ vient de $10^{3+5}$ (signe de l’exposant perdu) ; $42 \\times 10^{1}$ vaut bien $420$ mais n’est pas une écriture scientifique (il faut un nombre entre $1$ et $10$ devant) ; $4{,}2 \\times 10^{-2} = 0{,}042$.",
+     "difficulte": "easy",
+     "cible": "Programme : puissances de $10$ et écriture scientifique (erreur classique : signe de l’exposant).",
+     "theoremes": [
+      "Propriétés des puissances"
+     ]
+    },
+    {
+     "question": "Quelles égalités sur les racines carrées sont vraies ?",
+     "bonnes": [
+      "$\\sqrt{72} = 6\\sqrt{2}$",
+      "$\\sqrt{0{,}09} = 0{,}3$"
+     ],
+     "distracteurs": [
+      "$\\sqrt{72} = 6\\sqrt{12}$",
+      "$\\sqrt{0{,}9} = 0{,}3$",
+      "$\\sqrt{72} = 36\\sqrt{2}$"
+     ],
+     "explication": "$\\sqrt{72} = \\sqrt{36 \\times 2} = \\sqrt{36} \\times \\sqrt{2} = 6\\sqrt{2}$, et $0{,}3^2 = 0{,}09$. On ne sort de la racine qu’un carré : $72 = 6 \\times 12$ ne permet pas d’écrire $6\\sqrt{12}$, et $36$ sort sous la forme $\\sqrt{36} = 6$, pas $36$. Enfin $0{,}3^2 = 0{,}09 \\neq 0{,}9$ : $\\sqrt{0{,}9} \\approx 0{,}95$.",
+     "difficulte": "medium",
+     "cible": "Programme : simplification de racines carrées (erreurs classiques : sortir un facteur qui n’est pas un carré, $\\sqrt{0{,}9} = 0{,}3$).",
+     "theoremes": [
+      "Propriétés des racines carrées"
+     ]
     }
    ]
   },
@@ -513,6 +577,70 @@
      "theoremes": [
       "Parité de la somme et du produit"
      ]
+    },
+    {
+     "question": "Quelles affirmations sur les entiers premiers entre eux sont vraies ?",
+     "bonnes": [
+      "$8$ et $15$ sont premiers entre eux, bien qu’aucun des deux ne soit premier.",
+      "Deux nombres premiers distincts sont toujours premiers entre eux."
+     ],
+     "distracteurs": [
+      "Deux entiers impairs sont toujours premiers entre eux.",
+      "$21$ et $35$ sont premiers entre eux, car aucun des nombres $2$, $3$ et $5$ ne les divise tous les deux.",
+      "Deux entiers pairs peuvent être premiers entre eux."
+     ],
+     "explication": "Premiers entre eux signifie : $\\mathrm{PGCD} = 1$, c’est-à-dire aucun facteur premier commun. $8 = 2^3$ et $15 = 3 \\times 5$ n’en ont aucun ; deux premiers distincts $p$ et $q$ n’ont que $1$ comme diviseur commun. Mais $21 = 3 \\times 7$ et $35 = 5 \\times 7$ ont $7$ en commun (impairs tous les deux, et il ne faut pas s’arrêter à $5$), et deux pairs ont toujours $2$ en commun.",
+     "difficulte": "medium",
+     "cible": "Programme : nombres premiers entre eux, lus sur la décomposition (erreur classique : confondre « premiers entre eux » et « premiers »).",
+     "theoremes": [
+      "PGCD et PPCM par la décomposition en facteurs premiers",
+      "Décomposition en facteurs premiers"
+     ]
+    },
+    {
+     "question": "Pour démontrer que, pour tout $n \\in \\mathbb{N}$, « si $n^2$ est pair, alors $n$ est pair », quel raisonnement est correct ?",
+     "bonne": "Si $n$ était impair, $n = 2k + 1$ et $n^2 = 2(2k^2 + 2k) + 1$ serait impair : c’est absurde, donc $n$ est pair.",
+     "distracteurs": [
+      "Si $n$ est pair, $n = 2k$ et $n^2 = 2(2k^2)$ est pair ; donc si $n^2$ est pair, $n$ est pair.",
+      "$n^2$ est pair, donc $n^2 = 2k$ et $n = \\sqrt{2k}$, qui est pair.",
+      "$4^2 = 16$ et $6^2 = 36$ sont pairs, avec $4$ et $6$ pairs : la propriété est donc vraie."
+     ],
+     "explication": "On raisonne par l’absurde : supposer $n$ impair mène à $n^2$ impair, ce qui contredit l’hypothèse. Montrer « $n$ pair ⇒ $n^2$ pair » prouve la réciproque, pas l’énoncé demandé. $\\sqrt{2k}$ n’est en général même pas un entier, et des exemples ne prouvent jamais une propriété vraie « pour tout $n$ ».",
+     "difficulte": "hard",
+     "cible": "Programme : parité d’un carré (erreurs classiques : démontrer la réciproque, conclure sur des exemples).",
+     "theoremes": [
+      "Parité de la somme et du produit"
+     ]
+    },
+    {
+     "question": "Deux phares s’allument en même temps, puis le premier toutes les $12$ secondes et le second toutes les $18$ secondes. Au bout de combien de secondes s’allumeront-ils de nouveau ensemble pour la première fois ?",
+     "bonne": "$36$",
+     "distracteurs": [
+      "$6$",
+      "$216$",
+      "$30$"
+     ],
+     "explication": "On cherche le plus petit multiple commun non nul de $12$ et $18$ : le PPCM. $12 = 2^2 \\times 3$ et $18 = 2 \\times 3^2$ donnent $\\mathrm{PPCM} = 2^2 \\times 3^2 = 36$. $6$ est le PGCD (un diviseur commun, pas un multiple) ; $216 = 12 \\times 18$ est un multiple commun, mais pas le plus petit ; ajouter $12$ et $18$ n’a pas de sens.",
+     "difficulte": "easy",
+     "cible": "Programme : reconnaître un problème de PPCM (erreurs classiques : PGCD au lieu du PPCM, produit au lieu du PPCM).",
+     "theoremes": [
+      "PGCD et PPCM par la décomposition en facteurs premiers"
+     ]
+    },
+    {
+     "question": "Quel est le plus petit entier naturel non nul $k$ tel que $12k$ soit le carré d’un entier ?",
+     "bonne": "$3$",
+     "distracteurs": [
+      "$12$",
+      "$4$",
+      "$6$"
+     ],
+     "explication": "Un entier est le carré d’un entier si et seulement si tous les exposants de sa décomposition en facteurs premiers sont pairs. $12 = 2^2 \\times 3$ : il manque un facteur $3$, d’où $k = 3$ et $12 \\times 3 = 36 = 6^2$. $k = 12$ donne aussi un carré ($144$), mais pas le plus petit ; $12 \\times 4 = 2^4 \\times 3$ et $12 \\times 6 = 2^3 \\times 3^2$ ont un exposant impair.",
+     "difficulte": "medium",
+     "cible": "Programme : utiliser la décomposition en facteurs premiers pour reconnaître un carré.",
+     "theoremes": [
+      "Décomposition en facteurs premiers"
+     ]
     }
    ]
   },
@@ -711,6 +839,136 @@
      "cible": "Programme : colinéarité de vecteurs de la forme $a\\,\\vec{u} + b\\,\\vec{v}$ (erreurs classiques : ne multiplier qu’un coefficient, erreur de signe).",
      "theoremes": [
       "Condition de colinéarité de deux vecteurs"
+     ]
+    },
+    {
+     "question": "Pour tous points distincts $A$ et $B$, laquelle de ces égalités est vraie ?",
+     "bonne": "$\\overrightarrow{AB} + \\overrightarrow{BA} = \\vec{0}$",
+     "distracteurs": [
+      "$\\overrightarrow{AB} = \\overrightarrow{BA}$",
+      "$\\overrightarrow{AB} + \\overrightarrow{BA} = 2\\,\\overrightarrow{AB}$",
+      "$\\overrightarrow{AB} - \\overrightarrow{BA} = \\vec{0}$"
+     ],
+     "explication": "Chasles : $\\overrightarrow{AB} + \\overrightarrow{BA} = \\overrightarrow{AA} = \\vec{0}$, donc $\\overrightarrow{BA} = -\\overrightarrow{AB}$ : même direction, même longueur, sens contraire. Les longueurs $AB$ et $BA$ sont égales, pas les vecteurs ; et $\\overrightarrow{AB} - \\overrightarrow{BA} = 2\\,\\overrightarrow{AB} \\neq \\vec{0}$.",
+     "difficulte": "easy",
+     "cible": "Programme : vecteurs opposés (erreur classique : $\\overrightarrow{AB} = \\overrightarrow{BA}$ parce que $AB = BA$).",
+     "theoremes": [
+      "Relation de Chasles"
+     ]
+    },
+    {
+     "question": "Soit $\\vec{u}$ un vecteur non nul. Que peut-on dire du vecteur $-3\\,\\vec{u}$ ?",
+     "bonne": "Il a la même direction que $\\vec{u}$, le sens contraire et une longueur trois fois plus grande.",
+     "distracteurs": [
+      "Il a une direction différente de celle de $\\vec{u}$, car le coefficient est négatif.",
+      "Il a le sens contraire de $\\vec{u}$ et la même longueur.",
+      "Il a le même sens que $\\vec{u}$ et une longueur égale à $-3$ fois celle de $\\vec{u}$."
+     ],
+     "explication": "$-3\\,\\vec{u}$ est colinéaire à $\\vec{u}$ : même direction. Le coefficient négatif inverse le sens, et la longueur est multipliée par $3$ (la valeur absolue de $-3$). Une longueur n’est jamais négative, et seul $-\\vec{u}$ a la même longueur que $\\vec{u}$.",
+     "difficulte": "easy",
+     "cible": "Programme : produit d’un vecteur par un réel (direction, sens, longueur).",
+     "theoremes": [
+      "Condition de colinéarité de deux vecteurs"
+     ]
+    },
+    {
+     "question": "Soient $\\vec{u}$ et $\\vec{v}$ deux vecteurs et $\\vec{w} = 2\\left(\\vec{u} - 3\\,\\vec{v}\\right) - 3\\left(\\vec{u} - 2\\,\\vec{v}\\right)$. Alors :",
+     "bonne": "$\\vec{w} = -\\vec{u}$",
+     "distracteurs": [
+      "$\\vec{w} = -\\vec{u} - 8\\,\\vec{v}$",
+      "$\\vec{w} = -\\vec{u} - 12\\,\\vec{v}$",
+      "$\\vec{w} = 5\\,\\vec{u} - 12\\,\\vec{v}$"
+     ],
+     "explication": "On développe : $\\vec{w} = 2\\,\\vec{u} - 6\\,\\vec{v} - 3\\,\\vec{u} + 6\\,\\vec{v} = -\\vec{u}$ : $\\vec{w}$ est colinéaire à $\\vec{u}$. Pièges : n’appliquer $-3$ qu’au premier terme ($-\\vec{u} - 8\\,\\vec{v}$), oublier que $-3 \\times (-2\\,\\vec{v}) = +6\\,\\vec{v}$ ($-\\vec{u} - 12\\,\\vec{v}$), ou ajouter les deux parenthèses ($5\\,\\vec{u} - 12\\,\\vec{v}$).",
+     "difficulte": "medium",
+     "cible": "Programme : calculer un vecteur de la forme $a\\,\\vec{u} + b\\,\\vec{v}$ (erreurs de signe en développant).",
+     "theoremes": [
+      "Condition de colinéarité de deux vecteurs"
+     ]
+    },
+    {
+     "question": "Soient $A$ et $B$ deux points distincts. Quel point $M$ vérifie $\\overrightarrow{MA} + \\overrightarrow{MB} = \\overrightarrow{AB}$ ?",
+     "bonne": "Le point $A$",
+     "distracteurs": [
+      "Le point $B$",
+      "Le milieu $I$ de $[AB]$",
+      "Aucun point : l’égalité est impossible."
+     ],
+     "explication": "Avec $I$ milieu de $[AB]$ : $\\overrightarrow{MA} + \\overrightarrow{MB} = 2\\,\\overrightarrow{MI}$, donc $\\overrightarrow{MI} = \\dfrac{1}{2}\\,\\overrightarrow{AB} = \\overrightarrow{AI}$, d’où $M = A$. Vérification : $\\overrightarrow{AA} + \\overrightarrow{AB} = \\overrightarrow{AB}$. Pour $M = B$, on obtient $\\overrightarrow{BA} = -\\overrightarrow{AB}$ ; pour $M = I$, on obtient $\\vec{0}$.",
+     "difficulte": "hard",
+     "cible": "Programme : déterminer un point défini par une égalité vectorielle à l’aide du milieu.",
+     "theoremes": [
+      "Caractérisation vectorielle du milieu d'un segment",
+      "Relation de Chasles"
+     ]
+    },
+    {
+     "question": "$ABCD$ est un parallélogramme de centre $O$. Quelles égalités sont vraies ?",
+     "bonnes": [
+      "$\\overrightarrow{OA} + \\overrightarrow{OC} = \\vec{0}$",
+      "$\\overrightarrow{OA} + \\overrightarrow{OB} + \\overrightarrow{OC} + \\overrightarrow{OD} = \\vec{0}$"
+     ],
+     "distracteurs": [
+      "$\\overrightarrow{OA} = \\overrightarrow{OC}$",
+      "$\\overrightarrow{OA} + \\overrightarrow{OB} = \\vec{0}$",
+      "$\\overrightarrow{AC} = 2\\,\\overrightarrow{OA}$"
+     ],
+     "explication": "Les diagonales d’un parallélogramme ont le même milieu $O$ : $\\overrightarrow{OA} + \\overrightarrow{OC} = \\vec{0}$ et $\\overrightarrow{OB} + \\overrightarrow{OD} = \\vec{0}$ ; en ajoutant, la somme des quatre vecteurs est nulle. $OA = OC$ en longueur, mais les vecteurs sont opposés ; $A$ et $B$ ne sont pas sur la même diagonale ; enfin $\\overrightarrow{AC} = 2\\,\\overrightarrow{AO} = 2\\,\\overrightarrow{OC}$.",
+     "difficulte": "medium",
+     "cible": "Programme : diagonales d’un parallélogramme et caractérisation vectorielle du milieu.",
+     "theoremes": [
+      "Caractérisation vectorielle d'un parallélogramme",
+      "Caractérisation vectorielle du milieu d'un segment"
+     ]
+    },
+    {
+     "question": "$ABC$ est un triangle, $E$ et $F$ sont les points tels que $\\overrightarrow{AE} = 3\\,\\overrightarrow{AB}$ et $\\overrightarrow{AF} = 3\\,\\overrightarrow{AC}$. Que peut-on conclure ?",
+     "bonne": "$\\overrightarrow{EF} = 3\\,\\overrightarrow{BC}$, donc les droites $(EF)$ et $(BC)$ sont parallèles.",
+     "distracteurs": [
+      "$\\overrightarrow{EF} = 3\\,\\overrightarrow{BC}$, donc les points $E$, $F$, $B$ et $C$ sont alignés.",
+      "$\\overrightarrow{EF} = \\overrightarrow{BC}$, donc $BCFE$ est un parallélogramme.",
+      "$\\overrightarrow{EF} = 9\\,\\overrightarrow{BC}$, donc les droites $(EF)$ et $(BC)$ sont parallèles."
+     ],
+     "explication": "Chasles : $\\overrightarrow{EF} = \\overrightarrow{EA} + \\overrightarrow{AF} = -3\\,\\overrightarrow{AB} + 3\\,\\overrightarrow{AC} = 3\\left(\\overrightarrow{BA} + \\overrightarrow{AC}\\right) = 3\\,\\overrightarrow{BC}$. Des vecteurs colinéaires donnent des droites parallèles, pas forcément confondues : ici $E$ n’est pas sur $(BC)$. Le facteur $3$ ne disparaît pas, et il ne se met pas au carré.",
+     "difficulte": "medium",
+     "cible": "Programme : démontrer un parallélisme à l’aide de l’outil vectoriel (erreur classique : confondre parallèles et alignés).",
+     "theoremes": [
+      "Relation de Chasles",
+      "Condition de colinéarité de deux vecteurs"
+     ]
+    },
+    {
+     "question": "Pour tous points $A$, $B$, $C$ et $D$, quelles égalités sont toujours vraies ?",
+     "bonnes": [
+      "$\\overrightarrow{AB} + \\overrightarrow{CD} = \\overrightarrow{AD} + \\overrightarrow{CB}$",
+      "$\\overrightarrow{AB} - \\overrightarrow{CB} = \\overrightarrow{AC}$"
+     ],
+     "distracteurs": [
+      "$\\overrightarrow{AB} + \\overrightarrow{CD} = \\overrightarrow{AC} + \\overrightarrow{BD}$",
+      "$\\overrightarrow{AB} - \\overrightarrow{CB} = \\overrightarrow{CA}$",
+      "$\\overrightarrow{AB} + \\overrightarrow{BC} + \\overrightarrow{CD} = \\overrightarrow{DA}$"
+     ],
+     "explication": "$\\overrightarrow{AB} + \\overrightarrow{CD} = \\overrightarrow{AD} + \\overrightarrow{DB} + \\overrightarrow{CB} + \\overrightarrow{BD} = \\overrightarrow{AD} + \\overrightarrow{CB}$ : on peut échanger les extrémités. Échanger l’extrémité $B$ et l’origine $C$ est faux : l’écart vaut $2\\,\\overrightarrow{CB}$. Retrancher $\\overrightarrow{CB}$, c’est ajouter $\\overrightarrow{BC}$ : $\\overrightarrow{AB} + \\overrightarrow{BC} = \\overrightarrow{AC}$, pas $\\overrightarrow{CA}$. Enfin, la chaîne $A \\to B \\to C \\to D$ donne $\\overrightarrow{AD}$.",
+     "difficulte": "medium",
+     "cible": "Programme : relation de Chasles avec quatre points et avec une différence.",
+     "theoremes": [
+      "Relation de Chasles"
+     ]
+    },
+    {
+     "question": "$E$ est le symétrique du point $A$ par rapport au point $B$. Laquelle de ces égalités est vraie ?",
+     "bonne": "$\\overrightarrow{AE} = 2\\,\\overrightarrow{AB}$",
+     "distracteurs": [
+      "$\\overrightarrow{AE} = \\dfrac{1}{2}\\,\\overrightarrow{AB}$",
+      "$\\overrightarrow{BE} = \\overrightarrow{BA}$",
+      "$\\overrightarrow{AE} = 2\\,\\overrightarrow{BA}$"
+     ],
+     "explication": "$E$ symétrique de $A$ par rapport à $B$ signifie que $B$ est le milieu de $[AE]$ : $\\overrightarrow{BE} = \\overrightarrow{AB}$, d’où $\\overrightarrow{AE} = \\overrightarrow{AB} + \\overrightarrow{BE} = 2\\,\\overrightarrow{AB}$. $\\overrightarrow{AE} = \\dfrac{1}{2}\\,\\overrightarrow{AB}$ ferait de $E$ le milieu de $[AB]$ ; $\\overrightarrow{BE} = \\overrightarrow{BA}$ donnerait $E = A$ ; et $2\\,\\overrightarrow{BA}$ a le mauvais sens.",
+     "difficulte": "easy",
+     "cible": "Programme : traduire « symétrique par rapport à un point » par une égalité vectorielle.",
+     "theoremes": [
+      "Caractérisation vectorielle du milieu d'un segment",
+      "Relation de Chasles"
      ]
     }
    ]

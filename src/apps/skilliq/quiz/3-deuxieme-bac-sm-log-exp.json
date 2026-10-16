@@ -287,6 +287,36 @@
       "Logarithme décimal",
       "Fonction logarithme de base a"
      ]
+    },
+    {
+     "question": "Quel est l’ensemble des solutions dans $\\mathbb{R}^2$ du système $\\begin{cases} \\ln x + \\ln y = \\ln 6 \\\\ x - y = 1 \\end{cases}$ ?",
+     "bonne": "$\\{(3\\,;2)\\}$",
+     "distracteurs": [
+      "$\\{(3\\,;2)\\,;(-2\\,;-3)\\}$",
+      "$\\left\\{\\left(\\dfrac{7}{2}\\,;\\dfrac{5}{2}\\right)\\right\\}$",
+      "$\\{(2\\,;3)\\}$"
+     ],
+     "explication": "Domaine : $x > 0$ et $y > 0$. Alors $\\ln(xy) = \\ln 6 \\iff xy = 6$ ; avec $x = y + 1$ : $y^2 + y - 6 = 0$, soit $y = 2$ ou $y = -3$, et seul $y = 2$ convient : $(3\\,;2)$. $(-2\\,;-3)$ vérifie $xy = 6$ mais pas le domaine ; $\\left(\\dfrac72\\,;\\dfrac52\\right)$ vient de $\\ln x + \\ln y = \\ln(x + y)$ ; $(2\\,;3)$ donne $x - y = -1$.",
+     "difficulte": "medium",
+     "cible": "Programme : systèmes logarithmiques (erreur classique : oublier le domaine $x > 0$, $y > 0$, ou écrire $\\ln x + \\ln y = \\ln(x + y)$).",
+     "theoremes": [
+      "Dérivée et propriétés du logarithme"
+     ]
+    },
+    {
+     "question": "Au voisinage de $+\\infty$, la courbe de la fonction $\\ln$ admet :",
+     "bonne": "une branche parabolique de direction l’axe des abscisses",
+     "distracteurs": [
+      "une asymptote horizontale",
+      "une branche parabolique de direction l’axe des ordonnées",
+      "une asymptote oblique d’équation $y = x - 1$"
+     ],
+     "explication": "$\\lim\\limits_{+\\infty} \\ln x = +\\infty$ : pas d’asymptote horizontale, même si $\\ln$ croît lentement. $\\lim\\limits_{+\\infty} \\dfrac{\\ln x}{x} = 0$ : branche parabolique de direction $(Ox)$. La direction $(Oy)$ correspondrait à $\\dfrac{\\ln x}{x} \\to \\pm\\infty$ (cas de $\\exp$) ; $y = x - 1$ est la tangente en $1$, pas une asymptote.",
+     "difficulte": "hard",
+     "cible": "Programme : branches infinies de la courbe de $\\ln$ (erreur classique : croire que $\\ln$ est bornée, ou confondre les directions $(Ox)$ et $(Oy)$).",
+     "theoremes": [
+      "Limites usuelles du logarithme"
+     ]
     }
    ]
   },
@@ -574,6 +604,36 @@
      "cible": "Programme : exponentielle de base $a$ (erreur classique : croire $a^x$ toujours croissante, ou $(a^x)^y = a^{x^y}$).",
      "theoremes": [
       "Fonction exponentielle de base a"
+     ]
+    },
+    {
+     "question": "Quel est l’ensemble des solutions de l’inéquation $e^{2x} - 3e^x + 2 < 0$ ?",
+     "bonne": "$]0\\,;\\ln 2[$",
+     "distracteurs": [
+      "$]1\\,;2[$",
+      "$]-\\infty\\,;0[\\, \\cup\\, ]\\ln 2\\,;+\\infty[$",
+      "$]0\\,;2[$"
+     ],
+     "explication": "Avec $X = e^x$ : $X^2 - 3X + 2 = (X - 1)(X - 2) < 0 \\iff 1 < X < 2 \\iff 0 < x < \\ln 2$, car $\\exp$ est strictement croissante. $]1\\,;2[$ s’arrête à $X$ ; l’union est le signe « à l’extérieur des racines », alors que le trinôme est négatif entre elles ; $]0\\,;2[$ ne revient à $x$ que pour une borne.",
+     "difficulte": "medium",
+     "cible": "Programme : inéquations exponentielles par changement de variable (erreur classique : oublier de revenir de $X = e^x$ à $x$).",
+     "theoremes": [
+      "Dérivée et propriétés de l'exponentielle"
+     ]
+    },
+    {
+     "question": "Pour $x > 0$, quelle est la dérivée de $f(x) = x^x$ ?",
+     "bonne": "$f'(x) = (\\ln x + 1)\\,x^x$",
+     "distracteurs": [
+      "$f'(x) = x \\times x^{x - 1}$",
+      "$f'(x) = x^x \\ln x$",
+      "$f'(x) = \\ln x + 1$"
+     ],
+     "explication": "$x^x = e^{x\\ln x}$, donc $f'(x) = (x\\ln x)'\\,e^{x\\ln x} = (\\ln x + 1)\\,x^x$. $x \\cdot x^{x-1}$ traite l’exposant comme une constante (règle de $x^n$) ; $x^x \\ln x$ traite la base comme une constante (règle de $a^x$) ; $\\ln x + 1$ oublie le facteur $e^u$ dans $(e^u)' = u'e^u$.",
+     "difficulte": "hard",
+     "cible": "Programme : puissances réelles $x^r = e^{r\\ln x}$ et dérivée de $e^u$ (erreur classique : appliquer la règle de $x^n$ ou de $a^x$ à $x^x$).",
+     "theoremes": [
+      "Dérivée et propriétés de l'exponentielle"
      ]
     }
    ]

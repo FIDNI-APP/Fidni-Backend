@@ -271,6 +271,51 @@
      "theoremes": [
       "Logarithme décimal"
      ]
+    },
+    {
+     "question": "Quelle est la dérivée de $f(x) = \\ln(\\ln x)$ sur $]1\\,;+\\infty[$ ?",
+     "bonne": "$f'(x) = \\dfrac{1}{x \\ln x}$",
+     "distracteurs": [
+      "$f'(x) = \\dfrac{1}{\\ln x}$",
+      "$f'(x) = \\dfrac{1}{x}$",
+      "$f'(x) = \\dfrac{\\ln x}{x}$"
+     ],
+     "explication": "Sur $]1\\,;+\\infty[$, $u(x) = \\ln x > 0$, donc $f = \\ln u$ est dérivable et $f'(x) = \\dfrac{u'(x)}{u(x)} = \\dfrac{1/x}{\\ln x} = \\dfrac{1}{x\\ln x}$. $\\dfrac{1}{\\ln x}$ oublie $u'$ ; $\\dfrac{1}{x}$ dérive seulement le $\\ln$ intérieur ; $\\dfrac{\\ln x}{x}$ multiplie par $u$ au lieu de diviser.",
+     "difficulte": "medium",
+     "cible": "Programme : dérivée de $\\ln u$ quand $u$ est elle-même un logarithme (erreur classique : oublier $u'$ ou écrire $u' \\times u$).",
+     "theoremes": [
+      "Dérivée logarithmique (u′/u)"
+     ]
+    },
+    {
+     "question": "Quelle est l’équation de la tangente à la courbe de $x \\mapsto \\ln x$ au point d’abscisse $e$ ?",
+     "bonne": "$y = \\dfrac{x}{e}$",
+     "distracteurs": [
+      "$y = x - e + 1$",
+      "$y = \\dfrac{x}{e} + 1$",
+      "$y = \\dfrac{x - e}{e}$"
+     ],
+     "explication": "$y = \\ln'(e)(x - e) + \\ln e$ avec $\\ln'(e) = \\dfrac{1}{e}$ et $\\ln e = 1$ : $y = \\dfrac{x - e}{e} + 1 = \\dfrac{x}{e}$ (la tangente passe par l’origine). $y = x - e + 1$ prend la pente égale à $\\ln e = 1$ ; $\\dfrac{x}{e} + 1$ écrit $y = f'(e)\\,x + f(e)$ en oubliant le « $x - e$ » ; $\\dfrac{x - e}{e}$ oublie d’ajouter $\\ln e$.",
+     "difficulte": "easy",
+     "cible": "Programme : étude de fonctions faisant intervenir $\\ln$, tangente (erreur classique : confondre $\\ln e$ et $\\ln'(e)$, ou oublier un terme de $y = f'(a)(x-a) + f(a)$).",
+     "theoremes": [
+      "Dérivée et propriétés du logarithme"
+     ]
+    },
+    {
+     "question": "Quel est l’ensemble des solutions dans $\\mathbb{R}^2$ du système $\\begin{cases} x + y = 5 \\\\ \\ln x + \\ln y = \\ln 6 \\end{cases}$ ?",
+     "bonne": "$\\{(2\\,;3)\\,;(3\\,;2)\\}$",
+     "distracteurs": [
+      "$\\{(2\\,;3)\\}$",
+      "$\\{(6\\,;-1)\\,;(-1\\,;6)\\}$",
+      "$\\emptyset$"
+     ],
+     "explication": "Il faut $x > 0$ et $y > 0$ ; alors $\\ln(xy) = \\ln 6 \\iff xy = 6$. $x$ et $y$ sont les racines de $t^2 - 5t + 6 = 0$, soit $2$ et $3$, positives : deux couples, $(2\\,;3)$ et $(3\\,;2)$. $\\{(2\\,;3)\\}$ oublie l’ordre du couple ; $6$ et $-1$ viennent de $t^2 - 5t - 6 = 0$ (erreur de signe) et violent $y > 0$ ; $\\emptyset$ vient de $\\ln x + \\ln y = \\ln(x + y)$, d’où $5 = 6$.",
+     "difficulte": "medium",
+     "cible": "Programme : systèmes logarithmiques (erreur classique : $\\ln x + \\ln y = \\ln(x + y)$, oublier $x > 0$, $y > 0$ ou l’un des deux couples).",
+     "theoremes": [
+      "Dérivée et propriétés du logarithme"
+     ]
     }
    ]
   }

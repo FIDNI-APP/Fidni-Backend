@@ -601,6 +601,72 @@
      "theoremes": [
       "Associativité du barycentre"
      ]
+    },
+    {
+     "question": "$A \\neq B$. Le point $C$ tel que $\\overrightarrow{AC} = 3\\overrightarrow{AB}$ est le barycentre de :",
+     "bonne": "$\\{(A\\,;-2),(B\\,;3)\\}$",
+     "distracteurs": [
+      "$\\{(A\\,;1),(B\\,;3)\\}$",
+      "$\\{(A\\,;3),(B\\,;-2)\\}$",
+      "$\\{(A\\,;1),(B\\,;-3)\\}$"
+     ],
+     "explication": "$\\overrightarrow{AC} = 3\\overrightarrow{AB}$ s’écrit $\\overrightarrow{AC} = 3(\\overrightarrow{AC} + \\overrightarrow{CB})$, soit $-2\\overrightarrow{CA} + 3\\overrightarrow{CB} = \\vec{0}$ : $C$ est le barycentre de $\\{(A\\,;-2),(B\\,;3)\\}$, et $\\dfrac{3}{-2 + 3} = 3$. Les autres donnent $\\overrightarrow{AG} = \\dfrac{3}{4}\\overrightarrow{AB}$, $-2\\overrightarrow{AB}$ et $\\dfrac{3}{2}\\overrightarrow{AB}$ : le rapport $3$ n’est pas un coefficient.",
+     "difficulte": "easy",
+     "cible": "Programme : un point de $(AB)$ comme barycentre de $A$ et $B$ (erreur classique : prendre le rapport $3$ directement comme coefficient).",
+     "theoremes": [
+      "Barycentre de deux points et alignement",
+      "Existence et propriété caractéristique du barycentre"
+     ]
+    },
+    {
+     "question": "Dans un repère, $A(1\\,;2)$, $B(3\\,;-1)$ et $C(2\\,;5)$. Quelles sont les coordonnées du centre de gravité $G$ du triangle $ABC$ ?",
+     "bonne": "$(2\\,;2)$",
+     "distracteurs": [
+      "$(3\\,;3)$",
+      "$(6\\,;6)$",
+      "$\\left(\\dfrac{5}{2}\\,;2\\right)$"
+     ],
+     "explication": "$G$ est l’isobarycentre de $A$, $B$, $C$ : $x_G = \\dfrac{1 + 3 + 2}{3} = 2$ et $y_G = \\dfrac{2 - 1 + 5}{3} = 2$. On divise par $3$ (nombre de points), ni par $2$ ni pas du tout. $\\left(\\dfrac{5}{2}\\,;2\\right)$ est le milieu de $[BC]$, pied de la médiane issue de $A$, pas $G$.",
+     "difficulte": "easy",
+     "cible": "Programme : centre de gravité d’un triangle en coordonnées (erreur classique : le confondre avec le milieu d’un côté).",
+     "theoremes": [
+      "Centre de gravité d'un triangle",
+      "Coordonnées du barycentre"
+     ]
+    },
+    {
+     "question": "$A \\neq B$. Quel est l’ensemble des points $M$ tels que $\\left\\|2\\overrightarrow{MA} + \\overrightarrow{MB}\\right\\| = \\left\\|\\overrightarrow{MA} + 2\\overrightarrow{MB}\\right\\|$ ?",
+     "bonne": "La médiatrice du segment $[AB]$",
+     "distracteurs": [
+      "La droite $(AB)$",
+      "Le cercle de diamètre $[G_1G_2]$, où $G_1$ et $G_2$ sont les barycentres de $\\{(A\\,;2),(B\\,;1)\\}$ et $\\{(A\\,;1),(B\\,;2)\\}$",
+      "Le seul milieu $I$ du segment $[AB]$"
+     ],
+     "explication": "Avec $G_1$ et $G_2$ : $2\\overrightarrow{MA} + \\overrightarrow{MB} = 3\\overrightarrow{MG_1}$ et $\\overrightarrow{MA} + 2\\overrightarrow{MB} = 3\\overrightarrow{MG_2}$. L’égalité devient $MG_1 = MG_2$ : médiatrice de $[G_1G_2]$, qui est celle de $[AB]$ car $G_1$ et $G_2$ sont symétriques par rapport à $I$. Une égalité de normes donne une médiatrice, pas un cercle ; et ce n’est pas une égalité de vecteurs.",
+     "difficulte": "medium",
+     "cible": "Programme : lignes de niveau $MG_1 = MG_2$ (erreur classique : traiter l’égalité des normes comme une égalité de vecteurs).",
+     "theoremes": [
+      "Lignes de niveau et lieux géométriques",
+      "Réduction d'une somme vectorielle pondérée"
+     ]
+    },
+    {
+     "question": "$A$, $B$, $C$ sont trois points du plan. Pour quels systèmes le barycentre existe-t-il ?",
+     "bonnes": [
+      "$\\{(A\\,;2),(B\\,;-3),(C\\,;2)\\}$",
+      "$\\{(A\\,;1),(B\\,;0),(C\\,;-3)\\}$"
+     ],
+     "distracteurs": [
+      "$\\{(A\\,;1),(B\\,;1),(C\\,;-2)\\}$",
+      "$\\left\\{(A\\,;\\sqrt{2}),(B\\,;1 - \\sqrt{2}),(C\\,;-1)\\right\\}$",
+      "$\\left\\{\\left(A\\,;\\dfrac{1}{2}\\right),\\left(B\\,;\\dfrac{1}{3}\\right),\\left(C\\,;-\\dfrac{5}{6}\\right)\\right\\}$"
+     ],
+     "explication": "Le barycentre existe si et seulement si la somme des coefficients est non nulle : $2 - 3 + 2 = 1$ et $1 + 0 - 3 = -2$ conviennent ; un coefficient négatif ou nul n’empêche rien. Les trois autres ont une somme nulle : $1 + 1 - 2$, $\\sqrt{2} + 1 - \\sqrt{2} - 1$ et $\\dfrac{1}{2} + \\dfrac{1}{3} - \\dfrac{5}{6}$.",
+     "difficulte": "medium",
+     "cible": "Programme : existence du barycentre de trois points (erreur classique : rejeter un coefficient nul ou négatif, ne pas voir une somme nulle).",
+     "theoremes": [
+      "Existence et propriété caractéristique du barycentre"
+     ]
     }
    ]
   }

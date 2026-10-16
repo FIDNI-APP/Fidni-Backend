@@ -271,6 +271,54 @@
      "theoremes": [
       "Raisonnement par équivalences successives"
      ]
+    },
+    {
+     "question": "Soit $f : \\mathbb{R} \\to \\mathbb{R}$. Quelle est la négation de « $\\exists!\\, x \\in \\mathbb{R} : f(x) = 0$ » ?",
+     "bonne": "$\\left(\\forall x \\in \\mathbb{R},\\ f(x) \\neq 0\\right)$ ou $\\left(\\exists (x, x') \\in \\mathbb{R}^2 : x \\neq x' \\text{ et } f(x) = f(x') = 0\\right)$",
+     "distracteurs": [
+      "$\\forall x \\in \\mathbb{R},\\ f(x) \\neq 0$",
+      "$\\exists!\\, x \\in \\mathbb{R} : f(x) \\neq 0$",
+      "$\\exists (x, x') \\in \\mathbb{R}^2 : x \\neq x' \\text{ et } f(x) = f(x') = 0$"
+     ],
+     "explication": "« $\\exists!$ » signifie « au moins un ET au plus un ». Sa négation : aucun zéro, OU au moins deux zéros distincts. Chacune des deux moitiés seule oublie un cas ; « $\\exists!\\, x : f(x) \\neq 0$ » ne nie rien du tout (on ne remplace pas $\\exists!$ par $\\exists!$).",
+     "difficulte": "hard",
+     "cible": "Programme : quantificateur $\\exists!$ et sa négation (erreur classique : nier seulement « il existe »).",
+     "theoremes": [
+      "Négation d'une proposition quantifiée"
+     ]
+    },
+    {
+     "question": "Dans $\\mathbb{R}$, quel est l’ensemble des solutions de l’équation $|x - 2| = 2x + 1$ ?",
+     "bonne": "$\\left\\{\\dfrac{1}{3}\\right\\}$",
+     "distracteurs": [
+      "$\\left\\{-3\\,;\\dfrac{1}{3}\\right\\}$",
+      "$\\{-3\\}$",
+      "$\\varnothing$"
+     ],
+     "explication": "On distingue deux cas. Si $x \\geq 2$ : $x - 2 = 2x + 1$ donne $x = -3$, qui n’est pas $\\geq 2$ : rejeté. Si $x < 2$ : $2 - x = 2x + 1$ donne $x = \\dfrac{1}{3}$, qui est bien $< 2$. Il faut toujours confronter la solution trouvée à la condition du cas.",
+     "difficulte": "medium",
+     "cible": "Programme : raisonnement par disjonction des cas (erreur classique : garder une solution hors de son cas).",
+     "theoremes": [
+      "Raisonnement par disjonction des cas"
+     ]
+    },
+    {
+     "question": "Pour $n \\in \\mathbb{N}$, on note $P(n)$ : « $2^n > n^2$ ». Quelles affirmations sont vraies ?",
+     "bonnes": [
+      "$P(1)$ est vraie.",
+      "$P(n)$ est vraie pour tout $n \\geq 5$."
+     ],
+     "distracteurs": [
+      "$P(n)$ est vraie pour tout $n \\geq 1$.",
+      "$P(4)$ est vraie.",
+      "Pour tout $n \\geq 1$, $P(n) \\Rightarrow P(n+1)$."
+     ],
+     "explication": "$2 > 1$, mais $4 > 4$, $8 > 9$ et $16 > 16$ sont fausses. Initialisation : $32 > 25$. Hérédité pour $n \\geq 5$ : $2^{n+1} > 2n^2 \\geq (n + 1)^2$, car $n^2 - 2n - 1 = (n - 1)^2 - 2 \\geq 0$. L’hérédité n’est pas vraie dès $n = 1$ : $P(1)$ vraie mais $P(2)$ fausse. Une récurrence démarre au rang où initialisation ET hérédité sont acquises.",
+     "difficulte": "hard",
+     "cible": "Programme : récurrence à partir d’un certain rang (erreur classique : initialiser trop tôt).",
+     "theoremes": [
+      "Raisonnement par récurrence"
+     ]
     }
    ]
   },
@@ -527,6 +575,69 @@
      "cible": "Programme : propriétés de l’image directe et de l’image réciproque (erreur classique : croire que $f^{-1}$ « annule » $f$).",
      "theoremes": [
       "Image directe et image réciproque d'une partie"
+     ]
+    },
+    {
+     "question": "Soit $E = \\{1\\,;2\\,;3\\}$ et $\\mathcal{P}(E)$ l’ensemble de ses parties. Quelles affirmations sont vraies ?",
+     "bonnes": [
+      "$\\{1\\,;2\\} \\in \\mathcal{P}(E)$",
+      "$\\mathcal{P}(E)$ a $8$ éléments."
+     ],
+     "distracteurs": [
+      "$1 \\in \\mathcal{P}(E)$",
+      "$\\varnothing \\notin \\mathcal{P}(E)$",
+      "$\\mathcal{P}(E)$ a $6$ éléments."
+     ],
+     "explication": "Les éléments de $\\mathcal{P}(E)$ sont des parties de $E$ : $\\{1\\,;2\\} \\subset E$, donc $\\{1\\,;2\\} \\in \\mathcal{P}(E)$ ; mais $1$ est un élément de $E$, pas une partie. On compte : $\\varnothing$, $\\{1\\}$, $\\{2\\}$, $\\{3\\}$, $\\{1\\,;2\\}$, $\\{1\\,;3\\}$, $\\{2\\,;3\\}$, $E$, soit $8 = 2^3$. On en trouve $6$ si l’on oublie $\\varnothing$ et $E$, qui sont toujours des parties de $E$.",
+     "difficulte": "medium",
+     "cible": "Programme : ensemble des parties $\\mathcal{P}(E)$ (erreur classique : confondre appartenance et inclusion).",
+     "theoremes": [
+      "Opérations sur les ensembles et lois de De Morgan"
+     ]
+    },
+    {
+     "question": "Soient $A$ et $B$ deux parties non vides d’un ensemble $E$. On a $A \\times B = B \\times A$ si et seulement si :",
+     "bonne": "$A = B$",
+     "distracteurs": [
+      "$A \\cap B \\neq \\varnothing$",
+      "$A \\subset B$",
+      "toujours : le produit cartésien est commutatif."
+     ],
+     "explication": "$A \\times B$ est formé de couples, et l’ordre compte : $(a, b) \\neq (b, a)$ en général. Si $A \\times B = B \\times A$, pour $a \\in A$ et $b \\in B$, $(a, b) \\in B \\times A$ donne $a \\in B$ et $b \\in A$, d’où $A = B$. Contre-exemple pour les autres : $A = \\{1\\}$, $B = \\{1\\,;2\\}$, où $(1, 2) \\in A \\times B$ mais $(1, 2) \\notin B \\times A$.",
+     "difficulte": "medium",
+     "cible": "Programme : produit cartésien de deux ensembles (erreur classique : oublier que l’ordre du couple compte).",
+     "theoremes": [
+      "Opérations sur les ensembles et lois de De Morgan"
+     ]
+    },
+    {
+     "question": "Soient $f : E \\to F$, $g : F \\to G$ deux applications et $C$ une partie de $G$. L’ensemble $(g \\circ f)^{-1}(C)$ est égal à :",
+     "bonne": "$f^{-1}\\left(g^{-1}(C)\\right)$",
+     "distracteurs": [
+      "$g^{-1}\\left(f^{-1}(C)\\right)$",
+      "$f\\left(g^{-1}(C)\\right)$",
+      "$g^{-1}(C)$"
+     ],
+     "explication": "$x \\in (g \\circ f)^{-1}(C) \\iff g(f(x)) \\in C \\iff f(x) \\in g^{-1}(C) \\iff x \\in f^{-1}\\left(g^{-1}(C)\\right)$. Aucune bijectivité n’est nécessaire : $f^{-1}$ désigne ici l’image réciproque. $f^{-1}(C)$ n’a pas de sens ($C \\subset G$, pas $F$), et $g^{-1}(C)$ est une partie de $F$, pas de $E$.",
+     "difficulte": "medium",
+     "cible": "Programme : image réciproque par une composée (erreur classique : ordre des applications).",
+     "theoremes": [
+      "Image directe et image réciproque d'une partie"
+     ]
+    },
+    {
+     "question": "Soit $f : \\mathbb{R} \\to \\mathbb{R}$ strictement croissante. Que peut-on affirmer ?",
+     "bonne": "$f$ est injective.",
+     "distracteurs": [
+      "$f$ est surjective.",
+      "$f$ est bijective.",
+      "$f$ ne peut pas être surjective."
+     ],
+     "explication": "Si $x \\neq x'$, par exemple $x < x'$, alors $f(x) < f(x')$, donc $f(x) \\neq f(x')$. En revanche $x \\mapsto \\dfrac{x}{1 + |x|}$ est strictement croissante et ne prend que des valeurs dans $\\left]-1\\,;1\\right[$ : elle n’est pas surjective, donc pas bijective. Et $x \\mapsto x$ est strictement croissante et surjective.",
+     "difficulte": "medium",
+     "cible": "Programme : caractérisation d’une injection (erreur classique : « strictement monotone » donne aussi la surjectivité).",
+     "theoremes": [
+      "Caractérisation d'une injection, d'une surjection, d'une bijection"
      ]
     }
    ]
@@ -797,6 +908,54 @@
      "explication": "$n = 2k + 1$ donne $n^2 = 4k(k + 1) + 1$, et $k(k + 1)$ est pair. Modulo $3$, $n \\equiv 0, 1$ ou $2$ et $n^3 \\equiv 0, 1$ ou $8 \\equiv 2$ : on retrouve $n$. Contre-exemples : $2^2 = 4 \\ [5]$ (le résultat « $0$ ou $1$ » vaut modulo $4$, pas $5$) ; $9 \\equiv 3 \\ [6]$ mais $9 \\not\\equiv 3 \\ [12]$ (seule la réciproque est vraie) ; $10 \\equiv -1 \\ [11]$, donc $10^n \\equiv (-1)^n$ et $10^1 \\equiv 10 \\ [11]$.",
      "difficulte": "hard",
      "cible": "Programme : congruences modulo $n$ (erreur classique : généraliser un résultat vu pour un autre module).",
+     "theoremes": [
+      "Congruences modulo n"
+     ]
+    },
+    {
+     "question": "Combien l’entier $72 = 2^3 \\times 3^2$ a-t-il de diviseurs positifs ?",
+     "bonne": "$12$",
+     "distracteurs": [
+      "$6$",
+      "$5$",
+      "$8$"
+     ],
+     "explication": "Un diviseur positif s’écrit $2^a \\times 3^b$ avec $0 \\leq a \\leq 3$ et $0 \\leq b \\leq 2$ : $4 \\times 3 = 12$ choix. On trouve $6 = 3 \\times 2$ ou $8 = 4 \\times 2$ en oubliant l’exposant $0$, et $5 = 3 + 2$ en additionnant les exposants.",
+     "difficulte": "medium",
+     "cible": "Programme : diviseurs et décomposition en facteurs premiers (erreur classique : oublier l’exposant $0$).",
+     "theoremes": [
+      "Décomposition en facteurs premiers"
+     ]
+    },
+    {
+     "question": "Le reste de la division euclidienne d’un entier $n$ par $6$ est $4$. Quel est le reste de la division euclidienne de $n$ par $3$ ?",
+     "bonne": "$1$",
+     "distracteurs": [
+      "$4$",
+      "$2$",
+      "On ne peut pas le savoir sans connaître $n$."
+     ],
+     "explication": "$n = 6q + 4 = 3(2q + 1) + 1$, avec $0 \\leq 1 < 3$ : le reste est $1$, quel que soit $q$. $4$ n’est pas un reste possible ($4 \\geq 3$), et diviser le reste par $2$ n’a pas de sens. Exemples : $4$, $10$, $16$ donnent bien le reste $1$ par $3$.",
+     "difficulte": "medium",
+     "cible": "Programme : division euclidienne (erreur classique : garder un reste supérieur au diviseur).",
+     "theoremes": [
+      "Division euclidienne dans ℤ"
+     ]
+    },
+    {
+     "question": "Soit $p$ un nombre premier, $p \\geq 5$. Quelles affirmations sont vraies ?",
+     "bonnes": [
+      "$p \\equiv 1 \\ [6]$ ou $p \\equiv 5 \\ [6]$",
+      "$3$ divise $p^2 - 1$."
+     ],
+     "distracteurs": [
+      "$p \\equiv 1 \\ [4]$",
+      "$p + 2$ est premier.",
+      "$p^2 + 2$ est premier."
+     ],
+     "explication": "Modulo $6$, $p \\equiv 0, 2, 4$ le rendrait pair et $p \\equiv 3$ multiple de $3$ : impossible pour $p \\geq 5$. Comme $3 \\nmid p$, $p \\equiv 1$ ou $2 \\ [3]$, donc $p^2 \\equiv 1 \\ [3]$. Contre-exemples : $7 \\equiv 3 \\ [4]$ ; $7 + 2 = 9$. Et $p^2 + 2 \\equiv 1 + 2 \\equiv 0 \\ [3]$ avec $p^2 + 2 > 3$ : il n’est JAMAIS premier.",
+     "difficulte": "hard",
+     "cible": "Programme : congruences et nombres premiers (erreur classique : généraliser à partir de $p = 5$).",
      "theoremes": [
       "Congruences modulo n"
      ]
