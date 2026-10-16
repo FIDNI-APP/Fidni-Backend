@@ -217,6 +217,18 @@ _ds.chapters.set([_suites, _der])
 importlib.import_module('apps.things.migrations.0018_chapitre_principal_ordre_sm').forwards(django_apps, None)
 check('2ème Bac SM : dérivation avant suites (ordre de M. Haddar) → un DS fonctions + suites va dans « Suites »',
       list(_ds.chapters.all()) == [_suites], [c.name for c in _ds.chapters.all()])
+# Chapitre décidé à la main (CHAPITRES_FORCES) : prioritaire sur « dernier chapitre », à l'import comme pour les publiés.
+_, w, res = importing.check_against_db({**EXO, 'cle': 'ds1-2sm-2020', 'type': 'examen',
+                                        'chapitres': ['Limites et continuité', 'Dérivation et étude des fonctions']})
+check('clé corrigée à la main : « Limites et continuité » malgré la dérivation listée',
+      [c.name for c in res['chapters']] == ['Limites et continuité'] and any('CHAPITRES_FORCES' in x for x in w),
+      ([c.name for c in res['chapters']], w))
+_ds.json_content = {'version': '2.1', 'blocks': [], 'import': {'cle': 'ds1-2sm-2020'}}
+_ds.save()
+_ds.chapters.set([_der])
+importlib.import_module('apps.things.migrations.0019_chapitres_corriges').forwards(django_apps, None)
+check('migration 0019 : DS1 2020 publié remis dans « Limites et continuité »', list(_ds.chapters.all()) == [_lim],
+      [c.name for c in _ds.chapters.all()])
 _ds.delete(); _lc.delete(); _auteur.delete()  # noqa: E702  (la suite compte les contenus)
 
 out = io.StringIO()

@@ -615,6 +615,46 @@ def trouver_ecole(ecole):
                   + (f' ({", ".join(villes)}…)' if villes else '') + ' : précise la ville ; laissé vide')
 
 
+# Chapitre décidé à la main (audit du 16/10/2026) : la fiche listait un chapitre de trop, dont la question ne demande
+# qu'un outil d'une classe précédente (ex. calculer f′ pour des variations = 1ère Bac, pas « Dérivation » de 2ème Bac).
+# Prioritaire sur la règle « dernier chapitre » ; migration things 0019 pour les contenus déjà publiés.
+CHAPITRES_FORCES = {
+    'ds1-2sm-2020': ['Limites et continuité'],
+    'ds1-2sm-2022': ['Limites et continuité'],
+    'serie2-continuite-arctan-ex02': ['Limites et continuité'],
+    'serie2-continuite-arctan-ex10': ['Limites et continuité'],
+    'serie-continuite-reciproque-ex11': ['Limites et continuité'],
+    'serie-continuite-reciproque-ex12': ['Limites et continuité'],
+    'serie-continuite-reciproque-ex16': ['Limites et continuité'],
+    'haddar-lc-ex16': ['Limites et continuité'],
+    'ds2-tcs-2022': ['Ordre dans ℝ'],
+    'ds2-tcs-2023': ['Ordre dans ℝ'],
+    'ordre-tcs-ex15': ['Ordre dans ℝ'],
+    'ordre-tcs-ex16': ['Ordre dans ℝ'],
+    'ordre-tcs-ex17': ['Ordre dans ℝ'],
+    'ordre-tcs-ex18': ['Ordre dans ℝ'],
+    'ordre-tcs-ex19': ['Ordre dans ℝ'],
+    'logique-1sm-ex5': ['Logique mathématique'],
+}
+
+
+def chapitres_forces(cle, levels, subject=None):
+    """Chapitres imposés pour cette clé (CHAPITRES_FORCES), à chacun des niveaux du contenu ; None si aucun."""
+    from apps.caracteristics.models import Chapter
+
+    noms = CHAPITRES_FORCES.get(cle)
+    if not noms:
+        return None
+    qs = Chapter.objects.filter(subject=subject) if subject else Chapter.objects.all()
+    out = []
+    for lvl in levels:
+        for nom in noms:
+            ch = qs.filter(name=nom, class_levels=lvl).first()
+            if ch and ch not in out:
+                out.append(ch)
+    return out or None
+
+
 def chapitres_principaux(chapters, levels):
     """Chapitres d'un exercice ou d'un examen (16/10/2026) : à chaque niveau, seulement le dernier dans l'ordre du
     programme (un élève qui ouvre « Limites et continuité » n'a pas encore vu la dérivation). Un chapitre absent du
@@ -691,7 +731,12 @@ def check_against_db(fiche: dict) -> tuple[list[str], list[str], dict]:
     kind = TYPES.get(fiche.get('type'))
     # Exercice, examen : rangé seulement dans le DERNIER chapitre du programme dont il a besoin (Natsu, 16/10/2026) ;
     # les chapitres d'avant sont des prérequis (un DS de dérivabilité n'est pas un devoir de « Limites et continuité »).
-    if kind in ('exercise', 'exam') and len(chapters) > 1:
+    forces = chapitres_forces(fiche.get('cle'), levels, subject) if kind in ('exercise', 'exam') else None
+    if forces:
+        if {c.pk for c in forces} != {c.pk for c in chapters}:
+            warnings.append(f'chapitres : « {" », « ".join(c.name for c in forces)} » (décidé à la main, CHAPITRES_FORCES)')
+        chapters = forces
+    elif kind in ('exercise', 'exam') and len(chapters) > 1:
         gardes = chapitres_principaux(chapters, levels)
         retires = [c.name for c in chapters if c not in gardes]
         if retires:
