@@ -37,7 +37,6 @@ ACTIONS = {
     'imprimer',           # impression / PDF d'un contenu, d'une liste, d'un cahier
     'visite-guidee',      # visite guidée lancée (bouton ?)
     'recherche',          # recherche lancée
-    'onglet-activite',    # onglet « Activité » d'un contenu ouvert
     'onglet-solutions',   # onglet « Solutions des élèves » ouvert
     'mode-sombre',        # bouton lune / soleil de la barre du haut
     'langue-ar',          # interface passée en arabe (bouton « ع »)
@@ -56,10 +55,11 @@ ACTIONS = {
     'charger-plus',       # « Charger plus » dans une liste
     'recherche-vide',     # recherche sans résultat
     'accueil-reprendre', 'accueil-pour-toi', 'annoncer-ds',  # accueil connecté
-    'prog-entrainer', 'prog-cours', 'prog-quiz',  # Ma progression › chapitre
-    # Ma progression refondue (13/10/2026) : objectif, exercices proposés, fiche, chapitre, « comment c'est calculé ».
-    'prog-objectif', 'prog-objectif-exercice', 'prog-fiche', 'prog-chapitre', 'prog-chapitre-action', 'prog-calcul',
-    'prog-activite-detail',
+    'prog-entrainer',     # Ma progression › chapitre : « S'entraîner »
+    'prog-chapitre',      # Ma progression : détail d'un chapitre ouvert
+    # Retirés le 16/10/2026 (plus jamais envoyés : onglet Activité, anciens boutons de Ma progression) :
+    # onglet-activite, prog-cours, prog-quiz, prog-objectif, prog-objectif-exercice, prog-fiche,
+    # prog-chapitre-action, prog-calcul, prog-activite-detail.
     'accueil-objectif', 'accueil-progression',  # accueil : bloc « Où j'en suis »
     'quiz-refait',        # quiz de chapitre repassé
     'quiz-dernier-resultat',  # dernier résultat d'un quiz rouvert (correction comprise)

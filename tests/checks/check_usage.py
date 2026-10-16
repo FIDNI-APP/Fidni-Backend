@@ -181,7 +181,7 @@ from apps.users.usage import ACTIONS  # noqa: E402
 
 NEW_ACTIONS = ['partager', 'chrono-demarre', 'epreuve-demarree', 'epreuve-terminee', 'similaire', 'suivant-apres-resultat',
                'ressenti', 'cloche', 'retour-liste', 'sommaire-lecon', 'affichage-enonces', 'charger-plus', 'recherche-vide',
-               'accueil-reprendre', 'accueil-pour-toi', 'annoncer-ds', 'prog-entrainer', 'prog-cours', 'prog-quiz',
+               'accueil-reprendre', 'accueil-pour-toi', 'annoncer-ds', 'prog-entrainer',
                'quiz-refait', 'mode-revision', 'barre-mobile', 'visite-auto', 'visite-passee', 'visite-finie',
                'signaler-ouvert', 'auth-ouverte', 'connexion-google']
 labelled = {k for k, _ in TRACKED_ACTIONS + TRACKED_FILTERS}
