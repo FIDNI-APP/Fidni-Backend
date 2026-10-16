@@ -204,6 +204,7 @@ urlpatterns = [
     path('api/pilotage/ia/<int:pk>/editeur/', ia_views.job_editeur, name='pilotage-ia-editeur'),
     path('api/pilotage/ia/<int:pk>/relancer/', ia_views.job_relancer, name='pilotage-ia-relancer'),
     path('api/pilotage/ia/<int:pk>/publier/', ia_views.job_publier, name='pilotage-ia-publier'),
+    path('api/pilotage/ia/<int:pk>/doublon/', ia_views.job_doublon, name='pilotage-ia-doublon'),
     path('api/pilotage/ia/<int:pk>/appliquer/', ia_views.job_appliquer, name='pilotage-ia-appliquer'),
     path('api/pilotage/ia/<int:pk>/rejeter/', ia_views.job_rejeter, name='pilotage-ia-rejeter'),
     path('api/pilotage/signalements/<int:pk>/ia/', ia_views.corriger_signalement, name='pilotage-signalement-ia'),

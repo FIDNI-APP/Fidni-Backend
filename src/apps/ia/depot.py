@@ -90,7 +90,9 @@ def carte(job):
         'theoremes': theoremes[:8], 'nb_theoremes': len(theoremes),
         'commentaires': len(r.get('doutes') or []) + len(r.get('problemes') or []),
         'erreurs': sum(len(c.get('erreurs') or []) for c in controles) + len(r.get('erreurs_figures') or []),
-        'doublons': sum(len(c.get('doublons') or []) for c in controles),
+        # Doublon écarté par l'administrateur (« Ignorer le doublon ») : la carte redevient « prête à publier ».
+        'doublons': 0 if job.options.get('doublon_ignore') else sum(len(c.get('doublons') or []) for c in controles),
+        'doublon_ignore': bool(job.options.get('doublon_ignore')),
         'avertissements': sum(len(c.get('avertissements') or []) for c in controles),
         'a_verifier': f.get('a_verifier', True) is not False,
         'remplace': job.options.get('contenu') if job.options.get('remplacer') else None,

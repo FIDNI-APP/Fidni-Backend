@@ -31,7 +31,7 @@ from django.conf import settings  # noqa: E402
 from django.contrib.auth.models import User  # noqa: E402
 from PIL import Image, ImageDraw  # noqa: E402
 from rest_framework.test import APIClient  # noqa: E402
-from apps.ia import client as ia_client, pipeline  # noqa: E402
+from apps.ia import client as ia_client, depot, pipeline  # noqa: E402
 from apps.ia.depot import deposer  # noqa: E402
 from apps.ia.models import IAFile, IAJob  # noqa: E402
 from apps.things.models import Content  # noqa: E402
@@ -253,6 +253,31 @@ check('brouillon : avertissement visible si l’établissement est introuvable',
 ad.post(f'/api/pilotage/ia/{je2.id}/publier/', {'a_verifier': True, 'doublon_ok': True}, format='json')
 ce.refresh_from_db()
 check('mise à jour sans établissement trouvé : celui du contenu est gardé', ce.school_id == ibn.id)
+
+# ---------------------------------------------------------------- « Ignorer le doublon » (17/10/2026)
+call_command('ia_deposer', dossier(dict(FICHE, cle='depot-copie', titre='Même énoncé, autre clé'), []), stdout=io.StringIO())
+jd = IAJob.objects.get(options__cle='depot-copie')
+carte_ = depot.carte(jd)
+check('doublon : signalé sur la carte', carte_['doublons'] > 0 and not carte_['doublon_ignore'], carte_['doublons'])
+r = ad.post(f'/api/pilotage/ia/{jd.id}/publier/', {'a_verifier': True, 'doublon_ok': False}, format='json')
+check('doublon : publication refusée tant qu’il n’est pas ignoré', r.status_code == 400, r.status_code)
+check('ignorer : réservé aux administrateurs', el.post(f'/api/pilotage/ia/{jd.id}/doublon/', {'ignorer': True},
+                                                       format='json').status_code == 403)
+r = ad.post(f'/api/pilotage/ia/{jd.id}/doublon/', {'ignorer': 'oui'}, format='json')
+check('ignorer : booléen exigé', r.status_code == 400)
+r = ad.post(f'/api/pilotage/ia/{jd.id}/doublon/', {'ignorer': True}, format='json')
+jd.refresh_from_db()
+check('ignorer : la carte redevient « prête à publier », noté dans l’historique',
+      r.status_code == 200 and r.data['carte']['doublons'] == 0 and r.data['carte']['doublon_ignore']
+      and jd.history[-1]['texte'] == 'Doublon ignoré', getattr(r, 'data', None) and r.data.get('carte'))
+r = ad.post(f'/api/pilotage/ia/{jd.id}/doublon/', {'ignorer': False}, format='json')
+check('annuler : le doublon est de nouveau signalé', r.status_code == 200 and r.data['carte']['doublons'] > 0)
+ad.post(f'/api/pilotage/ia/{jd.id}/doublon/', {'ignorer': True}, format='json')
+r = ad.post(f'/api/pilotage/ia/{jd.id}/publier/', {'a_verifier': True, 'doublon_ok': False}, format='json')
+check('doublon ignoré : publié sans cocher « pas un doublon »', r.status_code == 200
+      and Content.objects.filter(json_content__import__cle='depot-copie').exists(), getattr(r, 'data', None))
+r = ad.post(f'/api/pilotage/ia/{jd.id}/doublon/', {'ignorer': False}, format='json')
+check('ignorer : refusé sur un brouillon déjà publié', r.status_code == 409)
 
 # ---------------------------------------------------------------- modifier à la main dans l'éditeur (15/10/2026)
 call_command('ia_deposer', dossier(dict(FICHE, cle='depot-editeur', titre='Fiche à retoucher')), stdout=io.StringIO())

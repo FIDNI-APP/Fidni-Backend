@@ -273,6 +273,7 @@ def job_publier(request, pk):
     doublon_ok = request.data.get('doublon_ok', False)
     if not isinstance(a_verifier, bool) or not isinstance(doublon_ok, bool):
         return Response({'detail': 'a_verifier et doublon_ok : true ou false'}, status=status.HTTP_400_BAD_REQUEST)
+    doublon_ok = doublon_ok or bool(job.options.get('doublon_ignore'))  # doublon déjà écarté (job_doublon)
     try:
         publies = pipeline.publier(job, a_verifier=a_verifier, doublon_ok=doublon_ok, auteur=request.user)
     except (IAErreur, Exception) as exc:  # FicheError, contrôle refusé : le brouillon reste intact
@@ -281,6 +282,28 @@ def job_publier(request, pk):
     job.status = IAJob.PUBLIE
     job.history.append({'date': timezone.now().isoformat(), 'qui': request.user.username,
                         'texte': 'Publié' + (' (correction à vérifier)' if a_verifier else '')})
+    job.save()
+    return Response(_detail(job))
+
+
+@api_view(['POST'])
+@permission_classes([IsSuperuser])
+@parser_classes([JSONParser])
+def job_doublon(request, pk):
+    """« Ignorer le doublon » : {"ignorer": bool}. Le doublon probable n'empêche plus de publier ce brouillon (gardé
+    tant que ce brouillon existe ; un nouveau dépôt de la même fiche est un nouveau brouillon, contrôlé à nouveau)."""
+    job = get_object_or_404(IAJob, pk=pk, kind=IAJob.IMPORT)
+    if job.status not in (IAJob.PRET, IAJob.ERREUR):
+        return Response({'detail': 'Ce brouillon a déjà été traité.'}, status=status.HTTP_409_CONFLICT)
+    ignorer = request.data.get('ignorer')
+    if not isinstance(ignorer, bool):
+        return Response({'detail': 'ignorer : true ou false'}, status=status.HTTP_400_BAD_REQUEST)
+    if ignorer:
+        job.options['doublon_ignore'] = True
+    else:
+        job.options.pop('doublon_ignore', None)
+    job.history.append({'date': timezone.now().isoformat(), 'qui': request.user.username,
+                        'texte': 'Doublon ignoré' if ignorer else 'Doublon de nouveau signalé'})
     job.save()
     return Response(_detail(job))
 
