@@ -635,6 +635,11 @@ CHAPITRES_FORCES = {
     'ordre-tcs-ex18': ['Ordre dans ℝ'],
     'ordre-tcs-ex19': ['Ordre dans ℝ'],
     'logique-1sm-ex5': ['Logique mathématique'],
+    # Validés par Natsu (16/10/2026, second lot) : les bonus ne comptent pas pour le classement d'un devoir.
+    'ds-synthese1-2sm-2026-belkhatir': ['Limites et continuité'],
+    'etude-fonctions-2pc-serie-ex4': ['Limites et continuité'],
+    'etude-fonctions-2pc-serie-ex5': ['Limites et continuité'],
+    'logique-ens-app-1sm-ex10': ['Logique mathématique'],
 }
 
 
