@@ -82,9 +82,11 @@ check('export : énoncé et solution en texte (balises ôtées, entités décod�
       and e['questions'][0]['solution'] == '$f$ est continue et $f(0)f(1)<0$.'
       and e['questions'][0]['contexte'] == 'Soit $f(x)=x^3+x-1$.'
       and 'Étudier $f$.' in e['questions'][1]['contexte'], e['questions'][:2])
+from apps.caracteristics.programme import chapitre as chapitre_du_programme  # noqa: E402
+du_chapitre = chapitre_du_programme(sm.name, lim.name)['theoremes']
 check('export : candidats = théorèmes du niveau, ceux du chapitre du contenu d’abord',
-      TVI in e['theoremes_candidats'][:12] and BIJ in e['theoremes_candidats'][:12]
-      and 'Formule de Moivre' in e['theoremes_candidats'], e['theoremes_candidats'][:12])
+      set(e['theoremes_candidats'][:len(du_chapitre)]) == set(du_chapitre) and {TVI, BIJ} <= set(du_chapitre)
+      and 'Formule de Moivre' in e['theoremes_candidats'], e['theoremes_candidats'][:len(du_chapitre)])
 check('export : rien d’écrit', Content.objects.get(pk=ex.pk).json_content == ex.json_content)
 
 # ── Application

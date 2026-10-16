@@ -276,7 +276,13 @@ check('valider : true seulement', cl.patch(f'/api/pilotage/quiz/question/{neuves
 from apps.caracteristics.models import Theorem  # noqa: E402
 from apps.skilliq import tirage  # noqa: E402
 
-TH = {t.name: t for t in Theorem.objects.filter(chapters=lim)}
+# Le tirage est testé sur les 10 théorèmes du chapitre en 0003 ; le programme en a ajouté depuis (17/10/2026 :
+# opérations sur les limites, sur les fonctions continues…), sans question ici.
+DIX = ['Théorème des gendarmes', 'Théorème des valeurs intermédiaires (TVI)', 'Théorème de la bijection',
+       "Image d'un intervalle par une fonction continue", 'Continuité de la fonction réciproque',
+       'Prolongement par continuité', "Limite et continuité d'une fonction composée", 'Fonction arc tangente',
+       'Fonction racine n-ième et puissance rationnelle', 'Méthode de dichotomie']
+TH = {t.name: t for t in Theorem.objects.filter(chapters=lim, name__in=DIX)}
 check('10 théorèmes au chapitre, arc tangente réservé à la SM', len(TH) == 10
       and [lv.name for lv in TH['Fonction arc tangente'].class_levels.all()] == ['2ème Bac SM'], sorted(TH))
 SkillQuestion.objects.filter(chapter=lim).delete()
@@ -370,8 +376,10 @@ check('théorème non tiré → « non évalué », chapitre pas déclaré maît
       b['non_evalues'] == [{'id': TH['Méthode de dichotomie'].id, 'name': 'Méthode de dichotomie'}] and b['complet'] is False)
 
 d = cl.get(f'/api/pilotage/quiz/chapitre/{lim.id}/?niveau={sm.id}').data
-check('admin : théorèmes du chapitre et de chaque question', len(d['chapitre']['theoremes']) == 10
-      and all(x['theoremes'] for x in d['questions']))
+from apps.caracteristics.programme import chapitre as chapitre_du_programme  # noqa: E402
+check('admin : théorèmes du chapitre (ceux du programme de la SM) et de chaque question',
+      {t['name'] for t in d['chapitre']['theoremes']} == set(chapitre_du_programme(sm.name, lim.name)['theoremes'])
+      and all(x['theoremes'] for x in d['questions']), [t['name'] for t in d['chapitre']['theoremes']])
 autre = Theorem.objects.exclude(chapters=lim).first()
 r = cl.patch(f'/api/pilotage/quiz/question/{deux.id}/', {'theoremes': [TH['Méthode de dichotomie'].id]}, format='json')
 check('admin : changer le théorème d’une question', r.status_code == 200

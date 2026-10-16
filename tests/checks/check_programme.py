@@ -74,7 +74,8 @@ check('1ère Bac SM : repères et « vu plus tard » (indicatifs), aucun champ �
       and 'valider' not in (P.__doc__ or ''))
 
 # ── Domaines
-check('DOMAINE_THEOREME : 152 théorèmes, domaines connus', len(P.DOMAINE_THEOREME) == 152
+# 152 dans la migration 0003 ; 240 depuis l'audit du 17/10/2026 (ajouts seulement, voir plus bas).
+check('DOMAINE_THEOREME : 240 théorèmes, domaines connus', len(P.DOMAINE_THEOREME) == 240
       and set(P.DOMAINE_THEOREME.values()) <= DOMAINES and set(P.DOMAINE_CHAPITRE.values()) <= DOMAINES)
 check('théorèmes : une ligne par nom, dans leur domaine « maison »', all(
     Theorem.objects.filter(name=n, subject=maths).count() == 1
@@ -200,9 +201,26 @@ _sm2 = [tuple(x) for x in _fige[P.SM2]]
 _i, _j = _sm2.index(('Suites numériques', 'Analyse')), _sm2.index(('Dérivation et étude des fonctions', 'Analyse'))
 _sm2[_i], _sm2[_j] = _sm2[_j], _sm2[_i]
 _fige[P.SM2] = _sm2
-check('0003 : programme, domaines et alias figés = programme.py (ordre de 2ème Bac SM changé depuis)',
+# Un théorème d'un chapitre scindé du Tronc commun qui est aussi au programme de 1ère est dans le chapitre de 1ère issu
+# de la scission (sinon 0003, rejouée, l'y rattacherait : voir programme.py au-dessus de DOMAINE_THEOREME).
+_sm1 = {c['nom']: set(c['theoremes']) for c in P.PROGRAMME[SM1]}
+_tc = {c['nom']: set(c['theoremes']) for c in P.PROGRAMME[TC]}
+_mal = [(t, de) for de, vers in P.SCISSIONS_1ERE.items() for t in sorted(_tc[de])
+        if t in set().union(*_sm1.values()) and t not in _sm1[vers]]
+check('chapitres scindés : leurs théorèmes au programme de 1ère sont dans le chapitre de 1ère issu de la scission',
+      not _mal, _mal)
+# Changé après 0003 : théorèmes AJOUTÉS chapitre par chapitre (audit du 17/10/2026). Aucun des 152 de 0003 retiré ni
+# renommé, même domaine ; aucun nouveau nom n'est un ancien nom (alias) ; chacun est cité par au moins un chapitre.
+_ajoutes = set(P.DOMAINE_THEOREME) - set(D['domaine_theoreme'])
+_cites = {t for ch in P.PROGRAMME.values() for c in ch for t in c['theoremes']}
+check('0003 : les 152 théorèmes figés gardés (nom et domaine) ; 88 ajoutés depuis, chacun dans un chapitre',
+      all(P.DOMAINE_THEOREME.get(n) == d for n, d in D['domaine_theoreme'].items()) and len(D['domaine_theoreme']) == 152
+      and len(_ajoutes) == 88 and _ajoutes <= _cites
+      and not {TH.cle(n) for n in _ajoutes} & {TH.cle(a) for a, _v in D['alias_theoremes']},
+      ([n for n, d in D['domaine_theoreme'].items() if P.DOMAINE_THEOREME.get(n) != d], len(_ajoutes)))
+check('0003 : programme, domaines et alias figés = programme.py (ordre de 2ème Bac SM changé depuis, théorèmes ajoutés)',
       {n: [tuple(x) for x in v] for n, v in _fige.items()} == {n: [(c['nom'], c['domaine']) for c in ch] for n, ch in P.PROGRAMME.items()}
-      and D['domaine_theoreme'] == P.DOMAINE_THEOREME
+      and {n: d for n, d in P.DOMAINE_THEOREME.items() if n not in _ajoutes} == D['domaine_theoreme']
       and sorted(map(tuple, ((a, N(n), tuple(v)) for a, n, v in D['alias_chapitres'])))
       == sorted((a, n, tuple(v)) for a, r_ in P.ALIAS_CHAPITRES.items() for n, v in r_.items())
       and dict((a, tuple(v)) for a, v in D['alias_theoremes']) == P.ALIAS_THEOREMES)
