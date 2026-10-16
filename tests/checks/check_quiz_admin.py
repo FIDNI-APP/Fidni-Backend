@@ -91,5 +91,38 @@ r = cl.get(base + N)
 check('détail : chapitre, niveaux, questions', r.status_code == 200 and r.data['chapitre']['id'] == chapter.pk
       and len(r.data['questions']) == 5 and r.data['min_en_ligne'] == 5, r.status_code)
 
+# Plusieurs bonnes réponses (16/10/2026) : cases à cocher, jusqu'à 6 réponses, tout ou rien pour l'élève.
+M = {**Q, 'question': 'Lesquelles sont des limites usuelles ?', 'options': ['a', 'b', 'c', 'd', 'e'],
+     'correct_answers': [3, 1]}
+M.pop('correct_answer')
+r = cl.post(base + N, M, format='json')
+mid = r.data.get('id') if r.status_code == 201 else None
+check('question à 2 bonnes réponses sur 5 créée', r.status_code == 201 and r.data['correct_answers'] == [1, 3]
+      and r.data['correct_answer'] == 1 and SkillQuestion.objects.get(pk=mid).correct_answers == [1, 3], (r.status_code, r.data))
+check('bonnes réponses en double refusées', cl.post(base + N, {**M, 'correct_answers': [1, 1]}, format='json').status_code == 400)
+check('bonne réponse hors liste refusée (plusieurs)', cl.post(base + N, {**M, 'correct_answers': [1, 9]},
+                                                              format='json').status_code == 400)
+check('toutes les réponses justes : refusé', cl.post(base + N, {**M, 'correct_answers': [0, 1, 2, 3, 4]},
+                                                     format='json').status_code == 400)
+r = cl.get(base + N)
+row = next((x for x in r.data['questions'] if x['id'] == mid), {})
+check('détail : correct_answers listées (une seule pour les autres)', row.get('correct_answers') == [1, 3]
+      and all(len(x['correct_answers']) == 1 for x in r.data['questions'] if x['id'] != mid), row)
+r = cl.patch(f'/api/pilotage/quiz/question/{mid}/', {'options': ['a', 'b', 'c', 'd', 'e', 'f']}, format='json')
+check('modifier les réponses garde les bonnes', r.status_code == 200 and r.data['correct_answers'] == [1, 3], r.data)
+r = cl.patch(f'/api/pilotage/quiz/question/{mid}/', {'options': ['a', 'b', 'c']}, format='json')
+check('moins de réponses que les bonnes : refusé', r.status_code == 400, r.status_code)
+r = cl.patch(f'/api/pilotage/quiz/question/{mid}/', {'correct_answers': [0, 2, 4]}, format='json')
+check('modifier les bonnes réponses seules (3 sur 6)', r.status_code == 200
+      and SkillQuestion.objects.get(pk=mid).bonnes() == [0, 2, 4], r.data)
+r = cl.patch(f'/api/pilotage/quiz/question/{mid}/', {'correct_answers': [5]}, format='json')
+q1 = SkillQuestion.objects.get(pk=mid)
+check('une seule case cochée : redevient une question à une réponse', r.status_code == 200
+      and q1.correct_answers == [] and q1.correct_answer == 5 and r.data['correct_answers'] == [5], r.data)
+cl.patch(f'/api/pilotage/quiz/question/{mid}/', {'correct_answers': [0, 2]}, format='json')
+r = cl.patch(f'/api/pilotage/quiz/question/{mid}/', {'correct_answer': 4}, format='json')
+q1.refresh_from_db()
+check('« correct_answer » seul : question à une réponse', r.status_code == 200 and q1.bonnes() == [4], r.data)
+
 print(f'\n{sum(results)}/{len(results)} vérifications réussies')
 sys.exit(0 if all(results) else 1)

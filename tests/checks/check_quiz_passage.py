@@ -161,6 +161,109 @@ QuizEnCours.objects.filter(user=u).update(maj=timezone.now() - timedelta(hours=2
 check('passage abandonné depuis plus de 24 h : oublié', el.get('/api/skill-assessments/en-cours/').data == []
       and el.get(url).data['reprise'] is False)
 
+# ── Plusieurs bonnes réponses (16/10/2026) : « 2 choix justes sur 5 proposés », tout ou rien
+from apps.skilliq import constats  # noqa: E402
+BONNES = ['$f$ est continue sur $[a\\,;b]$', '$f(a)$ et $f(b)$ sont de signes contraires']
+FAUSSES = ['$f$ est dérivable sur $\\mathbb{R}$', '$f$ est paire', '$f(a) = f(b)$']
+mq = lambda texte, **kw: {'question': texte, 'bonnes': BONNES, 'distracteurs': FAUSSES,  # noqa: E731
+                          'explication': 'Les deux hypothèses du TVI.', 'difficulte': 'hard', 'cible': 'TVI',
+                          'theoremes': [tvi.name], **kw}
+bilan = constats.importer({'niveau': sm.name, 'chapitres': [{'chapitre': lim.name, 'questions': [
+    mq('Hypothèses du TVI : coche les deux bonnes.'),
+    mq('Une seule « bonnes »', bonnes=[BONNES[0]]),
+    mq('Les deux formes', bonne=BONNES[0]),
+    mq('Sept réponses', distracteurs=FAUSSES + ['a', 'b']),
+    mq('Sans distracteur', distracteurs=[]),
+    mq('Doublon', distracteurs=[BONNES[0], 'x', 'y']),
+]}]})
+raisons = ' | '.join(e['raison'] for e in bilan[0]['ecartees'])
+check('import : 2 bonnes réponses sur 5 acceptées, formats invalides écartés', bilan[0]['creees'] == 1
+      and len(bilan[0]['ecartees']) == 5 and 'au moins 2' in raisons and 'pas les deux' in raisons
+      and 'de 3 à 6' in raisons and 'au moins 1 mauvaise' in raisons and 'identiques' in raisons, bilan)
+mult = SkillQuestion.objects.get(question='Hypothèses du TVI : coche les deux bonnes.')
+check('import : 5 réponses mélangées, bonnes retrouvées (correct_answers), correct_answer = la première',
+      len(mult.options) == 5 and sorted(mult.options[i] for i in mult.correct_answers) == sorted(BONNES)
+      and mult.correct_answer == mult.correct_answers[0] and mult.bonnes() == mult.correct_answers
+      and mult.a_relire and [t.name for t in mult.theorems.all()] == [tvi.name], (mult.options, mult.correct_answers))
+B = mult.bonnes()
+F = [i for i in range(5) if i not in B]
+check('est_juste : tout ou rien', mult.est_juste(B) and mult.est_juste(B[::-1]) and not mult.est_juste([B[0]])
+      and not mult.est_juste(B[0]) and not mult.est_juste(B + [F[0]]) and not mult.est_juste([B[0], F[0]])
+      and not mult.est_juste(-1) and not mult.est_juste(None) and not mult.est_juste([]))
+simple = SkillQuestion.objects.get(pk=ordre[1])
+check('question à une réponse : inchangée', simple.correct_answers == [] and simple.bonnes() == [simple.correct_answer]
+      and simple.est_juste(simple.correct_answer) and simple.est_juste([simple.correct_answer])
+      and not simple.est_juste((simple.correct_answer + 1) % 4))
+SkillQuestion.objects.filter(pk=mult.pk).update(a_relire=False, is_active=True)
+
+ma, cl_a = eleve('multi_a')
+mb, cl_b = eleve('multi_b')
+mc, cl_c = eleve('multi_c')
+r = cl_a.get(url)
+servie = next((x for x in r.data['questions'] if x['id'] == mult.id), None)
+check('servie : « nb_bonnes » = 2, jamais lesquelles ; 1 pour les autres', servie and servie['nb_bonnes'] == 2
+      and 'correct_answers' not in servie and 'correct_answer' not in servie
+      and all(x['nb_bonnes'] == 1 for x in r.data['questions'] if x['id'] != mult.id), r.data['questions'])
+cl_b.get(url)
+cl_c.get(url)
+check('réponse en double : 400', v(cl_a, mult.id, [B[0], B[0]]).status_code == 400)
+check('index hors des choix : 400', v(cl_a, mult.id, [B[0], 7]).status_code == 400)
+check('liste vide : 400', v(cl_a, mult.id, []).status_code == 400)
+r = v(cl_a, mult.id, B[::-1])
+check('les 2 bonnes réponses : juste ; correct_answers renvoyées', r.status_code == 200 and r.data['is_correct'] is True
+      and r.data['correct_answers'] == B and r.data['correct_answer'] == B[0] and r.data['your_answer'] == B, r.data)
+r = v(cl_b, mult.id, [B[1]])
+check('une seule des 2 bonnes : faux', r.status_code == 200 and r.data['is_correct'] is False
+      and r.data['correct_answers'] == B, r.data)
+r = v(cl_c, mult.id, [B[0], F[0]])
+check('une bonne et une fausse : faux', r.status_code == 200 and r.data['is_correct'] is False, r.data)
+r = v(cl_c, mult.id, B)
+check('réponse verrouillée (plusieurs bonnes réponses)', r.data['your_answer'] == sorted([B[0], F[0]])
+      and r.data['is_correct'] is False, r.data)
+r = cl_a.get(url)
+check('reprise : la réponse multiple verrouillée revient', [x['your_answer'] for x in r.data['verifiees']
+                                                           if x['id'] == mult.id] == [B], r.data['verifiees'])
+
+autres = {str(x.id): x.correct_answer for x in SkillQuestion.objects.filter(chapter=lim, class_level=sm, is_active=True,
+                                                                            a_relire=False).exclude(pk=mult.pk)}
+pts = {'easy': 1, 'medium': 2, 'hard': 3}
+maxi = sum(pts[x.difficulty] for x in SkillQuestion.objects.filter(chapter=lim, class_level=sm, is_active=True,
+                                                                  a_relire=False))
+
+
+def envoi(client, reponse_multiple):
+    rep = client.post(f'/api/skill-assessments/submit/{lim.id}/', {'answers': {**autres, str(mult.id): reponse_multiple}},
+                      format='json')
+    c = next((x for x in rep.data.get('correction', []) if x['id'] == mult.id), {})
+    th = next((x for x in (rep.data.get('par_theoreme') or {}).get('theoremes', []) if x['id'] == tvi.id), {})
+    return rep, c, th
+
+
+r, c, th = envoi(cl_a, B)
+check('envoi : tout juste (liste) → 100 %, bilan TVI complet', r.status_code == 200 and r.data['score'] == maxi
+      and r.data['max_score'] == maxi and c.get('is_correct') is True and c.get('correct_answers') == B
+      and th.get('justes') == th.get('total') == len(autres) + 1, (r.status_code, r.data.get('score'), maxi, c, th))
+r, c, th = envoi(cl_b, B)  # réponse verrouillée (partielle) prioritaire
+check('envoi : réponse partielle verrouillée → fausse, score sans ses 3 points, bilan TVI à revoir',
+      r.status_code == 200 and r.data['score'] == maxi - 3 and c.get('is_correct') is False
+      and c.get('your_answer') == [B[1]] and th.get('justes') == th.get('total', 0) - 1
+      and tvi.name in r.data['par_theoreme']['a_revoir'], (r.data.get('score'), c, th))
+cl_d = eleve('multi_d')[1]
+cl_d.get(url)
+r, c, th = envoi(cl_d, [B[0], B[0]])
+check('envoi : réponse en double = sans réponse (fausse), sans erreur', r.status_code == 200
+      and c.get('your_answer') == -1 and c.get('is_correct') is False, (r.status_code, c))
+r = cl_c.post(f'/api/skill-assessments/submit/{lim.id}/', {'answers': {str(mult.id): [True]}}, format='json')
+check('envoi : réponse illisible : 400', r.status_code == 400, r.status_code)
+derniere = SkillAssessment.objects.get(user=ma, chapter=lim, class_level=sm).derniere_correction
+check('correction figée : correct_answers gardées', any(x['id'] == mult.id and x['correct_answers'] == B
+                                                        and x['your_answer'] == B for x in derniere))
+cq = constats.constats_quiz(lim, maison=set())
+ligne = next((x for x in cq if x['question'] == mult.question), None)
+check('constats du quiz : réussite et « bonnes » réponses (plusieurs)', ligne is not None and ligne['reussite'] == 33
+      and all(b in ligne['bonne'] for b in BONNES) and ligne['eleves'] == 3, cq)
+User.objects.filter(username__startswith='multi_').delete()  # la suite ne compte que les élèves du début
+
 # ── Données personnelles
 check('export RGPD : passage en cours inclus', 'skilliq.QuizEnCours' in export_user_data(u))
 u.delete()

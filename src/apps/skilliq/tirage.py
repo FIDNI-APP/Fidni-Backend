@@ -73,7 +73,7 @@ def bilan(questions, answers, pool=()):
     'a_revoir': [noms], 'complet': bool} pour les questions corrigées ; `pool` = questions disponibles du quiz."""
     stats = {}
     for q in questions:
-        juste = answers.get(str(q.id)) == q.correct_answer
+        juste = q.est_juste(answers.get(str(q.id)))  # plusieurs bonnes réponses : toutes, et rien d'autre
         for th in q.theorems.all():
             s = stats.setdefault(th.id, {'id': th.id, 'name': th.name, 'justes': 0, 'total': 0})
             s['total'] += 1

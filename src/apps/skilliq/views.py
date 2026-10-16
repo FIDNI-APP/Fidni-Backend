@@ -11,7 +11,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from . import tirage
-from .models import QuizEnCours, SkillQuestion, SkillAssessment
+from .models import QuizEnCours, SkillQuestion, SkillAssessment, reponse_valide
 from .serializers import (
     SkillQuestionSerializer,
     SkillAssessmentSerializer,
@@ -31,9 +31,10 @@ def get_my_assessments(request):
 
 
 def _correction(q, answer):
-    """Correction d'une question pour l'élève (et figée dans le dernier résultat)."""
+    """Correction d'une question pour l'élève (et figée dans le dernier résultat). `correct_answers` : toutes les
+    bonnes réponses (une seule, ou plusieurs : l'élève doit les cocher toutes, et rien d'autre)."""
     return {'id': q.id, 'question': q.question, 'options': list(q.options), 'your_answer': answer,
-            'correct_answer': q.correct_answer, 'is_correct': answer == q.correct_answer,
+            'correct_answer': q.correct_answer, 'correct_answers': q.bonnes(), 'is_correct': q.est_juste(answer),
             'explanation': q.explanation, 'theoremes': [th.name for th in q.theorems.all()]}
 
 
@@ -124,8 +125,8 @@ def submit_quiz(request, chapter_id):
         verrou = passage.reponses or {}
         finales = {}
         for q in questions:
-            r = verrou.get(str(q.id), answers.get(str(q.id), -1))
-            finales[str(q.id)] = r if isinstance(r, int) and 0 <= r < len(q.options) else -1
+            r = reponse_valide(verrou.get(str(q.id), answers.get(str(q.id), -1)), len(q.options))
+            finales[str(q.id)] = -1 if r is None else r
         # Temps : jamais plus que le temps réel écoulé depuis le début du passage.
         ecoule = int((timezone.now() - passage.debut).total_seconds())
         time_spent = min(max(time_spent, passage.temps), ecoule)
@@ -133,7 +134,7 @@ def submit_quiz(request, chapter_id):
         # Score pondéré par la difficulté (jamais montrée aux élèves).
         points = {'easy': 1, 'medium': 2, 'hard': 3}
         max_score = sum(points.get(q.difficulty, 1) for q in questions)
-        score = sum(points.get(q.difficulty, 1) for q in questions if finales[str(q.id)] == q.correct_answer)
+        score = sum(points.get(q.difficulty, 1) for q in questions if q.est_juste(finales[str(q.id)]))
         # Bilan par théorème : ce que l'élève maîtrise, ce qu'il doit revoir (tirage.bilan).
         par_theoreme = tirage.bilan(questions, finales, tirage.disponibles(niveau, chapter_id))
         correction = [_correction(q, finales[str(q.id)]) for q in questions]
@@ -168,7 +169,8 @@ def submit_quiz(request, chapter_id):
 @permission_classes([IsAuthenticated])
 def check_answer(request, question_id):
     """Correction d'une question dès que l'élève a répondu : {"answer": i, "temps": s} → bonne réponse, explication,
-    théorèmes. Seulement pour une question de SON passage en cours (sinon 404 : avant le 14/10/2026, n'importe quelle
+    théorèmes ; question à plusieurs bonnes réponses : {"answer": [i, j]} (index distincts, juste ssi exactement
+    l'ensemble des bonnes réponses). Seulement pour une question de SON passage en cours (sinon 404 : avant le 14/10/2026, n'importe quelle
     question pouvait être corrigée, donc toutes les bonnes réponses récupérées) ; la première réponse est verrouillée
     (une nouvelle demande renvoie la même correction). `temps` : minuteur utilisé, pour reprendre plus tard."""
     answer = request.data.get('answer')
@@ -182,9 +184,10 @@ def check_answer(request, question_id):
             return Response({'error': 'Question introuvable'}, status=status.HTTP_404_NOT_FOUND)
         reponses = dict(passage.reponses or {})
         if str(q.id) not in reponses:
-            if not isinstance(answer, int) or isinstance(answer, bool) or not 0 <= answer < len(q.options):
+            propre = reponse_valide(answer, len(q.options))
+            if propre is None:
                 return Response({'answer': 'Réponse invalide'}, status=status.HTTP_400_BAD_REQUEST)
-            reponses[str(q.id)] = answer
+            reponses[str(q.id)] = propre
             passage.reponses = reponses
         temps = request.data.get('temps')
         if isinstance(temps, int) and not isinstance(temps, bool) and temps >= 0:

@@ -8,9 +8,10 @@
    - questions du quiz actuel les plus ratées et la mauvaise réponse la plus choisie (SkillAssessment.answers) ;
    - programme officiel du niveau, cours en ligne (leçons), questions déjà écrites.
 2. Claude rédige d'après ces fiches des QCM « façon certification » (quatre réponses très proches, une seule
-   juste) dans un fichier JSON (contenus/quiz/).
-3. `manage.py quiz_importer <fichier>` (importer) : contrôle (4 réponses distinctes et non vides, formules `$`
-   appariées), doublons écartés, bonne réponse placée au hasard, enregistrement en brouillon « à relire »
+   juste ; ou, depuis le 16/10/2026, plusieurs justes : « bonnes » + « distracteurs », 3 à 6 réponses, typiquement
+   2 bonnes sur 5) dans un fichier JSON (contenus/quiz/).
+3. `manage.py quiz_importer <fichier>` (importer) : contrôle (réponses distinctes et non vides, formules `$`
+   appariées), doublons écartés, réponses mélangées, enregistrement en brouillon « à relire »
    (SkillQuestion.a_relire, is_active=False) : invisible des élèves tant que l'administrateur ne l'a pas validée
    dans Pilotage › Quiz.
 """
@@ -19,7 +20,7 @@ import random
 import re
 from collections import Counter, defaultdict
 
-from .models import SkillAssessment, SkillQuestion
+from .models import SkillAssessment, SkillQuestion, choix_de
 
 MIN_ELEVES = 2          # en dessous, une question n'est pas « peu réussie » : elle est peu faite
 FAIBLE_SOUS = 0.7       # taux de réussite en dessous duquel une question ou un théorème est un constat
@@ -135,6 +136,12 @@ def constats(chapitre, niveau=None):
             'quiz': constats_quiz(chapitre, maison)}
 
 
+def _bonnes_texte(q):
+    """Texte des bonnes réponses : « A » ou, pour plusieurs bonnes réponses, « A » et « B » (sans les guillemets
+    extérieurs, ajoutés par l'appelant)."""
+    return ' » et « '.join(q.options[i] for i in q.bonnes() if 0 <= i < len(q.options))
+
+
 def constats_quiz(chapitre, maison=None):
     """Questions du quiz actuel les plus ratées (dernier passage de chaque élève) et la mauvaise réponse préférée."""
     maison = _maison() if maison is None else maison
@@ -145,20 +152,22 @@ def constats_quiz(chapitre, maison=None):
             continue
         for qid, rep in reponses.items():
             q = qs.get(int(qid)) if str(qid).isdigit() else None
-            if q is None or not isinstance(rep, int):
+            if q is None or not isinstance(rep, (int, list)) or isinstance(rep, bool):
                 continue
             s = stats[q.id]
             s[0] += 1
-            if rep == q.correct_answer:
+            if q.est_juste(rep):
                 s[1] += 1
-            elif 0 <= rep < len(q.options):
-                s[2][rep] += 1
+            else:  # mauvaises réponses cochées (plusieurs bonnes réponses : celles cochées à tort)
+                for i in choix_de(rep):
+                    if i < len(q.options) and i not in q.bonnes():
+                        s[2][i] += 1
     out = []
     for qid, (n, ok, fausses) in stats.items():
         if n >= MIN_ELEVES and ok / n < FAIBLE_SOUS:
             q = qs[qid]
             choix = fausses.most_common(1)
-            out.append({'question': q.question, 'bonne': q.options[q.correct_answer], 'reussite': round(ok / n * 100),
+            out.append({'question': q.question, 'bonne': _bonnes_texte(q), 'reussite': round(ok / n * 100),
                         'eleves': n, 'piege': q.options[choix[0][0]] if choix else None})
     return sorted(out, key=lambda x: x['reussite'])[:CONSTATS_MAX]
 
@@ -232,7 +241,7 @@ def fiche(chapitre, niveau, c=None):
     ]
     if existantes:
         parties.append('## Questions déjà écrites pour ce chapitre\n' + '\n'.join(
-            f"- {q.question} → « {q.options[q.correct_answer]} »"
+            f"- {q.question} → « {_bonnes_texte(q)} »"
             f"{' (à relire)' if q.a_relire else ' (en ligne)' if q.is_active else ' (brouillon)'}"
             for q in existantes[:80]))
     return '\n\n'.join(parties)
@@ -256,17 +265,33 @@ def _propre(s):
 
 def controler(q):
     """Question du fichier → (champs SkillQuestion, None) ou (None, raison du refus).
-    {"question", "bonne", "distracteurs": [3], "explication", "difficulte", "cible", "theoremes": [noms exacts]}."""
+    Une bonne réponse : {"question", "bonne", "distracteurs": [3], "explication", "difficulte", "cible",
+    "theoremes": [noms exacts]}.
+    Plusieurs bonnes réponses (16/10/2026) : "bonnes": [2 ou plus] au lieu de "bonne", et des "distracteurs" ;
+    3 à 6 réponses en tout (typiquement 2 bonnes + 3 distracteurs). L'élève doit cocher toutes les bonnes."""
     if not isinstance(q, dict):
         return None, 'question illisible'
-    question, bonne, explication = _propre(q.get('question')), _propre(q.get('bonne')), _propre(q.get('explication'))
+    question, explication = _propre(q.get('question')), _propre(q.get('explication'))
     distracteurs = [_propre(d) for d in q.get('distracteurs') or []] if isinstance(q.get('distracteurs'), list) else []
-    if not question or not bonne:
-        return None, 'question ou bonne réponse vide'
-    if len(distracteurs) != 3 or any(not d for d in distracteurs):
-        return None, 'il faut exactement 3 mauvaises réponses non vides'
-    reponses = [bonne, *distracteurs]
-    if len({r.casefold() for r in reponses}) != 4:
+    if 'bonnes' in q:
+        if 'bonne' in q:
+            return None, '« bonne » ou « bonnes », pas les deux'
+        bonnes = [_propre(b) for b in q['bonnes']] if isinstance(q['bonnes'], list) else []
+        if not question or len(bonnes) < 2 or any(not b for b in bonnes):
+            return None, 'question vide, ou « bonnes » : au moins 2 réponses non vides'
+        if not distracteurs or any(not d for d in distracteurs):
+            return None, 'il faut au moins 1 mauvaise réponse, non vide'
+        if not 3 <= len(bonnes) + len(distracteurs) <= 6:
+            return None, 'il faut de 3 à 6 réponses en tout'
+    else:
+        bonne = _propre(q.get('bonne'))
+        bonnes = [bonne]
+        if not question or not bonne:
+            return None, 'question ou bonne réponse vide'
+        if len(distracteurs) != 3 or any(not d for d in distracteurs):
+            return None, 'il faut exactement 3 mauvaises réponses non vides'
+    reponses = [*bonnes, *distracteurs]
+    if len({r.casefold() for r in reponses}) != len(reponses):
         return None, 'deux réponses identiques'
     if len(question) > LONGUEURS['question'] * 2 or any(len(r) > LONGUEURS['reponse'] * 2 for r in reponses):
         return None, 'texte trop long'
@@ -277,7 +302,9 @@ def controler(q):
         return None, 'format de formule non accepté'
     random.shuffle(reponses)
     difficulte = q.get('difficulte') if q.get('difficulte') in DIFFICULTES else 'medium'
-    return {'question': question, 'options': reponses, 'correct_answer': reponses.index(bonne),
+    justes = sorted(reponses.index(b) for b in bonnes)
+    return {'question': question, 'options': reponses, 'correct_answer': justes[0],
+            'correct_answers': justes if len(justes) > 1 else [],
             'difficulty': difficulte, 'explanation': explication[:2000], 'motif': _propre(q.get('cible'))[:1000]}, None
 
 
@@ -292,7 +319,13 @@ def pour_niveau(q, niveau):
         return q
     autre = q['par_niveau'].get(niveau)
     q = {k: v for k, v in q.items() if k != 'par_niveau'}
-    return {**q, **autre} if isinstance(autre, dict) else q
+    if not isinstance(autre, dict):
+        return q
+    # Une variante peut passer d'une bonne réponse à plusieurs (ou l'inverse) : elle remplace l'autre forme.
+    for forme, autre_forme in (('bonne', 'bonnes'), ('bonnes', 'bonne')):
+        if forme in autre:
+            q.pop(autre_forme, None)
+    return {**q, **autre}
 
 
 def importer(data, simulation=False):

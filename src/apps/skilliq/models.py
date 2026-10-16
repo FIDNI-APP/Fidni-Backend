@@ -19,6 +19,11 @@ class SkillQuestion(models.Model):
     question = models.TextField()
     options = models.JSONField(help_text="List of answer options")
     correct_answer = models.PositiveSmallIntegerField(help_text="Index of correct answer (0-based)")
+    # Plusieurs bonnes réponses (16/10/2026, Natsu : « 2 choix justes sur 5 proposés ») : index des bonnes réponses,
+    # 2 au moins ; vide = question à une seule bonne réponse (`correct_answer`). `correct_answer` reste le premier
+    # index juste (compatibilité). Juste ssi l'ensemble coché == l'ensemble juste (tout ou rien, comme learningpath).
+    correct_answers = models.JSONField(default=list, blank=True,
+                                       help_text="Index des bonnes réponses (vide : une seule, correct_answer)")
     difficulty = models.CharField(max_length=10, choices=DIFFICULTY_CHOICES, default='medium')
     explanation = models.TextField(blank=True, help_text="Explanation shown after answering")
 
@@ -49,6 +54,41 @@ class SkillQuestion(models.Model):
 
     def __str__(self):
         return f"{self.chapter.name}: {self.question[:50]}..."
+
+    def bonnes(self):
+        """Index des bonnes réponses, triés : [correct_answer] pour une question à une seule bonne réponse."""
+        multiples = self.correct_answers if isinstance(self.correct_answers, list) else []
+        multiples = sorted({i for i in multiples if isinstance(i, int) and not isinstance(i, bool)})
+        return multiples or [self.correct_answer]
+
+    def est_juste(self, reponse):
+        """Réponse de l'élève (index, liste d'index, -1 / None : sans réponse) : juste ssi l'ensemble coché est
+        exactement l'ensemble des bonnes réponses (une bonne réponse oubliée ou une fausse cochée : faux)."""
+        choix = choix_de(reponse)
+        return bool(choix) and choix == self.bonnes()
+
+
+def choix_de(reponse):
+    """Réponse brute → liste triée des index cochés ([] : sans réponse ou illisible)."""
+    valeurs = reponse if isinstance(reponse, list) else [reponse]
+    if not all(isinstance(i, int) and not isinstance(i, bool) for i in valeurs):
+        return []
+    return sorted({i for i in valeurs if i >= 0})
+
+
+def reponse_valide(reponse, nb_options):
+    """Réponse envoyée par le navigateur → réponse propre (index, ou liste triée d'index), ou None si invalide :
+    index hors des choix, doublon, liste vide, autre chose qu'un entier."""
+    if isinstance(reponse, bool):
+        return None
+    if isinstance(reponse, int):
+        return reponse if 0 <= reponse < nb_options else None
+    if isinstance(reponse, list) and reponse:
+        if (any(isinstance(i, bool) or not isinstance(i, int) or not 0 <= i < nb_options for i in reponse)
+                or len(set(reponse)) != len(reponse)):
+            return None
+        return sorted(reponse)
+    return None
 
 
 class SkillAssessment(models.Model):
@@ -88,7 +128,8 @@ class SkillAssessment(models.Model):
                                     related_name='+')
 
     # Correction figée du dernier passage (14/10/2026), remplacée au passage suivant (un seul gardé, pour ne pas
-    # charger la base) : [{id, question, options, correct_answer, your_answer, is_correct, explanation, theoremes}]
+    # charger la base) : [{id, question, options, correct_answer, correct_answers, your_answer, is_correct, explanation,
+    # theoremes}]
     # dans l'ordre servi. Une question modifiée ou supprimée ensuite ne change rien à ce que l'élève revoit.
     derniere_correction = models.JSONField(default=list, blank=True)
 
@@ -129,8 +170,9 @@ class QuizEnCours(models.Model):
     workers. Un seul par (élève, chapitre, niveau), remplacé par un nouveau tirage, supprimé à l'envoi.
 
     - `questions` : ids servis, dans l'ordre ; l'envoi note TOUTES ces questions (sans réponse = fausse).
-    - `reponses` : {id: index} verrouillées à la correction de chaque question (POST verifier/) : une réponse corrigée
-      ne change plus, et seule une question de son passage peut être corrigée.
+    - `reponses` : {id: index, ou liste d'index (plusieurs bonnes réponses)} verrouillées à la correction de chaque
+      question (POST verifier/) : une réponse corrigée ne change plus, et seule une question de son passage peut être
+      corrigée.
     - `temps` : secondes de minuteur déjà utilisées (le minuteur s'arrête pendant les corrections), pour reprendre.
     Repris (mêmes questions, corrections déjà vues, temps restant) pendant REPRISE_HEURES, puis oublié."""
     REPRISE_HEURES = 24

@@ -32,6 +32,7 @@ TEXTE_MAX = 2000
 
 def _question(q):
     return {'id': q.id, 'question': q.question, 'options': q.options, 'correct_answer': q.correct_answer,
+            'correct_answers': q.bonnes(),
             'difficulty': q.difficulty, 'explanation': q.explanation, 'en_ligne': q.is_active,
             'source': q.source, 'a_relire': q.a_relire, 'motif': q.motif, 'updated_at': q.updated_at.isoformat(),
             'niveau': q.class_level_id,
@@ -50,6 +51,30 @@ def _theoremes(ch, valeur, err):
     return ths
 
 
+def _entier(v):
+    return isinstance(v, int) and not isinstance(v, bool)
+
+
+def _bonnes(data, opts, err):
+    """Bonne(s) réponse(s) → (correct_answer, correct_answers). « correct_answers » (liste d'index, 16/10/2026) :
+    plusieurs bonnes réponses (une seule cochée = question à une réponse) ; sinon « correct_answer » (un index)."""
+    cas = data.get('correct_answers')
+    if cas is not None and cas != []:
+        if (not isinstance(cas, list) or not all(_entier(i) and 0 <= i < len(opts) for i in cas)
+                or len(set(cas)) != len(cas)):
+            err['correct_answers'] = 'Coche les bonnes réponses (parmi les réponses, sans doublon).'
+            return None, []
+        if len(cas) >= len(opts):
+            err['correct_answers'] = 'Il faut au moins une mauvaise réponse.'
+            return None, []
+        cas = sorted(cas)
+        return cas[0], (cas if len(cas) > 1 else [])
+    ca = data.get('correct_answer')
+    if not _entier(ca) or not 0 <= ca < len(opts):
+        err['correct_answer'] = 'Coche la bonne réponse.'
+    return ca, []
+
+
 def _valider(data, partiel=False):
     """→ (champs propres, erreurs) ; `partiel` : seuls les champs envoyés sont contrôlés (modification)."""
     out, err = {}, {}
@@ -60,7 +85,7 @@ def _valider(data, partiel=False):
         elif len(texte) > TEXTE_MAX:
             err['question'] = f'{TEXTE_MAX} caractères au plus.'
         out['question'] = texte
-    if not partiel or 'options' in data or 'correct_answer' in data:
+    if not partiel or any(k in data for k in ('options', 'correct_answer', 'correct_answers')):
         opts = data.get('options')
         if not isinstance(opts, list):
             err['options'] = 'Liste de réponses attendue.'
@@ -71,10 +96,7 @@ def _valider(data, partiel=False):
             elif len(set(opts)) != len(opts):
                 err['options'] = 'Deux réponses identiques.'
             out['options'] = opts
-            ca = data.get('correct_answer')
-            if not isinstance(ca, int) or isinstance(ca, bool) or not 0 <= ca < len(opts):
-                err['correct_answer'] = 'Coche la bonne réponse.'
-            out['correct_answer'] = ca
+            out['correct_answer'], out['correct_answers'] = _bonnes(data, opts, err)
     if 'difficulty' in data or not partiel:
         d = data.get('difficulty') or 'medium'
         if d not in DIFFICULTES:
@@ -195,10 +217,11 @@ def question(request, pk):
             q.a_relire = False
     elif data.get('en_ligne') is True:
         q.a_relire = False  # la mettre en ligne soi-même vaut validation
-    if 'correct_answer' in data and 'options' not in data:
+    bonne_envoyee = 'correct_answer' in data or 'correct_answers' in data
+    if bonne_envoyee and 'options' not in data:
         data['options'] = q.options  # la bonne réponse se contrôle contre les réponses existantes
-    if 'options' in data and 'correct_answer' not in data:
-        data['correct_answer'] = q.correct_answer
+    if 'options' in data and not bonne_envoyee:
+        data['correct_answer'], data['correct_answers'] = q.correct_answer, q.bonnes()
     champs, err = _valider(data, partiel=True)
     ths = _theoremes(q.chapter, data['theoremes'], err) if 'theoremes' in data else None
     if err:

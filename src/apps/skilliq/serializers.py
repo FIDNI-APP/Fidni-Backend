@@ -4,11 +4,16 @@ from .models import SkillQuestion, SkillAssessment
 
 
 class SkillQuestionSerializer(serializers.ModelSerializer):
-    """Serializer for quiz questions (without correct answer)"""
+    """Question servie à l'élève, SANS la bonne réponse. `nb_bonnes` : nombre de bonnes réponses (1, ou plusieurs :
+    « Choisis 2 réponses »), jamais lesquelles."""
+    nb_bonnes = serializers.SerializerMethodField()
 
     class Meta:
         model = SkillQuestion
-        fields = ['id', 'question', 'options', 'difficulty']
+        fields = ['id', 'question', 'options', 'difficulty', 'nb_bonnes']
+
+    def get_nb_bonnes(self, obj):
+        return len(obj.bonnes())
 
 
 class SkillAssessmentSerializer(serializers.ModelSerializer):
@@ -55,14 +60,25 @@ class SkillAssessmentSerializer(serializers.ModelSerializer):
 
 
 class QuizSubmissionSerializer(serializers.Serializer):
-    """Envoi d'un quiz : {id de question: index} (-1 : sans réponse, temps écoulé), temps passé en secondes."""
+    """Envoi d'un quiz : {id de question: index, ou liste d'index pour une question à plusieurs bonnes réponses}
+    (-1 : sans réponse, temps écoulé), temps passé en secondes. Les index sont contrôlés contre les réponses de chaque
+    question à la notation (views.submit_quiz : hors des choix ou en double = sans réponse)."""
     answers = serializers.DictField(
-        child=serializers.IntegerField(min_value=-1),
-        help_text="Question ID -> selected option index"
+        child=serializers.JSONField(),
+        help_text="Question ID -> selected option index (or list of indexes)"
     )
     time_spent = serializers.IntegerField(min_value=0, required=False, default=0)
+
+    @staticmethod
+    def _entier(v):
+        return isinstance(v, int) and not isinstance(v, bool)
 
     def validate_answers(self, value):
         if any(not str(k).isdigit() for k in value):
             raise serializers.ValidationError('Identifiants de questions invalides.')
+        for v in value.values():
+            ok = (self._entier(v) and v >= -1) or (
+                isinstance(v, list) and len(v) <= 10 and all(self._entier(i) and i >= 0 for i in v))
+            if not ok:
+                raise serializers.ValidationError('Réponses invalides.')
         return value
