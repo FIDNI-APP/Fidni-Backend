@@ -2,7 +2,7 @@
 import os
 import sys
 import tempfile
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 
 BACKEND = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, BACKEND + '/src')
@@ -329,10 +329,12 @@ ex3 = Content.objects.create(type='exercise', title='Exercice détaillé', autho
                                  {'id': 'q2', 'type': 'question', 'content': {'html': '<p>?</p>'},
                                   'subQuestions': [{'id': 'a', 'content': {'html': '<p>?</p>'}}]}]})
 ex3.class_levels.add(level)
-AssessmentEvent.objects.create(user=dina, object_id=ex3.id, question_path='q1', status='success', aide='', source='question', at=now - timedelta(minutes=20))
-AssessmentEvent.objects.create(user=dina, object_id=ex3.id, question_path='q2.a', status='review', aide='indice', source='question', at=now - timedelta(minutes=10))
+# Toutes ces actions le même jour, même lancé juste après minuit (sinon « 20 minutes avant » tombe la veille).
+_base = max(now, timezone.make_aware(datetime.combine(today, datetime.min.time())) + timedelta(minutes=30))
+AssessmentEvent.objects.create(user=dina, object_id=ex3.id, question_path='q1', status='success', aide='', source='question', at=_base - timedelta(minutes=20))
+AssessmentEvent.objects.create(user=dina, object_id=ex3.id, question_path='q2.a', status='review', aide='indice', source='question', at=_base - timedelta(minutes=10))
 QuestionHelp.objects.create(user=dina, object_id=ex3.id, question_path='q2.a', kind='indice', day=today,
-                            first_at=now - timedelta(minutes=12), last_at=now - timedelta(minutes=12), count=2)
+                            first_at=_base - timedelta(minutes=12), last_at=_base - timedelta(minutes=12), count=2)
 StudyTimeDay.objects.create(user=dina, object_id=ex3.id, date=today, seconds=14 * 60)
 Save.objects.create(user=dina, content_type=ct, object_id=str(ex3.id))
 lim = Chapter.objects.get(name='Limites et continuité')
