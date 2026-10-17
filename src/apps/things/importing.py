@@ -710,8 +710,9 @@ CHAPITRES_FORCES = {
     'serie-continuite-reciproque-ex12': ['Limites et continuité'],
     'serie-continuite-reciproque-ex16': ['Limites et continuité'],
     'haddar-lc-ex16': ['Limites et continuité'],
-    'ds2-tcs-2022': ['Ordre dans ℝ'],
-    'ds2-tcs-2023': ['Ordre dans ℝ'],
+    # + Calcul vectoriel : un exercice entier de ces devoirs (17/10/2026, chapitre de chaque exercice).
+    'ds2-tcs-2022': ['Calcul vectoriel dans le plan', 'Ordre dans ℝ'],
+    'ds2-tcs-2023': ['Calcul vectoriel dans le plan', 'Ordre dans ℝ'],
     'ordre-tcs-ex15': ['Ordre dans ℝ'],
     'ordre-tcs-ex16': ['Ordre dans ℝ'],
     'ordre-tcs-ex17': ['Ordre dans ℝ'],
@@ -758,6 +759,43 @@ def chapitres_principaux(chapters, levels):
     level_ids = [lvl.pk for lvl in levels]
     garder |= {c.pk for c in chapters if not c.class_levels.filter(pk__in=level_ids).exists()}
     return [c for c in chapters if c.pk in garder] or list(chapters)
+
+
+def chapitres_par_exercice(chapters, levels, parties):
+    """Devoir (17/10/2026, Natsu : « les DS n° 1 contiennent aussi les ensembles de nombres ») : un devoir est fait
+    d'exercices indépendants ; chacun compte pour le DERNIER des chapitres du devoir dont ses questions utilisent un
+    théorème. `parties` = noms des théorèmes de chaque exercice. → chapitres à garder en plus du dernier du devoir."""
+    from apps.caracteristics.programme import RANG_ABSENT, rang
+
+    garder = []
+    for lvl in levels:
+        r = rang(lvl.name)
+        du_niveau = [c for c in chapters if c.class_levels.filter(pk=lvl.pk).exists()]
+        for noms in parties:
+            avec = [c for c in du_niveau if noms and c.theorems.filter(name__in=noms).exists()]
+            if avec:
+                dernier = max(avec, key=lambda c: (-1 if r[c.name] == RANG_ABSENT else r[c.name], c.id))
+                if dernier not in garder:
+                    garder.append(dernier)
+    return garder
+
+
+def theoremes_par_partie(fiche):
+    """Théorèmes de chaque exercice (bloc « partie ») d'une fiche de devoir : liste d'ensembles de noms."""
+    parties, cur = [], None
+    for b in fiche.get('blocs') or []:
+        if not isinstance(b, dict):
+            continue
+        if b.get('type') == 'partie':
+            cur = set()
+            parties.append(cur)
+        elif b.get('type') == 'question':
+            if cur is None:
+                cur = set()
+                parties.append(cur)
+            for q in [b] + [s for s in b.get('sous_questions') or [] if isinstance(s, dict)]:
+                cur |= {t for t in q.get('theoremes') or [] if isinstance(t, str)}
+    return parties
 
 
 def _match(model_qs, names: list[str], what: str, errors: list[str], **filters):
@@ -819,6 +857,7 @@ def check_against_db(fiche: dict) -> tuple[list[str], list[str], dict]:
     kind = TYPES.get(fiche.get('type'))
     # Exercice, examen : rangé seulement dans le DERNIER chapitre du programme dont il a besoin (Natsu, 16/10/2026) ;
     # les chapitres d'avant sont des prérequis (un DS de dérivabilité n'est pas un devoir de « Limites et continuité »).
+    # Un devoir garde en plus le dernier chapitre de CHACUN de ses exercices (17/10/2026, chapitres_par_exercice).
     forces = chapitres_forces(fiche.get('cle'), levels, subject) if kind in ('exercise', 'exam') else None
     if forces:
         if {c.pk for c in forces} != {c.pk for c in chapters}:
@@ -826,6 +865,10 @@ def check_against_db(fiche: dict) -> tuple[list[str], list[str], dict]:
         chapters = forces
     elif kind in ('exercise', 'exam') and len(chapters) > 1:
         gardes = chapitres_principaux(chapters, levels)
+        if kind == 'exam':  # un devoir va aussi dans le chapitre de chacun de ses exercices
+            gardes += [c for c in chapitres_par_exercice(chapters, levels, theoremes_par_partie(fiche))
+                       if c not in gardes]
+            gardes = [c for c in chapters if c in gardes]
         retires = [c.name for c in chapters if c not in gardes]
         if retires:
             warnings.append(f'chapitres : rangé dans « {" », « ".join(c.name for c in gardes)} » seulement '

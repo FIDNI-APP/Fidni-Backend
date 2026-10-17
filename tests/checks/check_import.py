@@ -229,6 +229,40 @@ _ds.chapters.set([_der])
 importlib.import_module('apps.things.migrations.0019_chapitres_corriges').forwards(django_apps, None)
 check('migration 0019 : DS1 2020 publié remis dans « Limites et continuité »', list(_ds.chapters.all()) == [_lim],
       [c.name for c in _ds.chapters.all()])
+# Devoir : aussi le chapitre de chacun de ses exercices (Natsu, 17/10/2026 : DS n° 1 de TC aussi « Ensembles de nombres »).
+_TVI, _COMP = 'Théorème des valeurs intermédiaires (TVI)', "Dérivée d'une fonction composée"
+_DEVOIR = {**EXO, 'cle': 'devoir-deux-exercices', 'type': 'examen', 'chapitres': ['Limites et continuité', 'Dérivation et étude des fonctions'],
+           'blocs': [{'type': 'partie', 'titre': 'Exercice 1'}, {'type': 'question', 'html': '<p>a</p>', 'theoremes': [_TVI]},
+                     {'type': 'partie', 'titre': 'Exercice 2'}, {'type': 'question', 'html': '<p>b</p>', 'theoremes': [_COMP]}]}
+_, w, res = importing.check_against_db(_DEVOIR)
+check('devoir : exercice de limites + exercice de dérivation → les deux chapitres',
+      {c.name for c in res['chapters']} == {'Limites et continuité', 'Dérivation et étude des fonctions'}
+      and not any('prérequis retirés' in x for x in w), ([c.name for c in res['chapters']], w))
+_DEVOIR2 = {**_DEVOIR, 'blocs': [{'type': 'partie', 'titre': 'Exercice 1'},
+                                 {'type': 'question', 'html': '<p>a</p>', 'theoremes': [_TVI, _COMP]}]}
+_, _, res = importing.check_against_db(_DEVOIR2)
+check('devoir : un exercice qui utilise limites ET dérivation → « Dérivation » seulement',
+      [c.name for c in res['chapters']] == ['Dérivation et étude des fonctions'], [c.name for c in res['chapters']])
+_, _, res = importing.check_against_db({**_DEVOIR, 'type': 'exercice'})
+check('exercice : toujours le dernier chapitre seulement', [c.name for c in res['chapters']] == ['Dérivation et étude des fonctions'],
+      [c.name for c in res['chapters']])
+_ds.json_content = {'version': '2.1', 'chapitres_retires': [_lim.pk], 'blocks': [
+    {'id': 's1', 'type': 'section', 'content': {'html': 'Exercice 1'}},
+    {'id': 'q1', 'type': 'question', 'meta': {'theorems': [_TVI]}},
+    {'id': 's2', 'type': 'section', 'content': {'html': 'Exercice 2'}},
+    {'id': 'q2', 'type': 'question', 'meta': {}, 'subQuestions': [{'id': 'q2a', 'meta': {'theorems': [_COMP]}}]}]}
+_ds.save()
+_ds.chapters.set([_der])
+_m21 = importlib.import_module('apps.things.migrations.0021_devoirs_chapitre_par_exercice')
+_m21.forwards(django_apps, None)
+_ds.refresh_from_db()
+check('migration 0021 : DS publié remis aussi dans le chapitre de son exercice de limites',
+      set(_ds.chapters.all()) == {_lim, _der} and _ds.json_content.get('chapitres_remis') == [_lim.pk]
+      and _ds.json_content.get('chapitres_retires') == [], _ds.json_content)
+_m21.backwards(django_apps, None)
+_ds.refresh_from_db()
+check('migration 0021 inverse', list(_ds.chapters.all()) == [_der] and _ds.json_content.get('chapitres_retires') == [_lim.pk],
+      _ds.json_content)
 # Doublons d'énoncé (Natsu, 16/10/2026) : même énoncé qu'un contenu publié du même type, même sous un autre titre.
 _copie = _C.objects.create(type='exercise', title='Titre tout autre', author=_auteur,
                            json_content={**importing.to_structure(EXO), 'import': {'cle': 'autre-cle'}})
