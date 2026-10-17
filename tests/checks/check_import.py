@@ -136,8 +136,9 @@ check('identifiants stables (clé + position)', [b['id'] for b in st['blocks']] 
 check('points d’une question = somme des sous-questions', st['blocks'][2]['points'] == 2.5, st['blocks'][2].get('points'))
 check('mention de l’auteur conservée', importing.to_structure({**EXO, 'credit': 'M. Haddar'}).get('credit') == 'M. Haddar')
 check('mention de l’auteur trop longue refusée', 'credit' in errs(lambda f: f.update(credit='x' * 200)))
-check('correction « à vérifier » conservée', importing.to_structure({**EXO, 'a_verifier': True}).get('a_verifier') is True
-      and 'a_verifier' not in importing.to_structure(EXO))
+check('a_verifier de la fiche accepté mais ignoré (bandeau retiré le 17/10/2026)',
+      'a_verifier' not in importing.to_structure({**EXO, 'a_verifier': True})
+      and 'a_verifier' not in errs(lambda f: f.update(a_verifier=True)))
 check('a_verifier : booléen exigé', 'a_verifier' in errs(lambda f: f.update(a_verifier='oui')))
 check('théorèmes de la question : nom exact du programme (casse ignorée)',
       st['blocks'][1]['meta']['theorems'] == ["Dérivée d'une fonction composée"] and 'skills' not in st['blocks'][1]['meta'],
@@ -263,6 +264,14 @@ _m21.backwards(django_apps, None)
 _ds.refresh_from_db()
 check('migration 0021 inverse', list(_ds.chapters.all()) == [_der] and _ds.json_content.get('chapitres_retires') == [_lim.pk],
       _ds.json_content)
+# Bandeau « à vérifier » retiré (17/10/2026) : 0022 efface la clé, updated_at intact.
+_C.objects.filter(pk=_lc.pk).update(json_content={**_lc.json_content, 'a_verifier': True})
+_avant = _C.objects.get(pk=_lc.pk).updated_at
+importlib.import_module('apps.things.migrations.0022_retirer_a_verifier').forwards(django_apps, None)
+_lc.refresh_from_db()
+check('migration 0022 : clé a_verifier effacée partout, updated_at intact',
+      not _C.objects.filter(json_content__has_key='a_verifier').exists() and _lc.json_content.get('sections') == []
+      and _lc.updated_at == _avant, _lc.json_content)
 # Doublons d'énoncé (Natsu, 16/10/2026) : même énoncé qu'un contenu publié du même type, même sous un autre titre.
 _copie = _C.objects.create(type='exercise', title='Titre tout autre', author=_auteur,
                            json_content={**importing.to_structure(EXO), 'import': {'cle': 'autre-cle'}})
@@ -279,6 +288,21 @@ _devoir = _C.objects.create(type='exam', title='Devoir qui reprend l’exercice'
 e, _, _ = importing.check_against_db({**EXO, 'titre': 'Un titre jamais vu'})
 check('même énoncé dans un devoir (autre type) : pas un doublon', not any('même énoncé' in x for x in e), e)
 _devoir.delete()
+# Même modèle d'énoncé, autres formules : pas un doublon (17/10/2026, équations avec valeur absolue de deux séries).
+_TEXTE = ('Résoudre dans $\\mathbb{R}$ les équations suivantes, en justifiant chaque étape de la résolution par une '
+          'propriété de la valeur absolue : ')
+_modele = {**EXO, 'cle': 'abs-serie1', 'titre': 'Équations avec valeur absolue',
+           'blocs': [{'type': 'question', 'html': f'<p>{_TEXTE}$|x-1|=2$ ; $|x+1|=3$ ; $|2x-1|=5$.</p>'}]}
+_publie = _C.objects.create(type='exercise', title='Équations avec valeur absolue', author=_auteur,
+                            json_content={**importing.to_structure(_modele), 'import': {'cle': 'abs-serie1'}})
+_autre = {**_modele, 'cle': 'abs-serie2',
+          'blocs': [{'type': 'question', 'html': f'<p>{_TEXTE}$|x+1|=x+1$ ; $|x^2-1|=x^2-1$ ; $|x-1|=x$.</p>'}]}
+e, w, _ = importing.check_against_db(_autre)
+check('même texte, autres formules : pas un doublon ; même titre seul = avertissement',
+      not any('doublon' in x for x in e) and any('même titre' in x for x in w), (e, w))
+e, _, _ = importing.check_against_db({**_modele, 'cle': 'abs-copie', 'titre': 'Autre titre'})
+check('mêmes formules et même texte : toujours un doublon', any('même énoncé' in x for x in e), e)
+_publie.delete()
 _ds.delete(); _lc.delete(); _auteur.delete()  # noqa: E702  (la suite compte les contenus)
 
 out = io.StringIO()

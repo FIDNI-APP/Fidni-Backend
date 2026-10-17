@@ -265,23 +265,22 @@ def job_relancer(request, pk):
 @permission_classes([IsSuperuser])
 @parser_classes([JSONParser])
 def job_publier(request, pk):
-    """Publier le brouillon. Corps : {"a_verifier": bool, "doublon_ok": bool}."""
+    """Publier le brouillon. Corps : {"doublon_ok": bool} (`a_verifier` des anciens fronts : ignoré)."""
     job = get_object_or_404(IAJob, pk=pk, kind=IAJob.IMPORT)
     if (bloque := _pret(job)):
         return bloque
-    a_verifier = request.data.get('a_verifier', True)
     doublon_ok = request.data.get('doublon_ok', False)
-    if not isinstance(a_verifier, bool) or not isinstance(doublon_ok, bool):
-        return Response({'detail': 'a_verifier et doublon_ok : true ou false'}, status=status.HTTP_400_BAD_REQUEST)
+    if not isinstance(doublon_ok, bool):
+        return Response({'detail': 'doublon_ok : true ou false'}, status=status.HTTP_400_BAD_REQUEST)
     doublon_ok = doublon_ok or bool(job.options.get('doublon_ignore'))  # doublon déjà écarté (job_doublon)
     try:
-        publies = pipeline.publier(job, a_verifier=a_verifier, doublon_ok=doublon_ok, auteur=request.user)
+        publies = pipeline.publier(job, doublon_ok=doublon_ok, auteur=request.user)
     except (IAErreur, Exception) as exc:  # FicheError, contrôle refusé : le brouillon reste intact
         return Response({'detail': str(exc)}, status=status.HTTP_400_BAD_REQUEST)
     job.result['publies'] = publies
     job.status = IAJob.PUBLIE
     job.history.append({'date': timezone.now().isoformat(), 'qui': request.user.username,
-                        'texte': 'Publié' + (' (correction à vérifier)' if a_verifier else '')})
+                        'texte': 'Publié'})
     job.save()
     return Response(_detail(job))
 
@@ -312,15 +311,12 @@ def job_doublon(request, pk):
 @permission_classes([IsSuperuser])
 @parser_classes([JSONParser])
 def job_appliquer(request, pk):
-    """Signalement : appliquer la correction proposée. Corps : {"a_verifier": bool}."""
+    """Signalement : appliquer la correction proposée (`a_verifier` des anciens fronts : ignoré)."""
     job = get_object_or_404(IAJob, pk=pk, kind=IAJob.SIGNALEMENT)
     if (bloque := _pret(job)):
         return bloque
-    a_verifier = request.data.get('a_verifier', True)
-    if not isinstance(a_verifier, bool):
-        return Response({'detail': 'a_verifier : true ou false'}, status=status.HTTP_400_BAD_REQUEST)
     try:
-        pipeline.appliquer(job, a_verifier=a_verifier, auteur=request.user)
+        pipeline.appliquer(job, auteur=request.user)
     except IAErreur as exc:
         return Response({'detail': str(exc)}, status=status.HTTP_409_CONFLICT)
     job.status = IAJob.APPLIQUE

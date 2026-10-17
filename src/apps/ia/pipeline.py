@@ -408,7 +408,7 @@ def apercus(job):
     return out
 
 
-def publier(job, *, a_verifier, doublon_ok, auteur):
+def publier(job, *, doublon_ok, auteur):
     """Publie toutes les fiches du brouillon (tout ou rien). Jamais d'écrasement d'un contenu existant."""
     import os
     import tempfile
@@ -435,7 +435,7 @@ def publier(job, *, a_verifier, doublon_ok, auteur):
             with open(os.path.join(d, 'figures', nom), 'wb') as fh:
                 fh.write(base64.b64decode(b64))
         for f in fiches:
-            fiche = dict(f, a_verifier=bool(a_verifier), doublon_ok=bool(doublon_ok))
+            fiche = dict(f, doublon_ok=bool(doublon_ok))
             content, _ = importing.import_fiche(fiche, d, api_base=getattr(settings, 'IA_API_BASE', 'https://api.fidni.fr'),
                                                edition=(r.get('editions') or {}).get(f.get('cle')))
             js = dict(content.json_content)
@@ -633,7 +633,7 @@ def _libelle(content, chemin):
     return ''
 
 
-def appliquer(job, *, a_verifier, auteur):
+def appliquer(job, *, auteur):
     """Applique la correction proposée (si le contenu n'a pas changé entre-temps) et clôt le signalement."""
     from django.db import transaction
     from apps.things.models import Content, ContentReport
@@ -649,8 +649,6 @@ def appliquer(job, *, a_verifier, auteur):
             if part is None or _html(part.get(m['champ'])) != m['avant']:
                 raise IAErreur('Le contenu a été modifié depuis la proposition : relancer l’IA sur ce signalement.')
             part[m['champ']] = {'type': 'text', 'html': m['apres']}
-        if a_verifier and any(m['champ'] in ('solution', 'hint') for m in modifs):
-            structure['a_verifier'] = True
         structure.setdefault('modifs_ia', []).append({
             'date': timezone.now().isoformat(), 'travail': job.pk, 'signalement': job.report_id,
             'par': auteur.username, 'endroits': [m['ou'] or m['bloc'] for m in modifs],

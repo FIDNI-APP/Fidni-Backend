@@ -525,10 +525,7 @@ def _with_credit(structure: dict, fiche: dict) -> dict:
     # Mention visible de l'auteur du document (« Proposé par … » dans l'en-tête du contenu).
     if (fiche.get('credit') or '').strip():
         structure['credit'] = fiche['credit'].strip()
-    # Correction rédigée par Fidni, pas encore relue par M. Haddar : bandeau « en cours de
-    # vérification » sur le site (retiré par contenus/outils/valider.sh après son feu vert).
-    if fiche.get('a_verifier'):
-        structure['a_verifier'] = True
+    # `a_verifier` de la fiche : ignoré depuis le 17/10/2026 (bandeau « en cours de vérification » retiré).
     return structure
 
 
@@ -584,7 +581,17 @@ def _texte_comparable(htmls) -> str:
     return re.sub(r'[^0-9a-zà-ÿ\\]+', '', unicodedata.normalize('NFC', s.lower()))
 
 
-def _enonce_fiche(fiche: dict) -> str:
+_FORMULE = re.compile(r'\$\$?(.+?)\$\$?', re.S)
+
+
+def _formules(htmls) -> str:
+    """Formules de l'énoncé seules ($…$), réduites comme le texte. Deux énoncés d'un même modèle (« Résoudre dans ℝ
+    les équations suivantes : … ») se ressemblent par leur texte, pas par leurs formules (17/10/2026 : faux doublons
+    |x − 1| = 2 contre |x + 1| = x + 1, encadrements de x − y contre xy = 9)."""
+    return _texte_comparable(m for h in htmls if isinstance(h, str) for m in _FORMULE.findall(h))
+
+
+def _htmls_fiche(fiche: dict) -> list:
     htmls = []
 
     def walk(blocs):
@@ -596,20 +603,31 @@ def _enonce_fiche(fiche: dict) -> str:
                         htmls.append(sq.get('html'))
                 walk(b.get('blocs'))
     walk(fiche.get('blocs'))
-    return _texte_comparable(htmls)
+    return htmls
 
 
-def _enonce_structure(structure) -> str:
+def _htmls_structure(structure) -> list:
     htmls = []
     if isinstance(structure, dict):
         for b in structure.get('blocks') or []:
             htmls.append((b.get('content') or {}).get('html'))
             for sq in b.get('subQuestions') or []:
                 htmls.append((sq.get('content') or {}).get('html'))
-    return _texte_comparable(htmls)
+    return htmls
 
 
-def _ressemblance(a: str, b: str) -> float:
+def _enonce_fiche(fiche: dict) -> tuple[str, str]:
+    """(texte comparable, formules) de l'énoncé d'une fiche."""
+    htmls = _htmls_fiche(fiche)
+    return _texte_comparable(htmls), _formules(htmls)
+
+
+def _enonce_structure(structure) -> tuple[str, str]:
+    htmls = _htmls_structure(structure)
+    return _texte_comparable(htmls), _formules(htmls)
+
+
+def _ratio(a: str, b: str) -> float:
     if not a or not b:
         return 0.0
     m = difflib.SequenceMatcher(None, a, b, autojunk=False)
@@ -618,13 +636,21 @@ def _ressemblance(a: str, b: str) -> float:
     return m.ratio()
 
 
+def _ressemblance(a: tuple[str, str], b: tuple[str, str]) -> float:
+    """Ressemblance des énoncés ; 0 si leurs formules diffèrent (même texte, autres équations = autre exercice)."""
+    r = _ratio(a[0], b[0])
+    if r >= SEUIL_DOUBLON and (a[1] or b[1]) and _ratio(a[1], b[1]) < SEUIL_DOUBLON:
+        return 0.0
+    return r
+
+
 def doublons_d_enonce(fiche: dict, kind: str, exclure_pk=None) -> list[str]:
     """Erreurs « doublon probable » : même énoncé (≥ 85 % de ressemblance) qu'un contenu publié ou qu'un brouillon en
     attente du même type (autre clé). Rien si la fiche a "doublon_ok": true (vérifié à la main)."""
     from apps.things.models import Content
 
     moi = _enonce_fiche(fiche)
-    if len(moi) < 40:  # énoncé trop court pour juger
+    if len(moi[0]) < 40:  # énoncé trop court pour juger
         return []
     erreurs = []
     for c in Content.objects.filter(type=kind).exclude(pk=exclure_pk).only('id', 'title', 'display_id', 'json_content'):
@@ -887,8 +913,12 @@ def check_against_db(fiche: dict) -> tuple[list[str], list[str], dict]:
         title_key = normalize_text(fiche.get('titre', ''))
         for c in Content.objects.filter(type=kind).exclude(pk=getattr(existing, 'pk', None)).only('id', 'title', 'display_id'):
             if normalize_text(c.title) == title_key:
-                errors.append(f'doublon probable : même titre que #{c.display_id} « {c.title} »'
-                              ' (changer le titre ou mettre "doublon_ok": true)')
+                # Exercice, devoir : l'énoncé tranche (17/10/2026, « Intersection et réunion d'intervalles » de deux
+                # séries) ; le même titre seul n'est qu'un avertissement. Leçon : pas d'énoncé à comparer.
+                (warnings if kind in ('exercise', 'exam') else errors).append(
+                    f'doublon probable : même titre que #{c.display_id} « {c.title} »'
+                    + (' (énoncé différent : changer le titre conseillé)' if kind in ('exercise', 'exam')
+                       else ' (changer le titre ou mettre "doublon_ok": true)'))
         if kind in ('exercise', 'exam'):
             errors += doublons_d_enonce(fiche, kind, getattr(existing, 'pk', None))
     school, avert_ecole = trouver_ecole(fiche.get('ecole'))

@@ -173,11 +173,12 @@ check('demande échouée : brouillon intact et publiable', job.status == 'pret' 
       and job.result['fiches'][0]['difficulte'] == 'moyen', (job.status, job.error))
 
 # ---------------------------------------------------------------- publication
+# `a_verifier` envoyé par un ancien front : ignoré (bandeau retiré le 17/10/2026).
 r = ad.post(f'/api/pilotage/ia/{job.pk}/publier/', {'a_verifier': True}, format='json')
 check('publié', r.status_code == 200 and r.data['status'] == 'publie', r.data)
 c = Content.objects.get(json_content__import__cle='test-ia-ex1-2')
-check('auteur éditorial, bandeau « à vérifier », trace IA',
-      c.author.username == 'Fidni' and c.json_content.get('a_verifier') is True
+check('auteur éditorial, trace IA, plus de bandeau « à vérifier »',
+      c.author.username == 'Fidni' and 'a_verifier' not in c.json_content
       and c.json_content['import']['ia']['travail'] == job.pk and c.json_content.get('credit', '').startswith('M. Haddar'))
 check('niveau, chapitre, difficulté', list(c.class_levels.values_list('name', flat=True)) == ['2ème Bac SM']
       and c.chapters.count() == 1 and c.difficulty == 'medium')
@@ -189,7 +190,7 @@ check('figure publiée', FileAttachment.objects.filter(object_id=c.pk).count() =
       and '/api/files/' in str(c.json_content['blocks'][0]))
 ancien.refresh_from_db()
 check('contenu existant intact', ancien.title == 'Ancien' and ancien.json_content['import']['cle'] == 'test-ia-ex1')
-r = ad.post(f'/api/pilotage/ia/{job.pk}/publier/', {'a_verifier': True}, format='json')
+r = ad.post(f'/api/pilotage/ia/{job.pk}/publier/', {}, format='json')
 check('double publication refusée', r.status_code == 409, r.status_code)
 
 # Doublon probable (même titre) : publication seulement si l'admin le confirme.
@@ -201,7 +202,7 @@ pipeline.traiter(job2.pk)
 job2.refresh_from_db()
 check('doublon signalé, pas une erreur de l’IA', job2.status == 'pret' and job2.result['controles'][0]['doublons']
       and not job2.result['controles'][0]['erreurs'], job2.result.get('controles'))
-r = ad.post(f'/api/pilotage/ia/{job2.pk}/publier/', {'a_verifier': True}, format='json')
+r = ad.post(f'/api/pilotage/ia/{job2.pk}/publier/', {}, format='json')
 check('doublon non confirmé : refusé', r.status_code == 400 and 'doublon' in r.data['detail'], r.data)
 r = ad.post(f'/api/pilotage/ia/{job2.pk}/rejeter/', format='json')
 check('rejet : document effacé', r.status_code == 200 and not IAFile.objects.filter(job=job2).exists())
@@ -255,20 +256,19 @@ check('dernière proposition du signalement', r.status_code == 200 and r.data['i
 js = Content.objects.get(pk=c.pk).json_content
 js['blocks'][1]['subQuestions'][0]['solution']['html'] = '<p>modifié à la main</p>'
 Content.objects.filter(pk=c.pk).update(json_content=js)
-r = ad.post(f'/api/pilotage/ia/{sj.pk}/appliquer/', {'a_verifier': True}, format='json')
+r = ad.post(f'/api/pilotage/ia/{sj.pk}/appliquer/', {}, format='json')
 check('conflit détecté, rien écrasé', r.status_code == 409 and Content.objects.get(pk=c.pk).json_content['blocks'][1]
       ['subQuestions'][0]['solution']['html'] == '<p>modifié à la main</p>', r.data)
 js['blocks'][1]['subQuestions'][0]['solution']['html'] = sq1['solution']['html']
-js.pop('a_verifier', None)
 Content.objects.filter(pk=c.pk).update(json_content=js)
 r = ad.post(f'/api/pilotage/ia/{sj.pk}/appliquer/', {'a_verifier': True}, format='json')
 c.refresh_from_db()
 rep.refresh_from_db()
 check('correction appliquée', r.status_code == 200 and c.json_content['blocks'][1]['subQuestions'][0]['solution']['html']
       == m['apres'], r.data)
-check('bandeau « à vérifier » remis, trace, signalement clos', c.json_content.get('a_verifier') is True
+check('pas de bandeau « à vérifier », trace, signalement clos', 'a_verifier' not in c.json_content
       and c.json_content['modifs_ia'][0]['signalement'] == rep.pk and rep.status == 'resolved' and rep.handled_by == admin)
-r = ad.post(f'/api/pilotage/ia/{sj.pk}/appliquer/', {'a_verifier': True}, format='json')
+r = ad.post(f'/api/pilotage/ia/{sj.pk}/appliquer/', {}, format='json')
 check('double application refusée', r.status_code == 409)
 
 # Image : l'IA ne peut pas en ajouter.

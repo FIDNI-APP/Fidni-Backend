@@ -34,7 +34,6 @@ from apps.copies.urls import urlpatterns_api as copies_api_urls
 from apps.users import nouveautes, tableau
 from apps.things import reports as content_reports
 from apps.ia import views as ia_views
-from apps.things.verification import set_verification
 from apps.things.views import get_content_recommendations, parse_pdf_view
 from apps.caracteristics.views import (
     ClassLevelViewSet, SubjectViewSet, ChapterViewSet, SubfieldViewSet, TheoremViewSet,
@@ -191,8 +190,6 @@ urlpatterns = [
     path('api/pilotage/bannis/<int:pk>/', bans.ban_delete_view, name='pilotage-banni'),
     # Signalements d'erreurs sur les contenus : envoi (élèves connectés), suivi (administrateurs).
     path('api/contents/<int:content_id>/report/', content_reports.report_content, name='content-report'),
-    # Correction « à vérifier » : validée (ou remise) par un administrateur depuis le site.
-    path('api/contents/<int:content_id>/verification/', set_verification, name='content-verification'),
     path('api/pilotage/signalements/', content_reports.reports_list, name='pilotage-signalements'),
     path('api/pilotage/signalements/<int:pk>/', content_reports.report_update, name='pilotage-signalement'),
     # IA des administrateurs : import d'un document, correction d'un signalement (rien sans validation).

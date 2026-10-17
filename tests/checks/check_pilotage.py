@@ -109,10 +109,10 @@ check('7 jours : 2 actifs, 2 inscriptions (bob la semaine d’avant)', d7['metri
 top = d['top_contents']
 check('contenus les plus vus : vues puis membres distincts', top and top[0]['id'] == ex.id and top[0]['views'] == 5
       and top[0]['readers'] == 2 and top[0]['url'] == f'/exercises/{ex.id}' and top[1]['id'] == ex2.id, top)
-check('à traiter : 1 signalement, 1 correction à vérifier', d['todo']['reports_open'] == 1
-      and [x['id'] for x in d['todo']['a_verifier']] == [ex2.id], d['todo'])
+check('à traiter : 1 signalement, plus de « corrections à vérifier » (bandeau retiré le 17/10/2026)',
+      d['todo']['reports_open'] == 1 and 'a_verifier' not in d['todo'], d['todo'])
 r = c.post(f'/api/contents/{ex2.id}/verification/', {'verifie': True}, format='json')
-check('correction validée : sort de la liste', r.status_code == 200 and c.get('/api/pilotage/').data['todo']['a_verifier'] == [])
+check('route de vérification retirée', r.status_code == 404, r.status_code)
 
 r = c.get('/api/pilotage/utilisateurs/')
 names = [x['username'] for x in r.data['results']]
@@ -307,7 +307,7 @@ check('direct : aujourd’hui = dernier jour de l’aperçu', all(live.get('toda
       for k in ('views', 'active', 'signups', 'work')), (live.get('today'), last))
 check('direct : hier présent', set(live.get('yesterday', {})) == {'views', 'active', 'signups', 'work', 'visitors'})
 check('direct : à traiter = celui de l’aperçu', live.get('todo', {}).get('reports_open') == ov['todo']['reports_open']
-      and live['todo']['a_verifier'] == len(ov['todo']['a_verifier']), (live.get('todo'), ov['todo']['reports_open']))
+      and 'a_verifier' not in live['todo'], (live.get('todo'), ov['todo']['reports_open']))
 acts = live.get('activity', [])
 check('direct : activité récente des membres réels (admin exclu)', acts and all(a['username'] != admin.username for a in acts)
       and any(a['kind'] == 'comment' for a in acts), acts[:3])

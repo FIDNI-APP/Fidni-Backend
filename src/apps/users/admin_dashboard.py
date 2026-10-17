@@ -267,8 +267,6 @@ def overview(request):
         'nouveautes': _nouveautes(first),
         'todo': {
             'reports_open': ContentReport.objects.filter(status=ContentReport.STATUS_OPEN).count(),
-            'a_verifier': [_content_ref(c) for c in Content.objects.filter(json_content__a_verifier=True)
-                           .only('id', 'type', 'title').order_by('-created_at')],
             'difficulty_gaps': _difficulty_gaps(),
         },
         'metrics': metrics,
@@ -935,7 +933,7 @@ def live(request):
     """GET /api/pilotage/direct/ : le « moniteur » du Pilotage, relu toutes les 30 s (léger, sans les séries).
 
     Aujourd'hui et hier (vues, membres actifs, inscriptions, travail, visiteurs non connectés), ce qui attend
-    (signalements, corrections à vérifier, travaux de l'IA) et l'activité récente de tous les membres réels.
+    (signalements, travaux de l'IA) et l'activité récente de tous les membres réels.
     """
     from apps.ia import depot as ia_depot
     from apps.ia.models import IAJob
@@ -969,7 +967,6 @@ def live(request):
         'yesterday': day(yesterday),
         'todo': {
             'reports_open': ContentReport.objects.filter(status=ContentReport.STATUS_OPEN).count(),
-            'a_verifier': Content.objects.filter(json_content__a_verifier=True).count(),
             'ia_en_cours': IAJob.objects.filter(status__in=[IAJob.EN_ATTENTE, IAJob.EN_COURS]).count(),
             # Brouillons de Claude (onglet « À valider ») comptés à part de ceux de l'IA.
             'ia_a_relire': IAJob.objects.filter(status=IAJob.PRET).exclude(

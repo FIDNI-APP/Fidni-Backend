@@ -130,18 +130,9 @@ if others:
     r = a.patch(f"/api/pilotage/signalements/{others[0]['id']}/", {'status': 'dismissed', 'reponse': 'x' * 2001}, format='json')
     check('réponse trop longue refusée', r.status_code == 400, r.status_code)
 
-# Bandeau « correction à vérifier » : validé par un administrateur depuis le site
-Content.objects.filter(pk=exo.pk).update(json_content={**exo.json_content, 'a_verifier': True})
-r = c.post(f'/api/contents/{exo.id}/verification/', {'verifie': True}, format='json')
-check('vérification : réservée aux administrateurs', r.status_code == 403, r.status_code)
-r = a.post(f'/api/contents/{exo.id}/verification/', {'verifie': True}, format='json')
-exo.refresh_from_db()
-check('vérification : bandeau retiré', r.status_code == 200 and 'a_verifier' not in exo.json_content
-      and exo.json_content.get('blocks'), r.data)
-r = a.post(f'/api/contents/{exo.id}/verification/', {'verifie': False}, format='json')
-exo.refresh_from_db()
-check('vérification : bandeau remis', r.status_code == 200 and exo.json_content.get('a_verifier') is True, r.data)
-check('vérification : booléen exigé', a.post(f'/api/contents/{exo.id}/verification/', {'verifie': 'oui'}, format='json').status_code == 400)
+# Bandeau « correction à vérifier » retiré le 17/10/2026 : plus de route pour le valider
+check('vérification : route retirée', a.post(f'/api/contents/{exo.id}/verification/', {'verifie': True},
+                                              format='json').status_code == 404)
 
 # RGPD : dans l'export, effacés avec le compte
 check('export des données : signalements inclus', len(export_user_data(alice).get('things.ContentReport', [])) == 4)

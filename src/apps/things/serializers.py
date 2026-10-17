@@ -414,10 +414,10 @@ class ContentCreateSerializer(serializers.ModelSerializer):
 
         if json_content is not None:
             # L'éditeur ne connaît pas ces champs : gardés tels quels (avant le 15/10/2026, une modification
-            # sur le site effaçait « Proposé par », le bandeau « à vérifier » et la clé d'import).
+            # sur le site effaçait « Proposé par » et la clé d'import).
             ancien = instance.json_content if isinstance(instance.json_content, dict) else {}
             nouveau = dict(json_content or {})
-            for cle in ('credit', 'a_verifier', 'import'):
+            for cle in ('credit', 'import'):
                 if cle in ancien and cle not in nouveau:
                     nouveau[cle] = ancien[cle]
             instance.json_content = nouveau
