@@ -313,7 +313,8 @@ check('document 2PC : exercice rangé en PC/SVT seulement (SM retiré, averti)',
 _, _, res = importing.check_against_db({**_doc_pc, 'source': {'document': 'resume (2SM+2PC).pdf', 'origine': 'autorise'}})
 check('document « 2SM + 2PC » : les deux niveaux gardés', len(res['levels']) == 2, [lv.name for lv in res['levels']])
 _, _, res = importing.check_against_db({**_doc_pc, 'type': 'lecon'})
-check('document 2PC : une leçon garde ses deux niveaux', len(res['levels']) == 2, [lv.name for lv in res['levels']])
+check('document 2PC : une leçon aussi en PC/SVT seulement', [lv.name for lv in res['levels']] == [_PC],
+      [lv.name for lv in res['levels']])
 _pcl = _CL.objects.get(name=_PC)
 _lim_pc = _Ch.objects.filter(name='Limites et continuité', class_levels=_pcl).first()
 _ex_pc = _C.objects.create(type='exercise', title='Exercice de série PC', author=_auteur, json_content={
@@ -333,7 +334,15 @@ check('migration 0023 : document SM aussi en PC : intact', _ex_sm.class_levels.c
 _m23.backwards(django_apps, None)
 _ex_pc.refresh_from_db()
 check('migration 0023 inverse : SM remis', _ex_pc.class_levels.count() == 2 and 'sm_retire' not in _ex_pc.json_content)
-_ex_pc.delete(); _ex_sm.delete()  # noqa: E702
+_lecon_pc = _C.objects.create(type='lesson', title='Méthodes PC', author=_auteur, json_content={
+    'version': '1.0', 'sections': [], 'import': {'cle': 'methodes-pc', 'source': {'document': 'suite méthode (2PC).pdf'}}})
+_lecon_pc.class_levels.set([_sm, _pcl])
+_m24 = importlib.import_module('apps.things.migrations.0024_lecons_pc_sans_sm')
+_m24.forwards(django_apps, None)
+check('migration 0024 : leçon d’un document PC → PC/SVT seulement', list(_lecon_pc.class_levels.all()) == [_pcl])
+_m24.backwards(django_apps, None)
+check('migration 0024 inverse', _lecon_pc.class_levels.count() == 2)
+_ex_pc.delete(); _ex_sm.delete(); _lecon_pc.delete()  # noqa: E702
 _ds.delete(); _lc.delete(); _auteur.delete()  # noqa: E702  (la suite compte les contenus)
 
 out = io.StringIO()
