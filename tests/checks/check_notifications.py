@@ -138,5 +138,15 @@ check('concours : lien vers les commentaires', client(travaille).get('/api/notif
 ex.delete()
 check('contenu supprimé : ses notifications aussi', not Notification.objects.filter(target=f'content:{ex.id}').exists())
 
+# Extrait : jamais une formule coupée en deux (18/10/2026), $…$ et $$…$$, \$ littéral ignoré.
+from apps.notifications.services import EXCERPT, excerpt, sans_formule_coupee  # noqa: E402
+check('formule fermée gardée', sans_formule_coupee(r'soit $f(x)=x^2$ et') == r'soit $f(x)=x^2$ et')
+check('formule ouverte retirée', sans_formule_coupee(r'soit $f(x)=x^2$ et $\frac{1}{') == r'soit $f(x)=x^2$ et')
+check('formule centrée ouverte retirée', sans_formule_coupee(r'on a $$\lim_{x\to') == 'on a')
+check('\\$ littéral : pas une formule', sans_formule_coupee(r'prix 5\$ puis $x$') == r'prix 5\$ puis $x$')
+long_ = 'x' * (EXCERPT - 10) + r' $\dfrac{1}{x^2}$ fin'
+check('extrait d’un long texte : coupé avant la formule', excerpt(long_) == 'x' * (EXCERPT - 10) + '…', excerpt(long_))
+check('extrait court : formules intactes', excerpt(r'<p>On a $\frac{1}{2}$.</p>') == r'On a $\frac{1}{2}$.')
+
 print(f'\n{sum(results)}/{len(results)} vérifications réussies')
 sys.exit(0 if all(results) else 1)

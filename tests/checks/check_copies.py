@@ -378,6 +378,37 @@ check('export CSV (Excel français) : BOM, « ; », virgule décimale, une ligne
 r = api.get(f'{base}{eid}/export/?type=xlsx')
 check('export Excel', r.status_code == 200 and r.content[:2] == b'PK', r.status_code)
 
+# ---------------------------------------------------------------- feuilles de correction à imprimer
+r = api.get(f'{base}{eid}/impression/?copie={copie_a.id}')
+f = r.data['copies'][0] if r.status_code == 200 else {}
+fin = f.get('finales', {})
+check('feuille d’une copie : en-tête (classe, évaluation, élève avec prénom et nom, note), questions dans l’ordre',
+      r.status_code == 200 and r.data['classe']['name'] == '2 SM 1' and r.data['evaluation']['titre'] == contenu.title
+      and r.data['evaluation']['total_max'] == 10 and [q['chemin'] for q in r.data['questions']] == ['q1', 'q2', 'q3.a', 'q3.b']
+      and f['eleve']['nom'] == 'Amine Benali' and f['note'] == 19 and f['points'] == 9.5 and f['max'] == 10,
+      getattr(r, 'data', r))
+check('feuille : commentaire du professeur à la place de celui de l’IA, sinon celui de l’IA ; mots de fin',
+      fin['q3.a']['commentaire'] == 'Justifie la continuité.' and fin['q3.b']['commentaire'] == 'Rien de juste.'
+      and f['commentaire_prof'] == 'Attention à la rédaction.' and f['commentaire_global'] == 'Bon début.'
+      and r.data['questions'][0]['solution_html'] == '<p>$f(2)=4$</p>', fin)
+check('feuille : transcription par question et points faibles',
+      f['transcription']['q2']['texte'] == "$f'(x)=2x$" and f['transcription']['q3.a']['illisible']
+      and '_pages' not in f['transcription'] and isinstance(f['points_faibles'], list), f.get('transcription'))
+r = api.get(f'{base}{eid}/impression/')
+check('toutes les corrections : les copies notées seulement (pas celle en erreur sans note), dans l’ordre de la liste',
+      [c['id'] for c in r.data['copies']] == [copie_a.id, copie_s.id] and all(c['validee'] for c in r.data['copies']),
+      [c['id'] for c in r.data.get('copies', [])])
+for nom, u in intrus.items():
+    c = APIClient()
+    c.force_authenticate(u)
+    codes = {c.get(f'{base}{eid}/impression/').status_code,
+             c.get(f'{base}{eid}/impression/?copie={copie_a.id}').status_code}
+    check(f'feuilles de correction : {nom} refusé (404)', codes == {404}, codes)
+check('feuilles de correction : anonyme refusé', APIClient().get(f'{base}{eid}/impression/').status_code in (401, 403))
+check('feuille d’une copie d’une autre évaluation ou identifiant invalide : 404',
+      api.get(f'{base}{eid}/impression/?copie=999999').status_code == 404
+      and api.get(f'{base}{eid}/impression/?copie=abc').status_code == 404)
+
 # ---------------------------------------------------------------- barème modifié, sujet verrouillé
 r = api.patch(f'{base}{eid}/', {'maxima': {'q3.b': 6, 'inconnue': 3}}, format='json')
 copie_a.refresh_from_db()

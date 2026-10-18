@@ -261,13 +261,25 @@ check('conflit détecté, rien écrasé', r.status_code == 409 and Content.objec
       ['subQuestions'][0]['solution']['html'] == '<p>modifié à la main</p>', r.data)
 js['blocks'][1]['subQuestions'][0]['solution']['html'] = sq1['solution']['html']
 Content.objects.filter(pk=c.pk).update(json_content=js)
-r = ad.post(f'/api/pilotage/ia/{sj.pk}/appliquer/', {'a_verifier': True}, format='json')
+r = ad.post(f'/api/pilotage/ia/{sj.pk}/appliquer/', {'prevenir': True, 'reponse': 'x' * 4001}, format='json')
+check('appliquer + prévenir : réponse trop longue refusée, rien appliqué', r.status_code == 400
+      and Content.objects.get(pk=c.pk).json_content['blocks'][1]['subQuestions'][0]['solution']['html'] == sq1['solution']['html'])
+# « Prévenir l'élève avec l'explication de l'IA » (18/10/2026) : sans `reponse`, l'explication part telle quelle.
+from apps.notifications.models import Notification  # noqa: E402
+r = ad.post(f'/api/pilotage/ia/{sj.pk}/appliquer/', {'a_verifier': True, 'prevenir': True}, format='json')
 c.refresh_from_db()
 rep.refresh_from_db()
 check('correction appliquée', r.status_code == 200 and c.json_content['blocks'][1]['subQuestions'][0]['solution']['html']
       == m['apres'], r.data)
 check('pas de bandeau « à vérifier », trace, signalement clos', 'a_verifier' not in c.json_content
       and c.json_content['modifs_ia'][0]['signalement'] == rep.pk and rep.status == 'resolved' and rep.handled_by == admin)
+expl = 'Le domaine de dérivabilité n’était pas précisé.'
+n = Notification.objects.filter(recipient=eleve, kind='report', target=f'report:{rep.pk}').first()
+check('élève prévenu avec l’explication de l’IA (même action)', r.data.get('notified') and rep.response == expl
+      and rep.response_sent_at and n is not None and n.message == expl and n.read_at is None, (r.data.get('notified'), rep.response))
+sj.result['explication'] = r'<p>Le signe est faux&nbsp;: $f\'(x)&lt;0$.</p><p>Voir   <b>la 2</b>.</p>'
+check('explication de l’IA en texte simple (formules gardées)', pipeline.explication_texte(sj) == "Le signe est faux : $f\\'(x)<0$.\nVoir la 2.",
+      pipeline.explication_texte(sj))
 r = ad.post(f'/api/pilotage/ia/{sj.pk}/appliquer/', {}, format='json')
 check('double application refusée', r.status_code == 409)
 

@@ -633,10 +633,21 @@ def _libelle(content, chemin):
     return ''
 
 
-def appliquer(job, *, auteur):
-    """Applique la correction proposée (si le contenu n'a pas changé entre-temps) et clôt le signalement."""
+def explication_texte(job):
+    """Explication de l'IA en texte simple (formules $…$ gardées), pour la réponse envoyée à l'élève."""
+    import html as html_lib
+    texte = re.sub(r'<br\s*/?>|</p>|</li>', '\n', str((job.result or {}).get('explication') or ''), flags=re.I)
+    texte = html_lib.unescape(re.sub(r'<[^>]+>', '', texte))
+    return re.sub(r'\n{3,}', '\n\n', '\n'.join(' '.join(ligne.split()) for ligne in texte.split('\n'))).strip()
+
+
+def appliquer(job, *, auteur, reponse=''):
+    """Applique la correction proposée (si le contenu n'a pas changé entre-temps) et clôt le signalement.
+    `reponse` : envoyée à l'élève dans la même transaction (souvent l'explication de l'IA, voir explication_texte).
+    Renvoie (contenu, élève prévenu)."""
     from django.db import transaction
     from apps.things.models import Content, ContentReport
+    from apps.things.reports import envoyer_reponse
 
     modifs = job.result.get('modifications') or []
     if not modifs:
@@ -658,10 +669,14 @@ def appliquer(job, *, auteur):
         report = job.report
         report.status = ContentReport.STATUS_RESOLVED
         report.handled_at, report.handled_by = timezone.now(), auteur
-        report.save(update_fields=['status', 'handled_at', 'handled_by'])
+        champs = ['status', 'handled_at', 'handled_by']
+        notifie = bool(reponse) and envoyer_reponse(report, reponse, actor=auteur)
+        if reponse:
+            champs += ['response', 'response_sent_at']
+        report.save(update_fields=champs)
     from django.core.cache import cache
     cache.delete(f'content_stats_{content.pk}_user_None')
-    return content
+    return content, notifie
 
 
 # --------------------------------------------------------------------------- exécution

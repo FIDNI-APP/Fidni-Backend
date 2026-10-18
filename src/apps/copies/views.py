@@ -16,6 +16,8 @@ Professeur (propriétaire de la classe ; tout autre compte reçoit 404) :
     …/<eid>/publier/                                           POST {copies: [ids] | 'validees'}
     …/<eid>/rapport/                                           GET
     …/<eid>/export/?type=csv|xlsx                              GET (« format » est réservé par DRF)
+    …/<eid>/impression/?copie=<id>                             GET : feuilles de correction à imprimer (une copie,
+                                                               sinon toutes celles qui ont une note)
     …/<eid>/lots/                                              POST : PDF de toute la classe
     …/<eid>/lots/<lid>/                                        GET · DELETE ;  …/confirmer/  POST {groupes}
 Élève :
@@ -640,6 +642,56 @@ def exporter(request, cid, eid):
     r = HttpResponse('﻿' + out.getvalue(), content_type='text/csv; charset=utf-8')
     r['Content-Disposition'] = f'attachment; filename="{nom}.csv"'
     return r
+
+
+def _nom_complet(c):
+    """Nom imprimé sur la feuille : prénom et nom du compte (le professeur de la classe les voit déjà dans le suivi),
+    sinon le pseudo ; élève sans compte : le nom tapé par le professeur."""
+    if not c.eleve_id:
+        return c.nom
+    return c.eleve.get_full_name().strip() or c.eleve.username
+
+
+def _feuille(e, c, qs):
+    """Une feuille de correction : notes retenues, commentaires (professeur sinon IA), transcription, points faibles."""
+    fin = notes_finales(e, c, qs)
+    tr = c.transcription or {}
+    return {
+        'id': c.id, 'statut': c.statut, 'validee': c.statut == Copie.VALIDEE,
+        'publiee': bool(c.publiee_le and c.statut == Copie.VALIDEE),
+        'eleve': {**_qui(c), 'nom': _nom_complet(c)},
+        **_note(e, c, qs),
+        'finales': fin,
+        'transcription': {q['chemin']: {'texte': tr[q['chemin']].get('texte') or '',
+                                        'illisible': bool(tr[q['chemin']].get('illisible'))}
+                          for q in qs if isinstance(tr.get(q['chemin']), dict)},
+        'commentaire_prof': c.commentaire_prof,
+        'commentaire_global': c.ia_global,
+        'points_faibles': analyse.points_faibles(e, c, qs),
+    }
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def impression(request, cid, eid):
+    """Feuilles de correction à imprimer. ?copie=<id> : une seule ; sinon toutes celles qui ont une note (de l'IA ou
+    du professeur), dans l'ordre de la liste, pour les rendre à la classe."""
+    e = _evaluation(request, cid, eid)
+    qs = questions(e.sujet, e.maxima)
+    voulue = request.query_params.get('copie')
+    if voulue:
+        if not str(voulue).isdigit():
+            raise Http404
+        copies_ = [get_object_or_404(Copie.objects.select_related('eleve'), pk=int(voulue), evaluation=e)]
+    else:
+        copies_ = [c for _u, _n, _m, c in _lignes(e)
+                   if c and c.statut not in (Copie.VIDE, Copie.EN_COURS) and (c.ia or c.notes)]
+    return Response({
+        'evaluation': {**_resume_evaluation(e, compter=False), 'total_max': round(sum(q['max'] for q in qs), 2)},
+        'classe': {'id': e.classroom_id, 'name': e.classroom.name},
+        'questions': _questions_publiques(qs),
+        'copies': [_feuille(e, c, qs) for c in copies_],
+    })
 
 
 # --------------------------------------------------------------------------- PDF de toute la classe

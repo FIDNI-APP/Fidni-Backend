@@ -67,6 +67,11 @@ r = c.post(url, {'reason': 'solution', 'item_path': 'q2.sq1', 'description': 'Et
 check('même signalement en double : complété, pas doublé', r.status_code == 200 and r.data['duplicate']
       and ContentReport.objects.filter(content=exo, reason='solution').count() == 1
       and ContentReport.objects.get(content=exo, reason='solution').description == 'Et la 2.2 aussi.', r.data)
+# Formules (18/10/2026) : l'élève écrit $…$ ; la description reste du texte brut (le site l'échappe puis rend KaTeX).
+formule = "Et la 2.2 : $f'(x)=-\\frac{1}{x^2}$ et non $\\frac{1}{x^2}$ <b>!</b>\n$$\\lim_{x\\to 0^+} f(x)=+\\infty$$"
+r = c.post(url, {'reason': 'solution', 'item_path': 'q2.sq1', 'description': formule}, format='json')
+check('description avec formules gardée telle quelle (texte brut)', r.status_code == 200
+      and ContentReport.objects.get(content=exo, reason='solution').description == formule, r.data)
 
 r = c.post(url, {'reason': 'nimportequoi'}, format='json')
 check('raison inconnue refusée', r.status_code == 400 and 'reason' in r.data, r.status_code)
@@ -127,8 +132,16 @@ if others:
     r = a.patch(f"/api/pilotage/signalements/{others[0]['id']}/", {'status': 'dismissed', 'reponse': 'Pas d’erreur.', 'prevenir': False}, format='json')
     check('« ne pas prévenir » : aucune notification', r.status_code == 200 and not r.data['notified']
           and not Notification.objects.filter(target=f"report:{others[0]['id']}").exists(), r.data)
-    r = a.patch(f"/api/pilotage/signalements/{others[0]['id']}/", {'status': 'dismissed', 'reponse': 'x' * 2001}, format='json')
-    check('réponse trop longue refusée', r.status_code == 400, r.status_code)
+    r = a.patch(f"/api/pilotage/signalements/{others[0]['id']}/", {'status': 'dismissed', 'reponse': 'x' * 4001}, format='json')
+    check('réponse trop longue refusée (4000 au plus)', r.status_code == 400, r.status_code)
+    # Réponse longue avec formules (explication de l'IA reprise) : acceptée, extrait de la cloche sans formule coupée.
+    longue = 'Après vérification, ' + 'a' * 112 + r' : $\dfrac{1}{x^2}>0$ pour tout $x\neq 0$.' + ' b' * 1800
+    r = a.patch(f"/api/pilotage/signalements/{others[0]['id']}/", {'status': 'dismissed', 'reponse': longue}, format='json')
+    n = Notification.objects.filter(target=f"report:{others[0]['id']}").first()
+    check('réponse longue (≤ 4000) avec formules envoyée en entier', r.status_code == 200 and r.data['notified']
+          and n is not None and n.message == longue, (r.status_code, len(longue)))
+    check('extrait de la cloche : formule coupée retirée', n is not None and n.excerpt.endswith('…')
+          and n.excerpt.count('$') % 2 == 0 and '\\dfrac' not in n.excerpt, n and n.excerpt)
 
 # Bandeau « correction à vérifier » retiré le 17/10/2026 : plus de route pour le valider
 check('vérification : route retirée', a.post(f'/api/contents/{exo.id}/verification/', {'verifie': True},

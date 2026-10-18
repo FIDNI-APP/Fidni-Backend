@@ -24,11 +24,23 @@ MIN_STUDY_SECONDS = 120
 TYPE_PATH = {'exercise': 'exercises', 'exam': 'exams', 'lesson': 'lessons'}
 
 
+def sans_formule_coupee(text):
+    """Texte coupé au milieu d'une formule ($…$ ou $$…$$ restée ouverte) : on s'arrête avant son « $ »."""
+    ouverte = None  # (position, délimiteur) de la formule en cours
+    for m in re.finditer(r'(?<!\\)\$\$|(?<!\\)\$', text):
+        if ouverte is None:
+            ouverte = (m.start(), m.group())
+        elif m.group() == ouverte[1]:
+            ouverte = None
+    return text if ouverte is None else text[:ouverte[0]].rstrip()
+
+
 def excerpt(text):
-    # Commentaire écrit avec l'éditeur (HTML, maths en $…$) : on garde le texte et les formules.
+    # Commentaire écrit avec l'éditeur (HTML, maths en $…$) : on garde le texte et les formules,
+    # sans jamais couper une formule en deux (elle s'afficherait en code dans la cloche).
     text = html.unescape(re.sub(r'<[^>]+>', ' ', text or ''))
     text = ' '.join(text.split())
-    return text if len(text) <= EXCERPT else text[:EXCERPT - 1].rstrip() + '…'
+    return text if len(text) <= EXCERPT else sans_formule_coupee(text[:EXCERPT - 1]).rstrip() + '…'
 
 
 def content_participants(content):

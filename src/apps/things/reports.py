@@ -17,7 +17,7 @@ from apps.users.admin_dashboard import IsSuperuser
 from config.throttling import ContentReportThrottle
 
 DESCRIPTION_MAX = 1000
-RESPONSE_MAX = 2000
+RESPONSE_MAX = 4000  # l'explication de l'IA peut y être reprise (formules $…$ comprises)
 LABEL_MAX = 160
 SECTION_URL = {'exercise': 'exercises', 'lesson': 'lessons', 'exam': 'exams'}
 
@@ -132,8 +132,6 @@ def report_update(request, pk):
     envoient la réponse à l'élève dans sa cloche (apps/notifications). Le même statut avec une nouvelle réponse
     renvoie seulement la réponse (par exemple après une correction faite par l'IA).
     """
-    from apps.notifications.services import notify_report_response
-
     report = get_object_or_404(ContentReport, pk=pk)
     new_status = request.data.get('status')
     if new_status not in dict(ContentReport.STATUS_CHOICES):
@@ -151,8 +149,16 @@ def report_update(request, pk):
     report.status = new_status
     sent = False
     if new_status != ContentReport.STATUS_OPEN and notify and response:
-        report.response, report.response_sent_at = response, timezone.now()
+        sent = envoyer_reponse(report, response, actor=request.user)
         fields += ['response', 'response_sent_at']
-        sent = notify_report_response(report, response, actor=request.user) is not None
     report.save(update_fields=fields)
     return Response({**_serialize(report), 'notified': sent})
+
+
+def envoyer_reponse(report, response, actor):
+    """Garde la réponse sur le signalement (champs `response`, `response_sent_at`, à enregistrer par l'appelant)
+    et l'envoie dans la cloche de l'élève. Aussi pour « Appliquer » la correction de l'IA en prévenant l'élève."""
+    from apps.notifications.services import notify_report_response
+
+    report.response, report.response_sent_at = response, timezone.now()
+    return notify_report_response(report, response, actor=actor) is not None

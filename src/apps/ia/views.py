@@ -311,17 +311,28 @@ def job_doublon(request, pk):
 @permission_classes([IsSuperuser])
 @parser_classes([JSONParser])
 def job_appliquer(request, pk):
-    """Signalement : appliquer la correction proposée (`a_verifier` des anciens fronts : ignoré)."""
+    """Signalement : appliquer la correction proposée (`a_verifier` des anciens fronts : ignoré).
+
+    `prevenir` (faux par défaut) : l'élève reçoit dans sa cloche `reponse` (texte libre, formules $…$), ou à défaut
+    l'explication de l'IA — même circuit que la réponse d'un administrateur (things/reports.py), en une seule action.
+    """
+    from apps.things.reports import RESPONSE_MAX
+
     job = get_object_or_404(IAJob, pk=pk, kind=IAJob.SIGNALEMENT)
     if (bloque := _pret(job)):
         return bloque
+    reponse = ''
+    if request.data.get('prevenir') in (True, 'true', '1', 1):
+        reponse = (request.data.get('reponse') or '').strip() or pipeline.explication_texte(job)
+        if len(reponse) > RESPONSE_MAX:
+            return Response({'reponse': f'{RESPONSE_MAX} caractères au maximum.'}, status=status.HTTP_400_BAD_REQUEST)
     try:
-        pipeline.appliquer(job, auteur=request.user)
+        _, notifie = pipeline.appliquer(job, auteur=request.user, reponse=reponse)
     except IAErreur as exc:
         return Response({'detail': str(exc)}, status=status.HTTP_409_CONFLICT)
     job.status = IAJob.APPLIQUE
     job.save()
-    return Response(_detail(job))
+    return Response({**_detail(job), 'notified': notifie})
 
 
 @api_view(['POST'])

@@ -18,6 +18,7 @@ urlpatterns = [
     path('<int:cid>/evaluations/<int:eid>/publier/', views.publier, name='copies-publier'),
     path('<int:cid>/evaluations/<int:eid>/rapport/', views.rapport, name='copies-rapport'),
     path('<int:cid>/evaluations/<int:eid>/export/', views.exporter, name='copies-export'),
+    path('<int:cid>/evaluations/<int:eid>/impression/', views.impression, name='copies-impression'),
     path('<int:cid>/evaluations/<int:eid>/lots/', views.lots, name='copies-lots'),
     path('<int:cid>/evaluations/<int:eid>/lots/<int:lid>/', views.lot, name='copies-lot'),
     path('<int:cid>/evaluations/<int:eid>/lots/<int:lid>/confirmer/', views.confirmer_lot, name='copies-lot-confirmer'),
