@@ -303,6 +303,37 @@ check('même texte, autres formules : pas un doublon ; même titre seul = averti
 e, _, _ = importing.check_against_db({**_modele, 'cle': 'abs-copie', 'titre': 'Autre titre'})
 check('mêmes formules et même texte : toujours un doublon', any('même énoncé' in x for x in e), e)
 _publie.delete()
+# Document de 2ème Bac PC/SVT : exercice et devoir en PC/SVT seulement (Natsu, 18/10/2026).
+_PC = '2ème Bac PC/SVT'
+_doc_pc = {**EXO, 'niveaux': [_PC, '2ème Bac SM'], 'chapitres': ['Limites et continuité'],
+           'source': {'document': 'suites exrcices (2) -2PC.pdf', 'origine': 'autorise'}}
+_, w, res = importing.check_against_db(_doc_pc)
+check('document 2PC : exercice rangé en PC/SVT seulement (SM retiré, averti)',
+      [lv.name for lv in res['levels']] == [_PC] and any('PC/SVT seulement' in x for x in w), ([lv.name for lv in res['levels']], w))
+_, _, res = importing.check_against_db({**_doc_pc, 'source': {'document': 'resume (2SM+2PC).pdf', 'origine': 'autorise'}})
+check('document « 2SM + 2PC » : les deux niveaux gardés', len(res['levels']) == 2, [lv.name for lv in res['levels']])
+_, _, res = importing.check_against_db({**_doc_pc, 'type': 'lecon'})
+check('document 2PC : une leçon garde ses deux niveaux', len(res['levels']) == 2, [lv.name for lv in res['levels']])
+_pcl = _CL.objects.get(name=_PC)
+_lim_pc = _Ch.objects.filter(name='Limites et continuité', class_levels=_pcl).first()
+_ex_pc = _C.objects.create(type='exercise', title='Exercice de série PC', author=_auteur, json_content={
+    'version': '2.1', 'blocks': [], 'import': {'cle': 'serie-pc-ex1', 'source': {'document': 'ds 2-2pc (suite).pdf'}}})
+_ex_pc.class_levels.set([_sm, _pcl]); _ex_pc.chapters.set({_lim, _lim_pc})  # noqa: E702
+_ex_sm = _C.objects.create(type='exercise', title='Exercice de série SM', author=_auteur, json_content={
+    'version': '2.1', 'blocks': [], 'import': {'cle': 'serie-sm-ex1', 'source': {'document': 'suite 2SM.pdf'}}})
+_ex_sm.class_levels.set([_sm, _pcl])
+_m23 = importlib.import_module('apps.things.migrations.0023_documents_pc_sans_sm')
+_m23.forwards(django_apps, None)
+_ex_pc.refresh_from_db()
+check('migration 0023 : exercice d’un document PC → PC/SVT seulement, chapitres de PC gardés',
+      list(_ex_pc.class_levels.all()) == [_pcl] and _lim_pc in _ex_pc.chapters.all()
+      and all(ch.class_levels.filter(pk=_pcl.pk).exists() for ch in _ex_pc.chapters.all()),
+      ([lv.name for lv in _ex_pc.class_levels.all()], [(ch.name, ch.pk) for ch in _ex_pc.chapters.all()]))
+check('migration 0023 : document SM aussi en PC : intact', _ex_sm.class_levels.count() == 2)
+_m23.backwards(django_apps, None)
+_ex_pc.refresh_from_db()
+check('migration 0023 inverse : SM remis', _ex_pc.class_levels.count() == 2 and 'sm_retire' not in _ex_pc.json_content)
+_ex_pc.delete(); _ex_sm.delete()  # noqa: E702
 _ds.delete(); _lc.delete(); _auteur.delete()  # noqa: E702  (la suite compte les contenus)
 
 out = io.StringIO()

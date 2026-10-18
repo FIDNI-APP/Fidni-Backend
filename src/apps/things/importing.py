@@ -753,6 +753,24 @@ CHAPITRES_FORCES = {
 }
 
 
+# Exercice ou devoir tiré d'un document de 2ème Bac PC/SVT : en PC/SVT seulement, jamais aussi en 2ème Bac SM (Natsu,
+# 18/10/2026 : « les exercices que je t'ai envoyés de 2ème PC sont aussi sur 2ème SM, enlève ça »). Le contraire
+# (document SM aussi au programme PC, `aussi_2pc`) reste possible. Migration things 0023 pour les contenus publiés.
+NIVEAU_SM = '2ème Bac SM'
+_DOC_PC = re.compile(r'2\s*-?\s*pc', re.I)
+_DOC_SM = re.compile(r'2\s*-?\s*sm', re.I)
+
+
+def est_document_pc(nom) -> bool:
+    """Nom de document de 2ème Bac PC/SVT (« suites exrcices (2) -2PC.pdf », « ds 2-2pc … ») et pas aussi SM."""
+    return isinstance(nom, str) and bool(_DOC_PC.search(nom)) and not _DOC_SM.search(nom)
+
+
+def document_pc(fiche) -> bool:
+    src = fiche.get('source') if isinstance(fiche.get('source'), dict) else {}
+    return est_document_pc(src.get('document'))
+
+
 def chapitres_forces(cle, levels, subject=None):
     """Chapitres imposés pour cette clé (CHAPITRES_FORCES), à chacun des niveaux du contenu ; None si aucun."""
     from apps.caracteristics.models import Chapter
@@ -854,6 +872,9 @@ def check_against_db(fiche: dict) -> tuple[list[str], list[str], dict]:
     # Ancien nom d'un niveau renommé (« 2ème Bac PC » → « 2ème Bac PC/SVT », 12/10/2026) : accepté tel quel.
     niveaux = [nom_niveau_actuel(n) if isinstance(n, str) else n for n in fiche.get('niveaux') or []] \
         if isinstance(fiche.get('niveaux'), list) else []
+    if TYPES.get(fiche.get('type')) in ('exercise', 'exam') and document_pc(fiche) and NIVEAU_SM in niveaux:
+        niveaux = [n for n in niveaux if n != NIVEAU_SM]
+        warnings.append(f'niveaux : document de 2ème Bac PC/SVT, rangé en PC/SVT seulement (« {NIVEAU_SM} » retiré)')
     levels = _match(ClassLevel.objects.all(), niveaux, 'niveau', errors)
     # Théorèmes du contenu = ceux de la fiche ∪ ceux de ses questions (13/10/2026 : le filtre « Théorème » des listes
     # trouve un exercice par les théorèmes de ses questions).
