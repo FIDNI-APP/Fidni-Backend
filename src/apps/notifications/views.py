@@ -24,7 +24,10 @@ def _avatar(user):
 
 
 def _url(n):
-    if n.kind in (Notification.KIND_REPORT, Notification.KIND_QUIZ, Notification.KIND_COPIE):
+    # Réponse à un signalement : le message en entier, dans l'onglet « Messages » du profil (18/10/2026).
+    if n.kind == Notification.KIND_REPORT:
+        return f'/profile/{n.recipient.username}?tab=messages&message={n.id}'
+    if n.kind in (Notification.KIND_QUIZ, Notification.KIND_COPIE):
         return n.link
     # Page d'un exercice, d'une leçon ou d'un examen : on ouvre la discussion sur le commentaire,
     # avec le champ de réponse prêt (ContentDetail lit « ?commentaire= »).
@@ -45,8 +48,32 @@ def serialize(n):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def notification_list(request):
-    rows = Notification.objects.filter(recipient=request.user).select_related('actor', 'actor__profile')[:LIMIT]
+    rows = Notification.objects.filter(recipient=request.user).select_related('recipient', 'actor', 'actor__profile')[:LIMIT]
     return Response({'unread': _unread(request.user), 'results': [serialize(n) for n in rows]})
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def messages(request):
+    """GET /api/notifications/messages/ : les réponses de l'équipe à ses signalements, en entier, avec son
+    signalement (motif, endroit, texte) et le contenu concerné — onglet « Messages » du profil."""
+    from apps.things.models import ContentReport
+
+    rows = list(Notification.objects.filter(recipient=request.user, kind=Notification.KIND_REPORT)[:100])
+    ids = [int(n.target.split(':', 1)[1]) for n in rows if n.target.split(':', 1)[-1].isdigit()]
+    reports = {r.id: r for r in ContentReport.objects.filter(id__in=ids, user=request.user).select_related('content')}
+    out = []
+    for n in rows:
+        r = reports.get(int(n.target.split(':', 1)[1])) if n.target.split(':', 1)[-1].isdigit() else None
+        out.append({
+            'id': n.id, 'title': n.title, 'link': n.link, 'message': n.message or n.excerpt,
+            'updated_at': n.updated_at, 'read': n.read_at is not None,
+            'report': {
+                'reason': r.get_reason_display(), 'item_label': r.item_label, 'description': r.description,
+                'status': r.status, 'created_at': r.created_at,
+            } if r else None,
+        })
+    return Response({'results': out})
 
 
 @api_view(['GET'])

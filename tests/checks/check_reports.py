@@ -119,8 +119,16 @@ check('notification « signalement traité » pour l’élève', n is not None a
       and n.target == f"report:{first['id']}", n and (n.kind, n.target))
 r = c.get('/api/notifications/')
 row = next((x for x in r.data['results'] if x['kind'] == 'report'), None)
-check('cloche : réponse complète et lien vers le contenu', row is not None and row['message'] == msg
-      and row['url'] == first['content']['url'] and r.data['unread'] >= 1, row)
+check('cloche : réponse complète, lien vers l’onglet « Messages » du profil', row is not None and row['message'] == msg
+      and row['url'] == f"/profile/{alice.username}?tab=messages&message={n.id}" and r.data['unread'] >= 1, row)
+# Onglet « Messages » du profil (18/10/2026) : la réponse en entier, avec son signalement et le contenu.
+r = c.get('/api/notifications/messages/')
+m = r.data['results'][0] if r.status_code == 200 and r.data['results'] else {}
+check('messages : réponse, signalement et contenu', m.get('id') == n.id and m.get('message') == msg
+      and m.get('link') == first['content']['url'] and m['report']['status'] == 'resolved'
+      and m['report']['reason'] and 'description' in m['report'], m)
+check('messages : réservé à son titulaire', a.get('/api/notifications/messages/').data['results'] == []
+      and APIClient().get('/api/notifications/messages/').status_code in (401, 403))
 c.post('/api/notifications/lues/', {}, format='json')
 r = a.patch(f"/api/pilotage/signalements/{first['id']}/", {'status': 'resolved', 'reponse': 'Nouvelle réponse.'}, format='json')
 check('nouvelle réponse : même notification, de nouveau non lue', Notification.objects.filter(recipient=alice, kind='report').count() == 1

@@ -145,6 +145,7 @@ urlpatterns = [
     # Notifications (cloche de la barre du haut)
     path('api/notifications/', notification_views.notification_list, name='notifications'),
     path('api/notifications/non-lues/', notification_views.unread_count, name='notifications-unread'),
+    path('api/notifications/messages/', notification_views.messages, name='notifications-messages'),
     path('api/notifications/lues/', notification_views.mark_read, name='notifications-read'),
 
     # Onboarding
