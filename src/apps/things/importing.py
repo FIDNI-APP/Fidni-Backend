@@ -753,9 +753,9 @@ CHAPITRES_FORCES = {
 }
 
 
-# Contenu tiré d'un document de 2ème Bac PC/SVT : en PC/SVT seulement, jamais aussi en 2ème Bac SM (Natsu,
+# Exercice ou devoir tiré d'un document de 2ème Bac PC/SVT : en PC/SVT seulement, jamais aussi en 2ème Bac SM (Natsu,
 # 18/10/2026 : « les exercices que je t'ai envoyés de 2ème PC sont aussi sur 2ème SM, enlève ça »). Le contraire
-# (document SM aussi au programme PC, `aussi_2pc`) reste possible. Migrations things 0023 (exercices, devoirs) et 0024 (leçons).
+# (document SM aussi au programme PC, `aussi_2pc`) reste possible, et une leçon garde ses deux niveaux (0024 annulée par 0025). Migration things 0023.
 NIVEAU_SM = '2ème Bac SM'
 _DOC_PC = re.compile(r'2\s*-?\s*pc', re.I)
 _DOC_SM = re.compile(r'2\s*-?\s*sm', re.I)
@@ -872,7 +872,7 @@ def check_against_db(fiche: dict) -> tuple[list[str], list[str], dict]:
     # Ancien nom d'un niveau renommé (« 2ème Bac PC » → « 2ème Bac PC/SVT », 12/10/2026) : accepté tel quel.
     niveaux = [nom_niveau_actuel(n) if isinstance(n, str) else n for n in fiche.get('niveaux') or []] \
         if isinstance(fiche.get('niveaux'), list) else []
-    if document_pc(fiche) and NIVEAU_SM in niveaux:
+    if TYPES.get(fiche.get('type')) in ('exercise', 'exam') and document_pc(fiche) and NIVEAU_SM in niveaux:
         niveaux = [n for n in niveaux if n != NIVEAU_SM]
         warnings.append(f'niveaux : document de 2ème Bac PC/SVT, rangé en PC/SVT seulement (« {NIVEAU_SM} » retiré)')
     levels = _match(ClassLevel.objects.all(), niveaux, 'niveau', errors)

@@ -313,8 +313,7 @@ check('document 2PC : exercice rangé en PC/SVT seulement (SM retiré, averti)',
 _, _, res = importing.check_against_db({**_doc_pc, 'source': {'document': 'resume (2SM+2PC).pdf', 'origine': 'autorise'}})
 check('document « 2SM + 2PC » : les deux niveaux gardés', len(res['levels']) == 2, [lv.name for lv in res['levels']])
 _, _, res = importing.check_against_db({**_doc_pc, 'type': 'lecon'})
-check('document 2PC : une leçon aussi en PC/SVT seulement', [lv.name for lv in res['levels']] == [_PC],
-      [lv.name for lv in res['levels']])
+check('document 2PC : une leçon garde ses deux niveaux', len(res['levels']) == 2, [lv.name for lv in res['levels']])
 _pcl = _CL.objects.get(name=_PC)
 _lim_pc = _Ch.objects.filter(name='Limites et continuité', class_levels=_pcl).first()
 _ex_pc = _C.objects.create(type='exercise', title='Exercice de série PC', author=_auteur, json_content={
@@ -340,8 +339,10 @@ _lecon_pc.class_levels.set([_sm, _pcl])
 _m24 = importlib.import_module('apps.things.migrations.0024_lecons_pc_sans_sm')
 _m24.forwards(django_apps, None)
 check('migration 0024 : leçon d’un document PC → PC/SVT seulement', list(_lecon_pc.class_levels.all()) == [_pcl])
-_m24.backwards(django_apps, None)
-check('migration 0024 inverse', _lecon_pc.class_levels.count() == 2)
+importlib.import_module('apps.things.migrations.0025_lecons_deux_niveaux').forwards(django_apps, None)
+_lecon_pc.refresh_from_db()
+check('migration 0025 : la leçon retrouve ses deux niveaux', _lecon_pc.class_levels.count() == 2
+      and 'sm_retire' not in _lecon_pc.json_content)
 _ex_pc.delete(); _ex_sm.delete(); _lecon_pc.delete()  # noqa: E702
 _ds.delete(); _lc.delete(); _auteur.delete()  # noqa: E702  (la suite compte les contenus)
 
