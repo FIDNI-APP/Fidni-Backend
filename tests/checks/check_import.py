@@ -244,6 +244,15 @@ _DEVOIR2 = {**_DEVOIR, 'blocs': [{'type': 'partie', 'titre': 'Exercice 1'},
 _, _, res = importing.check_against_db(_DEVOIR2)
 check('devoir : un exercice qui utilise limites ET dérivation → « Dérivation » seulement',
       [c.name for c in res['chapters']] == ['Dérivation et étude des fonctions'], [c.name for c in res['chapters']])
+_DEVOIR3 = {**_DEVOIR, 'chapitres': ['Limites et continuité', 'Dérivation et étude des fonctions', 'Suites numériques'],
+            'blocs': [{'type': 'partie', 'titre': 'Exercice 1'},
+                      {'type': 'question', 'html': '<p>a</p>', 'theoremes': ["Limite et continuité d'une fonction composée", _COMP]},
+                      {'type': 'partie', 'titre': 'Exercice 2'},
+                      {'type': 'question', 'html': '<p>b</p>', 'theoremes': ['Suite auxiliaire arithmétique ou géométrique']}]}
+_, _, res = importing.check_against_db(_DEVOIR3)
+check('devoir : théorème de deux chapitres compté au premier (étude de fonction pas rangée en Suites)',
+      {c.name for c in res['chapters']} == {'Dérivation et étude des fonctions', 'Suites numériques'},
+      [c.name for c in res['chapters']])
 _, _, res = importing.check_against_db({**_DEVOIR, 'type': 'exercice'})
 check('exercice : toujours le dernier chapitre seulement', [c.name for c in res['chapters']] == ['Dérivation et étude des fonctions'],
       [c.name for c in res['chapters']])

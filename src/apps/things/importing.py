@@ -808,17 +808,24 @@ def chapitres_principaux(chapters, levels):
 def chapitres_par_exercice(chapters, levels, parties):
     """Devoir (17/10/2026, Natsu : « les DS n° 1 contiennent aussi les ensembles de nombres ») : un devoir est fait
     d'exercices indépendants ; chacun compte pour le DERNIER des chapitres du devoir dont ses questions utilisent un
-    théorème. `parties` = noms des théorèmes de chaque exercice. → chapitres à garder en plus du dernier du devoir."""
+    théorème. `parties` = noms des théorèmes de chaque exercice. → chapitres à garder en plus du dernier du devoir.
+    Un théorème rattaché à plusieurs chapitres compte pour le PREMIER, celui où il s'apprend (19/10/2026 : « Limite et
+    continuité d'une fonction composée », aussi dans « Suites numériques », rangeait une étude de fonction en Suites)."""
     from apps.caracteristics.programme import RANG_ABSENT, rang
 
     garder = []
     for lvl in levels:
         r = rang(lvl.name)
-        du_niveau = [c for c in chapters if c.class_levels.filter(pk=lvl.pk).exists()]
+        cle = lambda c: (-1 if r[c.name] == RANG_ABSENT else r[c.name], c.id)  # noqa: E731
+        du_niveau = sorted((c for c in chapters if c.class_levels.filter(pk=lvl.pk).exists()), key=cle)
         for noms in parties:
-            avec = [c for c in du_niveau if noms and c.theorems.filter(name__in=noms).exists()]
-            if avec:
-                dernier = max(avec, key=lambda c: (-1 if r[c.name] == RANG_ABSENT else r[c.name], c.id))
+            premiers = []  # pour chaque théorème de l'exercice, le premier chapitre du devoir qui le contient
+            for nom in noms:
+                ch = next((c for c in du_niveau if c.theorems.filter(name=nom).exists()), None)
+                if ch is not None:
+                    premiers.append(ch)
+            if premiers:
+                dernier = max(premiers, key=cle)
                 if dernier not in garder:
                     garder.append(dernier)
     return garder
