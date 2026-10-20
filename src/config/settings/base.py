@@ -271,11 +271,12 @@ IA_LANCEMENT = os.getenv('IA_LANCEMENT', 'processus')  # « aucun » : tests (tr
 # (environ 0,005 $ par copie), toujours vérifiées et publiées par le professeur.
 COPIES_ACTIVES = os.getenv('COPIES_ACTIVES', 'True') == 'True'
 COPIES_MODEL = os.getenv('COPIES_MODEL', 'claude-haiku-5-5')  # lecture des copies, noms, sujets privés
-# Correction (note par question) : Sonnet 5.5, bien meilleur que Haiku pour les erreurs de raisonnement (choix de
-# Natsu, 15/10/2026, après une négation fausse notée au maximum par Haiku) ; environ 0,05 à 0,08 $ par copie.
-COPIES_MODEL_CORRECTION = os.getenv('COPIES_MODEL_CORRECTION', 'claude-sonnet-5-5')
+# Correction (note par question) : Haiku 5.5 aussi (20/10/2026, choix de Natsu : coût et vitesse ; Sonnet 5.5, choisi
+# le 15/10 après une négation fausse notée au maximum par Haiku, coûtait environ 8 centimes par copie et mettait
+# plusieurs minutes). Pour y revenir : COPIES_MODEL_CORRECTION=claude-sonnet-5-5 dans le .env du serveur.
+COPIES_MODEL_CORRECTION = os.getenv('COPIES_MODEL_CORRECTION', 'claude-haiku-5-5')
 COPIES_EFFORT_TRANSCRIPTION = os.getenv('COPIES_EFFORT_TRANSCRIPTION', 'medium')
-COPIES_EFFORT_CORRECTION = os.getenv('COPIES_EFFORT_CORRECTION', 'high')
+COPIES_EFFORT_CORRECTION = os.getenv('COPIES_EFFORT_CORRECTION', 'medium')  # 'high' : plus lent, peu de gain avec Haiku
 COPIES_QUOTA_MOIS = int(os.getenv('COPIES_QUOTA_MOIS', '200'))  # copies corrigées par l'IA, par professeur et par mois
 COPIES_PAGES_MAX = int(os.getenv('COPIES_PAGES_MAX', '12'))  # pages d'une copie
 COPIES_LOT_PAGES_MAX = int(os.getenv('COPIES_LOT_PAGES_MAX', '200'))  # pages du PDF de toute la classe

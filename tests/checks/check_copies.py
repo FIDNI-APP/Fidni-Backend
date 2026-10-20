@@ -268,9 +268,9 @@ APPELS.clear()
 traitement.traiter_evaluation(eid)
 copie_a.refresh_from_db()
 copie_s = Copie.objects.get(evaluation=ev, eleve=sara)
-check('lecture par Haiku 5.5 (effort moyen), correction par Sonnet 5.5 (effort élevé)',
-      [a['model'] for a in APPELS] == ['claude-haiku-5-5', 'claude-sonnet-5-5'] * 2
-      and [a['effort'] for a in APPELS][:2] == ['medium', 'high'] and APPELS[0]['format']['properties']['reponses'],
+check('lecture et correction par Haiku 5.5 (effort moyen), moins cher et plus rapide que Sonnet',
+      [a['model'] for a in APPELS] == ['claude-haiku-5-5'] * 4
+      and [a['effort'] for a in APPELS][:2] == ['medium', 'medium'] and APPELS[0]['format']['properties']['reponses'],
       [(a.get('model'), a.get('effort')) for a in APPELS])
 check('transcription : images des pages envoyées', sum(1 for b in APPELS[0]['messages'][0]['content']
                                                      if b.get('type') == 'image') == 3)
