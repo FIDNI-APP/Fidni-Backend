@@ -30,6 +30,7 @@ from apps.ia.client import IAErreur
 from apps.ia.pipeline import extraire_json
 
 from . import consignes as C
+from . import progression
 from .bareme import arrondir, completer_ids, questions, total
 from .models import AccesCorrection, Copie, Evaluation, FichierSujet, Lot, UsageCopies
 
@@ -290,6 +291,10 @@ def corriger_copie(copie, chemins=None):
     copie.total = total(evaluation, copie, qs)[0]
     _etape(copie, '', statut=Copie.CORRIGEE, error='')
     evaluation.save(update_fields=['usage', 'updated_at'])
+    try:  # copie solo d'un élève : son auto-évaluation du devoir se remplit (progression.py) ; jamais bloquant
+        progression.appliquer(copie)
+    except Exception:  # noqa: BLE001
+        logger.exception('Copies : progression de la copie %s', copie.pk)
 
 
 def _prendre(evaluation_id):

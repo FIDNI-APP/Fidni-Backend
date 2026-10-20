@@ -627,6 +627,16 @@ check('copie corrigée : visible tout de suite par l’élève, avec note, répo
       r.status_code == 200 and r.data['corrigee'] and r.data['note'] is not None
       and r.data['reponses']['q1']['texte'] == 'ok' and r.data['questions'][0]['solution_html']
       and all('source' not in v for v in r.data['finales'].values()), getattr(r, 'data', r))
+from apps.interactions.models import AssessmentEvent, Complete, QuestionProgress  # noqa: E402
+
+pq = {p.question_path: p.status for p in QuestionProgress.objects.filter(user=eleve_s, object_id=contenu.id)}
+check('copie solo corrigée : l’auto-évaluation du devoir se remplit (réussi / partiel / à revoir)',
+      pq == {'q1': 'success', 'q2': 'success', 'q3.a': 'success', 'q3.b': 'partial'}, pq)
+check('résultat du devoir : « à revoir » tant que tout n’est pas réussi',
+      Complete.objects.filter(user=eleve_s, object_id=contenu.id).first().status == 'review')
+check('le journal de « Ma progression » est alimenté', AssessmentEvent.objects.filter(user=eleve_s, object_id=contenu.id).count() == 4)
+check('une copie de classe ne touche pas l’auto-évaluation de l’élève',
+      not QuestionProgress.objects.filter(user=amine, object_id=contenu.id).exists())
 check('l’élève voit ses scans par lien signé', APIClient().get(r.data['pages'][0]['url']).status_code == 200)
 check('coût facturé à l’élève (pas à un professeur)',
       UsageCopies.objects.filter(user=eleve_s, cout_usd__gt=0).exists())
