@@ -34,7 +34,9 @@ class Evaluation(models.Model):
     PRET, EN_COURS, A_VERIFIER, ERREUR = 'pret', 'en_cours', 'a_verifier', 'erreur'
     SUJET_STATUTS = [(PRET, 'Prêt'), (EN_COURS, 'Import en cours'), (A_VERIFIER, 'À vérifier'), (ERREUR, 'Erreur')]
 
-    classroom = models.ForeignKey('classrooms.Classroom', on_delete=models.CASCADE, related_name='evaluations')
+    # Sans classe : correction « solo » demandée par un élève pour lui-même (AccesCorrection ; created_by = l'élève).
+    classroom = models.ForeignKey('classrooms.Classroom', on_delete=models.CASCADE, related_name='evaluations',
+                                  null=True, blank=True)
     titre = models.CharField(max_length=200)
     date = models.DateField(null=True, blank=True)
     note_sur = models.PositiveSmallIntegerField(default=20)
@@ -175,6 +177,25 @@ class UsageCopies(models.Model):
     class Meta:
         db_table = 'copies_usage'
         constraints = [models.UniqueConstraint(fields=['user', 'mois'], name='usage_copies_unique')]
+
+
+class AccesCorrection(models.Model):
+    """Droit d'un élève à la correction de sa copie par l'IA (fonction cachée, 20/10/2026) : accordé par un
+    administrateur avec un nombre de corrections ; les administrateurs y ont droit sans limite."""
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='acces_correction')
+    limite = models.PositiveIntegerField(default=5)
+    utilisees = models.PositiveIntegerField(default=0)
+    actif = models.BooleanField(default=True)
+    note = models.CharField(max_length=200, blank=True, default='')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'copies_acces_correction'
+
+    @property
+    def restant(self):
+        return max(0, self.limite - self.utilisees)
 
 
 # Les fichiers ne partent pas avec les lignes (suppression d'une classe, d'une évaluation, d'un compte) : on les efface.

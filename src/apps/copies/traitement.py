@@ -31,7 +31,7 @@ from apps.ia.pipeline import extraire_json
 
 from . import consignes as C
 from .bareme import arrondir, completer_ids, questions, total
-from .models import Copie, Evaluation, FichierSujet, Lot, UsageCopies
+from .models import AccesCorrection, Copie, Evaluation, FichierSujet, Lot, UsageCopies
 
 logger = logging.getLogger('django')
 DUREE_MAX = timedelta(minutes=20)
@@ -120,7 +120,7 @@ def quota_restant(user):
 
 def _facturer(evaluation, usage_appel, model=None):
     """Ajoute le coût d'un appel au professeur (mois en cours)."""
-    owner_id = evaluation.classroom.owner_id
+    owner_id = evaluation.classroom.owner_id if evaluation.classroom_id else evaluation.created_by_id
     u, _ = UsageCopies.objects.get_or_create(user_id=owner_id, mois=_mois())
     UsageCopies.objects.filter(pk=u.pk).update(cout_usd=F('cout_usd') + cout(usage_appel, model))
 
@@ -320,6 +320,13 @@ def _echec(copie, message):
         _etape(copie, '', statut=Copie.EN_ATTENTE, error=message[:1000])
     else:
         _etape(copie, '', statut=Copie.ERREUR, error=message[:1000])
+        _rendre_correction_solo(copie)
+
+
+def _rendre_correction_solo(copie):
+    """Correction demandée par un élève (sans classe) qui échoue pour de bon : elle ne compte pas dans sa limite."""
+    if copie.evaluation.classroom_id is None and copie.eleve_id:
+        AccesCorrection.objects.filter(user_id=copie.eleve_id, utilisees__gt=0).update(utilisees=F('utilisees') - 1)
 
 
 def traiter_evaluation(evaluation_id):

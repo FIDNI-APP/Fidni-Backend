@@ -1,7 +1,7 @@
 """Routes des évaluations d'une classe (montées sous /api/classrooms/, voir classrooms/urls.py)."""
 from django.urls import path
 
-from . import views
+from . import solo, views
 
 urlpatterns = [
     path('<int:cid>/evaluations/', views.evaluations, name='copies-evaluations'),
@@ -28,6 +28,13 @@ urlpatterns = [
 urlpatterns_api = [
     path('mes-copies/', views.mes_copies, name='mes-copies'),
     path('mes-copies/<int:pk>/', views.ma_copie, name='ma-copie'),
+    # Correction de sa propre copie par l'IA (fonction cachée : admins et personnes autorisées, voir solo.py)
+    path('correction-ia/acces/', solo.acces, name='correction-ia-acces'),
+    path('correction-ia/copies/', solo.mes_corrections, name='correction-ia-liste'),
+    path('correction-ia/soumettre/', solo.soumettre, name='correction-ia-soumettre'),
+    path('correction-ia/copies/<int:pk>/', solo.correction, name='correction-ia-copie'),
+    path('pilotage/correction-ia/acces/', solo.admin_acces, name='correction-ia-admin'),
+    path('pilotage/correction-ia/acces/<int:uid>/', solo.admin_acces_un, name='correction-ia-admin-un'),
     path('copies/pages/<int:pid>/', views.image_page, name='copies-image-page'),
     path('copies/lots/<int:lid>/pages/<int:n>/', views.image_lot, name='copies-image-lot'),
 ]

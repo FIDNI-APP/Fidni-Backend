@@ -11,7 +11,7 @@ POINTS_FAIBLES_MAX = 6
 
 
 def _niveau(evaluation):
-    lvl = evaluation.classroom.class_level
+    lvl = evaluation.classroom.class_level if evaluation.classroom_id else None
     if lvl is None and evaluation.content_id:
         lvl = evaluation.content.class_levels.order_by('id').first() if evaluation.content else None
     return lvl

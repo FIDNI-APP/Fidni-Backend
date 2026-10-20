@@ -573,6 +573,114 @@ c_mal.refresh_from_db()
 check('scan illisible (rien lu) : erreur claire, pas de notes', c_mal.statut == 'erreur' and 'rien pu lire' in c_mal.error,
       (c_mal.statut, c_mal.error))
 
+# ---------------------------------------------------------------- correction de sa propre copie (fonction cachée)
+from apps.copies.models import AccesCorrection  # noqa: E402
+
+eleve_s = User.objects.create_user('solo_e', 'so@x.fr', 'x')
+eleve_t = User.objects.create_user('solo_t', 'st@x.fr', 'x')
+c_s, c_t, c_ad = APIClient(), APIClient(), APIClient()
+c_s.force_authenticate(eleve_s)
+c_t.force_authenticate(eleve_t)
+c_ad.force_authenticate(admin)
+SOLO = '/api/correction-ia/'
+
+
+def depot(client, n=1, contenu_id=None):
+    return client.post(f'{SOLO}soumettre/', {'contenu': contenu_id or contenu.id,
+                                              'fichiers': [SimpleUploadedFile(f'p{i}.jpg', jpeg(), 'image/jpeg')
+                                                           for i in range(n)]}, format='multipart')
+
+
+r = c_s.get(f'{SOLO}acces/')
+check('sans droit : l’interface reste cachée (acces faux)', r.status_code == 200 and r.data['acces'] is False, r.data)
+check('sans droit : dépôt, liste et copie refusés (404)',
+      depot(c_s).status_code == 404 and c_s.get(f'{SOLO}copies/').status_code == 404
+      and c_s.get(f'{SOLO}copies/1/').status_code == 404)
+check('anonyme : refusé', APIClient().get(f'{SOLO}acces/').status_code in (401, 403))
+check('administrateur : accès sans limite', c_ad.get(f'{SOLO}acces/').data == {'acces': True, 'restant': None, 'limite': None})
+
+# Pilotage : seuls les administrateurs donnent l'accès
+check('donner l’accès : réservé aux administrateurs',
+      c_s.post('/api/pilotage/correction-ia/acces/', {'username': 'solo_e'}, format='json').status_code in (401, 403)
+      and c_s.get('/api/pilotage/correction-ia/acces/').status_code in (401, 403))
+r = c_ad.post('/api/pilotage/correction-ia/acces/', {'username': '@Solo_E', 'limite': 2, 'note': 'test'}, format='json')
+check('un administrateur donne 2 corrections (nom insensible à la casse)', r.status_code == 201 and r.data['limite'] == 2
+      and r.data['restant'] == 2, getattr(r, 'data', r))
+check('compte inconnu : 404', c_ad.post('/api/pilotage/correction-ia/acces/', {'username': 'personne'},
+                                         format='json').status_code == 404)
+check('le droit apparaît côté élève', c_s.get(f'{SOLO}acces/').data == {'acces': True, 'restant': 2, 'limite': 2})
+
+# dépôt : une copie, un décompte, une file
+r = depot(c_s, 2)
+check('dépôt de 2 photos : accepté, copie en attente, 1 correction décomptée',
+      r.status_code == 202 and r.data['restant'] == 1, getattr(r, 'data', r))
+sid = r.data['id']
+solo = Copie.objects.get(pk=sid)
+check('évaluation sans classe, au nom de l’élève, sujet figé', solo.evaluation.classroom_id is None
+      and solo.evaluation.created_by_id == eleve_s.id and solo.eleve_id == eleve_s.id and solo.pages.count() == 2)
+check('une seule correction à la fois', depot(c_s).status_code == 409)
+
+REPONSES[:] = [TRANSCRIPTION_S, NOTES_S]
+traitement.traiter_evaluation(solo.evaluation_id)
+r = c_s.get(f'{SOLO}copies/{sid}/')
+check('copie corrigée : visible tout de suite par l’élève, avec note, réponses lues et corrigé',
+      r.status_code == 200 and r.data['corrigee'] and r.data['note'] is not None
+      and r.data['reponses']['q1']['texte'] == 'ok' and r.data['questions'][0]['solution_html']
+      and all('source' not in v for v in r.data['finales'].values()), getattr(r, 'data', r))
+check('l’élève voit ses scans par lien signé', APIClient().get(r.data['pages'][0]['url']).status_code == 200)
+check('coût facturé à l’élève (pas à un professeur)',
+      UsageCopies.objects.filter(user=eleve_s, cout_usd__gt=0).exists())
+check('un autre élève (même avec droit) ne voit ni la copie ni ses scans',
+      AccesCorrection.objects.get_or_create(user=eleve_t)[0] and c_t.get(f'{SOLO}copies/{sid}/').status_code == 404
+      and c_t.delete(f'{SOLO}copies/{sid}/').status_code == 404)
+from django.core import signing  # noqa: E402
+
+p_solo = solo.pages.first()
+autre_lien = f'/api/copies/pages/{p_solo.id}/?s=' + signing.TimestampSigner(salt='copies-page').sign(f'{p_solo.id}:{prof.id}')
+check('lien signé au nom d’un professeur (tiers) pour une copie solo : 404', APIClient().get(autre_lien).status_code == 404)
+check('copies de classe : la copie solo n’apparaît pas dans « mes copies » publiées',
+      all(x['id'] != sid for x in c_s.get('/api/mes-copies/').data['copies']))
+
+# limite atteinte
+r = depot(c_s)
+check('2e correction : acceptée (limite 2), reste 0', r.status_code == 202 and r.data['restant'] == 0, getattr(r, 'data', r))
+sid2 = r.data['id']
+REPONSES[:] = [TRANSCRIPTION_S, NOTES_S]
+traitement.traiter_evaluation(Copie.objects.get(pk=sid2).evaluation_id)
+r = depot(c_s)
+check('limite atteinte : refus 429', r.status_code == 429, getattr(r, 'data', r))
+c_ad.patch(f'/api/pilotage/correction-ia/acces/{eleve_s.id}/', {'limite': 3}, format='json')
+check('l’administrateur augmente la limite', c_s.get(f'{SOLO}acces/').data['restant'] == 1)
+c_ad.patch(f'/api/pilotage/correction-ia/acces/{eleve_s.id}/', {'actif': False}, format='json')
+check('accès suspendu : tout redevient invisible', c_s.get(f'{SOLO}acces/').data['acces'] is False
+      and depot(c_s).status_code == 404)
+c_ad.patch(f'/api/pilotage/correction-ia/acces/{eleve_s.id}/', {'actif': True, 'remettre_a_zero': True}, format='json')
+check('remise à zéro des utilisations', c_s.get(f'{SOLO}acces/').data['restant'] == 3)
+
+# échec définitif : la correction est rendue
+REPONSES[:] = [IAErreur('Panne.'), IAErreur('Panne.')]
+r = depot(c_s)
+sid3 = r.data['id']
+avant = c_s.get(f'{SOLO}acces/').data['restant']
+traitement.traiter_evaluation(Copie.objects.get(pk=sid3).evaluation_id)
+check('échec de l’IA : copie en erreur et correction rendue (pas décomptée)',
+      Copie.objects.get(pk=sid3).statut == 'erreur' and c_s.get(f'{SOLO}acces/').data['restant'] == avant + 1)
+
+r = c_s.get(f'{SOLO}copies/')
+check('liste de mes corrections', r.status_code == 200 and len(r.data['corrections']) == 3, getattr(r, 'data', r))
+check('administrateur : peut corriger sans limite ni compte à décompter',
+      depot(c_ad).status_code == 202 and AccesCorrection.objects.filter(user=admin).count() == 0)
+Copie.objects.filter(eleve=admin, evaluation__classroom__isnull=True).update(statut='corrigee')
+check('exercice hors examen/exercice (leçon) : refusé',
+      depot(c_s, contenu_id=Content.objects.create(type='lesson', title='Cours', author=admin,
+                                                    json_content=SUJET).id).status_code == 404)
+nb_pages = Page.objects.filter(copie_id=sid).count()
+check('suppression par l’élève : copie, évaluation et scans effacés',
+      c_s.delete(f'{SOLO}copies/{sid}/').status_code == 204 and not Copie.objects.filter(pk=sid).exists()
+      and Page.objects.filter(copie_id=sid).count() == 0 and nb_pages == 2)
+c_ad.delete(f'/api/pilotage/correction-ia/acces/{eleve_t.id}/')
+check('retrait du droit', not AccesCorrection.objects.filter(user=eleve_t).exists())
+
 # ---------------------------------------------------------------- reprise
 Copie.objects.filter(pk=copie_s.pk).update(statut=Copie.EN_COURS, heartbeat=None)
 traitement.reprendre()

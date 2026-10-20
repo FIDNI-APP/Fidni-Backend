@@ -891,8 +891,12 @@ def image_page(request, pid):
     page = get_object_or_404(Page.objects.select_related('copie__evaluation__classroom'), pk=pid)
     c = page.copie
     uid = int(uid_s)
-    # Le lien n'a été donné qu'au professeur de la classe ou à l'élève de la copie publiée : on le revérifie.
-    if uid != c.evaluation.classroom.owner_id and not (
+    # Le lien n'a été donné qu'au professeur de la classe ou à l'élève de la copie publiée (ou, sans classe, à l'élève
+    # qui a demandé la correction de sa propre copie) : on le revérifie.
+    if c.evaluation.classroom_id is None:
+        if uid != c.eleve_id:
+            raise Http404
+    elif uid != c.evaluation.classroom.owner_id and not (
             uid == c.eleve_id and c.publiee_le and c.statut == Copie.VALIDEE):
         raise Http404
     return _image(page.fichier.open('rb'))
