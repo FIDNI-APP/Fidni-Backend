@@ -156,6 +156,34 @@ check('vérification : route retirée', a.post(f'/api/contents/{exo.id}/verifica
                                               format='json').status_code == 404)
 
 # RGPD : dans l'export, effacés avec le compte
+# Message de l'équipe (21/10/2026) : notification + e-mail HTML adressé au pseudo, lu en entier dans « Messages ».
+from django.core import mail  # noqa: E402
+from apps.notifications.equipe import envoyer_message  # noqa: E402
+
+settings.EMAIL_BACKEND = 'django.core.mail.backends.locmem.EmailBackend'
+alice.email = 'alice@example.org'
+alice.first_name = 'Prénomsecret'
+alice.save()
+res = envoyer_message(alice, 'Merci d’avoir rejoint Fidni !', ['Tu es la première personne de ton lycée.'], ['Parles-en autour de toi.'],
+                      hero='/emails/bienvenue.png', hero_alt='Un lycée', partage_image='/emails/partage.png',
+                      cta_label='Partager', cta_link='https://wa.me/?text=Fidni')
+check('message de l’équipe : une notification et un e-mail', res['notification'] and res['email'] and len(mail.outbox) == 1, res)
+courrier = mail.outbox[-1]
+html = courrier.alternatives[0][0]
+check('e-mail : au pseudo (jamais au prénom), images, bouton, texte brut jumeau',
+      f'<strong>{alice.username}</strong>' in html and 'Prénomsecret' not in html + courrier.body
+      and '/emails/bienvenue.png' in html and '/emails/partage.png' in html and 'https://wa.me/?text=Fidni' in html
+      and courrier.body.startswith(f'Bonjour {alice.username},') and 'Parles-en' in courrier.body, courrier.body[:120])
+c.get('/api/notifications/')
+row = next(x for x in c.get('/api/notifications/').data['results'] if x['kind'] == 'message')
+check('cloche : le message mène à l’onglet « Messages » du profil',
+      row['url'] == f"/profile/{alice.username}?tab=messages&message={row['id']}" and 'Parles-en' in row['message'], row)
+msgs = c.get('/api/notifications/messages/').data['results']
+mm = next((x for x in msgs if x['kind'] == 'message'), None)
+check('« Messages » : le message de l’équipe en entier, sans signalement', mm is not None and mm['report'] is None
+      and 'première personne' in mm['message'] and any(x['kind'] == 'report' for x in msgs), msgs)
+check('sans e-mail enregistré : seule la notification part', (lambda u: envoyer_message(u, 'Titre', ['Texte'])['email'] is False)(
+    User.objects.create_user('sans_mail', '', 'x')))
 check('export des données : signalements inclus', len(export_user_data(alice).get('things.ContentReport', [])) == 4)
 delete_account(alice, keep_contributions=True)
 check('compte supprimé : signalements effacés', ContentReport.objects.count() == 0, ContentReport.objects.count())

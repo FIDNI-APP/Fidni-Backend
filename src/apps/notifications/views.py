@@ -25,7 +25,7 @@ def _avatar(user):
 
 def _url(n):
     # Réponse à un signalement : le message en entier, dans l'onglet « Messages » du profil (18/10/2026).
-    if n.kind == Notification.KIND_REPORT:
+    if n.kind in (Notification.KIND_REPORT, Notification.KIND_MESSAGE):
         return f'/profile/{n.recipient.username}?tab=messages&message={n.id}'
     if n.kind in (Notification.KIND_QUIZ, Notification.KIND_COPIE):
         return n.link
@@ -59,14 +59,16 @@ def messages(request):
     signalement (motif, endroit, texte) et le contenu concerné — onglet « Messages » du profil."""
     from apps.things.models import ContentReport
 
-    rows = list(Notification.objects.filter(recipient=request.user, kind=Notification.KIND_REPORT)[:100])
-    ids = [int(n.target.split(':', 1)[1]) for n in rows if n.target.split(':', 1)[-1].isdigit()]
+    rows = list(Notification.objects.filter(recipient=request.user,
+                                            kind__in=(Notification.KIND_REPORT, Notification.KIND_MESSAGE))[:100])
+    ids = [int(n.target.split(':', 1)[1]) for n in rows if n.kind == Notification.KIND_REPORT and n.target.split(':', 1)[-1].isdigit()]
     reports = {r.id: r for r in ContentReport.objects.filter(id__in=ids, user=request.user).select_related('content')}
     out = []
     for n in rows:
-        r = reports.get(int(n.target.split(':', 1)[1])) if n.target.split(':', 1)[-1].isdigit() else None
+        r = (reports.get(int(n.target.split(':', 1)[1]))
+             if n.kind == Notification.KIND_REPORT and n.target.split(':', 1)[-1].isdigit() else None)
         out.append({
-            'id': n.id, 'title': n.title, 'link': n.link, 'message': n.message or n.excerpt,
+            'id': n.id, 'kind': n.kind, 'title': n.title, 'link': n.link, 'message': n.message or n.excerpt,
             'updated_at': n.updated_at, 'read': n.read_at is not None,
             'report': {
                 'reason': r.get_reason_display(), 'item_label': r.item_label, 'description': r.description,
