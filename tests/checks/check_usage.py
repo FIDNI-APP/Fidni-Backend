@@ -36,7 +36,7 @@ def check(name, ok, detail=''):
     print(('OK   ' if ok else 'FAIL ') + name + (f'  [{detail}]' if detail and not ok else ''))
 
 
-UA = {'HTTP_USER_AGENT': 'Mozilla/5.0 (Windows NT 10.0) Chrome/130'}
+UA = {'HTTP_USER_AGENT': 'Mozilla/5.0 (Windows NT 10.0) Chrome/130', 'HTTP_ORIGIN': 'https://fidni.fr'}
 level = ClassLevel.objects.get(name='2ème Bac SM')
 subject = Subject.objects.get(name='Mathématiques')
 editorial = User.objects.create_user('Fidni', 'fidni@x.fr', None)

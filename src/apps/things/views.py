@@ -28,7 +28,7 @@ from apps.interactions.views import VoteMixin
 from apps.users.models import ViewHistory
 from rest_framework.permissions import IsAuthenticated, IsAdminUser, AllowAny
 from config.permissions import CanCreateContent, IsAdminMember, IsAuthorOrStaffOrReadOnly
-from config.throttling import PdfParseThrottle, ProposedSolutionThrottle
+from config.throttling import ContentViewThrottle, PdfParseThrottle, ProposedSolutionThrottle
 
 import hashlib
 import logging
@@ -38,6 +38,23 @@ logger = logging.getLogger('django')
 
 # Robots (moteurs de recherche, aperçus de liens, navigateurs automatisés) : leurs passages ne sont pas des vues.
 BOT_UA = re.compile(r'bot|crawl|spider|slurp|headless|lighthouse|preview|facebookexternalhit|whatsapp|python-requests|curl|wget', re.I)
+# Navigateur inventé (24/10/2026 : 38 129 fausses vues d'un devoir en une heure, « Chrome/9999772709 » différent à
+# chaque requête pour passer le filtre IP + navigateur) : aucune version réelle n'atteint 400.
+FAUX_NAVIGATEUR = re.compile(r'(?:Chrome|Firefox|Edg|Version)/(\d{4,}|[4-9]\d\d)\.')
+
+
+def _depuis_le_site(request):
+    """Requête envoyée par une page de fidni.fr (Origin ou, à défaut, Referer) : un script qui appelle l'API
+    directement n'en envoie pas."""
+    from urllib.parse import urlparse
+
+    from django.conf import settings
+    origine = request.META.get('HTTP_ORIGIN') or request.META.get('HTTP_REFERER') or ''
+    hote = (urlparse(origine).hostname or '').lower()
+    permis = {'fidni.fr', 'www.fidni.fr', (urlparse(settings.FRONTEND_URL).hostname or '').lower()}
+    if settings.DEBUG:
+        permis |= {'localhost', '127.0.0.1'}
+    return hote in permis
 
 
 def _count_daily_view(content_id, anon=False):
@@ -783,13 +800,16 @@ class ContentViewSet(VoteMixin, viewsets.ModelViewSet):
     # Compteur de vues : une vue par personne et par contenu sur 24 h. Avant le 05/10/2026, les
     # visiteurs non connectés (l'essentiel du trafic) recevaient une erreur 401 et n'étaient jamais
     # comptés, et les vues des administrateurs / du compte de test l'étaient.
-    @action(detail=True, methods=['post'], permission_classes=[AllowAny])
+    # Depuis le 24/10/2026 : un visiteur = une adresse IP (le navigateur annoncé ne compte plus, il se falsifie), la
+    # requête doit venir d'une page du site, et une même IP est freinée (ContentViewThrottle).
+    @action(detail=True, methods=['post'], permission_classes=[AllowAny], throttle_classes=[ContentViewThrottle])
     def view(self, request, pk=None):
         from apps.users.admin_dashboard import _house_filter
 
         item = self.get_object()
         ua = request.META.get('HTTP_USER_AGENT', '')
-        if not ua or BOT_UA.search(ua):
+        connecte = bool(request.user and request.user.is_authenticated)
+        if not ua or BOT_UA.search(ua) or FAUX_NAVIGATEUR.search(ua) or (not connecte and not _depuis_le_site(request)):
             return Response({'view_count': item.view_count, 'counted': False})
 
         user = request.user if (request.user and request.user.is_authenticated) else None  # visiteur : None (UNAUTHENTICATED_USER)
@@ -807,9 +827,9 @@ class ContentViewSet(VoteMixin, viewsets.ModelViewSet):
                     user=user, content_type=ct, object_id=item.id, defaults={'status': 'viewed'}
                 )
             else:
-                # Visiteur : même adresse IP + même navigateur = une vue par 24 h (cache partagé).
+                # Visiteur : une vue par adresse IP et par contenu sur 24 h (cache partagé).
                 ip = request.META.get('HTTP_CF_CONNECTING_IP', '').strip() or request.META.get('REMOTE_ADDR', '')
-                key = 'vue:%s:%s' % (item.id, hashlib.sha256(f'{ip}|{ua}'.encode()).hexdigest()[:32])
+                key = 'vue:%s:%s' % (item.id, hashlib.sha256(ip.encode()).hexdigest()[:32])
                 should_count = cache.add(key, 1, 24 * 3600)
             if should_count:
                 Content.objects.filter(id=item.id).update(view_count=F('view_count') + 1)

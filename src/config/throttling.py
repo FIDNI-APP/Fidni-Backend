@@ -23,6 +23,12 @@ class ClientErrorThrottle(_ClientIPThrottle):
     scope = 'client_error'
 
 
+class ContentViewThrottle(_ClientIPThrottle):
+    """Comptage des vues d'un contenu (24/10/2026, après 38 129 fausses vues en une heure) : par IP, assez large pour
+    toute une classe derrière l'IP du lycée."""
+    scope = 'content_view'
+
+
 class AuthRateThrottle(_ClientIPThrottle):
     """Connexion, inscription : freine les requêtes en rafale depuis une même adresse.
     Assez large pour une classe entière qui se connecte derrière la même IP de lycée."""

@@ -271,7 +271,8 @@ check('liens vers les devoirs : comptés sans le Bac national (comme leurs dossi
 from django.core.cache import cache  # noqa: E402
 from rest_framework.test import APIClient  # noqa: E402
 cache.clear()
-NAV = {'HTTP_USER_AGENT': 'Mozilla/5.0 (Linux; Android 14) Chrome/128 Mobile', 'HTTP_CF_CONNECTING_IP': '41.1.2.3'}
+NAV = {'HTTP_USER_AGENT': 'Mozilla/5.0 (Linux; Android 14) Chrome/128 Mobile', 'HTTP_CF_CONNECTING_IP': '41.1.2.3',
+       'HTTP_ORIGIN': 'https://fidni.fr'}
 vc = lambda: Content.objects.get(pk=e1.pk).view_count  # noqa: E731
 v0 = vc()
 r = cl.post(f'/api/contents/{e1.id}/view/', **NAV)
@@ -282,6 +283,18 @@ r = cl.post(f'/api/contents/{e1.id}/view/', **{**NAV, 'HTTP_CF_CONNECTING_IP': '
 check('vue : autre visiteur compté', r.json()['counted'] and vc() == v0 + 2)
 r = cl.post(f'/api/contents/{e1.id}/view/', HTTP_USER_AGENT='Mozilla/5.0 (compatible; Googlebot/2.1)')
 check('vue : robot non compté', not r.json()['counted'] and vc() == v0 + 2)
+# 24/10/2026 : script qui change de navigateur à chaque requête, sans passer par une page du site.
+r = cl.post(f'/api/contents/{e1.id}/view/', **{**NAV, 'HTTP_USER_AGENT': 'Mozilla/5.0 (Windows NT 10.0) Chrome/128 Safari/537.36 x'})
+check('vue : même IP, autre navigateur annoncé : pas recompté', not r.json()['counted'] and vc() == v0 + 2)
+r = cl.post(f'/api/contents/{e1.id}/view/', **{**NAV, 'HTTP_CF_CONNECTING_IP': '41.7.7.7',
+                                               'HTTP_USER_AGENT': 'Mozilla/5.0 (Windows NT 10.0) Chrome/9999772709.0.0.0 Safari/537.36'})
+check('vue : navigateur inventé (Chrome/9999772709) non compté', not r.json()['counted'] and vc() == v0 + 2)
+r = cl.post(f'/api/contents/{e1.id}/view/', **{**{k: v for k, v in NAV.items() if k != 'HTTP_ORIGIN'}, 'HTTP_CF_CONNECTING_IP': '41.8.8.8'})
+check('vue : appel direct de l’API (sans page de fidni.fr) non compté', not r.json()['counted'] and vc() == v0 + 2)
+r = cl.post(f'/api/contents/{e1.id}/view/', **{**NAV, 'HTTP_CF_CONNECTING_IP': '41.6.6.6', 'HTTP_ORIGIN': 'https://autre-site.example'})
+check('vue : depuis un autre site non comptée', not r.json()['counted'] and vc() == v0 + 2)
+codes = {cl.post(f'/api/contents/{e1.id}/view/', **{**NAV, 'HTTP_CF_CONNECTING_IP': '41.5.5.5', 'HTTP_ORIGIN': 'https://autre-site.example'}).status_code for _ in range(125)}
+check('vue : rafale depuis une IP freinée (429)', 429 in codes, codes)
 eleve = User.objects.create_user('eleve_vues', 'ev@x.fr', 'x')
 ac = APIClient(); ac.force_authenticate(eleve)
 r = ac.post(f'/api/contents/{e1.id}/view/', **NAV)

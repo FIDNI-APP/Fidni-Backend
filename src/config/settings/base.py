@@ -313,6 +313,7 @@ REST_FRAMEWORK = {
     ],
     "DEFAULT_THROTTLE_RATES": {
         "auth": "40/min",           # connexion, inscription (par IP : une classe entière passe)
+        "content_view": "120/min",  # comptage des vues d'un contenu (par IP)
         "login_account": "15/hour", # essais de connexion sur un même compte
         "token_refresh": "60/min",  # renouvellement silencieux des jetons (par IP)
         "auth_email": "5/hour",     # renvoi de confirmation, mot de passe oublié (par IP)
