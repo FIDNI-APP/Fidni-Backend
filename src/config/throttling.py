@@ -23,6 +23,27 @@ class ClientErrorThrottle(_ClientIPThrottle):
     scope = 'client_error'
 
 
+class ApiVisiteurThrottle(_ClientIPThrottle):
+    """Limite globale de l'API pour les visiteurs non connectés, par IP (24/10/2026) : arrête un script qui
+    s'emballe, sans gêner une classe entière derrière l'IP de son lycée. Les membres connectés ont la leur."""
+    scope = 'api_visiteur'
+
+    def get_cache_key(self, request, view):
+        if request.user and request.user.is_authenticated:
+            return None
+        return super().get_cache_key(request, view)
+
+
+class ApiMembreThrottle(UserRateThrottle):
+    """Limite globale de l'API par compte connecté (24/10/2026) ; les visiteurs ont ApiVisiteurThrottle."""
+    scope = 'api_membre'
+
+    def get_cache_key(self, request, view):
+        if not (request.user and request.user.is_authenticated):
+            return None
+        return super().get_cache_key(request, view)
+
+
 class ContentViewThrottle(_ClientIPThrottle):
     """Comptage des vues d'un contenu (24/10/2026, après 38 129 fausses vues en une heure) : par IP, assez large pour
     toute une classe derrière l'IP du lycée."""

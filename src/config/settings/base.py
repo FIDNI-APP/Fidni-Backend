@@ -311,7 +311,15 @@ REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.IsAuthenticatedOrReadOnly",
     ],
+    # Limite globale (24/10/2026, après un script de 38 000 requêtes) : une route qui déclare ses propres
+    # throttle_classes les remplace (connexion, copies…). Assez large pour une classe derrière une seule IP.
+    "DEFAULT_THROTTLE_CLASSES": [
+        "config.throttling.ApiVisiteurThrottle",
+        "config.throttling.ApiMembreThrottle",
+    ],
     "DEFAULT_THROTTLE_RATES": {
+        "api_visiteur": os.getenv("API_VISITEUR_RATE", "1500/min"),  # tout l'API, par IP, visiteurs non connectés
+        "api_membre": os.getenv("API_MEMBRE_RATE", "600/min"),       # tout l'API, par compte connecté
         "auth": "40/min",           # connexion, inscription (par IP : une classe entière passe)
         "content_view": "120/min",  # comptage des vues d'un contenu (par IP)
         "login_account": "15/hour", # essais de connexion sur un même compte
