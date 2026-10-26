@@ -1,6 +1,6 @@
 """Travaux de l'IA sur les copies, exécutés en arrière-plan (commande copies_traiter, lancée comme ia_traiter).
 
-- correction d'une copie : transcription des pages (effort faible) puis note par question (texte seul, consignes et
+- correction d'une copie : transcription des pages, recopiées une fois avec un repère par question, puis note par question (texte seul, consignes et
   barème en cache commun à toutes les copies de l'évaluation) ;
 - découpage du PDF de toute la classe : lecture du nom en tête de chaque page, regroupement, rapprochement avec la
   liste de la classe (sur le serveur : la liste n'est jamais envoyée à l'IA) ;
@@ -14,6 +14,7 @@ import difflib
 import json
 import logging
 import os
+import re
 import subprocess
 import sys
 import unicodedata
@@ -164,6 +165,45 @@ def _propre(s, n=COMMENTAIRE_MAX):
     return ' '.join(strip_tags(str(s or '')).split())[:n]
 
 
+REPERE = re.compile(r'\[\[\s*(Q\d+|HORS)\s*\]\]', re.I)
+
+
+def ranger(pages, qs):
+    """Pages recopiées une seule fois, avec un repère [[Qn]] au début de chaque réponse (26/10/2026 : avant, l'IA
+    recopiait la copie deux fois, page par page puis question par question, et payait deux fois ce texte). Tout ce qui
+    suit un repère va à sa question jusqu'au repère suivant, même sur la page suivante ; avant le premier repère ou
+    après [[HORS]] : hors des questions. → {chemin: {texte, illisible, page}, _hors_question, _pages (sans repères)}."""
+    par_numero = {f'Q{i}': q['chemin'] for i, q in enumerate(qs, 1)}
+    morceaux, hors, propres = {}, [], []
+    courant = None
+    for p in sorted(pages, key=lambda p: p.get('page') or 0):
+        texte, num = str(p.get('texte') or ''), p.get('page') or (len(propres) + 1)
+        parts = REPERE.split(texte)
+        propres.append(REPERE.sub('', texte).strip()[:12000])
+        for i, part in enumerate(parts):
+            if i % 2:  # un repère
+                courant = par_numero.get(part.upper())  # repère inconnu ou [[HORS]] : hors des questions
+                if courant and courant not in morceaux:
+                    morceaux[courant] = {'lignes': [], 'page': num}
+                continue
+            if not part.strip():
+                continue
+            if courant:
+                morceaux[courant]['lignes'].append(part.strip())
+            else:
+                hors.append(part.strip())
+    out = {}
+    for c, m in morceaux.items():
+        t = '\n'.join(m['lignes'])[:6000]
+        if t.strip():
+            out[c] = {'texte': t, 'illisible': '[illisible]' in t.lower(), 'page': m['page']}
+    out['_hors_question'] = '\n'.join(hors)[:4000]
+    # Copie complète, page par page : montrée au professeur, et donnée au correcteur pour retrouver une réponse mal
+    # rangée (15/10/2026 : une copie lue mais rangée sous aucune question était notée 0 partout).
+    out['_pages'] = propres
+    return out
+
+
 def transcrire(copie, evaluation, qs):
     pages = list(copie.pages.all())
     if not pages:
@@ -177,23 +217,8 @@ def transcrire(copie, evaluation, qs):
     data = _appel(copie, evaluation, system, [{'role': 'user', 'content': contenu}],
                   C.schema_transcription([q['chemin'] for q in qs]), settings.COPIES_EFFORT_TRANSCRIPTION,
                   max_tokens=32000)  # chaque page recopiée en entier, puis rangée par question
-    chemins = {q['chemin'] for q in qs}
-    out = {}
-    for r in data.get('reponses') or []:
-        c = r.get('chemin')
-        if c not in chemins:
-            continue
-        t = str(r.get('texte') or '')[:6000]
-        if c in out:  # même question en deux endroits (suite sur une autre page) : on ajoute
-            out[c]['texte'] += '\n' + t
-            out[c]['illisible'] = out[c]['illisible'] or bool(r.get('illisible'))
-        else:
-            out[c] = {'texte': t, 'illisible': bool(r.get('illisible')), 'page': r.get('page') or None}
-    out['_hors_question'] = str(data.get('hors_question') or '')[:4000]
+    out = ranger(data.get('pages') or [], qs)
     out['_injection'] = bool(data.get('injection_suspecte'))
-    # Copie complète, page par page : montrée au professeur, et donnée au correcteur pour retrouver une réponse mal
-    # rangée (15/10/2026 : une copie lue mais rangée sous aucune question était notée 0 partout).
-    out['_pages'] = [str(p.get('texte') or '')[:12000] for p in sorted(data.get('pages') or [], key=lambda p: p.get('page') or 0)]
     if not any(v.get('texte', '').strip() for k, v in out.items() if not k.startswith('_')) \
             and not any(t.strip() for t in out['_pages']):
         raise IAErreur('L’IA n’a rien pu lire sur cette copie : vérifie le scan (pages blanches, floues ou à l’envers).')
