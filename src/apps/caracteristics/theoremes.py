@@ -10,10 +10,18 @@ Pas affichés aux élèves.
 Noms plutôt qu'identifiants : les mêmes en développement et en production, lisibles dans le JSON, ceux que l'IA et
 les fiches emploient déjà ; un ancien nom (programme.ALIAS_THEOREMES) est traduit à la lecture.
 """
+import time
+
 from django.core.cache import cache
 
 INDEX_KEY = 'theoremes:index:v1'
 TIMEOUT = 600
+MEMOIRE = 60  # secondes : copie gardée dans le processus (30/10/2026)
+
+# index() est appelé un millier de fois par calcul de « Ma progression » : relu à chaque fois dans le cache fichier
+# (lecture + décompression + unpickle), il coûtait 0,8 s sur 1,2 s. Copie en mémoire du processus, rafraîchie
+# chaque minute (les autres processus gunicorn voient un changement de la liste au plus 60 s après).
+_memoire = {'expire': 0.0, 'data': None}
 
 
 def cle(nom):
@@ -22,19 +30,22 @@ def cle(nom):
 
 def index():
     """{nom en minuscules: {'id', 'name', 'chapters': [ids]}} des théorèmes de la base (cache 10 min)."""
-    hit = cache.get(INDEX_KEY)
-    if hit is not None:
-        return hit
-    from .models import Theorem
-    out = {cle(th.name): {'id': th.id, 'name': th.name, 'chapters': sorted(ch.id for ch in th.chapters.all())}
-           for th in Theorem.objects.prefetch_related('chapters')}
-    cache.set(INDEX_KEY, out, TIMEOUT)
+    if _memoire['data'] is not None and time.monotonic() < _memoire['expire']:
+        return _memoire['data']
+    out = cache.get(INDEX_KEY)
+    if out is None:
+        from .models import Theorem
+        out = {cle(th.name): {'id': th.id, 'name': th.name, 'chapters': sorted(ch.id for ch in th.chapters.all())}
+               for th in Theorem.objects.prefetch_related('chapters')}
+        cache.set(INDEX_KEY, out, TIMEOUT)
+    _memoire.update(expire=time.monotonic() + MEMOIRE, data=out)
     return out
 
 
 def oublier():
     """Après un changement de la liste (seeder, migration) : l'index est relu."""
     cache.delete(INDEX_KEY)
+    _memoire.update(expire=0.0, data=None)
 
 
 def _alias():

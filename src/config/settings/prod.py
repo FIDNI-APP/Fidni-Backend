@@ -49,7 +49,7 @@ SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 # (vidés au redémarrage, ce qui ne gêne pas : tout y expire en moins de 24 h).
 CACHES = {
     'default': {
-        'BACKEND': 'django.core.cache.backends.filebased.FileBasedCache',
+        'BACKEND': 'config.cache.CacheFichier',  # FileBasedCache sans tri du dossier à chaque écriture
         'LOCATION': '/tmp/fidni-cache',
         'TIMEOUT': 3600,
         'OPTIONS': {'MAX_ENTRIES': 50000},
