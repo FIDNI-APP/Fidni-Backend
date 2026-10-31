@@ -2,6 +2,18 @@
 from django.db import models
 from django.contrib.auth.models import User
 
+# Deux quiz par chapitre et par niveau (31/10/2026, Natsu) : le quiz du cours (QCM sur le cours, l'existant) et
+# l'approfondissement (vrais problèmes en QCM, avec des propositions pièges). Questions, passages et résultats sont
+# rangés par type ; la maîtrise (« Ma progression », plan de DS) ne lit que le quiz du cours.
+COURS, APPROFONDISSEMENT = 'cours', 'approfondissement'
+TYPES = [(COURS, 'Quiz du cours'), (APPROFONDISSEMENT, 'Approfondissement')]
+TYPES_VALIDES = {k for k, _ in TYPES}
+
+
+def type_valide(valeur):
+    """Type de quiz lu dans une requête ou un fichier : « approfondissement », sinon le quiz du cours."""
+    return APPROFONDISSEMENT if valeur == APPROFONDISSEMENT else COURS
+
 
 class SkillQuestion(models.Model):
     """Quiz question for skill assessment"""
@@ -47,6 +59,8 @@ class SkillQuestion(models.Model):
                                     related_name='skill_questions')
     # Première mise en ligne (13/10/2026) : un quiz de chapitre est « Nouveau » 14 jours (skilliq/annonces.py).
     en_ligne_le = models.DateTimeField(null=True, blank=True)
+    # Quiz du cours ou approfondissement (31/10/2026) : deux quiz distincts par (chapitre, niveau).
+    type = models.CharField(max_length=20, choices=TYPES, default=COURS, db_index=True)
 
     class Meta:
         app_label = 'skilliq'
@@ -132,13 +146,15 @@ class SkillAssessment(models.Model):
     # theoremes}]
     # dans l'ordre servi. Une question modifiée ou supprimée ensuite ne change rien à ce que l'élève revoit.
     derniere_correction = models.JSONField(default=list, blank=True)
+    # Quiz du cours ou approfondissement (31/10/2026) : un résultat par (élève, chapitre, niveau, type).
+    type = models.CharField(max_length=20, choices=TYPES, default=COURS, db_index=True)
 
     completed_at = models.DateTimeField(auto_now=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         app_label = 'skilliq'
-        unique_together = ('user', 'chapter', 'class_level')
+        unique_together = ('user', 'chapter', 'class_level', 'type')
         ordering = ['-completed_at']
 
     def __str__(self):
@@ -173,8 +189,8 @@ class QuizEnCours(models.Model):
     - `reponses` : {id: index, ou liste d'index (plusieurs bonnes réponses)} verrouillées à la correction de chaque
       question (POST verifier/) : une réponse corrigée ne change plus, et seule une question de son passage peut être
       corrigée.
-    - `temps` : secondes de minuteur déjà utilisées (le minuteur s'arrête pendant les corrections), pour reprendre.
-    Repris (mêmes questions, corrections déjà vues, temps restant) pendant REPRISE_HEURES, puis oublié."""
+    - `temps` : secondes déjà passées hors corrections (statistiques ; plus de minuteur affiché depuis le 31/10/2026).
+    Repris (mêmes questions, corrections déjà vues) pendant REPRISE_HEURES, puis oublié."""
     REPRISE_HEURES = 24
 
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='quiz_en_cours')
@@ -186,7 +202,9 @@ class QuizEnCours(models.Model):
     duree_secondes = models.PositiveIntegerField(default=0)
     debut = models.DateTimeField(auto_now_add=True)
     maj = models.DateTimeField(auto_now=True)
+    # Quiz du cours ou approfondissement (31/10/2026) : un passage par (élève, chapitre, niveau, type).
+    type = models.CharField(max_length=20, choices=TYPES, default=COURS, db_index=True)
 
     class Meta:
         app_label = 'skilliq'
-        unique_together = ('user', 'chapter', 'class_level')
+        unique_together = ('user', 'chapter', 'class_level', 'type')

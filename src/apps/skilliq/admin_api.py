@@ -11,6 +11,9 @@ Questions importées (13/10/2026, commande `quiz_importer`, rédigées par Claud
 brouillons « à relire » (a_relire). « Mettre en ligne » les laisse de côté ; seule la validation de
 l'administrateur (une à une, ou celles qu'il a relues) les rend publiables — en ligne aussitôt si le quiz du
 chapitre l'est déjà.
+
+Deux quiz par (chapitre, niveau) depuis le 31/10/2026 : le quiz du cours et l'approfondissement (« type », requête ou
+corps ; défaut : le cours). Chaque appel porte sur un seul des deux : questions, mise en ligne, validation.
 """
 from django.db.models import Count, Q
 from django.shortcuts import get_object_or_404
@@ -22,12 +25,12 @@ from apps.caracteristics.models import Chapter, ClassLevel
 from apps.users.admin_dashboard import IsSuperuser
 
 from .annonces import annoncer, marquer_en_ligne
-from .models import SkillAssessment, SkillQuestion
+from .models import APPROFONDISSEMENT, COURS, SkillAssessment, SkillQuestion, type_valide
 from .tirage import QUESTIONS_PAR_QUIZ
 
 MIN_EN_LIGNE = 5  # en dessous, le quiz serait trop court : la mise en ligne est refusée
 DIFFICULTES = {k for k, _ in SkillQuestion.DIFFICULTY_CHOICES}
-TEXTE_MAX = 2000
+TEXTE_MAX = 2000  # vrais problèmes de l'approfondissement compris
 
 
 def _question(q):
@@ -35,7 +38,7 @@ def _question(q):
             'correct_answers': q.bonnes(),
             'difficulty': q.difficulty, 'explanation': q.explanation, 'en_ligne': q.is_active,
             'source': q.source, 'a_relire': q.a_relire, 'motif': q.motif, 'updated_at': q.updated_at.isoformat(),
-            'niveau': q.class_level_id,
+            'niveau': q.class_level_id, 'type': q.type,
             'theoremes': [{'id': th.id, 'name': th.name} for th in q.theorems.all()]}
 
 
@@ -130,9 +133,15 @@ def _niveau(request, ch=None):
 NIVEAU_MANQUANT = {'niveau': 'Choisis le niveau du quiz.'}
 
 
-def _en_ligne(chapitre_id, niveau):
-    """Le quiz (chapitre, niveau) est-il visible des élèves (au moins une question validée active) ?"""
-    return SkillQuestion.objects.filter(chapter_id=chapitre_id, class_level=niveau, is_active=True,
+def _type(request):
+    """Type du quiz : « type » (requête ou corps) ; « approfondissement », sinon le quiz du cours."""
+    brut = request.query_params.get('type') or (request.data.get('type') if request.method != 'GET' else None)
+    return type_valide(brut)
+
+
+def _en_ligne(chapitre_id, niveau, type_quiz):
+    """Le quiz (chapitre, niveau, type) est-il visible des élèves (au moins une question validée active) ?"""
+    return SkillQuestion.objects.filter(chapter_id=chapitre_id, class_level=niveau, type=type_quiz, is_active=True,
                                         a_relire=False).exists()
 
 
@@ -145,47 +154,57 @@ def _chapitres_en_ligne(niveau):
 @api_view(['GET'])
 @permission_classes([IsSuperuser])
 def chapitres(request):
-    """Chapitres d'un niveau (?niveau=<id>) avec l'état du quiz de ce niveau (un quiz par chapitre et par niveau)."""
+    """Chapitres d'un niveau (?niveau=<id>) avec l'état de son quiz (?type= : cours, défaut, ou approfondissement) ;
+    « autre » : l'état de l'autre quiz du chapitre, pour l'onglet d'à côté (questions, en ligne, à relire)."""
     niveau = _niveau(request)
     if niveau is None:
         return Response(NIVEAU_MANQUANT, status=status.HTTP_400_BAD_REQUEST)
-    du_niveau = Q(skill_questions__class_level=niveau)
+    type_quiz = _type(request)
+    du_niveau = Q(skill_questions__class_level=niveau, skill_questions__type=type_quiz)
+    autre = COURS if type_quiz == APPROFONDISSEMENT else APPROFONDISSEMENT
+    de_l_autre = Q(skill_questions__class_level=niveau, skill_questions__type=autre)
     qs = (Chapter.objects.select_related('subfield').filter(class_levels=niveau).order_by('subfield__name', 'name')
           .annotate(
               total=Count('skill_questions', filter=du_niveau, distinct=True),
               actives=Count('skill_questions', filter=du_niveau & Q(skill_questions__is_active=True), distinct=True),
               a_relire=Count('skill_questions', filter=du_niveau & Q(skill_questions__a_relire=True), distinct=True),
+              autre_total=Count('skill_questions', filter=de_l_autre, distinct=True),
+              autre_a_relire=Count('skill_questions', filter=de_l_autre & Q(skill_questions__a_relire=True),
+                                   distinct=True),
           ).distinct())
-    passages = dict(SkillAssessment.objects.filter(class_level=niveau).values_list('chapter_id').annotate(n=Count('id')))
+    passages = dict(SkillAssessment.objects.filter(class_level=niveau, type=type_quiz).values_list('chapter_id')
+                    .annotate(n=Count('id')))
     # contenus : le chapitre a-t-il un contenu en ligne à ce niveau (ceux qu'exporte quiz_constats) ?
     avec_contenu = set(_chapitres_en_ligne(niveau).values_list('id', flat=True))
     return Response([{
         'id': c.id, 'name': c.name, 'domaine': c.subfield.name if c.subfield else '',
         'total': c.total, 'en_ligne': c.actives, 'brouillons': c.total - c.actives, 'a_relire': c.a_relire,
         'passages': passages.get(c.id, 0), 'contenus': c.id in avec_contenu,
+        'autre': {'total': c.autre_total, 'a_relire': c.autre_a_relire},
     } for c in qs])
 
 
 @api_view(['GET', 'POST'])
 @permission_classes([IsSuperuser])
 def chapitre(request, pk):
-    """GET : les questions du quiz (chapitre, niveau). POST : une nouvelle question de ce quiz (brouillon)."""
+    """GET : les questions du quiz (chapitre, niveau, type). POST : une nouvelle question de ce quiz (brouillon)."""
     ch = get_object_or_404(Chapter, pk=pk)
     niveau = _niveau(request, ch)
     if niveau is None:
         return Response(NIVEAU_MANQUANT, status=status.HTTP_400_BAD_REQUEST)
+    type_quiz = _type(request)
     if request.method == 'POST':
         champs, err = _valider(request.data)
         ths = _theoremes(ch, request.data.get('theoremes', []), err)
         if err:
             return Response(err, status=status.HTTP_400_BAD_REQUEST)
         champs.setdefault('is_active', False)
-        q = SkillQuestion.objects.create(chapter=ch, class_level=niveau, **champs)
+        q = SkillQuestion.objects.create(chapter=ch, class_level=niveau, type=type_quiz, **champs)
         q.theorems.set(ths)
         return Response(_question(q), status=status.HTTP_201_CREATED)
     from apps.caracteristics.models import Theorem
-    questions = (SkillQuestion.objects.filter(chapter=ch, class_level=niveau).prefetch_related('theorems')
-                 .order_by('id'))
+    questions = (SkillQuestion.objects.filter(chapter=ch, class_level=niveau, type=type_quiz)
+                 .prefetch_related('theorems').order_by('id'))
     theoremes = (Theorem.objects.filter(chapters=ch).filter(Q(class_levels=niveau) | Q(class_levels__isnull=True))
                  .prefetch_related('class_levels').distinct().order_by('name'))
     return Response({
@@ -194,9 +213,10 @@ def chapitre(request, pk):
                      'niveaux': list(ch.class_levels.values_list('name', flat=True)),
                      'theoremes': [{'id': th.id, 'name': th.name,
                                     'niveaux': [lv.name for lv in th.class_levels.all()]} for th in theoremes]},
+        'type': type_quiz,
         'questions': [_question(q) for q in questions],
         'par_quiz': QUESTIONS_PAR_QUIZ, 'min_en_ligne': MIN_EN_LIGNE,
-        'passages': SkillAssessment.objects.filter(chapter=ch, class_level=niveau).count(),
+        'passages': SkillAssessment.objects.filter(chapter=ch, class_level=niveau, type=type_quiz).count(),
     })
 
 
@@ -208,12 +228,13 @@ def question(request, pk):
         q.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
     data = dict(request.data)
-    data.pop('niveau', None)  # une question ne change pas de quiz
+    data.pop('niveau', None)  # une question ne change pas de quiz (ni de niveau, ni de type)
+    data.pop('type', None)
     if 'valider' in data:
         if data.pop('valider') is not True:
             return Response({'valider': 'true attendu.'}, status=status.HTTP_400_BAD_REQUEST)
         if q.a_relire:  # question importée relue : publiable, en ligne aussitôt si son quiz l'est
-            data.setdefault('en_ligne', _en_ligne(q.chapter_id, q.class_level))
+            data.setdefault('en_ligne', _en_ligne(q.chapter_id, q.class_level, q.type))
             q.a_relire = False
     elif data.get('en_ligne') is True:
         q.a_relire = False  # la mettre en ligne soi-même vaut validation
@@ -226,7 +247,7 @@ def question(request, pk):
     ths = _theoremes(q.chapter, data['theoremes'], err) if 'theoremes' in data else None
     if err:
         return Response(err, status=status.HTTP_400_BAD_REQUEST)
-    etait = _en_ligne(q.chapter_id, q.class_level)
+    etait = _en_ligne(q.chapter_id, q.class_level, q.type)
     for k, v in champs.items():
         setattr(q, k, v)
     q.save()
@@ -235,37 +256,38 @@ def question(request, pk):
     if q.is_active and not q.a_relire:
         marquer_en_ligne(SkillQuestion.objects.filter(pk=q.pk))
         if not etait:
-            annoncer(q.chapter, q.class_level)
+            annoncer(q.chapter, q.class_level, q.type)
     return Response(_question(q))
 
 
 @api_view(['POST'])
 @permission_classes([IsSuperuser])
 def publier(request, pk):
-    """{"niveau": id, "en_ligne": true} : le quiz (chapitre, niveau) en ligne (5 questions validées au moins) ;
-    false : quiz retiré. Les quiz des autres niveaux du chapitre ne bougent pas."""
+    """{"niveau": id, "type": …, "en_ligne": true} : le quiz (chapitre, niveau, type) en ligne (5 questions validées au
+    moins) ; false : quiz retiré. Les autres quiz du chapitre (autre niveau, autre type) ne bougent pas."""
     ch = get_object_or_404(Chapter, pk=pk)
     niveau = _niveau(request, ch)
     if niveau is None:
         return Response(NIVEAU_MANQUANT, status=status.HTTP_400_BAD_REQUEST)
+    type_quiz = _type(request)
     en_ligne = request.data.get('en_ligne')
     if not isinstance(en_ligne, bool):
         return Response({'en_ligne': 'true ou false.'}, status=status.HTTP_400_BAD_REQUEST)
-    qs = SkillQuestion.objects.filter(chapter=ch, class_level=niveau)
+    qs = SkillQuestion.objects.filter(chapter=ch, class_level=niveau, type=type_quiz)
     if en_ligne:
         qs = qs.filter(a_relire=False)  # les questions importées non validées restent hors ligne
     if en_ligne and qs.count() < MIN_EN_LIGNE:
-        attente = SkillQuestion.objects.filter(chapter=ch, class_level=niveau, a_relire=True).count()
+        attente = SkillQuestion.objects.filter(chapter=ch, class_level=niveau, type=type_quiz, a_relire=True).count()
         return Response({'detail': f'{MIN_EN_LIGNE} questions validées au moins pour mettre un quiz en ligne '
                                    f'(chaque passage les pose toutes, {QUESTIONS_PAR_QUIZ} au plus).'
                                    + (f' {attente} question(s) importée(s) attendent ta relecture.' if attente else '')},
                         status=status.HTTP_400_BAD_REQUEST)
-    etait = _en_ligne(ch.id, niveau)
+    etait = _en_ligne(ch.id, niveau, type_quiz)
     n = qs.update(is_active=en_ligne)
     if en_ligne:
         marquer_en_ligne(qs)
         if not etait:
-            annoncer(ch, niveau)  # le quiz sort : les élèves de ce niveau sont prévenus (cloche)
+            annoncer(ch, niveau, type_quiz)  # le quiz sort : les élèves de ce niveau sont prévenus (cloche)
     else:
         qs.update(en_ligne_le=None)  # remis en ligne plus tard, il sera de nouveau « Nouveau »
     return Response({'en_ligne': en_ligne, 'questions': n})
@@ -278,17 +300,19 @@ def _ids(valeur):
 @api_view(['POST'])
 @permission_classes([IsSuperuser])
 def valider(request, pk):
-    """{"niveau": id, "ids": [...]} : valide ces questions importées, relues (sans « ids » : toutes celles du quiz)."""
+    """{"niveau": id, "type": …, "ids": [...]} : valide ces questions importées, relues (sans « ids » : toutes celles du
+    quiz)."""
     ch = get_object_or_404(Chapter, pk=pk)
     niveau = _niveau(request, ch)
     if niveau is None:
         return Response(NIVEAU_MANQUANT, status=status.HTTP_400_BAD_REQUEST)
-    qs = SkillQuestion.objects.filter(chapter=ch, class_level=niveau, a_relire=True)
+    type_quiz = _type(request)
+    qs = SkillQuestion.objects.filter(chapter=ch, class_level=niveau, type=type_quiz, a_relire=True)
     if 'ids' in request.data:
         if not _ids(request.data['ids']):
             return Response({'ids': 'Liste d’identifiants attendue.'}, status=status.HTTP_400_BAD_REQUEST)
         qs = qs.filter(id__in=request.data['ids'])
-    en_ligne = _en_ligne(ch.id, niveau)
+    en_ligne = _en_ligne(ch.id, niveau, type_quiz)
     ids = list(qs.values_list('id', flat=True))
     n = qs.update(a_relire=False, is_active=en_ligne)
     if en_ligne:

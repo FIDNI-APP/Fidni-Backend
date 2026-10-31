@@ -1,6 +1,8 @@
 # apps/skilliq/views.py
 # Quiz par chapitre côté élève. Depuis le 13/10/2026, un quiz = (chapitre, niveau) : le niveau vient de ?niveau=
 # (ou « niveau » dans le corps), sinon du profil (tirage.niveau_demande) ; jamais de questions d'un autre niveau.
+# Depuis le 31/10/2026, deux quiz par (chapitre, niveau) : le cours et l'approfondissement (?type= ou « type » dans le
+# corps, tirage.type_demande ; défaut : le cours, comme avant). Passages et résultats sont rangés par type.
 from datetime import timedelta
 
 from django.db import transaction
@@ -11,20 +13,20 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from . import tirage
-from .models import QuizEnCours, SkillQuestion, SkillAssessment, reponse_valide
+from .models import COURS, QuizEnCours, SkillQuestion, SkillAssessment, reponse_valide
 from .serializers import (
     SkillQuestionSerializer,
     SkillAssessmentSerializer,
     QuizSubmissionSerializer
 )
 
-SECONDES_PAR_QUESTION = 60  # minuteur du quiz (côté élève, en pause pendant la correction de chaque question)
+SECONDES_PAR_QUESTION = 60  # durée indicative (duree_secondes) ; plus de minuteur côté élève depuis le 31/10/2026
 
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def get_my_assessments(request):
-    """Les derniers résultats de l'élève : un par (chapitre, niveau)."""
+    """Les derniers résultats de l'élève : un par (chapitre, niveau, type) (« type » dans chaque résultat)."""
     assessments = SkillAssessment.objects.filter(user=request.user).select_related('chapter', 'chapter__subject')
     serializer = SkillAssessmentSerializer(assessments, many=True, context={'request': request})
     return Response(serializer.data)
@@ -55,27 +57,29 @@ def get_quiz(request, chapter_id):
     ni d'un autre niveau. Le passage est gardé en base (QuizEnCours) : un passage commencé est repris (mêmes
     questions, corrections déjà vues, temps restant) tant qu'il n'est pas envoyé ; ?nouveau=1 : nouveau tirage."""
     niveau = tirage.niveau_demande(request)
+    type_quiz = tirage.type_demande(request)
     if niveau is None:
         return Response({'error': 'No questions available for this chapter'}, status=status.HTTP_404_NOT_FOUND)
     _oublier_passages_anciens(request.user)
     passage = None
     if not request.query_params.get('nouveau'):
-        passage = QuizEnCours.objects.filter(user=request.user, chapter_id=chapter_id, class_level=niveau).first()
+        passage = QuizEnCours.objects.filter(user=request.user, chapter_id=chapter_id, class_level=niveau,
+                                             type=type_quiz).first()
     questions = _questions_du_passage(passage) if passage else []
     reprise = bool(questions)
     if not reprise:
-        questions = tirage.tirer(tirage.disponibles(niveau, chapter_id))
+        questions = tirage.tirer(tirage.disponibles(niveau, chapter_id, type_quiz))
         if not questions:
             return Response({'error': 'No questions available for this chapter'}, status=status.HTTP_404_NOT_FOUND)
         passage, _ = QuizEnCours.objects.update_or_create(
-            user=request.user, chapter_id=chapter_id, class_level=niveau,
+            user=request.user, chapter_id=chapter_id, class_level=niveau, type=type_quiz,
             defaults={'questions': [q.id for q in questions], 'reponses': {}, 'temps': 0,
-                      # Minuteur façon concours (13/10/2026) : 1 min par question, en pause pendant les corrections.
                       'duree_secondes': SECONDES_PAR_QUESTION * len(questions), 'debut': timezone.now()})
     reponses = passage.reponses or {}
     return Response({
         'chapter_id': chapter_id,
         'niveau': niveau.id,
+        'type': type_quiz,
         'questions': SkillQuestionSerializer(questions, many=True).data,
         'duree_secondes': passage.duree_secondes,
         'reprise': reprise,
@@ -88,9 +92,10 @@ def get_quiz(request, chapter_id):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def get_en_cours(request):
-    """Quiz commencés, pas encore envoyés : [{chapitre, niveau, repondues, total, maj}] (« Reprendre »)."""
+    """Quiz commencés, pas encore envoyés : [{chapitre, niveau, type, repondues, total, maj}] (« Reprendre »)."""
     _oublier_passages_anciens(request.user)
-    return Response([{'chapitre': p.chapter_id, 'niveau': p.class_level_id, 'repondues': len(p.reponses or {}),
+    return Response([{'chapitre': p.chapter_id, 'niveau': p.class_level_id, 'type': p.type,
+                      'repondues': len(p.reponses or {}),
                       'total': len(p.questions or []), 'maj': p.maj.isoformat()}
                      for p in QuizEnCours.objects.filter(user=request.user).order_by('-maj')])
 
@@ -110,12 +115,13 @@ def submit_quiz(request, chapter_id):
     answers = serializer.validated_data['answers']
     time_spent = serializer.validated_data.get('time_spent', 0)
     niveau = tirage.niveau_demande(request)
+    type_quiz = tirage.type_demande(request)
     if niveau is None:
         return Response({'error': 'Invalid questions'}, status=status.HTTP_400_BAD_REQUEST)
 
     with transaction.atomic():
         passage = (QuizEnCours.objects.select_for_update()
-                   .filter(user=request.user, chapter_id=chapter_id, class_level=niveau).first())
+                   .filter(user=request.user, chapter_id=chapter_id, class_level=niveau, type=type_quiz).first())
         if passage is None:
             return Response({'error': 'Aucun quiz en cours : recommence le quiz.'}, status=status.HTTP_409_CONFLICT)
         questions = _questions_du_passage(passage)
@@ -136,16 +142,18 @@ def submit_quiz(request, chapter_id):
         max_score = sum(points.get(q.difficulty, 1) for q in questions)
         score = sum(points.get(q.difficulty, 1) for q in questions if q.est_juste(finales[str(q.id)]))
         # Bilan par théorème : ce que l'élève maîtrise, ce qu'il doit revoir (tirage.bilan).
-        par_theoreme = tirage.bilan(questions, finales, tirage.disponibles(niveau, chapter_id))
+        par_theoreme = tirage.bilan(questions, finales, tirage.disponibles(niveau, chapter_id, type_quiz))
         correction = [_correction(q, finales[str(q.id)]) for q in questions]
 
-        # Un résultat par (chapitre, niveau) ; un nouveau passage garde le score précédent (« 40 % → 80 % »).
-        # Un résultat d'avant le découpage par niveau (sans niveau) est repris par ce passage.
-        mine = SkillAssessment.objects.select_for_update().filter(user=request.user, chapter_id=chapter_id)
+        # Un résultat par (chapitre, niveau, type) ; un nouveau passage garde le score précédent (« 40 % → 80 % »).
+        # Un résultat d'avant le découpage par niveau (sans niveau, forcément du cours) est repris par ce passage.
+        mine = SkillAssessment.objects.select_for_update().filter(user=request.user, chapter_id=chapter_id,
+                                                                   type=type_quiz)
         assessment = mine.filter(class_level=niveau).first() or mine.filter(class_level__isnull=True).first()
         if assessment is None:
             assessment = SkillAssessment.objects.create(
-                user=request.user, chapter_id=chapter_id, class_level=niveau, score=score, max_score=max_score,
+                user=request.user, chapter_id=chapter_id, class_level=niveau, type=type_quiz, score=score,
+                max_score=max_score,
                 answers=finales, time_spent=time_spent, par_theoreme=par_theoreme, derniere_correction=correction)
         else:
             assessment.class_level = niveau
@@ -158,8 +166,9 @@ def submit_quiz(request, chapter_id):
             assessment.save()
         passage.delete()
 
-    from apps.users.maitrise import forget
-    forget(request.user.id)  # « Ma progression » : le quiz compte dans la maîtrise du chapitre
+    if type_quiz == COURS:
+        from apps.users.maitrise import forget
+        forget(request.user.id)  # « Ma progression » : le quiz du cours compte dans la maîtrise du chapitre
     result = SkillAssessmentSerializer(assessment, context={'request': request}).data
     result['correction'] = correction
     return Response(result)
@@ -201,9 +210,11 @@ def check_answer(request, question_id):
 @permission_classes([IsAuthenticated])
 def get_available(request):
     """Quiz prêts : {chapitre: nombre de questions} pour le niveau demandé (sinon celui de l'élève) ;
-    ?tous=1 : {niveau: {chapitre: nombre}} pour tous les niveaux (barre de niveaux de la page)."""
+    ?tous=1 : {niveau: {chapitre: nombre}} pour tous les niveaux (barre de niveaux de la page). ?type= : quiz du cours
+    (défaut) ou approfondissement."""
     from django.db.models import Count
-    qs = SkillQuestion.objects.filter(is_active=True, a_relire=False, class_level__isnull=False)
+    qs = SkillQuestion.objects.filter(is_active=True, a_relire=False, class_level__isnull=False,
+                                      type=tirage.type_demande(request))
     if request.query_params.get('tous'):
         out = {}
         for r in qs.values('class_level_id', 'chapter_id').annotate(n=Count('id')):
@@ -219,11 +230,10 @@ def get_available(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def get_chapter_assessment(request, chapter_id):
-    """Dernier résultat de l'élève sur le quiz (chapitre, niveau), avec la correction figée de ce passage."""
+    """Dernier résultat de l'élève sur le quiz (chapitre, niveau, type), avec la correction figée de ce passage."""
     niveau = tirage.niveau_demande(request)
-    assessment = (SkillAssessment.objects.filter(user=request.user, chapter_id=chapter_id, class_level=niveau).first()
-                  or SkillAssessment.objects.filter(user=request.user, chapter_id=chapter_id,
-                                                    class_level__isnull=True).first())
+    mine = SkillAssessment.objects.filter(user=request.user, chapter_id=chapter_id, type=tirage.type_demande(request))
+    assessment = mine.filter(class_level=niveau).first() or mine.filter(class_level__isnull=True).first()
     if assessment is None:
         return Response(
             {'error': 'No assessment found for this chapter'},
@@ -237,6 +247,7 @@ def get_chapter_assessment(request, chapter_id):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def get_new(request):
-    """Quiz sortis depuis moins de 14 jours : [{niveau, chapitre, depuis}] (étiquette « Nouveau », annonces.py)."""
+    """Quiz sortis depuis moins de 14 jours : [{niveau, chapitre, type, depuis}] (« Nouveau », annonces.py)."""
     from .annonces import nouveaux
-    return Response([{'niveau': lv, 'chapitre': ch, 'depuis': d.isoformat()} for (ch, lv), d in nouveaux().items()])
+    return Response([{'niveau': lv, 'chapitre': ch, 'type': ty, 'depuis': d.isoformat()}
+                     for (ch, lv, ty), d in nouveaux().items()])

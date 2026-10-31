@@ -336,7 +336,7 @@ def _weak(entries):
 
 def _preparation(test, user, entries):
     """Ce qu'il a fait depuis l'annonce du DS, dans ses chapitres."""
-    from apps.skilliq.models import SkillAssessment
+    from apps.skilliq.models import COURS, SkillAssessment
     from apps.things.models import Content
     ct = ContentType.objects.get_for_model(Content)
     chapter_ids = [c['id'] for c in entries]
@@ -348,7 +348,8 @@ def _preparation(test, user, entries):
     worked |= {int(o) for o in Complete.objects.filter(user=user, content_type=ct, updated_at__gte=since,
                                                         object_id__in=[str(i) for i in in_test]).values_list('object_id', flat=True)
                if str(o).isdigit()}
-    quizzes = set(SkillAssessment.objects.filter(user=user, chapter_id__in=chapter_ids, completed_at__gte=since)
+    quizzes = set(SkillAssessment.objects.filter(user=user, chapter_id__in=chapter_ids, completed_at__gte=since,
+                                                 type=COURS)  # le quiz du chapitre du plan : celui du cours
                   .values_list('chapter_id', flat=True))
     with_quiz = [c['id'] for c in entries if c['quiz_ready']]
     return {

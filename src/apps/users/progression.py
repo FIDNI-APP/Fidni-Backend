@@ -33,7 +33,7 @@ from apps.caracteristics.programme import chapitres_du_niveau
 from apps.caracteristics.models import Chapter
 from apps.caracteristics import theoremes as TH
 from apps.interactions.models import AssessmentEvent, Complete, QuestionProgress, StudyTimeDay
-from apps.skilliq.models import SkillAssessment, SkillQuestion
+from apps.skilliq.models import APPROFONDISSEMENT, COURS, SkillAssessment, SkillQuestion
 from apps.things.models import Content
 from apps.things.question_index import question_full
 from apps.users.my_stats import MONTHS, WEIGHT
@@ -87,10 +87,12 @@ def _collect(user, journal=False):
     for r in completes:
         r['object_id'] = int(r['object_id'])  # Complete.object_id : CharField
     time_rows = list(StudyTimeDay.objects.filter(user=user).values('object_id', 'date', 'seconds'))
-    # Un résultat par (chapitre, niveau) depuis le 13/10/2026 : celui du niveau de l'élève l'emporte.
+    # Un résultat par (chapitre, niveau) depuis le 13/10/2026 : celui du niveau de l'élève l'emporte. La maîtrise ne
+    # lit que le quiz du cours ; l'approfondissement (31/10/2026) compte seulement comme activité.
     mon_niveau = getattr(getattr(user, 'profile', None), 'class_level_id', None)
-    quizzes = {q.chapter_id: q for q in sorted(SkillAssessment.objects.filter(user=user),
-                                               key=lambda a: a.class_level_id == mon_niveau)}
+    resultats = sorted(SkillAssessment.objects.filter(user=user), key=lambda a: a.class_level_id == mon_niveau)
+    quizzes = {q.chapter_id: q for q in resultats if q.type == COURS}
+    approfondis = {q.chapter_id: q for q in resultats if q.type == APPROFONDISSEMENT}
     events = list(AssessmentEvent.objects.filter(user=user).order_by('at', 'id').values_list(
         'object_id', 'question_path', 'status', 'aide', 'reprise', 'at')) if journal else []
 
@@ -102,7 +104,8 @@ def _collect(user, journal=False):
     full = question_full(contents.values())
     index = {cid: [(path, points, noms) for path, points, noms, _lvl in rows] for cid, rows in full.items()}
     return SimpleNamespace(
-        qp=qp, completes=completes, time_rows=time_rows, quizzes=quizzes, contents=contents, index=index,
+        qp=qp, completes=completes, time_rows=time_rows, quizzes=quizzes, approfondis=approfondis,
+        contents=contents, index=index,
         chapters_of={cid: [(ch.id, ch.name) for ch in c.chapters.all()] for cid, c in contents.items()},
         theoremes_of={cid: {path: noms for path, _, noms in index.get(cid, [])} for cid in contents},
         levels_of={cid: {path: lvl for path, _pts, _sk, lvl in rows} for cid, rows in full.items()},
@@ -157,8 +160,8 @@ def _chapter_entries(chapter_list, chap, quizzes, level):
     counts = Counter(Content.chapters.through.objects.filter(
         chapter_id__in=[c.id for c in chapter_list], content__type__in=('exercise', 'exam'),
         **({'content__class_levels': level} if level else {})).values_list('chapter_id', flat=True))
-    # Quiz prêt : celui du niveau de l'élève (un quiz par chapitre et par niveau, 13/10/2026).
-    quiz_ready = set(SkillQuestion.objects.filter(is_active=True, a_relire=False,
+    # Quiz prêt : le quiz du cours, au niveau de l'élève (un quiz par chapitre et par niveau, 13/10/2026).
+    quiz_ready = set(SkillQuestion.objects.filter(is_active=True, a_relire=False, type=COURS,
                                                   **({'class_level': level} if level else {}))
                      .values('chapter_id').annotate(n=Count('id'))
                      .filter(n__gt=0).values_list('chapter_id', flat=True))

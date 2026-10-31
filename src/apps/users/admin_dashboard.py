@@ -33,7 +33,7 @@ from rest_framework.permissions import BasePermission
 from rest_framework.response import Response
 
 from apps.interactions.models import Complete, QuestionProgress, StudyTimeDay, StudyTimeTracker, TimeSession
-from apps.skilliq.models import SkillAssessment
+from apps.skilliq.models import APPROFONDISSEMENT, SkillAssessment
 from apps.things.models import Comment, Content, ContentDailyView, ContentReport, ProposedSolution
 from apps.users.account_deletion import DELETED_USERNAME
 from apps.users.models import UsageDaily, ViewHistory
@@ -719,8 +719,9 @@ def recent_activity(real_ids, limit=40):
                        'content': _content_ref(s.content_item)})
     for a in SkillAssessment.objects.filter(user_id__in=real_ids).select_related('chapter').order_by('-completed_at')[:limit]:
         p = round(100 * a.score / a.max_score) if a.max_score else 0
+        quiz = 'Approfondissement' if a.type == APPROFONDISSEMENT else 'Quiz'
         events.append({'at': a.completed_at, 'kind': 'skilliq', 'user_id': a.user_id,
-                       'label': f'Quiz « {a.chapter.name} » : {p} %' if a.chapter_id else f'Quiz : {p} %'})
+                       'label': f'{quiz} « {a.chapter.name} » : {p} %' if a.chapter_id else f'{quiz} : {p} %'})
     # 14/10/2026 : ce que le membre fait vraiment dans un contenu (évaluations, aides, favoris), et ses DS.
     events += _evaluations_groupees(real_ids, limit)
     from apps.interactions.models import QuestionHelp, Save, UpcomingTest

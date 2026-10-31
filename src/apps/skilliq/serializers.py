@@ -27,8 +27,8 @@ class SkillAssessmentSerializer(serializers.ModelSerializer):
     class Meta:
         model = SkillAssessment
         fields = ['id', 'chapter', 'chapter_name', 'subject_name', 'score', 'max_score', 'level', 'time_spent',
-                  'previous_score', 'previous_max', 'attempts', 'hub_url', 'par_theoreme', 'class_level', 'completed_at',
-                  'a_correction']
+                  'previous_score', 'previous_max', 'attempts', 'hub_url', 'par_theoreme', 'class_level', 'type',
+                  'completed_at', 'a_correction']
 
     a_correction = serializers.SerializerMethodField()
 

@@ -49,7 +49,7 @@ def _fenetre(user, debut, fin):
     from apps.interactions.models import (AICorrection, AssessmentEvent, Complete, QuestionHelp, RevisionList,
                                           RevisionListItem, Save, StudyTimeDay, TimeSession, UpcomingTest, Vote)
     from apps.notebooks.models import Notebook
-    from apps.skilliq.models import QuizEnCours, SkillAssessment
+    from apps.skilliq.models import APPROFONDISSEMENT, QuizEnCours, SkillAssessment
     from apps.things.models import Comment, Content, ContentReport, DifficultyFeedback, ProposedSolution
     from apps.things.views import _walk_questions_meta
     from apps.users.models import ViewHistory
@@ -137,6 +137,9 @@ def _fenetre(user, debut, fin):
             geste(entree(_jour(a.submitted_at), a.object_id), a.submitted_at, 'ia', f'Copie corrigée par l’IA{note}')
 
     # ── Hors contenu
+    def _quiz(x):
+        return 'Approfondissement' if x.type == APPROFONDISSEMENT else 'Quiz'
+
     def evt(at, kind, label, url=None):
         evenements[_jour(at)].append({'at': at, 'kind': kind, 'label': label, 'url': url})
 
@@ -145,9 +148,10 @@ def _fenetre(user, debut, fin):
         p = round(100 * a.score / a.max_score) if a.max_score else 0
         niveau = f' ({a.class_level.name})' if a.class_level_id else ''
         rang = f', {a.attempts}e passage' if (a.attempts or 1) > 1 else ''
-        evt(a.completed_at, 'quiz', f'Quiz « {a.chapter.name} »{niveau} : {p} %{rang}')
+        evt(a.completed_at, 'quiz', f'{_quiz(a)} « {a.chapter.name} »{niveau} : {p} %{rang}')
     for q in QuizEnCours.objects.filter(user=user, debut__gte=t0, debut__lt=t1).select_related('chapter'):
-        evt(q.debut, 'quiz', f'Quiz « {q.chapter.name} » commencé ({len(q.reponses or {})}/{len(q.questions or [])} corrigées)')
+        evt(q.debut, 'quiz', f'{_quiz(q)} « {q.chapter.name} » commencé '
+                             f'({len(q.reponses or {})}/{len(q.questions or [])} corrigées)')
     for t in UpcomingTest.objects.filter(user=user).prefetch_related('chapters').select_related('subject'):
         chap = ', '.join(c.name for c in t.chapters.all()[:3])
         if t0 <= t.created_at < t1:
