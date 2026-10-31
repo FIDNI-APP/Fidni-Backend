@@ -32,7 +32,7 @@ from rest_framework.response import Response
 from apps.caracteristics import theoremes as TH
 from apps.caracteristics.hubs import hub_url
 from apps.caracteristics.programme import chapitres_du_niveau
-from apps.skilliq.models import SkillQuestion
+from apps.skilliq.models import COURS, SkillQuestion
 from apps.users.my_stats import WEIGHT
 from apps.users.progression import TYPE_PATH, _collect, _local, _question_chapters, eleve_vise
 
@@ -229,7 +229,8 @@ def tableau(request):
         from apps.caracteristics.models import Chapter
         ids = set(q_chap) | set(serie_chap) | {ch for ch in temps_chap if ch}
         chapitres = list(Chapter.objects.filter(id__in=ids).order_by('name'))
-    quiz = set(SkillQuestion.objects.filter(is_active=True, a_relire=False, **({'class_level': level} if level else {}))
+    quiz = set(SkillQuestion.objects.filter(is_active=True, a_relire=False, type=COURS,
+                                            **({'class_level': level} if level else {}))
                .values_list('chapter_id', flat=True)) if chapitres else set()
     chap_out = []
     for ch in chapitres:

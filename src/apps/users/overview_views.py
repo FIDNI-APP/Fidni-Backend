@@ -23,7 +23,7 @@ from rest_framework.response import Response
 from apps.caracteristics.hubs import hub_url
 from apps.caracteristics.models import Chapter
 from apps.interactions.models import Complete, QuestionProgress, TimeSession
-from apps.skilliq.models import SkillAssessment
+from apps.skilliq.models import COURS, SkillAssessment
 from apps.things.models import Content
 from apps.things.question_index import question_index
 
@@ -66,7 +66,8 @@ def dashboard_overview(request):
               .values('object_id', 'question_path', 'status', 'created_at', 'assessed_at'))
     completes = list(Complete.objects.filter(user=user, content_type=ct).values('object_id', 'status', 'created_at', 'updated_at'))
     sessions = list(TimeSession.objects.filter(user=user, content_type=ct).values('object_id', 'session_duration', 'created_at'))
-    quizzes = list(SkillAssessment.objects.filter(user=user).values('chapter_id', 'score', 'max_score', 'completed_at'))
+    quizzes = list(SkillAssessment.objects.filter(user=user).values('chapter_id', 'type', 'score', 'max_score',
+                                                                    'completed_at'))
 
     # ── Calendrier d'activité et séries
     events = Counter()
@@ -144,7 +145,7 @@ def dashboard_overview(request):
         c = contents.get(r['object_id'])
         for ch in (c.chapters.all() if c else []):
             chap_rows[ch.id].append(r['status'])
-    quiz_by_chapter = {q['chapter_id']: _pct(q['score'], q['max_score']) for q in quizzes}
+    quiz_by_chapter = {q['chapter_id']: _pct(q['score'], q['max_score']) for q in quizzes if q['type'] == COURS}
     chapters_qs = Chapter.objects.filter(class_levels=level) if level else Chapter.objects.filter(id__in=chap_rows)
     chapters = []
     for ch in chapters_qs.select_related('subfield').order_by('subfield__name', 'name'):

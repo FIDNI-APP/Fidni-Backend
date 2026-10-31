@@ -14,19 +14,23 @@
    appariées), doublons écartés, réponses mélangées, enregistrement en brouillon « à relire »
    (SkillQuestion.a_relire, is_active=False) : invisible des élèves tant que l'administrateur ne l'a pas validée
    dans Pilotage › Quiz.
+4. Depuis le 31/10/2026, un fichier peut porter « "type": "approfondissement" » : le second quiz du chapitre (vrais
+   problèmes en QCM, distracteurs pièges dont l'explication dit pourquoi on y tombe), importé à part du quiz du cours.
 """
 import html as html_lib
 import random
 import re
 from collections import Counter, defaultdict
 
-from .models import SkillAssessment, SkillQuestion, choix_de
+from .models import APPROFONDISSEMENT, COURS, TYPES_VALIDES, SkillAssessment, SkillQuestion, choix_de
 
 MIN_ELEVES = 2          # en dessous, une question n'est pas « peu réussie » : elle est peu faite
 FAIBLE_SOUS = 0.7       # taux de réussite en dessous duquel une question ou un théorème est un constat
 CONSTATS_MAX = 12
 COURS_MAX = 24000       # caractères de cours envoyés
-LONGUEURS = {'question': 350, 'reponse': 200, 'explication': 600}
+# Longueurs visées par type de quiz (le contrôle refuse au-delà du double) : un vrai problème a un énoncé plus long.
+LONGUEURS = {COURS: {'question': 350, 'reponse': 200, 'explication': 600},
+             APPROFONDISSEMENT: {'question': 700, 'reponse': 200, 'explication': 1000}}
 SCORE = {'success': 1.0, 'partial': 0.5, 'review': 0.0, 'failed': 0.0}
 DIFFICULTES = ('easy', 'medium', 'hard')
 _TAG = re.compile(r'<[^>]+>')
@@ -133,7 +137,8 @@ def constats(chapitre, niveau=None):
          for k, (s, n, e) in theoremes.items() if n and len(e) >= MIN_ELEVES and s / n < FAIBLE_SOUS),
         key=lambda x: x['reussite'])
     return {'eleves': len(eleves), 'questions': questions[:CONSTATS_MAX], 'theoremes': faibles[:CONSTATS_MAX],
-            'quiz': constats_quiz(chapitre, maison)}
+            'quiz': constats_quiz(chapitre, maison),
+            'approfondissement': constats_quiz(chapitre, maison, APPROFONDISSEMENT)}
 
 
 def _bonnes_texte(q):
@@ -142,12 +147,14 @@ def _bonnes_texte(q):
     return ' » et « '.join(q.options[i] for i in q.bonnes() if 0 <= i < len(q.options))
 
 
-def constats_quiz(chapitre, maison=None):
-    """Questions du quiz actuel les plus ratées (dernier passage de chaque élève) et la mauvaise réponse préférée."""
+def constats_quiz(chapitre, maison=None, type_quiz=COURS):
+    """Questions du quiz (du cours, ou l'approfondissement) les plus ratées (dernier passage de chaque élève) et la
+    mauvaise réponse préférée : le piège qui marche."""
     maison = _maison() if maison is None else maison
-    qs = {q.id: q for q in SkillQuestion.objects.filter(chapter=chapitre)}
+    qs = {q.id: q for q in SkillQuestion.objects.filter(chapter=chapitre, type=type_quiz)}
     stats = defaultdict(lambda: [0, 0, Counter()])
-    for uid, reponses in SkillAssessment.objects.filter(chapter=chapitre).values_list('user_id', 'answers'):
+    for uid, reponses in (SkillAssessment.objects.filter(chapter=chapitre, type=type_quiz)
+                          .values_list('user_id', 'answers')):
         if uid in maison or not isinstance(reponses, dict):
             continue
         for qid, rep in reponses.items():
@@ -204,7 +211,7 @@ def _programme(chapitre, niveau):
 
 
 def _bloc_constats(c):
-    if not (c['questions'] or c['theoremes'] or c['quiz']):
+    if not (c['questions'] or c['theoremes'] or c['quiz'] or c['approfondissement']):
         if c['eleves']:
             return (f"{c['eleves']} élève(s) ont travaillé ce chapitre, sans faiblesse nette pour l’instant : "
                     'suis le programme et les erreurs classiques.')
@@ -220,9 +227,11 @@ def _bloc_constats(c):
     if c['theoremes']:
         lignes += ['', '### Théorèmes les moins réussis']
         lignes += [f"- {t['theoreme']} : {t['reussite']} % ({t['eleves']} élèves)" for t in c['theoremes']]
-    if c['quiz']:
-        lignes += ['', '### Questions du quiz actuel les plus ratées']
-        for q in c['quiz']:
+    for cle, titre in (('quiz', 'Questions du quiz actuel les plus ratées'),
+                       ('approfondissement', 'Questions de l’approfondissement les plus ratées')):
+        if c[cle]:
+            lignes += ['', f'### {titre}']
+        for q in c[cle]:
             piege = f" ; mauvaise réponse la plus choisie : « {q['piege']} »" if q['piege'] else ''
             lignes.append(f"- « {q['question']} » (bonne réponse « {q['bonne']} ») : {q['reussite']} % de réussite "
                           f"sur {q['eleves']} passages{piege}")
@@ -232,7 +241,8 @@ def _bloc_constats(c):
 def fiche(chapitre, niveau, c=None):
     """Fiche Markdown d'un chapitre : constats, programme, cours, questions déjà écrites (quiz_constats)."""
     c = constats(chapitre, niveau) if c is None else c
-    existantes = SkillQuestion.objects.filter(chapter=chapitre).order_by('id')
+    # Le quiz du cours, puis l'approfondissement.
+    existantes = SkillQuestion.objects.filter(chapter=chapitre).order_by('type', 'id')
     parties = [
         f'# {chapitre.name} — {niveau.name if niveau else "niveau non précisé"} (chapitre {chapitre.id})',
         '## Constats tirés des résultats des élèves\n' + _bloc_constats(c),
@@ -241,7 +251,7 @@ def fiche(chapitre, niveau, c=None):
     ]
     if existantes:
         parties.append('## Questions déjà écrites pour ce chapitre\n' + '\n'.join(
-            f"- {q.question} → « {_bonnes_texte(q)} »"
+            f"- {'[approfondissement] ' if q.type == APPROFONDISSEMENT else ''}{q.question} → « {_bonnes_texte(q)} »"
             f"{' (à relire)' if q.a_relire else ' (en ligne)' if q.is_active else ' (brouillon)'}"
             for q in existantes[:80]))
     return '\n\n'.join(parties)
@@ -263,12 +273,13 @@ def _propre(s):
     return _ESPACES.sub(' ', str(s or '')).strip()
 
 
-def controler(q):
+def controler(q, type_quiz=COURS):
     """Question du fichier → (champs SkillQuestion, None) ou (None, raison du refus).
     Une bonne réponse : {"question", "bonne", "distracteurs": [3], "explication", "difficulte", "cible",
     "theoremes": [noms exacts]}.
     Plusieurs bonnes réponses (16/10/2026) : "bonnes": [2 ou plus] au lieu de "bonne", et des "distracteurs" ;
-    3 à 6 réponses en tout (typiquement 2 bonnes + 3 distracteurs). L'élève doit cocher toutes les bonnes."""
+    3 à 6 réponses en tout (typiquement 2 bonnes + 3 distracteurs). L'élève doit cocher toutes les bonnes.
+    `type_quiz` : longueurs admises (LONGUEURS)."""
     if not isinstance(q, dict):
         return None, 'question illisible'
     question, explication = _propre(q.get('question')), _propre(q.get('explication'))
@@ -293,7 +304,8 @@ def controler(q):
     reponses = [*bonnes, *distracteurs]
     if len({r.casefold() for r in reponses}) != len(reponses):
         return None, 'deux réponses identiques'
-    if len(question) > LONGUEURS['question'] * 2 or any(len(r) > LONGUEURS['reponse'] * 2 for r in reponses):
+    longueurs = LONGUEURS[type_quiz]
+    if len(question) > longueurs['question'] * 2 or any(len(r) > longueurs['reponse'] * 2 for r in reponses):
         return None, 'texte trop long'
     for t in (question, explication, *reponses):
         if t.replace('\\$', '').count('$') % 2:
@@ -329,8 +341,9 @@ def pour_niveau(q, niveau):
 
 
 def importer(data, simulation=False):
-    """{"niveau": nom | "niveaux": [noms], "chapitres": [{"chapitre": nom exact, "questions": [...]}]} → bilan par
-    (chapitre, niveau).
+    """{"niveau": nom | "niveaux": [noms], "type": "approfondissement" (facultatif : le quiz du cours),
+    "chapitres": [{"chapitre": nom exact, "questions": [...]}]} → bilan par (chapitre, niveau).
+    Un fichier remplit un seul des deux quiz du chapitre ; doublons et copies validées se cherchent dans ce quiz-là.
 
     Un quiz = (chapitre, niveau), jamais partagé : chaque niveau listé reçoit sa propre copie des questions, sauf
     celles dont un théorème n'est pas au programme de ce niveau (Theorem.class_levels : arc tangente, Rolle, TAF
@@ -342,6 +355,9 @@ def importer(data, simulation=False):
     from apps.caracteristics.models import Chapter, ClassLevel, Theorem
     from apps.caracteristics.programme import nom_niveau_actuel
 
+    type_quiz = data.get('type', COURS)
+    if type_quiz not in TYPES_VALIDES:  # une faute de frappe ne doit pas verser l'approfondissement dans le cours
+        raise ValueError(f'type de quiz inconnu : {type_quiz!r}')
     niveaux = []
     for nom in data.get('niveaux') or [data.get('niveau')]:
         lv = ClassLevel.objects.filter(name=nom_niveau_actuel(str(nom or ''))).first()
@@ -354,20 +370,20 @@ def importer(data, simulation=False):
             for bloc in data.get('chapitres') or []:
                 nom = str(bloc.get('chapitre') or '')
                 ch = Chapter.objects.filter(name=nom, class_levels=niveau).first()
-                ligne = {'chapitre': nom, 'niveau': niveau.name, 'creees': 0, 'ecartees': []}
+                ligne = {'chapitre': nom, 'niveau': niveau.name, 'type': type_quiz, 'creees': 0, 'ecartees': []}
                 bilan.append(ligne)
                 if ch is None:
                     ligne['ecartees'].append({'question': '', 'raison': 'chapitre inconnu à ce niveau'})
                     continue
-                vues = {_cle(t) for t in SkillQuestion.objects.filter(chapter=ch, class_level=niveau)
-                        .values_list('question', flat=True)}
-                validees = {_cle(t) for t in SkillQuestion.objects.filter(chapter=ch, a_relire=False)
-                            .exclude(class_level=niveau).values_list('question', flat=True)}
+                du_quiz = SkillQuestion.objects.filter(chapter=ch, type=type_quiz)
+                vues = {_cle(t) for t in du_quiz.filter(class_level=niveau).values_list('question', flat=True)}
+                validees = {_cle(t) for t in du_quiz.filter(a_relire=False).exclude(class_level=niveau)
+                            .values_list('question', flat=True)}
                 du_chapitre = {th.name: th for th in
                                Theorem.objects.filter(chapters=ch).prefetch_related('class_levels').distinct()}
                 for q in bloc.get('questions') or []:
                     q = pour_niveau(q, niveau.name)
-                    champs, raison = controler(q)
+                    champs, raison = controler(q, type_quiz)
                     noms = q.get('theoremes') if isinstance(q, dict) else None
                     if champs and _cle(champs['question']) in vues:
                         champs, raison = None, 'déjà présente'
@@ -389,8 +405,9 @@ def importer(data, simulation=False):
                     cle = _cle(champs['question'])
                     vues.add(cle)
                     if not simulation:
-                        nouvelle = SkillQuestion.objects.create(chapter=ch, class_level=niveau, is_active=False,
-                                                                a_relire=cle not in validees, source='claude', **champs)
+                        nouvelle = SkillQuestion.objects.create(chapter=ch, class_level=niveau, type=type_quiz,
+                                                                is_active=False, a_relire=cle not in validees,
+                                                                source='claude', **champs)
                         nouvelle.theorems.set([du_chapitre[n] for n in noms])
                     ligne['creees'] += 1
     return bilan

@@ -1,0 +1,601 @@
+{
+ "niveau": "2ème Bac SM",
+ "type": "approfondissement",
+ "chapitres": [
+  {
+   "chapitre": "Limites et continuité",
+   "questions": [
+    {
+     "question": "Calcule $\\lim\\limits_{x\\to-\\infty}\\left(\\sqrt{x^2+x+1}+x\\right)$.",
+     "bonne": "$-\\frac{1}{2}$",
+     "distracteurs": [
+      "$\\frac{1}{2}$",
+      "$-\\infty$",
+      "$0$"
+     ],
+     "explication": "Pour $x<0$, $\\sqrt{x^2}=|x|=-x$. Avec l’expression conjuguée : $\\sqrt{x^2+x+1}+x=\\dfrac{x+1}{\\sqrt{x^2+x+1}-x}$ et $\\sqrt{x^2+x+1}-x=-x\\left(\\sqrt{1+\\frac1x+\\frac1{x^2}}+1\\right)$, donc le quotient se comporte comme $\\dfrac{x}{-2x}$ : la limite vaut $-\\frac12$. Pièges : $\\frac12$ est la limite de $\\sqrt{x^2+x+1}-x$ en $+\\infty$ (on a oublié que $x$ est négatif) ; $-\\infty$ vient de $\\sqrt{x^2}=x$, faux pour $x<0$ ; $0$ tranche la forme $\\infty-\\infty$ sans calcul.",
+     "difficulte": "hard",
+     "cible": "Racine de $x^2$ en $-\\infty$ : $|x|=-x$ ; forme $\\infty-\\infty$ levée par le conjugué.",
+     "theoremes": [
+      "Multiplication par l'expression conjuguée",
+      "Opérations sur les limites"
+     ]
+    },
+    {
+     "question": "Soit $f(x)=x^3+x-1$. Combien de solutions réelles l’équation $f(x)=0$ a-t-elle, et où se trouvent-elles ?",
+     "bonne": "Une seule, et elle est dans $]0{,}5\\,;0{,}75[$.",
+     "distracteurs": [
+      "Trois, puisque $f$ est un polynôme de degré $3$.",
+      "Au moins une dans $]0\\,;1[$, mais on ne peut pas savoir combien.",
+      "Une seule, et elle est dans $]0\\,;0{,}5[$."
+     ],
+     "explication": "$f^{\\prime}(x)=3x^2+1>0$ : $f$ est continue et strictement croissante sur $\\mathbb{R}$, de limites $-\\infty$ et $+\\infty$ ; c’est une bijection de $\\mathbb{R}$ sur $\\mathbb{R}$, donc l’équation a exactement une solution $\\alpha$. Dichotomie : $f(0)=-1<0$, $f(1)=1>0$, puis $f(0{,}5)=-0{,}375<0$ et $f(0{,}75)\\approx0{,}17>0$, donc $\\alpha\\in]0{,}5\\,;0{,}75[$. Pièges : le degré $3$ ne garantit pas trois solutions réelles ; le TVI seul donne « au moins une », la stricte monotonie donne l’unicité ; $]0\\,;0{,}5[$ vient d’une erreur de signe sur $f(0{,}5)$.",
+     "difficulte": "medium",
+     "cible": "Unicité par la stricte monotonie (bijection), localisation par dichotomie.",
+     "theoremes": [
+      "Théorème de la bijection",
+      "Théorème des valeurs intermédiaires (TVI)",
+      "Méthode de dichotomie"
+     ]
+    },
+    {
+     "question": "On pose $f(x)=\\dfrac{\\sqrt{x+4}-2}{\\sin x}$ pour $x\\neq0$ proche de $0$, et $f(0)=a$. Pour quelle valeur de $a$ la fonction $f$ est-elle continue en $0$ ?",
+     "bonne": "$a=\\frac{1}{4}$",
+     "distracteurs": [
+      "$a=0$",
+      "$a=4$",
+      "Aucune : une forme $\\frac{0}{0}$ n’a pas de limite."
+     ],
+     "explication": "$\\sqrt{x+4}-2=\\dfrac{x}{\\sqrt{x+4}+2}$, donc $f(x)=\\dfrac{x}{\\sin x}\\times\\dfrac{1}{\\sqrt{x+4}+2}\\to1\\times\\frac14$. $f$ est continue en $0$ si et seulement si $a=\\lim\\limits_{0}f=\\frac14$ (prolongement par continuité). Pièges : « le numérateur tend vers $0$ » oublie que le dénominateur tend aussi vers $0$ ; une forme $\\frac00$ est indéterminée, pas impossible ; $4$ vient de la fraction conjuguée renversée.",
+     "difficulte": "medium",
+     "cible": "Forme 0/0 : conjugué + $\\frac{\\sin x}{x}\\to1$ ; prolongement par continuité.",
+     "theoremes": [
+      "Prolongement par continuité",
+      "Multiplication par l'expression conjuguée",
+      "Limites trigonométriques usuelles"
+     ]
+    },
+    {
+     "question": "Soit $f(x)=x^2-2x$. Quelle est l’image de l’intervalle $[0\\,;3]$ par $f$ ?",
+     "bonne": "$[-1\\,;3]$",
+     "distracteurs": [
+      "$[0\\,;3]$",
+      "$]-1\\,;3[$",
+      "$[-1\\,;0]$"
+     ],
+     "explication": "$f$ est continue sur le segment $[0\\,;3]$ : son image est un segment $[m\\,;M]$. $f^{\\prime}(x)=2x-2$ : $f$ décroît sur $[0\\,;1]$ puis croît sur $[1\\,;3]$, donc $m=f(1)=-1$ et $M=\\max\\left(f(0),f(3)\\right)=\\max(0,3)=3$. Pièges : $[f(0)\\,;f(3)]=[0\\,;3]$ ne vaut que pour une fonction monotone ; l’image d’un segment par une fonction continue est un segment, donc fermé ; $[-1\\,;0]$ ne regarde que $[0\\,;1]$.",
+     "difficulte": "medium",
+     "cible": "Image d’un segment par une fonction non monotone : chercher le minimum intérieur.",
+     "theoremes": [
+      "Image d'un intervalle par une fonction continue"
+     ]
+    },
+    {
+     "question": "Calcule $\\lim\\limits_{x\\to+\\infty}\\arctan\\left(\\dfrac{1-x^2}{x+1}\\right)$.",
+     "bonne": "$-\\frac{\\pi}{2}$",
+     "distracteurs": [
+      "$\\frac{\\pi}{2}$",
+      "$-\\frac{\\pi}{4}$",
+      "$-\\infty$"
+     ],
+     "explication": "Pour $x\\neq-1$, $\\dfrac{1-x^2}{x+1}=\\dfrac{(1-x)(1+x)}{x+1}=1-x\\to-\\infty$, et $\\lim\\limits_{t\\to-\\infty}\\arctan t=-\\frac{\\pi}{2}$ : par composition, la limite vaut $-\\frac{\\pi}{2}$. Pièges : $\\frac{\\pi}{2}$ vient d’une erreur de signe ; le rapport des termes de plus haut degré ne donne $-1$ que si les degrés sont égaux (ici $2$ et $1$) ; $\\arctan$ est bornée par $\\frac{\\pi}{2}$, elle ne tend jamais vers $-\\infty$.",
+     "difficulte": "medium",
+     "cible": "Limite d’une composée avec arc tangente ; degrés différents.",
+     "theoremes": [
+      "Limite et continuité d'une fonction composée",
+      "Fonction arc tangente"
+     ]
+    },
+    {
+     "question": "$E$ désigne la partie entière. Que vaut $\\lim\\limits_{x\\to+\\infty}\\dfrac{E(2x)}{x}$ ?",
+     "bonne": "$2$",
+     "distracteurs": [
+      "$+\\infty$, car $E(2x)$ tend vers $+\\infty$.",
+      "Elle n’existe pas, car $E$ n’est pas continue.",
+      "On ne peut pas conclure : l’encadrement $2-\\frac1x<\\frac{E(2x)}{x}\\le2$ mélange $<$ et $\\le$."
+     ],
+     "explication": "$2x-1<E(2x)\\le2x$, donc pour $x>0$ : $2-\\frac1x<\\dfrac{E(2x)}{x}\\le2$. Les deux bornes tendent vers $2$ : par le théorème des gendarmes, la limite vaut $2$. Pièges : $E(2x)\\to+\\infty$, mais il est divisé par $x$ ; la continuité de $E$ n’est pas nécessaire, l’encadrement suffit ; le théorème des gendarmes s’applique avec des inégalités larges comme strictes.",
+     "difficulte": "medium",
+     "cible": "Partie entière : encadrement puis gendarmes.",
+     "theoremes": [
+      "Théorème des gendarmes"
+     ]
+    },
+    {
+     "question": "Calcule $\\lim\\limits_{x\\to+\\infty}\\left(\\sqrt[3]{x^3+x^2}-x\\right)$.",
+     "bonne": "$\\frac{1}{3}$",
+     "distracteurs": [
+      "$0$",
+      "$\\frac{1}{2}$",
+      "$+\\infty$"
+     ],
+     "explication": "Avec $a^3-b^3=(a-b)(a^2+ab+b^2)$, $a=\\sqrt[3]{x^3+x^2}$ et $b=x$ : $a-b=\\dfrac{x^2}{a^2+ab+b^2}$. Or $a=x\\left(1+\\frac1x\\right)^{1/3}$, donc $a^2+ab+b^2=x^2\\left[\\left(1+\\frac1x\\right)^{2/3}+\\left(1+\\frac1x\\right)^{1/3}+1\\right]$ se comporte comme $3x^2$ : la limite vaut $\\frac13$. Pièges : « $\\sqrt[3]{x^3+x^2}\\approx x$, donc la différence tend vers $0$ » tranche une forme $\\infty-\\infty$ sans calcul ; $\\frac12$ est la limite de $\\sqrt{x^2+x}-x$ (racine carrée, pas cubique).",
+     "difficulte": "hard",
+     "cible": "Racine cubique : identité $a^3-b^3$ (conjugué généralisé).",
+     "theoremes": [
+      "Fonction racine n-ième et puissance rationnelle",
+      "Multiplication par l'expression conjuguée"
+     ]
+    },
+    {
+     "question": "Soit $f(x)=\\dfrac{2x}{1+x^2}$. Sa restriction à $I=[1\\,;+\\infty[$ réalise une bijection de $I$ sur un intervalle $J$. Que vaut $J$ ?",
+     "bonne": "$]0\\,;1]$",
+     "distracteurs": [
+      "$[0\\,;1]$",
+      "$]0\\,;1[$",
+      "$[-1\\,;1]$"
+     ],
+     "explication": "$f^{\\prime}(x)=\\dfrac{2(1-x^2)}{(1+x^2)^2}\\le0$ sur $[1\\,;+\\infty[$ (nulle seulement en $1$) : $f$ est continue et strictement décroissante sur $I$. Donc $J=\\left]\\lim\\limits_{+\\infty}f\\,;f(1)\\right]=]0\\,;1]$. Pièges : $0$ est une limite jamais atteinte ($f(x)>0$) ; $1=f(1)$ est atteint, la borne est fermée ; $[-1\\,;1]$ est l’image de $\\mathbb{R}$ tout entier, pas celle de $I$.",
+     "difficulte": "hard",
+     "cible": "Intervalle image d’une bijection : bornes atteintes ou non.",
+     "theoremes": [
+      "Théorème de la bijection",
+      "Image d'un intervalle par une fonction continue"
+     ]
+    },
+    {
+     "question": "$f$ est une fonction continue sur $[0\\,;1]$ telle que $f(0)=1$ et $f(1)=0$. Quelles affirmations sont toujours vraies ?",
+     "bonnes": [
+      "L’équation $f(x)=x$ a au moins une solution dans $[0\\,;1]$.",
+      "L’équation $f(x)=\\frac12$ a au moins une solution dans $]0\\,;1[$."
+     ],
+     "distracteurs": [
+      "$f$ est strictement décroissante sur $[0\\,;1]$.",
+      "L’équation $f(x)=\\frac12$ a exactement une solution dans $]0\\,;1[$.",
+      "$f([0\\,;1])=[0\\,;1]$."
+     ],
+     "explication": "Avec $g(x)=f(x)-x$, continue : $g(0)=1>0$ et $g(1)=-1<0$, donc $g$ s’annule sur $[0\\,;1]$ (TVI). Et $\\frac12$ est entre $f(1)=0$ et $f(0)=1$ : le TVI donne $c\\in]0\\,;1[$ avec $f(c)=\\frac12$. Pièges : rien n’oblige $f$ à être monotone (elle peut monter puis descendre), donc ni « strictement décroissante » ni « exactement une solution » ; $f([0\\,;1])$ contient $[0\\,;1]$ mais peut être plus grand si $f$ dépasse $1$.",
+     "difficulte": "hard",
+     "cible": "Ce que le TVI garantit (existence) et ce qu’il ne dit pas (unicité, monotonie, image exacte).",
+     "theoremes": [
+      "Théorème des valeurs intermédiaires (TVI)",
+      "Image d'un intervalle par une fonction continue"
+     ]
+    },
+    {
+     "question": "Que valent $\\lim\\limits_{x\\to0}x\\sin\\left(\\frac{1}{x}\\right)$ et $\\lim\\limits_{x\\to+\\infty}x\\sin\\left(\\frac{1}{x}\\right)$ ?",
+     "bonne": "$0$ en $0$, et $1$ en $+\\infty$.",
+     "distracteurs": [
+      "$1$ en $0$, et $1$ en $+\\infty$.",
+      "$0$ en $0$, et $0$ en $+\\infty$.",
+      "Pas de limite en $0$, et $1$ en $+\\infty$."
+     ],
+     "explication": "En $0$ : $\\left|x\\sin\\frac1x\\right|\\le|x|\\to0$, donc la limite est $0$ (gendarmes). En $+\\infty$ : avec $t=\\frac1x\\to0^+$, $x\\sin\\frac1x=\\dfrac{\\sin t}{t}\\to1$. Pièges : $\\dfrac{\\sin u}{u}\\to1$ seulement quand $u\\to0$ ; en $0$, $u=\\frac1x$ part à l’infini ; $\\sin\\frac1x$ oscille, mais multiplié par $x\\to0$ il est écrasé.",
+     "difficulte": "hard",
+     "cible": "$\\frac{\\sin u}{u}\\to1$ seulement si $u\\to0$ ; borné × tend vers 0.",
+     "theoremes": [
+      "Théorème des gendarmes",
+      "Limites trigonométriques usuelles",
+      "Limite et continuité d'une fonction composée"
+     ]
+    },
+    {
+     "question": "On encadre par dichotomie la solution $\\alpha\\in]0\\,;1[$ d’une équation, en partant de l’intervalle $[0\\,;1]$. Combien d’étapes faut-il au minimum pour un encadrement d’amplitude inférieure ou égale à $10^{-2}$ ?",
+     "bonne": "$7$",
+     "distracteurs": [
+      "$6$",
+      "$2$",
+      "$100$"
+     ],
+     "explication": "Chaque étape divise l’amplitude par $2$ : après $n$ étapes, elle vaut $\\frac{1}{2^n}$. Il faut $\\frac{1}{2^n}\\le10^{-2}$, soit $2^n\\ge100$ : $2^6=64$ ne suffit pas, $2^7=128$ oui, donc $7$ étapes. Pièges : $6$ oublie que $64<100$ ; $2$ confond le nombre de décimales et le nombre d’étapes ; $100$ correspond à un balayage de pas $10^{-2}$, pas à la dichotomie.",
+     "difficulte": "medium",
+     "cible": "Nombre d’étapes de la dichotomie : $\\frac{1}{2^n}\\le$ précision.",
+     "theoremes": [
+      "Méthode de dichotomie"
+     ]
+    },
+    {
+     "question": "$f:x\\mapsto x^3+3x$ est une bijection de $\\mathbb{R}$ sur $\\mathbb{R}$ ; on note $f^{-1}$ sa fonction réciproque. Que valent $\\lim\\limits_{x\\to+\\infty}f^{-1}(x)$ et $f^{-1}(4)$ ?",
+     "bonne": "$+\\infty$ et $1$",
+     "distracteurs": [
+      "$0$ et $\\frac{1}{76}$",
+      "$+\\infty$ et $\\frac{1}{76}$",
+      "$+\\infty$ et $76$"
+     ],
+     "explication": "$f$ est continue et strictement croissante ($f^{\\prime}(x)=3x^2+3>0$), de limites $-\\infty$ et $+\\infty$ : $f^{-1}$ est continue et strictement croissante sur $\\mathbb{R}$, et $\\lim\\limits_{+\\infty}f^{-1}=+\\infty$. Comme $f(1)=1+3=4$, $f^{-1}(4)=1$. Pièges : la fonction réciproque $f^{-1}$ n’est pas $\\frac1f$ : $\\frac{1}{f(4)}=\\frac1{76}$ et $\\lim\\frac1f=0$ viennent de cette confusion ; $76=f(4)$ calcule l’image de $4$ au lieu de son antécédent.",
+     "difficulte": "medium",
+     "cible": "Réciproque $f^{-1}$ ≠ inverse $\\frac1f$ ; antécédent.",
+     "theoremes": [
+      "Théorème de la bijection",
+      "Continuité de la fonction réciproque"
+     ]
+    }
+   ]
+  },
+  {
+   "chapitre": "Suites numériques",
+   "questions": [
+    {
+     "question": "$u_0=2$ et $u_{n+1}=\\frac{1}{2}u_n+3$ pour tout $n$. Quelle est l’expression de $u_n$, et sa limite ?",
+     "bonne": "$u_n=6-4\\left(\\frac12\\right)^n$ ; limite $6$.",
+     "distracteurs": [
+      "$u_n=6+4\\left(\\frac12\\right)^n$ ; limite $6$.",
+      "$u_n=2\\left(\\frac12\\right)^n+3n$ ; limite $+\\infty$.",
+      "$u_n=6-4\\times2^n$ ; limite $-\\infty$."
+     ],
+     "explication": "Le point fixe vérifie $\\ell=\\frac12\\ell+3$, soit $\\ell=6$. Avec $v_n=u_n-6$ : $v_{n+1}=\\frac12v_n$, géométrique de raison $\\frac12$ et $v_0=2-6=-4$. Donc $u_n=6-4\\left(\\frac12\\right)^n$ et, comme $\\left(\\frac12\\right)^n\\to0$, $u_n\\to6$. Pièges : $6+4\\left(\\frac12\\right)^n$ vient de $v_0=6-2$ au lieu de $2-6$ ; la suite n’est ni arithmétique ni géométrique, d’où la suite auxiliaire ; une raison $2$ au lieu de $\\frac12$ donnerait une limite infinie.",
+     "difficulte": "medium",
+     "cible": "Suite arithmético-géométrique : suite auxiliaire $v_n=u_n-\\ell$.",
+     "theoremes": [
+      "Suite auxiliaire arithmétique ou géométrique",
+      "Limites des suites de référence"
+     ]
+    },
+    {
+     "question": "$u_0=1$ et $u_{n+1}=\\sqrt{u_n+6}$. On a montré par récurrence que $0\\le u_n\\le3$ et que $(u_n)$ est croissante. Que peut-on conclure ?",
+     "bonne": "$(u_n)$ converge, et sa limite est $3$.",
+     "distracteurs": [
+      "$(u_n)$ tend vers $+\\infty$, puisqu’elle est croissante.",
+      "$(u_n)$ converge vers $-2$ ou vers $3$ : on ne peut pas trancher.",
+      "$(u_n)$ converge, mais sa limite peut être n’importe quel nombre de $[0\\,;3]$."
+     ],
+     "explication": "Croissante et majorée, $(u_n)$ converge vers un réel $\\ell\\in[0\\,;3]$. $f:x\\mapsto\\sqrt{x+6}$ est continue sur $[0\\,;3]$ et $f([0\\,;3])\\subset[0\\,;3]$, donc $\\ell=f(\\ell)$ : $\\ell^2=\\ell+6$ avec $\\ell\\ge0$, d’où $\\ell=3$. Pièges : croissante ne veut pas dire « tend vers $+\\infty$ » quand la suite est majorée ; $-2$ est exclu puisque $\\ell\\ge0$ ; la limite n’est pas quelconque : c’est un point fixe de $f$.",
+     "difficulte": "medium",
+     "cible": "Monotone et bornée ⇒ converge ; limite = point fixe admissible.",
+     "theoremes": [
+      "Suites récurrentes u(n+1) = f(u(n))",
+      "Suite monotone et bornée : convergence",
+      "Raisonnement par récurrence"
+     ]
+    },
+    {
+     "question": "Quelle est la limite de la suite $u_n=\\dfrac{3^n-4^n}{3^n+4^n}$ ?",
+     "bonne": "$-1$",
+     "distracteurs": [
+      "$1$",
+      "$0$",
+      "Elle n’a pas de limite : c’est une forme $\\frac{\\infty}{\\infty}$."
+     ],
+     "explication": "En divisant par $4^n$, le terme dominant : $u_n=\\dfrac{\\left(\\frac34\\right)^n-1}{\\left(\\frac34\\right)^n+1}$, et $\\left(\\frac34\\right)^n\\to0$ car $0<\\frac34<1$ : $u_n\\to\\frac{0-1}{0+1}=-1$. Pièges : $1$ oublie le signe moins ; $0$ tranche la forme indéterminée au hasard ; une forme indéterminée ne veut pas dire « pas de limite » : il faut factoriser par le terme dominant.",
+     "difficulte": "medium",
+     "cible": "Factoriser par le terme dominant $4^n$ ; $q^n$ avec $|q|<1$.",
+     "theoremes": [
+      "Limites des suites de référence"
+     ]
+    },
+    {
+     "question": "Pour $n\\ge1$, $u_n=\\displaystyle\\sum_{k=1}^{n}\\frac{1}{k^2}$ et $v_n=u_n+\\frac{1}{n}$. Que peut-on affirmer ?",
+     "bonne": "$(u_n)$ et $(v_n)$ sont adjacentes : elles ont une même limite $\\ell$, et $u_n\\le\\ell\\le v_n$.",
+     "distracteurs": [
+      "$(u_n)$ tend vers $+\\infty$, car on ajoute toujours un terme positif.",
+      "Elles ne sont pas adjacentes, car $(v_n)$ n’est pas décroissante.",
+      "Elles sont adjacentes, mais leurs limites peuvent être différentes."
+     ],
+     "explication": "$u_{n+1}-u_n=\\frac{1}{(n+1)^2}>0$ : $(u_n)$ croît. $v_{n+1}-v_n=\\frac{1}{(n+1)^2}+\\frac{1}{n+1}-\\frac1n=-\\dfrac{1}{n(n+1)^2}<0$ : $(v_n)$ décroît. Et $v_n-u_n=\\frac1n\\to0$. Elles sont adjacentes, donc convergent vers une même limite $\\ell$, avec $u_n\\le\\ell\\le v_n$. Pièges : ajouter des termes positifs rend la suite croissante, pas forcément infinie (ici $u_n\\le v_n\\le v_1=2$) ; deux suites adjacentes ont toujours la même limite.",
+     "difficulte": "hard",
+     "cible": "Suites adjacentes : signe de $v_{n+1}-v_n$ ; croissante ≠ infinie.",
+     "theoremes": [
+      "Suites adjacentes",
+      "Suite majorée, minorée, monotone"
+     ]
+    },
+    {
+     "question": "Calcule $S=1+2+4+\\dots+2^{10}$.",
+     "bonne": "$2047$",
+     "distracteurs": [
+      "$1023$",
+      "$2048$",
+      "$4095$"
+     ],
+     "explication": "C’est la somme de $11$ termes consécutifs ($2^0$ à $2^{10}$) d’une suite géométrique de raison $2$ : $S=\\dfrac{2^{11}-1}{2-1}=2047$. Pièges : $1023=2^{10}-1$ compte $10$ termes au lieu de $11$ ; $2048=2^{11}$ oublie le $-1$ ; $4095=2^{12}-1$ compte un terme de trop.",
+     "difficulte": "medium",
+     "cible": "Nombre de termes d’une somme géométrique.",
+     "theoremes": [
+      "Somme de termes consécutifs",
+      "Suites arithmétiques et géométriques"
+     ]
+    },
+    {
+     "question": "$u_n=\\dfrac{n}{n+1}$. Que vaut $\\lim\\limits_{n\\to+\\infty}\\arctan\\left(\\dfrac{1}{1-u_n}\\right)$ ?",
+     "bonne": "$\\frac{\\pi}{2}$",
+     "distracteurs": [
+      "$\\frac{\\pi}{4}$",
+      "$+\\infty$",
+      "$-\\frac{\\pi}{2}$"
+     ],
+     "explication": "$1-u_n=\\frac{1}{n+1}$, donc $\\dfrac{1}{1-u_n}=n+1\\to+\\infty$, et $\\lim\\limits_{t\\to+\\infty}\\arctan t=\\frac{\\pi}{2}$ : la limite vaut $\\frac{\\pi}{2}$. Pièges : $\\frac{\\pi}{4}=\\arctan(1)$ remplace $u_n$ par sa limite au mauvais endroit ; $\\arctan$ est bornée par $\\frac{\\pi}{2}$ ; $1-u_n$ tend vers $0$ par valeurs positives ($u_n<1$), pas négatives.",
+     "difficulte": "medium",
+     "cible": "Limite de $f(u_n)$ : composer dans le bon ordre.",
+     "theoremes": [
+      "Limite et continuité d'une fonction composée"
+     ]
+    },
+    {
+     "question": "On pose $f(x)=\\frac{1}{2}\\cos x$, $u_0=0$ et $u_{n+1}=f(u_n)$. On admet que $f$ a un unique point fixe $\\alpha$ et que $|u_0-\\alpha|\\le1$. Avec l’inégalité des accroissements finis, à partir de quel rang $n$ est-on sûr que $|u_n-\\alpha|\\le10^{-3}$ ?",
+     "bonne": "$n=10$",
+     "distracteurs": [
+      "$n=3$",
+      "$n=9$",
+      "$n=1000$"
+     ],
+     "explication": "$|f^{\\prime}(x)|=\\left|\\frac12\\sin x\\right|\\le\\frac12$ ; l’inégalité des accroissements finis entre $u_n$ et $\\alpha$ (avec $f(\\alpha)=\\alpha$) donne $|u_{n+1}-\\alpha|\\le\\frac12|u_n-\\alpha|$, puis, par récurrence, $|u_n-\\alpha|\\le\\left(\\frac12\\right)^n|u_0-\\alpha|\\le\\frac{1}{2^n}$. Il suffit que $2^n\\ge1000$ : $2^9=512$ ne suffit pas, $2^{10}=1024$ oui, donc $n=10$. Pièges : $3$ confond l’exposant de $10^{-3}$ et le rang ; $9$ oublie que $512<1000$ ; $1000$ suppose une erreur en $\\frac1n$ au lieu de $\\frac{1}{2^n}$.",
+     "difficulte": "hard",
+     "cible": "Vitesse de convergence par l’inégalité des accroissements finis.",
+     "theoremes": [
+      "Inégalité des accroissements finis",
+      "Suites récurrentes u(n+1) = f(u(n))"
+     ]
+    },
+    {
+     "question": "Un élève montre que, si $4^n+1$ est divisible par $3$, alors $4^{n+1}+1$ l’est aussi. Que peut-on en conclure ?",
+     "bonne": "Rien : $4^n+1$ n’est divisible par $3$ pour aucun entier $n$.",
+     "distracteurs": [
+      "$4^n+1$ est divisible par $3$ pour tout $n\\ge0$.",
+      "$4^n+1$ est divisible par $3$ pour tout $n\\ge1$.",
+      "$4^n+1$ est divisible par $3$ à partir d’un certain rang, qu’il reste à trouver."
+     ],
+     "explication": "Si $4^n+1=3k$, alors $4^{n+1}+1=4(3k-1)+1=3(4k-1)$ : l’hérédité est vraie. Mais l’initialisation échoue : $4^0+1=2$, $4^1+1=5$… En fait $4^n$ laisse toujours le reste $1$ dans la division par $3$, donc $4^n+1$ laisse le reste $2$ : la propriété n’est vraie pour aucun $n$. Pièges : une récurrence a besoin des deux étapes, l’hérédité seule ne prouve rien ; « à partir d’un certain rang » suppose d’avoir trouvé un rang où c’est vrai.",
+     "difficulte": "medium",
+     "cible": "Récurrence : l’hérédité sans initialisation ne prouve rien.",
+     "theoremes": [
+      "Raisonnement par récurrence"
+     ]
+    },
+    {
+     "question": "Quelles affirmations sur les suites numériques sont vraies ?",
+     "bonnes": [
+      "Une suite croissante et majorée converge.",
+      "Une suite convergente est bornée."
+     ],
+     "distracteurs": [
+      "Une suite bornée converge.",
+      "Une suite croissante tend vers $+\\infty$.",
+      "Si $u_n<2$ pour tout $n$ et si $(u_n)$ converge, alors $\\lim u_n<2$."
+     ],
+     "explication": "Vrai : une suite croissante et majorée converge ; une suite convergente est bornée. Faux : $(-1)^n$ est bornée mais diverge ; $1-\\frac1n$ est croissante et tend vers $1$, pas vers $+\\infty$ ; $2-\\frac1n<2$ pour tout $n$ mais sa limite vaut $2$ : le passage à la limite transforme $<$ en $\\le$.",
+     "difficulte": "medium",
+     "cible": "Réciproques fausses classiques ; passage à la limite dans une inégalité.",
+     "theoremes": [
+      "Suite monotone et bornée : convergence",
+      "Convergence et divergence",
+      "Limites et ordre"
+     ]
+    },
+    {
+     "question": "Que vaut $\\lim\\limits_{n\\to+\\infty}\\displaystyle\\sum_{k=1}^{n}\\frac{n}{n^2+k}$ ?",
+     "bonne": "$1$",
+     "distracteurs": [
+      "$0$, car chaque terme tend vers $0$.",
+      "$+\\infty$, car on ajoute de plus en plus de termes.",
+      "$\\frac{1}{2}$"
+     ],
+     "explication": "Pour $1\\le k\\le n$ : $\\dfrac{n}{n^2+n}\\le\\dfrac{n}{n^2+k}\\le\\dfrac{n}{n^2+1}$. En sommant les $n$ termes : $\\dfrac{n^2}{n^2+n}\\le S_n\\le\\dfrac{n^2}{n^2+1}$, et les deux bornes tendent vers $1$ : $S_n\\to1$ (gendarmes). Pièges : chaque terme tend vers $0$, mais leur nombre grandit : on ne peut pas sommer les limites ; « de plus en plus de termes » ne veut pas dire « tend vers $+\\infty$ ».",
+     "difficulte": "hard",
+     "cible": "Somme de $n$ termes : encadrer puis gendarmes.",
+     "theoremes": [
+      "Théorème des gendarmes",
+      "Limites et ordre"
+     ]
+    },
+    {
+     "question": "Une association compte $500$ membres au 1er janvier 2026. Chaque année, $10\\,\\%$ des membres partent et $80$ nouveaux arrivent. On note $u_n$ le nombre de membres au 1er janvier de l’année $2026+n$. À long terme :",
+     "bonne": "le nombre de membres augmente et se rapproche de $800$, sans l’atteindre.",
+     "distracteurs": [
+      "le nombre de membres augmente sans limite, puisqu’il augmente chaque année.",
+      "le nombre de membres tend vers $0$, puisque $10\\,\\%$ partent chaque année.",
+      "le nombre de membres diminue et se rapproche de $800$."
+     ],
+     "explication": "$u_{n+1}=0{,}9\\,u_n+80$. Le point fixe vérifie $\\ell=0{,}9\\,\\ell+80$, soit $\\ell=800$ ; $v_n=u_n-800$ est géométrique de raison $0{,}9$ avec $v_0=-300$, donc $u_n=800-300\\times0{,}9^n$. Comme $0{,}9^n$ décroît vers $0$, $u_n$ augmente et se rapproche de $800$ sans l’atteindre. Pièges : une suite croissante peut être majorée (ici par $800$) ; oublier les $80$ arrivées donne $500\\times0{,}9^n\\to0$ ; partant de $500<800$, la suite monte vers $800$.",
+     "difficulte": "medium",
+     "cible": "Modéliser par une suite arithmético-géométrique ; sens de variation.",
+     "theoremes": [
+      "Suite auxiliaire arithmétique ou géométrique",
+      "Suites arithmétiques et géométriques"
+     ]
+    },
+    {
+     "question": "$u_0=0$ et $u_{n+1}=\\dfrac{1}{1+u_n}$. Que peut-on dire de $(u_n)$ ?",
+     "bonne": "Elle n’est pas monotone, mais elle converge vers $\\frac{\\sqrt5-1}{2}$.",
+     "distracteurs": [
+      "Elle est croissante, puisque $u_1>u_0$.",
+      "Elle diverge, puisqu’elle n’est pas monotone.",
+      "Elle converge vers $\\frac{-1-\\sqrt5}{2}$."
+     ],
+     "explication": "$u_1=1$, $u_2=\\frac12$, $u_3=\\frac23$, $u_4=\\frac35$ : les termes oscillent ($f:x\\mapsto\\frac{1}{1+x}$ est décroissante). Pour $n\\ge1$, $u_n\\in\\left[\\frac12\\,;1\\right]$ et $|f^{\\prime}(x)|=\\frac{1}{(1+x)^2}\\le\\frac49$ sur cet intervalle : l’inégalité des accroissements finis donne $|u_{n+1}-\\ell|\\le\\frac49|u_n-\\ell|$, donc $u_n\\to\\ell$, avec $\\ell=\\frac{1}{1+\\ell}$, soit $\\ell^2+\\ell-1=0$ et $\\ell>0$ : $\\ell=\\frac{\\sqrt5-1}{2}$. Pièges : deux premiers termes ne donnent pas le sens de variation ; non monotone ne veut pas dire divergente ; la racine négative est exclue car $u_n\\ge0$.",
+     "difficulte": "hard",
+     "cible": "$f$ décroissante : suite non monotone mais convergente.",
+     "theoremes": [
+      "Suites récurrentes u(n+1) = f(u(n))",
+      "Inégalité des accroissements finis"
+     ]
+    }
+   ]
+  },
+  {
+   "chapitre": "Dérivation et étude des fonctions",
+   "questions": [
+    {
+     "question": "Soit $f(x)=x\\sqrt{x}$ sur $[0\\,;+\\infty[$. $f$ est-elle dérivable à droite en $0$ ?",
+     "bonne": "Oui, $f^{\\prime}_d(0)=0$ : la courbe a une demi-tangente horizontale en $0$.",
+     "distracteurs": [
+      "Non, car $x\\mapsto\\sqrt{x}$ n’est pas dérivable en $0$.",
+      "Non : la courbe a une demi-tangente verticale en $0$.",
+      "Oui, mais on ne peut pas calculer $f^{\\prime}_d(0)$, car $\\frac{1}{2\\sqrt{x}}$ n’est pas défini en $0$."
+     ],
+     "explication": "$\\dfrac{f(x)-f(0)}{x-0}=\\dfrac{x\\sqrt x}{x}=\\sqrt x\\to0$ quand $x\\to0^+$ : $f$ est dérivable à droite en $0$, $f^{\\prime}_d(0)=0$, et sa courbe a une demi-tangente horizontale à l’origine. Pièges : la règle du produit est une condition suffisante, pas nécessaire : un facteur non dérivable n’empêche pas le produit de l’être ; la demi-tangente verticale est celle de $x\\mapsto\\sqrt x$ seule ; en un point délicat, on revient au taux d’accroissement au lieu d’une formule.",
+     "difficulte": "medium",
+     "cible": "Dérivabilité en un point : taux d’accroissement, pas les règles de calcul.",
+     "theoremes": [
+      "Dérivabilité à droite et à gauche",
+      "Dérivée d'une somme, d'un produit, d'un quotient"
+     ]
+    },
+    {
+     "question": "Soit $f(x)=\\sqrt{\\cos^2x+3}$, dérivable sur $\\mathbb{R}$. Que vaut $f^{\\prime}(x)$ ?",
+     "bonne": "$f^{\\prime}(x)=\\dfrac{-\\sin x\\cos x}{\\sqrt{\\cos^2x+3}}$",
+     "distracteurs": [
+      "$f^{\\prime}(x)=\\dfrac{1}{2\\sqrt{\\cos^2x+3}}$",
+      "$f^{\\prime}(x)=\\dfrac{-2\\sin x\\cos x}{\\sqrt{\\cos^2x+3}}$",
+      "$f^{\\prime}(x)=\\dfrac{\\cos x}{\\sqrt{\\cos^2x+3}}$"
+     ],
+     "explication": "Avec $(\\sqrt u)^{\\prime}=\\dfrac{u^{\\prime}}{2\\sqrt u}$ et $u=\\cos^2x+3$ : $u^{\\prime}=2\\cos x\\times(-\\sin x)$. Donc $f^{\\prime}(x)=\\dfrac{-2\\sin x\\cos x}{2\\sqrt{\\cos^2x+3}}=\\dfrac{-\\sin x\\cos x}{\\sqrt{\\cos^2x+3}}$. Pièges : oublier $u^{\\prime}$, la dérivée de l’intérieur ; oublier le $2$ de $2\\sqrt u$ ; dériver $\\cos^2x$ en $2\\cos x$ sans le facteur $(\\cos x)^{\\prime}=-\\sin x$.",
+     "difficulte": "medium",
+     "cible": "Dérivée d’une composée emboîtée deux fois.",
+     "theoremes": [
+      "Dérivée d'une fonction composée",
+      "Dérivées des fonctions usuelles"
+     ]
+    },
+    {
+     "question": "$f(x)=x^3+x+1$ réalise une bijection de $\\mathbb{R}$ sur $\\mathbb{R}$. Que vaut $\\left(f^{-1}\\right)^{\\prime}(3)$ ?",
+     "bonne": "$\\frac{1}{4}$",
+     "distracteurs": [
+      "$\\frac{1}{28}$",
+      "$4$",
+      "$-\\frac{4}{9}$"
+     ],
+     "explication": "$f(1)=3$, donc $f^{-1}(3)=1$. $f^{\\prime}(x)=3x^2+1$ ne s’annule pas : $\\left(f^{-1}\\right)^{\\prime}(3)=\\dfrac{1}{f^{\\prime}\\left(f^{-1}(3)\\right)}=\\dfrac{1}{f^{\\prime}(1)}=\\dfrac14$. Pièges : $\\frac{1}{28}=\\frac{1}{f^{\\prime}(3)}$ évalue $f^{\\prime}$ au mauvais point ($3$ est une image, pas un antécédent) ; $4=f^{\\prime}(1)$ oublie l’inverse ; $-\\frac49$ est la dérivée de $\\frac1f$ en $1$ : $f^{-1}$ n’est pas $\\frac1f$.",
+     "difficulte": "hard",
+     "cible": "Dérivée de la réciproque : évaluer $f'$ en l’antécédent.",
+     "theoremes": [
+      "Dérivée de la fonction réciproque"
+     ]
+    },
+    {
+     "question": "Quelle est l’équation de la tangente à la courbe de $f(x)=\\dfrac{x^2}{x-1}$ au point d’abscisse $2$ ?",
+     "bonne": "$y=4$",
+     "distracteurs": [
+      "$y=4x-4$",
+      "$y=0$",
+      "$y=8x-12$"
+     ],
+     "explication": "$f(2)=\\frac41=4$ et $f^{\\prime}(x)=\\dfrac{2x(x-1)-x^2}{(x-1)^2}=\\dfrac{x^2-2x}{(x-1)^2}$, donc $f^{\\prime}(2)=0$ : la tangente $y=f^{\\prime}(2)(x-2)+f(2)$ est $y=4$, horizontale. Pièges : $\\left(\\frac uv\\right)^{\\prime}\\ne\\frac{u^{\\prime}}{v^{\\prime}}$ ($\\frac{2x}{1}=4$ en $2$ donne $y=4x-4$) ; $f^{\\prime}(2)=0$ est la pente, pas l’ordonnée ; une erreur de signe dans $u^{\\prime}v-uv^{\\prime}$ donne $f^{\\prime}(2)=8$, d’où $y=8x-12$.",
+     "difficulte": "medium",
+     "cible": "Tangente : dérivée d’un quotient, pente et ordonnée.",
+     "theoremes": [
+      "Équation de la tangente",
+      "Dérivée d'une somme, d'un produit, d'un quotient"
+     ]
+    },
+    {
+     "question": "Soit $f(x)=\\dfrac{2x^2+3x-1}{x+1}$. Quelle droite est asymptote à la courbe de $f$ en $+\\infty$ ?",
+     "bonne": "$y=2x+1$",
+     "distracteurs": [
+      "$y=2x+3$",
+      "$y=2$",
+      "$y=2x$"
+     ],
+     "explication": "$\\lim\\limits_{+\\infty}\\dfrac{f(x)}{x}=2$ et $f(x)-2x=\\dfrac{x-1}{x+1}\\to1$ : la droite $y=2x+1$ est asymptote (directement : $f(x)=2x+1-\\dfrac{2}{x+1}$). Pièges : l’ordonnée à l’origine ne se lit pas sur les coefficients, il faut calculer $\\lim\\left(f(x)-2x\\right)$ ; $y=2$ applique la règle des termes de plus haut degré à des degrés différents ; $y=2x$ oublie l’ordonnée à l’origine.",
+     "difficulte": "medium",
+     "cible": "Asymptote oblique : calculer $a$ puis $b=\\lim(f(x)-ax)$.",
+     "theoremes": [
+      "Branches infinies et asymptotes"
+     ]
+    },
+    {
+     "question": "Soit $f(x)=x^4$. L’origine $O$ est-elle un point d’inflexion de sa courbe ?",
+     "bonne": "Non : $f^{\\prime\\prime}$ s’annule en $0$ sans changer de signe ; la courbe est convexe sur $\\mathbb{R}$.",
+     "distracteurs": [
+      "Oui, car $f^{\\prime\\prime}(0)=0$.",
+      "Oui, car la tangente en $O$ est horizontale.",
+      "Non, car $f^{\\prime}(0)=0$ : c’est un maximum."
+     ],
+     "explication": "$f^{\\prime\\prime}(x)=12x^2\\ge0$ : la courbe est convexe sur $\\mathbb{R}$. $f^{\\prime\\prime}$ s’annule en $0$ sans changer de signe, donc pas de point d’inflexion ($O$ est d’ailleurs un minimum : $f(x)\\ge0=f(0)$). Pièges : $f^{\\prime\\prime}(x_0)=0$ ne suffit pas, il faut que $f^{\\prime\\prime}$ change de signe ; une tangente horizontale signale souvent un extremum, pas une inflexion ; ici c’est un minimum, pas un maximum.",
+     "difficulte": "medium",
+     "cible": "Point d’inflexion : changement de signe de $f''$, pas seulement $f''=0$.",
+     "theoremes": [
+      "Concavité et point d'inflexion",
+      "Extremum et annulation de la dérivée"
+     ]
+    },
+    {
+     "question": "Soit $f(x)=x^3-3x$. Quelles affirmations sont vraies ?",
+     "bonnes": [
+      "$f$ admet un maximum local égal à $2$, atteint en $-1$.",
+      "L’origine $O$ est centre de symétrie de la courbe de $f$."
+     ],
+     "distracteurs": [
+      "$2$ est le maximum de $f$ sur $\\mathbb{R}$.",
+      "$f$ est croissante sur $[-1\\,;1]$.",
+      "La tangente à la courbe au point d’abscisse $0$ est horizontale."
+     ],
+     "explication": "$f^{\\prime}(x)=3(x-1)(x+1)$ : $f$ croît sur $]-\\infty\\,;-1]$, décroît sur $[-1\\,;1]$, croît sur $[1\\,;+\\infty[$. Maximum local $f(-1)=2$, minimum local $f(1)=-2$. $f$ est impaire, donc $O$ est centre de symétrie. Faux : $2$ n’est pas un maximum sur $\\mathbb{R}$ ($f\\to+\\infty$) ; $f$ décroît sur $[-1\\,;1]$ ; $f^{\\prime}(0)=-3\\ne0$, la tangente en $0$ n’est pas horizontale.",
+     "difficulte": "medium",
+     "cible": "Extremum local / absolu ; signe de la dérivée ; symétrie.",
+     "theoremes": [
+      "Signe de la dérivée et sens de variation",
+      "Extremum et annulation de la dérivée",
+      "Centre et axe de symétrie d'une courbe"
+     ]
+    },
+    {
+     "question": "Pour laquelle de ces fonctions peut-on appliquer le théorème de Rolle sur $[-1\\,;1]$ ?",
+     "bonne": "$x\\mapsto x^2-1$",
+     "distracteurs": [
+      "$x\\mapsto|x|$",
+      "$x\\mapsto\\dfrac{1}{x^2}$",
+      "$x\\mapsto x^3$"
+     ],
+     "explication": "Rolle exige : $f$ continue sur $[-1\\,;1]$, dérivable sur $]-1\\,;1[$ et $f(-1)=f(1)$. $x\\mapsto x^2-1$ les vérifie (et $c=0$). Pièges : $|x|$ a les mêmes valeurs aux bornes mais n’est pas dérivable en $0$ (sa dérivée ne s’annule jamais) ; $\\frac{1}{x^2}$ n’est pas définie en $0$ ; $x^3$ prend des valeurs différentes en $-1$ et en $1$.",
+     "difficulte": "medium",
+     "cible": "Les trois hypothèses du théorème de Rolle.",
+     "theoremes": [
+      "Théorème de Rolle"
+     ]
+    },
+    {
+     "question": "En appliquant l’inégalité des accroissements finis à $f:x\\mapsto\\sqrt{x}$ sur $[100\\,;101]$, quel encadrement de $\\sqrt{101}-10$ obtient-on ?",
+     "bonne": "$\\frac{1}{22}\\le\\sqrt{101}-10\\le\\frac{1}{20}$",
+     "distracteurs": [
+      "$\\frac{1}{20}\\le\\sqrt{101}-10\\le\\frac{1}{22}$",
+      "$\\frac{1}{11}\\le\\sqrt{101}-10\\le\\frac{1}{10}$",
+      "$\\frac{1}{202}\\le\\sqrt{101}-10\\le\\frac{1}{200}$"
+     ],
+     "explication": "$f^{\\prime}(x)=\\dfrac{1}{2\\sqrt x}$ décroît : pour $x\\in[100\\,;101]$, $\\dfrac{1}{2\\sqrt{101}}\\le f^{\\prime}(x)\\le\\dfrac{1}{20}$. L’inégalité des accroissements finis donne $\\dfrac{1}{2\\sqrt{101}}\\le\\sqrt{101}-10\\le\\dfrac{1}{20}$, et $\\sqrt{101}<11$ donne $\\dfrac{1}{2\\sqrt{101}}>\\dfrac{1}{22}$. Pièges : la dérivée de $\\sqrt x$ est $\\frac{1}{2\\sqrt x}$, ni $\\frac{1}{\\sqrt x}$ ni $\\frac{1}{2x}$ ; $f^{\\prime}$ décroît, sa plus grande valeur est en $100$ : d’où l’ordre des bornes.",
+     "difficulte": "hard",
+     "cible": "Encadrer un nombre par l’inégalité des accroissements finis.",
+     "theoremes": [
+      "Inégalité des accroissements finis",
+      "Dérivées des fonctions usuelles"
+     ]
+    },
+    {
+     "question": "Soit $f(x)=\\sin(2x)+2\\cos x$. Quelle affirmation est juste ?",
+     "bonne": "$f$ est $2\\pi$-périodique, mais pas $\\pi$-périodique ; elle n’est ni paire ni impaire.",
+     "distracteurs": [
+      "$f$ est $\\pi$-périodique ; elle n’est ni paire ni impaire.",
+      "$f$ est $2\\pi$-périodique et paire, car $\\cos$ est paire.",
+      "$f$ est $\\pi$-périodique et impaire, car $\\sin$ est impaire."
+     ],
+     "explication": "$\\sin(2x)$ est $\\pi$-périodique et $\\cos x$ est $2\\pi$-périodique : $f$ est $2\\pi$-périodique. Mais $\\pi$ n’est pas une période : $f(x+\\pi)=\\sin 2x-2\\cos x$, et en $0$ : $-2\\ne2$. Parité : $f\\left(\\frac\\pi4\\right)=1+\\sqrt2$ et $f\\left(-\\frac\\pi4\\right)=-1+\\sqrt2$, ni égaux ni opposés. Pièges : la période d’une somme n’est pas la plus petite des deux périodes ; une somme d’une fonction paire et d’une fonction impaire n’est en général ni paire ni impaire.",
+     "difficulte": "medium",
+     "cible": "Période et parité d’une somme de fonctions trigonométriques.",
+     "theoremes": [
+      "Fonction périodique",
+      "Fonctions paires et impaires"
+     ]
+    },
+    {
+     "question": "La courbe de $f(x)=x^2-4x+\\dfrac{1}{(x-2)^2}$ admet-elle un axe de symétrie ?",
+     "bonne": "Oui, la droite d’équation $x=2$.",
+     "distracteurs": [
+      "Oui, la droite d’équation $x=-2$.",
+      "Non, car $f$ n’est pas paire.",
+      "Non, car $f$ n’est pas définie en $2$."
+     ],
+     "explication": "Le domaine $\\mathbb{R}\\setminus\\{2\\}$ est symétrique par rapport à $2$, et $f(4-x)=(4-x)^2-4(4-x)+\\dfrac{1}{(2-x)^2}=x^2-4x+\\dfrac{1}{(x-2)^2}=f(x)$ : la droite $x=2$ est axe de symétrie. Pièges : la parité ne teste que l’axe $x=0$ ; la valeur interdite $2$ n’empêche rien, le domaine reste symétrique autour de $2$ ; $x=-2$ vient d’une erreur de signe (on teste $f(2a-x)=f(x)$ avec $a=2$).",
+     "difficulte": "hard",
+     "cible": "Axe de symétrie $x=a$ : $f(2a-x)=f(x)$, pas la parité.",
+     "theoremes": [
+      "Centre et axe de symétrie d'une courbe"
+     ]
+    },
+    {
+     "question": "Pour $f(x)=x^3$ sur $[0\\,;3]$, le théorème des accroissements finis donne $c\\in]0\\,;3[$ tel que $f^{\\prime}(c)=\\dfrac{f(3)-f(0)}{3-0}$. Que vaut $c$ ?",
+     "bonne": "$c=\\sqrt{3}$",
+     "distracteurs": [
+      "$c=\\frac{3}{2}$",
+      "$c=\\sqrt{3}$ ou $c=-\\sqrt{3}$",
+      "$c=9$"
+     ],
+     "explication": "$\\dfrac{f(3)-f(0)}{3-0}=\\dfrac{27}{3}=9$ et $f^{\\prime}(c)=3c^2=9$ donne $c^2=3$ ; dans $]0\\,;3[$, $c=\\sqrt3$. Pièges : le $c$ du théorème n’est pas le milieu en général ; $-\\sqrt3$ n’est pas dans $]0\\,;3[$ ; $9$ est la valeur de $f^{\\prime}(c)$, pas $c$.",
+     "difficulte": "medium",
+     "cible": "TAF : résoudre $f'(c)=$ pente, dans l’intervalle ouvert.",
+     "theoremes": [
+      "Théorème des accroissements finis (TAF)"
+     ]
+    }
+   ]
+  }
+ ]
+}

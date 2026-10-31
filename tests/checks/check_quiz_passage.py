@@ -75,7 +75,7 @@ check('passage gardé en base, dans l’ordre servi', r.status_code == 200 and r
       and p.questions == ordre and sorted(ordre) == sorted(BON), (r.status_code, p.questions, ordre))
 check('jamais la bonne réponse dans le quiz', all('correct_answer' not in x for x in r.data['questions']))
 check('commencé : visible dans « en cours »', el.get('/api/skill-assessments/en-cours/').data
-      == [{'chapitre': lim.id, 'niveau': sm.id, 'repondues': 0, 'total': 5, 'maj': p.maj.isoformat()}])
+      == [{'chapitre': lim.id, 'niveau': sm.id, 'type': 'cours', 'repondues': 0, 'total': 5, 'maj': p.maj.isoformat()}])
 
 # ── Correction d'une question : seulement dans son passage, première réponse verrouillée
 v = lambda client, qid, rep, **kw: client.post(f'/api/skill-assessments/verifier/{qid}/', {'answer': rep, **kw},  # noqa: E731

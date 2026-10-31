@@ -493,7 +493,7 @@ def _regularite(user, d, events, today):
     evals = Counter(_local(e[0]) for e in events if e[3] is not None)
     aides = set(QuestionHelp.objects.filter(user=user, day__gte=debut).values_list('day', flat=True))
     actifs_tous = ({day for day, s in secondes.items() if s >= S.ACTIF_MIN_SECONDES} | set(evals) | aides
-                   | {_local(q.completed_at) for q in d.quizzes.values()})
+                   | {_local(q.completed_at) for q in [*d.quizzes.values(), *d.approfondis.values()]})
     jours = []
     for i in range(S.REGULARITE_JOURS - 1, -1, -1):
         day = today - timedelta(days=i)

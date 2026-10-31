@@ -10,11 +10,13 @@ bilan « maîtrisé / à revoir » par théorème.
 - Bilan : par théorème, justes / total et pourcentage (100 % = toutes ses questions justes) ; « non évalués » =
   théorèmes ayant des questions disponibles mais absents de ce tirage (plus de 30 théorèmes) ;
   chapitre maîtrisé = tous les théorèmes évalués à 100 % et aucun non évalué.
+- Type (31/10/2026) : chaque (chapitre, niveau) a deux quiz, celui du cours et l'approfondissement (?type=, ou
+  « type » dans le corps ; défaut : le cours). Tirage, bilan et passages ne mélangent jamais les deux.
 """
 import random
 from collections import defaultdict
 
-from .models import SkillQuestion
+from .models import COURS, SkillQuestion, type_valide
 
 QUESTIONS_PAR_QUIZ = 30  # 13/10/2026 : toutes les questions du quiz (30 au plus), au lieu de 10 au hasard
 
@@ -34,11 +36,17 @@ def niveau_demande(request):
     return niveau_de(request.user)
 
 
-def disponibles(niveau, chapter_id=None):
-    """Questions servables du quiz de ce niveau (avec leurs théorèmes préchargés) ; aucun niveau : aucune."""
+def type_demande(request):
+    """Type du quiz : ?type= (ou « type » dans le corps) ; « approfondissement », sinon le quiz du cours."""
+    brut = request.query_params.get('type') or (request.data.get('type') if hasattr(request, 'data') else None)
+    return type_valide(brut)
+
+
+def disponibles(niveau, chapter_id=None, type_quiz=COURS):
+    """Questions servables du quiz (niveau, type) (avec leurs théorèmes préchargés) ; aucun niveau : aucune."""
     if niveau is None:
         return []
-    qs = (SkillQuestion.objects.filter(is_active=True, a_relire=False, class_level=niveau)
+    qs = (SkillQuestion.objects.filter(is_active=True, a_relire=False, class_level=niveau, type=type_quiz)
           .prefetch_related('theorems'))
     if chapter_id is not None:
         qs = qs.filter(chapter_id=chapter_id)

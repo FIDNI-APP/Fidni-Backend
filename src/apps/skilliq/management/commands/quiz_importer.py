@@ -1,7 +1,8 @@
 """Importe des questions de quiz (fichiers JSON) en brouillon « à relire » : skilliq/constats.py, importer.
 
 Sans argument : tous les fichiers de apps/skilliq/quiz/ (rédigés par Claude d'après les résultats des élèves).
-Rejouable : une question déjà présente (même texte) est ignorée.
+Rejouable : une question déjà présente (même texte, même quiz) est ignorée. « "type": "approfondissement" » dans un
+fichier : ses questions vont au second quiz du chapitre.
 """
 import glob
 import json
@@ -10,6 +11,7 @@ import os
 from django.core.management.base import BaseCommand, CommandError
 
 from apps.skilliq.constats import importer
+from apps.skilliq.models import APPROFONDISSEMENT
 
 DOSSIER = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 'quiz')
 
@@ -35,7 +37,8 @@ class Command(BaseCommand):
             self.stdout.write(f'== {os.path.basename(chemin)}')
             for ligne in bilan:
                 total += ligne['creees']
-                self.stdout.write(f"{ligne['chapitre']} ({ligne['niveau']}) : {ligne['creees']} question(s)"
+                quoi = ' — approfondissement' if ligne['type'] == APPROFONDISSEMENT else ''
+                self.stdout.write(f"{ligne['chapitre']} ({ligne['niveau']}){quoi} : {ligne['creees']} question(s)"
                                   + (' (simulation)' if simulation else ''))
                 for e in ligne['ecartees']:
                     self.stdout.write(f"   écartée : {e['question']} — {e['raison']}")
