@@ -423,6 +423,11 @@ def publier(job, *, doublon_ok, auteur):
     if not doublon_ok:
         bloquant += [d for rp in rapports for d in rp['doublons']]
     if bloquant:
+        # Un doublon publié après le dépôt n'était pas dans le contrôle enregistré : on l'enregistre, pour que la
+        # carte l'affiche avec « Ignorer le doublon » (01/11/2026).
+        if r.get('controles') != rapports:
+            r['controles'] = rapports
+            job.save(update_fields=['result'])
         raise IAErreur('Publication impossible :\n- ' + '\n- '.join(bloquant))
     for f in fiches:
         if Content.objects.filter(json_content__import__cle=f['cle']).exists() and not (
