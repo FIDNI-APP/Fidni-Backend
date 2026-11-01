@@ -1,0 +1,676 @@
+{
+ "niveau": "1ère Bac SM",
+ "type": "approfondissement",
+ "chapitres": [
+  {
+   "chapitre": "Logique mathématique",
+   "questions": [
+    {
+     "question": "Quelle est la négation de la proposition $P$ : « $(\\forall x \\in \\mathbb{R})$ : $x^2 \\geq 1 \\Rightarrow x \\geq 1$ » ? (Et laquelle de $P$ ou de sa négation est vraie ?)",
+     "distracteurs": [
+      "$(\\exists x \\in \\mathbb{R})$ : $x^2 < 1 \\Rightarrow x < 1$ ; c’est la négation qui est vraie.",
+      "$(\\exists x \\in \\mathbb{R})$ : $x^2 \\geq 1 \\Rightarrow x < 1$ ; c’est $P$ qui est vraie.",
+      "$(\\forall x \\in \\mathbb{R})$ : $x^2 < 1$ et $x \\geq 1$ ; c’est $P$ qui est vraie."
+     ],
+     "explication": "On échange les quantificateurs ($\\forall$ devient $\\exists$) et on nie l’implication : la négation de « $A \\Rightarrow B$ » est « $A$ et non $B$ ». Donc non $P$ : $(\\exists x \\in \\mathbb{R})$ : $x^2 \\geq 1$ et $x < 1$. Elle est vraie : $x = -2$ donne $x^2 = 4 \\geq 1$ et $-2 < 1$. Donc $P$ est fausse. Pièges : la négation d’une implication n’est pas une implication ; on ne nie pas la première partie $x^2 \\geq 1$ ; le quantificateur $\\forall$ devient $\\exists$.",
+     "difficulte": "medium",
+     "cible": "D'après les DS de logique (#293, #348) et l'exercice #90 : négation d'une implication quantifiée.",
+     "theoremes": [
+      "Négation d'une proposition quantifiée"
+     ],
+     "bonne": "$(\\exists x \\in \\mathbb{R})$ : $x^2 \\geq 1$ et $x < 1$ ; c’est la négation qui est vraie ($x = -2$)."
+    },
+    {
+     "question": "Quelle est la valeur de vérité de la proposition « $(\\exists x \\in \\mathbb{R}^{+*})(\\forall n \\in \\mathbb{N})$ : $n < x$ » ?",
+     "distracteurs": [
+      "Vraie : $x = 10^{100}$ convient.",
+      "Vraie, car $\\mathbb{R}$ contient plus de nombres que $\\mathbb{N}$.",
+      "Fausse, car sa négation « $(\\forall x > 0)(\\forall n \\in \\mathbb{N})$ : $n \\geq x$ » est vraie."
+     ],
+     "explication": "On écrit la négation : $(\\forall x > 0)(\\exists n \\in \\mathbb{N})$ : $n \\geq x$. Elle est vraie : pour $x > 0$ donné, $n = E(x) + 1$ est un entier naturel et $n > x$ (propriété d’Archimède). Donc la proposition est fausse : aucun réel n’est plus grand que tous les entiers. Pièges : $10^{100} < 10^{100} + 1$, un entier ; « plus de nombres » ne dit rien de l’ordre ; dans la négation, $\\forall n$ devient $\\exists n$.",
+     "difficulte": "medium",
+     "cible": "D'après l'exercice #384 : quantificateurs et propriété d'Archimède.",
+     "theoremes": [
+      "Négation d'une proposition quantifiée"
+     ],
+     "bonne": "Fausse : sa négation « $(\\forall x > 0)(\\exists n \\in \\mathbb{N})$ : $n \\geq x$ » est vraie ($n = E(x) + 1$)."
+    },
+    {
+     "question": "Pour démontrer par contraposée que, pour tous réels $x$ et $y$ : $x \\neq y \\Rightarrow (x + 1)(y - 1) \\neq (x - 1)(y + 1)$, que faut-il montrer ?",
+     "distracteurs": [
+      "$(x + 1)(y - 1) \\neq (x - 1)(y + 1) \\Rightarrow x \\neq y$",
+      "$x = y \\Rightarrow (x + 1)(y - 1) = (x - 1)(y + 1)$",
+      "$x \\neq y$ et $(x + 1)(y - 1) = (x - 1)(y + 1)$"
+     ],
+     "explication": "La contraposée de « $P \\Rightarrow Q$ » est « non $Q \\Rightarrow$ non $P$ », qui lui est équivalente. Ici : $(x + 1)(y - 1) = (x - 1)(y + 1) \\Rightarrow x = y$. En développant, l’égalité équivaut à $2y - 2x = 0$, soit $x = y$ : la contraposée est vraie, donc l’implication aussi. Pièges : « $Q \\Rightarrow P$ » est la réciproque ; « non $P \\Rightarrow$ non $Q$ » est la contraire de la réciproque ; « $P$ et non $Q$ » sert au raisonnement par l’absurde.",
+     "difficulte": "easy",
+     "cible": "D'après l'exercice #82 : contraposée.",
+     "theoremes": [
+      "Raisonnement par contraposée"
+     ],
+     "bonne": "$(x + 1)(y - 1) = (x - 1)(y + 1) \\Rightarrow x = y$"
+    },
+    {
+     "question": "Soit $n \\in \\mathbb{N}$. Pourquoi $\\sqrt{5n + 7}$ n’est-il jamais un entier ?",
+     "distracteurs": [
+      "Parce que $7$ n’est pas un carré.",
+      "Parce que $5n + 7$ est toujours impair.",
+      "Parce que le carré d’un entier peut avoir n’importe quel reste $0$, $1$, $2$, $3$ ou $4$."
+     ],
+     "explication": "Raisonnement par disjonction des cas sur le reste de $k$ dans la division par $5$ : si $k = 5q + r$ avec $r \\in \\{0, 1, 2, 3, 4\\}$, $k^2$ a le même reste que $r^2 \\in \\{0, 1, 4, 9, 16\\}$, soit $0$, $1$, $4$, $4$, $1$. Or $5n + 7 = 5(n + 1) + 2$ a pour reste $2$ : ce n’est pas le carré d’un entier. Donc $\\sqrt{5n + 7} \\notin \\mathbb{N}$. Pièges : $5n + 7$ est pair quand $n$ est impair ; « $7$ n’est pas un carré » ne dit rien de $5n + 7$ ($5 \\times 2 + 7 = 17$, $5 \\times 9 + 7 = 52$…) ; les restes $2$ et $3$ ne sont jamais atteints par un carré.",
+     "difficulte": "medium",
+     "cible": "D'après l'exercice #85 : restes des carrés modulo 5 (disjonction des cas).",
+     "theoremes": [
+      "Raisonnement par disjonction des cas"
+     ],
+     "bonne": "Parce que le carré d’un entier a pour reste $0$, $1$ ou $4$ dans la division par $5$, alors que $5n + 7$ a pour reste $2$."
+    },
+    {
+     "question": "Pour démontrer par récurrence que $(\\forall n \\in \\mathbb{N})$ : $3^n \\geq 1 + 2n$, que fait-on à l’étape d’hérédité ?",
+     "distracteurs": [
+      "On suppose $3^n \\geq 1 + 2n$ pour tout $n \\in \\mathbb{N}$, et on montre $3^{n+1} \\geq 3 + 2n$.",
+      "On vérifie l’inégalité pour $n = 0, 1, 2, 3$, puis on conclut.",
+      "On suppose $3^{n+1} \\geq 3 + 2n$, et on en déduit $3^n \\geq 1 + 2n$."
+     ],
+     "explication": "Hérédité : pour un $n$ fixé, on suppose la propriété vraie au rang $n$ et on la démontre au rang $n + 1$. Ici, si $3^n \\geq 1 + 2n$, alors $3^{n+1} = 3 \\times 3^n \\geq 3 + 6n \\geq 3 + 2n$. Avec l’initialisation ($3^0 = 1 \\geq 1$), la propriété est vraie pour tout $n$. Pièges : supposer la propriété « pour tout $n$ », c’est supposer ce qu’on veut démontrer ; des vérifications ne remplacent pas l’hérédité ; l’hérédité va du rang $n$ au rang $n + 1$, pas l’inverse.",
+     "difficulte": "easy",
+     "cible": "D'après l'exercice #84 : structure d'une récurrence.",
+     "theoremes": [
+      "Raisonnement par récurrence"
+     ],
+     "bonne": "On suppose $3^n \\geq 1 + 2n$ pour un entier $n$ fixé, et on montre $3^{n+1} \\geq 3 + 2n$."
+    },
+    {
+     "question": "Pour montrer que $3$ divise $n(n^2 + 2)$ pour tout $n \\in \\mathbb{N}$ par disjonction des cas, quels cas faut-il étudier ?",
+     "distracteurs": [
+      "$n$ pair et $n$ impair.",
+      "$n = 3k$ seulement : les autres cas sont analogues.",
+      "$n = 0$, $n = 1$ et $n = 2$ seulement."
+     ],
+     "explication": "Pour la divisibilité par $3$, on sépare selon le reste de $n$ dans la division par $3$. Si $n = 3k$, $3 \\mid n$. Si $n = 3k \\pm 1$ (ce qui couvre $3k + 1$ et $3k + 2 = 3(k + 1) - 1$), $n^2 = 9k^2 \\pm 6k + 1$, donc $n^2 + 2 = 3(3k^2 \\pm 2k + 1)$ et $3 \\mid n^2 + 2$. Dans tous les cas $3 \\mid n(n^2 + 2)$. Pièges : la parité sert pour la divisibilité par $2$ ; les trois cas sont nécessaires (dans les deux derniers, c’est le facteur $n^2 + 2$ qui est multiple de $3$) ; vérifier $0$, $1$, $2$ ne prouve rien pour les autres entiers.",
+     "difficulte": "easy",
+     "cible": "D'après l'exercice #83 : disjonction des cas selon le reste modulo 3.",
+     "theoremes": [
+      "Raisonnement par disjonction des cas"
+     ],
+     "bonne": "$n = 3k$, $n = 3k + 1$ et $n = 3k + 2$ (avec $k \\in \\mathbb{N}$)."
+    },
+    {
+     "question": "Soient $a$, $b$, $c$ trois réels de $\\mathopen{]}0, 1\\mathclose{[}$. Comment montrer que l’un au moins des nombres $a(1 - b)$, $b(1 - c)$, $c(1 - a)$ est inférieur ou égal à $\\dfrac{1}{4}$ ?",
+     "distracteurs": [
+      "En montrant que $a(1 - b) \\leq \\dfrac{1}{4}$ pour tous $a$, $b$ de $\\mathopen{]}0, 1\\mathclose{[}$.",
+      "Par un contre-exemple : $a = b = c = \\dfrac{1}{2}$.",
+      "Par récurrence sur $a$, $b$ et $c$."
+     ],
+     "explication": "On suppose le contraire : les trois nombres sont $> \\dfrac{1}{4}$. Leur produit, égal à $a(1 - a) \\times b(1 - b) \\times c(1 - c)$, serait $> \\dfrac{1}{64}$. Or pour $t \\in \\mathopen{]}0, 1\\mathclose{[}$, $t(1 - t) = \\dfrac{1}{4} - \\left(t - \\dfrac{1}{2}\\right)^2 \\leq \\dfrac{1}{4}$, donc ce produit est $\\leq \\dfrac{1}{64}$ : contradiction. Pièges : $a(1 - b)$ peut dépasser $\\dfrac{1}{4}$ (ex. $a = 0{,}9$, $b = 0{,}1$) ; un exemple ne démontre pas une propriété générale ; la récurrence porte sur des entiers.",
+     "difficulte": "hard",
+     "cible": "D'après l'exercice #87 : raisonnement par l'absurde, t(1 − t) ≤ 1/4.",
+     "theoremes": [
+      "Raisonnement par l'absurde"
+     ],
+     "bonne": "Par l’absurde : sinon leur produit dépasse $\\dfrac{1}{64}$, alors que $a(1 - a) \\times b(1 - b) \\times c(1 - c) \\leq \\dfrac{1}{64}$."
+    },
+    {
+     "question": "$a$, $b$ et $c$ sont les longueurs des côtés d’un triangle de périmètre $1$. Que peut-on affirmer ?",
+     "distracteurs": [
+      "Chacune est inférieure ou égale à $\\dfrac{1}{3}$.",
+      "L’une au moins est supérieure à $\\dfrac{1}{2}$.",
+      "Chacune est strictement inférieure à $\\dfrac{1}{4}$."
+     ],
+     "explication": "On utilise l’inégalité triangulaire : $a < b + c = 1 - a$, donc $2a < 1$ et $a < \\dfrac{1}{2}$ ; de même pour $b$ et $c$ (par l’absurde : si $a \\geq \\dfrac{1}{2}$, alors $b + c \\leq \\dfrac{1}{2} \\leq a$, impossible dans un triangle). Pièges : $\\dfrac{1}{3}$ est la moyenne, une longueur peut la dépasser (côtés $0{,}4$ ; $0{,}3$ ; $0{,}3$) ; un côté supérieur à $\\dfrac{1}{2}$ serait plus long que la somme des deux autres ; $\\dfrac{1}{4}$ est trop petit (le triangle équilatéral a des côtés de $\\dfrac{1}{3}$).",
+     "difficulte": "medium",
+     "cible": "D'après l'exercice #92 : inégalité triangulaire, raisonnement par l'absurde.",
+     "theoremes": [
+      "Raisonnement par l'absurde"
+     ],
+     "bonne": "Chacune est strictement inférieure à $\\dfrac{1}{2}$."
+    },
+    {
+     "question": "Soit $a \\in \\mathbb{N}$. Pourquoi $\\sqrt{9a^2 + 30a + 35}$ n’est-il jamais un entier ?",
+     "distracteurs": [
+      "Parce que $9a^2 + 30a + 35$ est toujours impair.",
+      "Parce que $35$ n’est pas un carré parfait.",
+      "Parce que $9a^2 + 30a + 35$ est un multiple de $5$."
+     ],
+     "explication": "On compare le nombre aux carrés voisins : $(3a + 5)^2 = 9a^2 + 30a + 25 < 9a^2 + 30a + 35$, et $(3a + 6)^2 = 9a^2 + 36a + 36 > 9a^2 + 30a + 35$ car $6a + 1 > 0$. Un entier strictement compris entre deux carrés consécutifs n’est pas un carré. Donc $\\sqrt{9a^2 + 30a + 35} \\notin \\mathbb{N}$. Pièges : le nombre est pair quand $a$ est impair ; « $35$ n’est pas un carré » ne concerne que $a = 0$ ; pour $a = 1$, le nombre vaut $74$, qui n’est pas un multiple de $5$.",
+     "difficulte": "medium",
+     "cible": "D'après l'exercice #88 : encadrement entre deux carrés consécutifs.",
+     "theoremes": [
+      "Raisonnement par l'absurde"
+     ],
+     "bonne": "Parce que $(3a + 5)^2 < 9a^2 + 30a + 35 < (3a + 6)^2$ : le nombre est strictement entre deux carrés consécutifs."
+    }
+   ]
+  },
+  {
+   "chapitre": "Ensembles et applications",
+   "questions": [
+    {
+     "question": "Soit $f : \\mathbb{R} \\to \\mathbb{R}$, $x \\mapsto \\dfrac{2x}{x^2 + 1}$. Que peut-on affirmer ?",
+     "distracteurs": [
+      "$f$ est injective mais pas surjective.",
+      "$f$ est surjective, car $\\lim\\limits_{x \\to \\pm\\infty} f(x) = 0$ et $f$ est continue.",
+      "$f$ est bijective, car elle est impaire."
+     ],
+     "explication": "Injectivité : $f(2) = \\dfrac{4}{5} = f\\left(\\dfrac{1}{2}\\right)$ avec $2 \\neq \\dfrac{1}{2}$, donc $f$ n’est pas injective. Surjectivité : pour tout $x$, $x^2 + 1 - 2x = (x - 1)^2 \\geq 0$, donc $f(x) \\leq 1$ ; ainsi $2$ n’a pas d’antécédent et $f$ n’est pas surjective. (Sa restriction à $[-1, 1]$ est une bijection sur $[-1, 1]$.) Pièges : deux réels distincts ont la même image ; une fonction continue n’atteint pas forcément tous les réels ; l’imparité ne donne aucune bijectivité.",
+     "difficulte": "medium",
+     "cible": "D'après l'exercice #357 : contre-exemple pour l'injectivité, majoration pour la surjectivité.",
+     "theoremes": [
+      "Caractérisation d'une injection, d'une surjection, d'une bijection"
+     ],
+     "bonne": "$f$ n’est ni injective ni surjective."
+    },
+    {
+     "question": "Soit $f : \\mathbb{R} \\to \\mathbb{R}$, $x \\mapsto x^2$. Déterminer $f\\left([-1, 4]\\right)$ et $f^{-1}\\left([-1, 4]\\right)$.",
+     "distracteurs": [
+      "$f\\left([-1, 4]\\right) = [1, 16]$ et $f^{-1}\\left([-1, 4]\\right) = [-2, 2]$",
+      "$f\\left([-1, 4]\\right) = [0, 16]$ et $f^{-1}\\left([-1, 4]\\right) = [0, 2]$",
+      "$f\\left([-1, 4]\\right) = [0, 16]$ et $f^{-1}\\left([-1, 4]\\right) = \\emptyset$, car $-1$ n’a pas d’antécédent."
+     ],
+     "explication": "Image directe : quand $x$ parcourt $[-1, 4]$, $x^2$ parcourt $[0, 16]$ ($0$ est atteint en $x = 0$). Image réciproque : $x \\in f^{-1}\\left([-1, 4]\\right) \\iff -1 \\leq x^2 \\leq 4 \\iff x^2 \\leq 4 \\iff x \\in [-2, 2]$. Pièges : l’image d’un intervalle ne se lit pas aux bornes quand la fonction n’est pas monotone ($0 \\in [-1, 4]$) ; les nombres négatifs ont aussi un carré $\\leq 4$ ; $f^{-1}(B)$ contient les $x$ dont l’image est dans $B$, même si certains éléments de $B$ n’ont pas d’antécédent.",
+     "difficulte": "easy",
+     "cible": "D'après l'exercice #356 : image directe et image réciproque par x ↦ x².",
+     "theoremes": [
+      "Image directe et image réciproque d'une partie"
+     ],
+     "bonne": "$f\\left([-1, 4]\\right) = [0, 16]$ et $f^{-1}\\left([-1, 4]\\right) = [-2, 2]$"
+    },
+    {
+     "question": "Soit $f : \\mathbb{N}^2 \\to \\mathbb{N}^*$, $(p, q) \\mapsto 2^p(2q + 1)$. Que peut-on affirmer ?",
+     "distracteurs": [
+      "$f$ est une bijection de $\\mathbb{N}^2$ sur $\\mathbb{N}$.",
+      "$f$ est injective mais pas surjective : les nombres impairs ne sont pas atteints.",
+      "$f$ est surjective mais pas injective : $2^1 \\times 3 = 2^0 \\times 6$."
+     ],
+     "explication": "Tout entier $m \\geq 1$ s’écrit de façon unique $m = 2^p \\times i$ avec $i$ impair : $p$ est l’exposant de $2$ dans la décomposition de $m$ et $i = 2q + 1$ le reste du produit. D’où existence (surjectivité) et unicité (injectivité) : $f$ est une bijection de $\\mathbb{N}^2$ sur $\\mathbb{N}^*$. Pièges : $0$ n’est jamais atteint ($2^p(2q + 1) \\geq 1$) ; un impair $m = 2q + 1$ est atteint avec $p = 0$ ; $6$ n’est pas de la forme $2q + 1$.",
+     "difficulte": "hard",
+     "cible": "D'après l'exercice #365 : unicité de l'écriture 2ᵖ × impair.",
+     "theoremes": [
+      "Caractérisation d'une injection, d'une surjection, d'une bijection"
+     ],
+     "bonne": "$f$ est une bijection de $\\mathbb{N}^2$ sur $\\mathbb{N}^*$."
+    },
+    {
+     "question": "L’application $f : \\mathbb{R} \\setminus \\{-2\\} \\to \\mathbb{R} \\setminus \\{1\\}$, $x \\mapsto \\dfrac{x - 1}{x + 2}$ est bijective. Quelle est son application réciproque ?",
+     "distracteurs": [
+      "$f^{-1}(y) = \\dfrac{y + 2}{y - 1}$",
+      "$f^{-1}(y) = \\dfrac{1 - 2y}{1 - y}$",
+      "$f^{-1}(y) = \\dfrac{2y - 1}{1 - y}$"
+     ],
+     "explication": "On résout $f(x) = y$ d’inconnue $x$, pour $y \\neq 1$ : $\\dfrac{x - 1}{x + 2} = y \\iff x - 1 = yx + 2y \\iff x(1 - y) = 1 + 2y \\iff x = \\dfrac{1 + 2y}{1 - y}$ (et ce $x$ n’est jamais $-2$). Donc $f^{-1}(y) = \\dfrac{1 + 2y}{1 - y}$ (vérification : $f(0) = -\\dfrac{1}{2}$ et $f^{-1}\\left(-\\dfrac{1}{2}\\right) = 0$). Pièges : $\\dfrac{x + 2}{x - 1}$ est l’inverse $\\dfrac{1}{f(x)}$, pas la réciproque ; les deux autres réponses viennent d’erreurs de signe en isolant $x$.",
+     "difficulte": "easy",
+     "cible": "D'après l'exercice #372 : résoudre f(x) = y.",
+     "theoremes": [
+      "Application réciproque d'une bijection"
+     ],
+     "bonne": "$f^{-1}(y) = \\dfrac{1 + 2y}{1 - y}$"
+    },
+    {
+     "question": "Soient $f : E \\to F$ et $g : F \\to G$ deux applications. Quelles affirmations sont toujours vraies ?",
+     "distracteurs": [
+      "Si $g \\circ f$ est injective, alors $g$ est injective.",
+      "Si $g \\circ f$ est surjective, alors $f$ est surjective.",
+      "Si $g \\circ f$ est bijective, alors $f$ et $g$ sont bijectives."
+     ],
+     "explication": "Si $f(x) = f(x')$, alors $g(f(x)) = g(f(x'))$, donc $x = x'$ si $g \\circ f$ est injective : $f$ est injective. Si $g \\circ f$ est surjective, tout $z \\in G$ s’écrit $g(f(x))$ : il a l’antécédent $f(x)$ par $g$, donc $g$ est surjective. Contre-exemple pour les trois autres : $E = G = \\{0\\}$, $F = \\{0, 1\\}$, $f(0) = 0$, $g(0) = g(1) = 0$ : $g \\circ f$ est bijective, mais $g$ n’est pas injective et $f$ n’est pas surjective. Pièges : l’injectivité « remonte » vers $f$, la surjectivité « descend » vers $g$.",
+     "difficulte": "hard",
+     "cible": "D'après l'exercice #363 : composée d'applications injectives, surjectives.",
+     "theoremes": [
+      "Composée de deux bijections",
+      "Caractérisation d'une injection, d'une surjection, d'une bijection"
+     ],
+     "bonnes": [
+      "Si $g \\circ f$ est injective, alors $f$ est injective.",
+      "Si $g \\circ f$ est surjective, alors $g$ est surjective."
+     ]
+    },
+    {
+     "question": "Soient $A$ et $B$ deux parties d’un ensemble $E$ telles que $A \\subset B$. Quelles sont les parties $X$ de $E$ vérifiant $A \\cup X = B$ ?",
+     "distracteurs": [
+      "Seulement $X = B \\setminus A$.",
+      "Seulement $X = B$.",
+      "Aucune, si $A \\neq \\emptyset$."
+     ],
+     "explication": "Si $A \\cup X = B$, alors $X \\subset B$, et tout élément de $B$ qui n’est pas dans $A$ doit être dans $X$ : $B \\setminus A \\subset X$. Réciproquement, si $B \\setminus A \\subset X \\subset B$, alors $A \\cup X \\supset A \\cup (B \\setminus A) = B$ et $A \\cup X \\subset B$ (car $A \\subset B$). Donc les solutions sont les $X$ tels que $B \\setminus A \\subset X \\subset B$ (il y en a autant que de parties de $A$). Pièges : $B \\setminus A$ et $B$ sont deux solutions parmi d’autres ; $X$ peut contenir des éléments de $A$.",
+     "difficulte": "medium",
+     "cible": "D'après l'exercice #228 : équation A ∪ X = B dans P(E).",
+     "theoremes": [
+      "Opérations sur les ensembles et lois de De Morgan"
+     ],
+     "bonne": "Les parties $X$ telles que $B \\setminus A \\subset X \\subset B$."
+    },
+    {
+     "question": "Quel est l’ensemble $\\left\\{\\sqrt{x^2 + 1} - x \\mid x \\in \\mathbb{R}^+\\right\\}$ ?",
+     "distracteurs": [
+      "$[0, 1]$",
+      "$\\mathopen{]}0, +\\infty\\mathclose{[}$",
+      "$[0, 1\\mathclose{[}$"
+     ],
+     "explication": "Avec l’expression conjuguée : $\\sqrt{x^2 + 1} - x = \\dfrac{1}{\\sqrt{x^2 + 1} + x}$. Pour $x \\geq 0$, le dénominateur est $\\geq 1$, donc le nombre est dans $\\mathopen{]}0, 1]$ ($1$ est atteint en $x = 0$). Réciproquement, pour $y \\in \\mathopen{]}0, 1]$, $x = \\dfrac{1 - y^2}{2y} \\geq 0$ convient. Donc l’ensemble est $\\mathopen{]}0, 1]$. Pièges : $0$ n’est jamais atteint (le nombre est l’inverse d’un réel) ; $1$ l’est, pour $x = 0$ ; l’expression reste bornée par $1$.",
+     "difficulte": "medium",
+     "cible": "D'après l'exercice #275 : ensemble image par double inclusion.",
+     "theoremes": [
+      "Image directe et image réciproque d'une partie"
+     ],
+     "bonne": "$\\mathopen{]}0, 1]$"
+    },
+    {
+     "question": "Soit $f : \\mathbb{N} \\to \\mathbb{N}$, $n \\mapsto n + (-1)^n$. On montre que $f$ est bijective. Quelle est sa réciproque ?",
+     "distracteurs": [
+      "$f^{-1}(n) = n - (-1)^n$",
+      "$f^{-1}(n) = n + (-1)^{n+1}$",
+      "$f$ n’a pas de réciproque, car $0$ n’a pas d’antécédent."
+     ],
+     "explication": "$f$ échange $2k$ et $2k + 1$ : $f(2k) = 2k + 1$ et $f(2k + 1) = 2k$. Donc $f(f(n)) = n$ pour tout $n$ : $f \\circ f = \\mathrm{id}_{\\mathbb{N}}$, ce qui prouve que $f$ est bijective et que $f^{-1} = f$. Pièges : $n - (-1)^n$ vaut $-1$ pour $n = 0$, ce n’est pas une application de $\\mathbb{N}$ dans $\\mathbb{N}$ (même problème pour $n + (-1)^{n+1}$) ; $0 = f(1)$ a bien un antécédent.",
+     "difficulte": "medium",
+     "cible": "D'après l'exercice #618 : f ∘ f = id ⇒ f bijective et f⁻¹ = f.",
+     "theoremes": [
+      "Application réciproque d'une bijection"
+     ],
+     "bonne": "$f^{-1} = f$"
+    },
+    {
+     "question": "Soit $f : \\mathbb{Z} \\times \\mathbb{N}^* \\to \\mathbb{Q}$, $(p, q) \\mapsto \\dfrac{p}{q}$. Que peut-on affirmer ?",
+     "distracteurs": [
+      "$f$ est bijective, car tout rationnel s’écrit $\\dfrac{p}{q}$.",
+      "$f$ est injective mais pas surjective.",
+      "$f$ n’est ni injective ni surjective."
+     ],
+     "explication": "Tout rationnel s’écrit $\\dfrac{p}{q}$ avec $p \\in \\mathbb{Z}$ et $q \\in \\mathbb{N}^*$ : $f$ est surjective. Mais $f(1, 2) = f(2, 4) = \\dfrac{1}{2}$ avec $(1, 2) \\neq (2, 4)$ : $f$ n’est pas injective. Pièges : l’écriture $\\dfrac{p}{q}$ existe mais n’est pas unique (sauf si on impose une fraction irréductible) ; la surjectivité est exactement la définition de $\\mathbb{Q}$.",
+     "difficulte": "easy",
+     "cible": "D'après l'exercice #364 : surjective, non injective (fractions égales).",
+     "theoremes": [
+      "Caractérisation d'une injection, d'une surjection, d'une bijection"
+     ],
+     "bonne": "$f$ est surjective mais pas injective."
+    }
+   ]
+  },
+  {
+   "chapitre": "Généralités sur les fonctions",
+   "questions": [
+    {
+     "question": "Étudier la parité de la fonction $f$ définie sur $\\mathbb{R}$ par $f(x) = \\dfrac{x\\sin x}{x^2 + 1}$.",
+     "distracteurs": [
+      "$f$ est impaire, car $\\sin$ est impaire.",
+      "$f$ n’est ni paire ni impaire.",
+      "$f$ est à la fois paire et impaire."
+     ],
+     "explication": "$\\mathbb{R}$ est symétrique par rapport à $0$ et $f(-x) = \\dfrac{(-x)\\sin(-x)}{x^2 + 1} = \\dfrac{x\\sin x}{x^2 + 1} = f(x)$. Donc $f$ est paire (produit de deux fonctions impaires, divisé par une fonction paire). Pièges : le produit de deux fonctions impaires est pair ; seule la fonction nulle est à la fois paire et impaire.",
+     "difficulte": "easy",
+     "cible": "D'après l'exercice #397 : parité d'un produit.",
+     "theoremes": [
+      "Fonctions paires et impaires"
+     ],
+     "bonne": "$f$ est paire."
+    },
+    {
+     "question": "Soit $f$ la fonction définie sur $\\left[\\dfrac{3}{2}, +\\infty\\right[$ par $f(x) = x - 1 - \\sqrt{2x - 3}$. Que peut-on dire de son minimum ?",
+     "distracteurs": [
+      "$f$ admet un minimum égal à $\\dfrac{1}{2}$, atteint en $x = \\dfrac{3}{2}$.",
+      "$f$ admet un minimum égal à $-1$.",
+      "$f$ n’admet pas de minimum."
+     ],
+     "explication": "On pose $t = \\sqrt{2x - 3} \\geq 0$, soit $x = \\dfrac{t^2 + 3}{2}$ : $f(x) = \\dfrac{t^2 + 3}{2} - 1 - t = \\dfrac{(t - 1)^2}{2} \\geq 0$, avec égalité pour $t = 1$, c’est-à-dire $x = 2$. Donc $f$ admet un minimum égal à $0$, atteint en $2$. Pièges : la borne $\\dfrac{3}{2}$ donne $f\\left(\\dfrac{3}{2}\\right) = \\dfrac{1}{2}$, ce n’est pas le minimum ; un minimum se justifie par une inégalité ET une valeur atteinte.",
+     "difficulte": "medium",
+     "cible": "D'après l'exercice #398 : changement de variable, carré, minimum atteint.",
+     "theoremes": [
+      "Extremums d'une fonction"
+     ],
+     "bonne": "$f$ admet un minimum égal à $0$, atteint en $x = 2$."
+    },
+    {
+     "question": "$E$ désigne la partie entière. Pour tout réel $x$, que vaut $E(2x)$ ?",
+     "distracteurs": [
+      "$2E(x)$ pour tout réel $x$.",
+      "$2E(x)$ ou $2E(x) - 1$ selon les cas.",
+      "$E(x) + E(x + 1)$ pour tout réel $x$."
+     ],
+     "explication": "On écrit $x = E(x) + r$ avec $0 \\leq r < 1$ : $2x = 2E(x) + 2r$ et $0 \\leq 2r < 2$. Si $r < \\dfrac{1}{2}$, $0 \\leq 2r < 1$ et $E(2x) = 2E(x)$ ; si $r \\geq \\dfrac{1}{2}$, $1 \\leq 2r < 2$ et $E(2x) = 2E(x) + 1$. Pièges : $E(2 \\times 0{,}7) = 1 \\neq 2E(0{,}7) = 0$ ; on ajoute $1$, on ne retire pas $1$ ; $E(x) + E(x + 1) = 2E(x) + 1$ pour tout $x$, ce qui est faux pour $x = 0$.",
+     "difficulte": "medium",
+     "cible": "D'après l'exercice #401 : partie entière de 2x.",
+     "theoremes": [
+      "Fonction partie entière"
+     ],
+     "bonne": "$2E(x)$ si $x - E(x) < \\dfrac{1}{2}$, et $2E(x) + 1$ sinon."
+    },
+    {
+     "question": "Soit $f$ la fonction définie sur $[0, 3\\mathclose{[}$ par $f(x) = 2E(x) - x$. Déterminer $f\\left([0, 3\\mathclose{[}\\right)$.",
+     "distracteurs": [
+      "$[-1, 2]$",
+      "$[0, 3\\mathclose{[}$",
+      "$\\mathopen{]}-3, 6\\mathclose{[}$"
+     ],
+     "explication": "On écrit $f$ sans partie entière sur chaque intervalle : sur $[0, 1\\mathclose{[}$, $f(x) = -x$ décrit $\\mathopen{]}-1, 0]$ ; sur $[1, 2\\mathclose{[}$, $f(x) = 2 - x$ décrit $\\mathopen{]}0, 1]$ ; sur $[2, 3\\mathclose{[}$, $f(x) = 4 - x$ décrit $\\mathopen{]}1, 2]$. La réunion vaut $\\mathopen{]}-1, 2]$. Pièges : $-1$ n’est pas atteint ($x = 1$ n’est pas dans $[0, 1\\mathclose{[}$, et $f(1) = 1$) ; l’image n’est pas l’ensemble de définition ; on ne calcule pas l’image en multipliant les bornes.",
+     "difficulte": "medium",
+     "cible": "D'après l'exercice #408 : fonction affine par morceaux, image d'un intervalle.",
+     "theoremes": [
+      "Fonction partie entière"
+     ],
+     "bonne": "$\\mathopen{]}-1, 2]$"
+    },
+    {
+     "question": "Soit $f$ la fonction définie sur $\\mathbb{R}$ par $f(x) = \\dfrac{2x}{x^2 + 4}$. Quel est le maximum de $f$ sur $\\mathbb{R}$ ?",
+     "distracteurs": [
+      "$1$, atteint en $x = 2$.",
+      "$\\dfrac{2}{5}$, atteint en $x = 1$.",
+      "$f$ n’a pas de maximum, car $f(x) \\to 0$ en $\\pm\\infty$."
+     ],
+     "explication": "On compare $f(x)$ à $\\dfrac{1}{2}$ : $\\dfrac{1}{2} - f(x) = \\dfrac{x^2 + 4 - 4x}{2(x^2 + 4)} = \\dfrac{(x - 2)^2}{2(x^2 + 4)} \\geq 0$, avec égalité en $x = 2$. Donc $f$ admet un maximum égal à $\\dfrac{1}{2}$, atteint en $2$ (et, par imparité, un minimum $-\\dfrac{1}{2}$ en $-2$). Pièges : $f(2) = \\dfrac{4}{8} = \\dfrac{1}{2}$ ; $f(1) = \\dfrac{2}{5} < \\dfrac{1}{2}$ ; une fonction qui tend vers $0$ à l’infini peut avoir un maximum.",
+     "difficulte": "easy",
+     "cible": "D'après l'exercice #424 : extremum par comparaison à 1/2.",
+     "theoremes": [
+      "Extremums d'une fonction",
+      "Sens de variation et taux de variation"
+     ],
+     "bonne": "$\\dfrac{1}{2}$, atteint en $x = 2$."
+    },
+    {
+     "question": "Soit $f(x) = \\dfrac{x^3 - 1}{x^3 + 1}$. On écrit $f = g \\circ h$ avec $h(x) = x^3$ et $g(t) = \\dfrac{t - 1}{t + 1} = 1 - \\dfrac{2}{t + 1}$. Quel est le sens de variation de $f$ sur $\\mathopen{]}-1, +\\infty\\mathclose{[}$ ?",
+     "distracteurs": [
+      "$f$ est décroissante, car le dénominateur $x^3 + 1$ est croissant.",
+      "$f$ est décroissante, car $g$ est décroissante.",
+      "On ne peut pas conclure sans dériver."
+     ],
+     "explication": "La composée de deux fonctions de même sens de variation est croissante. $h : x \\mapsto x^3$ est croissante sur $\\mathopen{]}-1, +\\infty\\mathclose{[}$ et l’envoie dans $\\mathopen{]}-1, +\\infty\\mathclose{[}$ ; sur cet intervalle, $t \\mapsto t + 1$ est croissante et positive, donc $t \\mapsto -\\dfrac{2}{t + 1}$ est croissante, et $g$ aussi. Donc $f = g \\circ h$ est croissante sur $\\mathopen{]}-1, +\\infty\\mathclose{[}$. Pièges : un dénominateur croissant ne suffit pas, le numérateur croît aussi ; $g(t) = 1 - \\dfrac{2}{t + 1}$ est croissante (on retranche une quantité décroissante) ; la composée permet d’éviter la dérivée.",
+     "difficulte": "medium",
+     "cible": "D'après l'exercice #426 : monotonie d'une composée.",
+     "theoremes": [
+      "Monotonie d'une fonction composée"
+     ],
+     "bonne": "$f$ est croissante, car $h$ est croissante sur $\\mathopen{]}-1, +\\infty\\mathclose{[}$ et $g$ croissante sur $h\\left(\\mathopen{]}-1, +\\infty\\mathclose{[}\\right) = \\mathopen{]}-1, +\\infty\\mathclose{[}$."
+    },
+    {
+     "question": "Résoudre dans $\\mathbb{R}$ l’inéquation $\\left(E(x)\\right)^2 < 2E(x)$, où $E$ désigne la partie entière.",
+     "distracteurs": [
+      "$S = \\mathopen{]}0, 2\\mathclose{[}$",
+      "$S = [0, 2\\mathclose{[}$",
+      "$S = [1, 2]$"
+     ],
+     "explication": "On pose $n = E(x) \\in \\mathbb{Z}$ : $n^2 < 2n \\iff n(n - 2) < 0 \\iff 0 < n < 2$, donc $n = 1$ (seul entier). $E(x) = 1 \\iff 1 \\leq x < 2$. Donc $S = [1, 2\\mathclose{[}$. Pièges : la condition porte sur l’entier $E(x)$, pas sur $x$ ($x = 0{,}5$ donne $E(x) = 0$, et $0 < 0$ est faux) ; $E(2) = 2$ ne convient pas ($4 < 4$ est faux).",
+     "difficulte": "easy",
+     "cible": "D'après l'exercice #410 : inéquation en E(x), puis E(x) = 1 ⇔ 1 ≤ x < 2.",
+     "theoremes": [
+      "Fonction partie entière"
+     ],
+     "bonne": "$S = [1, 2\\mathclose{[}$"
+    },
+    {
+     "question": "Soit $f$ la fonction définie sur $\\mathbb{R}$ par $f(x) = \\dfrac{x|x|}{x^2 + 1}$. Déterminer $f(\\mathbb{R})$.",
+     "distracteurs": [
+      "$f(\\mathbb{R}) = [-1, 1]$",
+      "$f(\\mathbb{R}) = [0, 1\\mathclose{[}$",
+      "$f(\\mathbb{R}) = \\mathbb{R}$"
+     ],
+     "explication": "$f$ est impaire ; pour $x \\geq 0$, $f(x) = \\dfrac{x^2}{x^2 + 1} = 1 - \\dfrac{1}{x^2 + 1}$, qui croît de $0$ vers $1$ sans l’atteindre : $f\\left([0, +\\infty\\mathclose{[}\\right) = [0, 1\\mathclose{[}$. Par imparité, $f\\left(\\mathopen{]}-\\infty, 0]\\right) = \\mathopen{]}-1, 0]$. Donc $f(\\mathbb{R}) = \\mathopen{]}-1, 1\\mathclose{[}$ (et $f$ est une bijection de $\\mathbb{R}$ sur $\\mathopen{]}-1, 1\\mathclose{[}$). Pièges : $1$ n’est jamais atteint car $\\dfrac{1}{x^2 + 1} > 0$ ; le facteur $|x|$ rend $f$ impaire, ses valeurs négatives comptent.",
+     "difficulte": "medium",
+     "cible": "D'après l'exercice #419 : parité et encadrement, image de ℝ.",
+     "theoremes": [
+      "Fonction majorée, minorée, bornée",
+      "Fonctions paires et impaires"
+     ],
+     "bonne": "$f(\\mathbb{R}) = \\mathopen{]}-1, 1\\mathclose{[}$"
+    },
+    {
+     "question": "Combien de solutions réelles l’équation $x^3 = \\sqrt{x + 2}$ admet-elle ?",
+     "distracteurs": [
+      "Deux : une négative et une positive.",
+      "Aucune.",
+      "Une seule, dans $\\mathopen{]}0, 1\\mathclose{[}$."
+     ],
+     "explication": "On compare les deux courbes (résolution graphique), en le justifiant : pour $x \\in [-2, 0\\mathclose{[}$, $x^3 < 0 \\leq \\sqrt{x + 2}$ ; pour $x \\in [0, 1]$, $x^3 \\leq 1 < \\sqrt{2} \\leq \\sqrt{x + 2}$. Sur $[1, +\\infty\\mathclose{[}$, $x \\mapsto x^3$ croît beaucoup plus vite : $1 < \\sqrt{3}$ en $x = 1$, mais $8 > 2$ en $x = 2$ ; les courbes se coupent une seule fois. Donc une unique solution $\\alpha \\in \\mathopen{]}1, 2\\mathclose{[}$. Pièges : pour $x < 0$, un cube négatif ne peut pas égaler une racine carrée ; sur $[0, 1]$, la racine est au-dessus du cube.",
+     "difficulte": "medium",
+     "cible": "D'après l'exercice #425 : résolution graphique de x³ = √(x + 2).",
+     "theoremes": [
+      "Résolution graphique d'équations et d'inéquations"
+     ],
+     "bonne": "Une seule, $\\alpha$, et $1 < \\alpha < 2$."
+    },
+    {
+     "question": "Soit $f$ la fonction définie par $f(x) = \\dfrac{\\sqrt{x^2 - 1}}{x^2}$ pour $|x| \\geq 1$. Quelle est la valeur maximale de $f$ ?",
+     "distracteurs": [
+      "$1$, atteinte en $x = \\pm 1$.",
+      "$\\dfrac{1}{2}$, atteinte en $x = \\pm 1$.",
+      "$f$ n’a pas de maximum."
+     ],
+     "explication": "Avec $t = x^2 \\geq 1$ : $f(x) \\leq \\dfrac{1}{2} \\iff 2\\sqrt{t - 1} \\leq t \\iff t - 2\\sqrt{t - 1} \\geq 0 \\iff \\left(\\sqrt{t - 1} - 1\\right)^2 \\geq 0$, toujours vrai, avec égalité pour $t - 1 = 1$, soit $x^2 = 2$. Donc le maximum vaut $\\dfrac{1}{2}$, atteint en $\\pm\\sqrt{2}$. Pièges : $f(\\pm 1) = 0$, c’est le minimum ; $f$ est paire, le maximum est atteint en deux points.",
+     "difficulte": "medium",
+     "cible": "D'après l'exercice #430 : majoration par 1/2 grâce à un carré.",
+     "theoremes": [
+      "Extremums d'une fonction",
+      "Fonction majorée, minorée, bornée"
+     ],
+     "bonne": "$\\dfrac{1}{2}$, atteinte en $x = \\sqrt{2}$ et en $x = -\\sqrt{2}$."
+    }
+   ]
+  },
+  {
+   "chapitre": "Barycentre dans le plan",
+   "questions": [
+    {
+     "question": "Soit $G$ le barycentre des points pondérés $(A, 2)$ et $(B, 3)$. Exprimer $\\overrightarrow{AG}$ en fonction de $\\overrightarrow{AB}$.",
+     "distracteurs": [
+      "$\\overrightarrow{AG} = \\dfrac{2}{5}\\overrightarrow{AB}$",
+      "$\\overrightarrow{AG} = \\dfrac{3}{2}\\overrightarrow{AB}$",
+      "$\\overrightarrow{AG} = \\dfrac{5}{3}\\overrightarrow{AB}$"
+     ],
+     "explication": "$2\\overrightarrow{GA} + 3\\overrightarrow{GB} = \\vec{0}$ ; avec $\\overrightarrow{GB} = \\overrightarrow{GA} + \\overrightarrow{AB}$ : $5\\overrightarrow{GA} + 3\\overrightarrow{AB} = \\vec{0}$, donc $\\overrightarrow{AG} = \\dfrac{3}{5}\\overrightarrow{AB}$. Le barycentre est plus proche du point de plus grand coefficient ($B$). Pièges : le coefficient de $\\overrightarrow{AB}$ est celui de $B$, pas celui de $A$ ; on divise par la somme des coefficients $5$.",
+     "difficulte": "easy",
+     "cible": "D'après les exercices #505 et #498 : barycentre de deux points.",
+     "theoremes": [
+      "Existence et propriété caractéristique du barycentre",
+      "Barycentre de deux points et alignement"
+     ],
+     "bonne": "$\\overrightarrow{AG} = \\dfrac{3}{5}\\overrightarrow{AB}$"
+    },
+    {
+     "question": "$A$ et $B$ sont deux points distincts. Quel point de la droite $(AB)$ n’est le barycentre d’aucun système $\\{(A, 1), (B, \\alpha)\\}$ (avec $\\alpha \\neq -1$) ?",
+     "distracteurs": [
+      "Le point $A$",
+      "Le milieu de $[AB]$",
+      "Aucun : tous les points de $(AB)$ sont atteints."
+     ],
+     "explication": "$G$ barycentre de $(A, 1)$, $(B, \\alpha)$ vérifie $\\overrightarrow{AG} = \\dfrac{\\alpha}{1 + \\alpha}\\overrightarrow{AB}$. Or $\\dfrac{\\alpha}{1 + \\alpha} = 1 - \\dfrac{1}{1 + \\alpha}$ prend toutes les valeurs réelles sauf $1$. Donc tout point de $(AB)$ est atteint sauf celui pour lequel $\\overrightarrow{AG} = \\overrightarrow{AB}$, c’est-à-dire $B$. Pièges : $A$ est atteint avec $\\alpha = 0$ ; le milieu avec $\\alpha = 1$ ; le coefficient de $A$ étant fixé à $1$, on ne peut pas « annuler » $A$.",
+     "difficulte": "hard",
+     "cible": "D'après l'exercice #506 : point qui n'est barycentre d'aucun (A, 1), (B, α).",
+     "theoremes": [
+      "Barycentre de deux points et alignement"
+     ],
+     "bonne": "Le point $B$"
+    },
+    {
+     "question": "$ABC$ est un triangle, $L$ le barycentre de $(A, 2)$, $(B, 3)$, $(C, 3)$ et $I$ le barycentre de $(A, 2)$, $(B, 3)$. Où se situe $L$ sur le segment $[IC]$ ?",
+     "distracteurs": [
+      "$\\overrightarrow{IL} = \\dfrac{5}{8}\\overrightarrow{IC}$",
+      "$\\overrightarrow{IL} = \\dfrac{3}{5}\\overrightarrow{IC}$",
+      "$L$ est le milieu de $[IC]$."
+     ],
+     "explication": "Par associativité, $L$ est le barycentre de $(I, 2 + 3) = (I, 5)$ et $(C, 3)$. Donc $\\overrightarrow{IL} = \\dfrac{3}{5 + 3}\\overrightarrow{IC} = \\dfrac{3}{8}\\overrightarrow{IC}$ : $(IC)$ passe par $L$, comme $(AJ)$ et $(BK)$ (droites concourantes). Pièges : $I$ reçoit la somme $5$ des coefficients qu’il remplace ; le coefficient de $\\overrightarrow{IC}$ est celui de $C$ divisé par $8$ ; $L$ n’est le milieu que si les coefficients de $I$ et $C$ sont égaux.",
+     "difficulte": "medium",
+     "cible": "D'après l'exercice #498 : associativité du barycentre, droites concourantes.",
+     "theoremes": [
+      "Associativité du barycentre"
+     ],
+     "bonne": "$\\overrightarrow{IL} = \\dfrac{3}{8}\\overrightarrow{IC}$"
+    },
+    {
+     "question": "$A$ et $B$ sont deux points distincts et $I$ le milieu de $[AB]$. Quel est l’ensemble des points $M$ du plan tels que $\\left\\|\\overrightarrow{MA} + \\overrightarrow{MB}\\right\\| = \\left\\|\\overrightarrow{MA} - \\overrightarrow{MB}\\right\\|$ ?",
+     "distracteurs": [
+      "La médiatrice de $[AB]$",
+      "La droite $(AB)$",
+      "Le point $I$ seulement"
+     ],
+     "explication": "On réduit chaque somme : $\\overrightarrow{MA} + \\overrightarrow{MB} = 2\\overrightarrow{MI}$ et $\\overrightarrow{MA} - \\overrightarrow{MB} = \\overrightarrow{BA}$. L’égalité s’écrit $2MI = AB$, soit $MI = \\dfrac{AB}{2}$ : c’est le cercle de centre $I$ et de rayon $\\dfrac{AB}{2}$, de diamètre $[AB]$. Pièges : la médiatrice correspond à $MA = MB$ ; $\\overrightarrow{MA} - \\overrightarrow{MB}$ ne dépend pas de $M$.",
+     "difficulte": "medium",
+     "cible": "D'après l'exercice #497 : réduction de sommes vectorielles, lieu géométrique.",
+     "theoremes": [
+      "Lignes de niveau et lieux géométriques",
+      "Réduction d'une somme vectorielle pondérée"
+     ],
+     "bonne": "Le cercle de diamètre $[AB]$"
+    },
+    {
+     "question": "$A$ et $B$ sont deux points distincts. Quel est l’ensemble des points $M$ du plan tels que $\\left\\|2\\overrightarrow{MA} + \\overrightarrow{MB}\\right\\| = \\left\\|\\overrightarrow{MA} + 2\\overrightarrow{MB}\\right\\|$ ?",
+     "distracteurs": [
+      "Le cercle de diamètre $[AB]$",
+      "Le milieu de $[AB]$ seulement",
+      "La droite $(AB)$"
+     ],
+     "explication": "Avec $G_1$ barycentre de $(A, 2)$, $(B, 1)$ et $G_2$ barycentre de $(A, 1)$, $(B, 2)$ : $2\\overrightarrow{MA} + \\overrightarrow{MB} = 3\\overrightarrow{MG_1}$ et $\\overrightarrow{MA} + 2\\overrightarrow{MB} = 3\\overrightarrow{MG_2}$. L’égalité s’écrit $MG_1 = MG_2$ : c’est la médiatrice de $[G_1G_2]$. Or $G_1$ et $G_2$ sont symétriques par rapport au milieu $I$ de $[AB]$ ($\\overrightarrow{AG_1} = \\dfrac{1}{3}\\overrightarrow{AB}$, $\\overrightarrow{AG_2} = \\dfrac{2}{3}\\overrightarrow{AB}$), donc cette médiatrice est celle de $[AB]$. Pièges : il s’agit d’une égalité de distances à deux points fixes, pas d’un cercle ; tout point de la médiatrice convient, pas seulement $I$.",
+     "difficulte": "hard",
+     "cible": "D'après l'exercice #497 : réduction par deux barycentres, égalité de distances.",
+     "theoremes": [
+      "Lignes de niveau et lieux géométriques",
+      "Réduction d'une somme vectorielle pondérée"
+     ],
+     "bonne": "La médiatrice de $[AB]$"
+    },
+    {
+     "question": "Dans un repère, on considère $A(1, 2)$ et $B(3, -1)$. Quelles sont les coordonnées du barycentre $G$ de $(A, 1)$ et $(B, 2)$ ?",
+     "distracteurs": [
+      "$G\\left(2, \\dfrac{1}{2}\\right)$",
+      "$G\\left(\\dfrac{7}{2}, 0\\right)$",
+      "$G\\left(\\dfrac{5}{3}, 1\\right)$"
+     ],
+     "explication": "Les coordonnées du barycentre sont les moyennes pondérées des coordonnées : $x_G = \\dfrac{1 \\times 1 + 2 \\times 3}{3} = \\dfrac{7}{3}$ et $y_G = \\dfrac{1 \\times 2 + 2 \\times (-1)}{3} = 0$. Donc $G\\left(\\dfrac{7}{3}, 0\\right)$. Pièges : $\\left(2, \\dfrac{1}{2}\\right)$ est le milieu (moyenne sans coefficients) ; on divise par la somme des coefficients $3$, pas par $2$ ; $\\left(\\dfrac{5}{3}, 1\\right)$ échange les coefficients.",
+     "difficulte": "easy",
+     "cible": "D'après l'exercice #506 : coordonnées d'un barycentre.",
+     "theoremes": [
+      "Coordonnées du barycentre"
+     ],
+     "bonne": "$G\\left(\\dfrac{7}{3}, 0\\right)$"
+    },
+    {
+     "question": "$ABC$ est un triangle et $G$ le barycentre de $(A, 1)$, $(B, 2)$, $(C, 3)$. On note $I$ le barycentre de $(A, 1)$, $(B, 2)$ et $J$ celui de $(B, 2)$, $(C, 3)$. Quelles affirmations sont vraies ?",
+     "distracteurs": [
+      "$G$ est le barycentre de $(A, 1)$ et $(J, 2)$.",
+      "$G$ est le centre de gravité du triangle $ABC$.",
+      "$G$ appartient à la droite $(AB)$."
+     ],
+     "explication": "Associativité : on remplace des points par leur barycentre affecté de la SOMME de leurs coefficients. $G$ est le barycentre de $(I, 3)$ et $(C, 3)$, coefficients égaux : $G$ est le milieu de $[IC]$. $G$ est aussi le barycentre de $(A, 1)$ et $(J, 2 + 3) = (J, 5)$. Pièges : $J$ reçoit $5$, pas $2$ ; le centre de gravité est l’isobarycentre (coefficients égaux) ; $G$ est sur $(IC)$ et $(AJ)$, pas sur $(AB)$ (le coefficient de $C$ n’est pas nul).",
+     "difficulte": "medium",
+     "cible": "D'après les exercices #503 et #507 : associativité du barycentre.",
+     "theoremes": [
+      "Associativité du barycentre"
+     ],
+     "bonnes": [
+      "$G$ est le milieu de $[IC]$.",
+      "$G$ est le barycentre de $(A, 1)$ et $(J, 5)$."
+     ]
+    }
+   ]
+  },
+  {
+   "chapitre": "Suites numériques",
+   "questions": [
+    {
+     "question": "Soit $(u_n)$ la suite définie par $u_0 > \\dfrac{3}{2}$ et $u_{n+1} = \\dfrac{12u_n - 9}{4u_n}$ (on admet que $u_n > \\dfrac{3}{2}$ pour tout $n$). On pose $v_n = \\dfrac{2}{2u_n - 3}$. Que peut-on affirmer ?",
+     "distracteurs": [
+      "$(v_n)$ est géométrique de raison $\\dfrac{2}{3}$.",
+      "$(v_n)$ est arithmétique de raison $\\dfrac{3}{2}$.",
+      "$(v_n)$ est arithmétique de raison $-\\dfrac{2}{3}$."
+     ],
+     "explication": "On calcule $v_{n+1} - v_n$. $2u_{n+1} - 3 = \\dfrac{24u_n - 18 - 12u_n}{4u_n} = \\dfrac{3(2u_n - 3)}{2u_n}$, donc $v_{n+1} = \\dfrac{4u_n}{3(2u_n - 3)}$ et $v_{n+1} - v_n = \\dfrac{4u_n - 6}{3(2u_n - 3)} = \\dfrac{2}{3}$. Donc $(v_n)$ est arithmétique de raison $\\dfrac{2}{3}$. Pièges : une différence constante caractérise une suite arithmétique (pas un quotient) ; $\\dfrac{3}{2}$ renverse la fraction ; le signe se vérifie sur un exemple.",
+     "difficulte": "medium",
+     "cible": "D'après l'exercice #714 : suite auxiliaire arithmétique.",
+     "theoremes": [
+      "Suite auxiliaire arithmétique ou géométrique"
+     ],
+     "bonne": "$(v_n)$ est arithmétique de raison $\\dfrac{2}{3}$."
+    },
+    {
+     "question": "Soit $(u_n)$ la suite définie par $u_0$, $u_1$ et $u_{n+1} = 10u_n - 9u_{n-1}$ pour $n \\geq 1$. On pose $w_n = u_{n+1} - u_n$. Que peut-on affirmer ?",
+     "distracteurs": [
+      "$(w_n)$ est géométrique de raison $10$.",
+      "$(w_n)$ est géométrique de raison $-9$.",
+      "$(w_n)$ est arithmétique de raison $9$."
+     ],
+     "explication": "On exprime $w_n$ en fonction de $w_{n-1}$ : $w_n = u_{n+1} - u_n = 10u_n - 9u_{n-1} - u_n = 9(u_n - u_{n-1}) = 9w_{n-1}$. Donc $(w_n)$ est géométrique de raison $9$ ; on en déduit $u_n = u_0 + w_0\\dfrac{9^n - 1}{8}$ (somme des différences). Pièges : le coefficient $10$ devient $9$ après avoir retranché $u_n$ ; on multiplie, la suite est géométrique.",
+     "difficulte": "medium",
+     "cible": "D'après l'exercice #715 : suite des différences géométrique.",
+     "theoremes": [
+      "Suite auxiliaire arithmétique ou géométrique",
+      "Somme de termes consécutifs"
+     ],
+     "bonne": "$(w_n)$ est géométrique de raison $9$."
+    },
+    {
+     "question": "On considère la suite $(u_n)_{n \\geq 1}$ définie par $u_n = \\dfrac{3^n}{n^2}$. Quel est son sens de variation ?",
+     "distracteurs": [
+      "$(u_n)$ est croissante dès le rang $1$, car $3^n$ croît plus vite que $n^2$.",
+      "$(u_n)$ est décroissante, car $n^2$ est croissante.",
+      "$(u_n)$ est croissante, car $\\dfrac{u_{n+1}}{u_n} = 3$."
+     ],
+     "explication": "Les termes sont positifs : on compare $\\dfrac{u_{n+1}}{u_n} = \\dfrac{3n^2}{(n + 1)^2}$ à $1$. $3n^2 \\geq (n + 1)^2 \\iff \\sqrt{3}\\,n \\geq n + 1 \\iff n \\geq \\dfrac{1}{\\sqrt{3} - 1} \\approx 1{,}37$. Donc $u_{n+1} \\geq u_n$ pour $n \\geq 2$, mais $u_2 = \\dfrac{9}{4} < u_1 = 3$. Pièges : « croît plus vite » ne dit rien des premiers termes ; le dénominateur croît aussi ; $\\dfrac{u_{n+1}}{u_n} = 3 \\times \\dfrac{n^2}{(n + 1)^2}$, pas $3$.",
+     "difficulte": "medium",
+     "cible": "D'après l'exercice #728 : quotient u(n+1)/u(n) et inéquation 3n² ≥ (n + 1)².",
+     "theoremes": [
+      "Suite majorée, minorée, monotone"
+     ],
+     "bonne": "$u_1 > u_2$, puis $(u_n)$ est croissante à partir du rang $2$."
+    },
+    {
+     "question": "On considère la suite $(u_n)_{n \\geq 1}$ définie par $u_n = \\sqrt{n}\\left(\\sqrt{n + 1} - \\sqrt{n}\\right)$. Que peut-on affirmer ?",
+     "distracteurs": [
+      "$(u_n)$ est décroissante, car $\\sqrt{n + 1} - \\sqrt{n}$ décroît.",
+      "$u_n = \\dfrac{1}{\\sqrt{1 + \\frac{1}{n}} + 1}$ : $(u_n)$ est décroissante et $u_n < \\dfrac{1}{2}$.",
+      "$(u_n)$ est croissante et non majorée, car $\\sqrt{n}$ tend vers $+\\infty$."
+     ],
+     "explication": "Avec l’expression conjuguée : $u_n = \\dfrac{\\sqrt{n}}{\\sqrt{n + 1} + \\sqrt{n}} = \\dfrac{1}{\\sqrt{1 + \\frac{1}{n}} + 1}$. Quand $n$ augmente, $1 + \\dfrac{1}{n}$ diminue, donc le dénominateur diminue et $u_n$ augmente : $(u_n)$ est croissante, avec $u_1 = \\dfrac{1}{1 + \\sqrt{2}}$ ; et $\\sqrt{1 + \\frac{1}{n}} > 1$ donne $u_n < \\dfrac{1}{2}$. Pièges : $\\sqrt{n + 1} - \\sqrt{n}$ décroît mais est multiplié par $\\sqrt{n}$, qui croît ; le produit reste borné.",
+     "difficulte": "medium",
+     "cible": "D'après l'exercice #730 : expression conjuguée, monotonie et encadrement.",
+     "theoremes": [
+      "Suite majorée, minorée, monotone"
+     ],
+     "bonne": "$u_n = \\dfrac{1}{\\sqrt{1 + \\frac{1}{n}} + 1}$ : $(u_n)$ est croissante et $\\dfrac{1}{1 + \\sqrt{2}} \\leq u_n < \\dfrac{1}{2}$."
+    },
+    {
+     "question": "On pose $u_n = (-1)^{n+1}n$ et $S_{2n} = \\sum\\limits_{k=1}^{2n} u_k = 1 - 2 + 3 - 4 + \\dots - 2n$. Que vaut $S_{2n}$ ?",
+     "distracteurs": [
+      "$S_{2n} = n$",
+      "$S_{2n} = 0$",
+      "$S_{2n} = -2n$"
+     ],
+     "explication": "On groupe les termes deux par deux : $(1 - 2) + (3 - 4) + \\dots + \\left((2n - 1) - 2n\\right)$, soit $n$ paquets égaux à $-1$ (c’est la suite $u_{2k-1} + u_{2k} = -1$). Donc $S_{2n} = -n$. Pièges : chaque paquet vaut $-1$, pas $+1$ ; les termes ne s’annulent pas deux à deux ; il y a $n$ paquets, pas $2n$.",
+     "difficulte": "easy",
+     "cible": "D'après l'exercice #731 : regroupement des termes deux par deux.",
+     "theoremes": [
+      "Somme de termes consécutifs"
+     ],
+     "bonne": "$S_{2n} = -n$"
+    },
+    {
+     "question": "On considère la suite $u_n = \\dfrac{3^n}{n + 1}$ ($n \\in \\mathbb{N}$). Pour quels $n$ a-t-on $\\dfrac{u_{n+1}}{u_n} \\geq 2$ ?",
+     "distracteurs": [
+      "Pour tout $n \\geq 0$.",
+      "Pour tout $n \\geq 2$ seulement.",
+      "Pour aucun $n$, car $\\dfrac{u_{n+1}}{u_n} \\to 3$."
+     ],
+     "explication": "$\\dfrac{u_{n+1}}{u_n} = \\dfrac{3^{n+1}}{n + 2} \\times \\dfrac{n + 1}{3^n} = \\dfrac{3(n + 1)}{n + 2}$, et $\\dfrac{3(n + 1)}{n + 2} \\geq 2 \\iff 3n + 3 \\geq 2n + 4 \\iff n \\geq 1$. Pour $n = 0$, le quotient vaut $\\dfrac{3}{2} < 2$. On en déduit $u_n \\geq u_1 \\times 2^{n-1} \\geq 2^{n-1}$ pour $n \\geq 1$. Pièges : $n = 0$ ne convient pas ; $n = 1$ convient (quotient $2$) ; un quotient qui se rapproche de $3$ dépasse $2$ dès $n = 1$.",
+     "difficulte": "easy",
+     "cible": "D'après l'exercice #732 : quotient u(n+1)/u(n) et minoration par 2ⁿ⁻¹.",
+     "theoremes": [
+      "Suite majorée, minorée, monotone"
+     ],
+     "bonne": "Pour tout $n \\geq 1$."
+    },
+    {
+     "question": "On pose $S_n = \\sum\\limits_{k=1}^{n} \\dfrac{1}{k(k + 1)}$ pour $n \\geq 1$. Sachant que $\\dfrac{1}{k(k + 1)} = \\dfrac{1}{k} - \\dfrac{1}{k + 1}$, que peut-on affirmer ?",
+     "distracteurs": [
+      "$S_n = 1 - \\dfrac{1}{n}$, donc $(S_n)$ est majorée par $1$.",
+      "$S_n = \\dfrac{1}{n} - \\dfrac{1}{n + 1}$, donc $(S_n)$ est décroissante.",
+      "$(S_n)$ n’est pas majorée, car c’est une somme de termes positifs."
+     ],
+     "explication": "La somme est télescopique : $S_n = \\left(1 - \\dfrac{1}{2}\\right) + \\left(\\dfrac{1}{2} - \\dfrac{1}{3}\\right) + \\dots + \\left(\\dfrac{1}{n} - \\dfrac{1}{n + 1}\\right) = 1 - \\dfrac{1}{n + 1}$. Donc $S_n < 1$, et $S_{n+1} - S_n = \\dfrac{1}{(n + 1)(n + 2)} > 0$. Pièges : il reste le premier terme $1$ et le dernier $-\\dfrac{1}{n + 1}$ (pas $-\\dfrac{1}{n}$ : $S_1 = \\dfrac{1}{2}$) ; une somme de termes positifs peut être majorée.",
+     "difficulte": "easy",
+     "cible": "D'après l'exercice #712 : somme télescopique, majoration.",
+     "theoremes": [
+      "Somme de termes consécutifs",
+      "Suite majorée, minorée, monotone"
+     ],
+     "bonne": "$S_n = 1 - \\dfrac{1}{n + 1}$, donc $(S_n)$ est croissante et majorée par $1$."
+    }
+   ]
+  }
+ ]
+}

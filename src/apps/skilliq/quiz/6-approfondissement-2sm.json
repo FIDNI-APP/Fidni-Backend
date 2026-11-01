@@ -1,0 +1,784 @@
+{
+ "niveau": "2ème Bac SM",
+ "type": "approfondissement",
+ "chapitres": [
+  {
+   "chapitre": "Limites et continuité",
+   "questions": [
+    {
+     "question": "Soit $f$ la fonction définie par : $f(x) = \\dfrac{x + 3}{\\sqrt{\\left|x^2 + x - 6\\right|}}$. Montrer que $f$ admet un prolongement par continuité en $-3$, que l’on déterminera.",
+     "distracteurs": [
+      "Il n’y en a pas : les limites à gauche et à droite en $-3$ valent $-\\dfrac{1}{\\sqrt{5}}$ et $\\dfrac{1}{\\sqrt{5}}$.",
+      "Le prolongement $\\tilde{f}$ est défini par $\\tilde{f}(-3) = \\dfrac{1}{\\sqrt{5}}$.",
+      "Il n’y en a pas, car $f(-3)$ n’existe pas."
+     ],
+     "explication": "On factorise $x^2 + x - 6 = (x + 3)(x - 2)$ et on écrit $|x + 3| = \\left(\\sqrt{|x + 3|}\\right)^2$. Pour $x \\neq -3$ voisin de $-3$ : $f(x) = \\dfrac{x + 3}{\\sqrt{|x + 3|}\\sqrt{|x - 2|}}$, et $\\left|\\dfrac{x + 3}{\\sqrt{|x + 3|}}\\right| = \\sqrt{|x + 3|} \\to 0$, tandis que $\\sqrt{|x - 2|} \\to \\sqrt{5}$. Donc $\\lim\\limits_{x \\to -3} f(x) = 0$ : $f$ admet un prolongement par continuité en $-3$, défini par $\\tilde{f}(-3) = 0$. Pièges : simplifier $\\sqrt{|x + 3|}$ comme si c’était $|x + 3|$ donne $\\pm\\dfrac{1}{\\sqrt{5}}$ ; la racine n’enlève qu’une « moitié » du facteur $x + 3$ ; et c’est justement parce que $f(-3)$ n’existe pas qu’on parle de prolongement.",
+     "difficulte": "medium",
+     "cible": "D'après l'exercice #10 (question 2) : prolongement par continuité, racine de |x + 3|.",
+     "theoremes": [
+      "Prolongement par continuité"
+     ],
+     "bonne": "Le prolongement $\\tilde{f}$ est défini par $\\tilde{f}(x) = f(x)$ si $x \\in D_f$ et $\\tilde{f}(-3) = 0$."
+    },
+    {
+     "question": "Soit $f$ la fonction définie par $f(x) = \\sqrt{x^2 - 1} - x$. Montrer que $f$ admet une fonction réciproque sur $I = [1, +\\infty\\mathclose{[}$, définie sur un intervalle $J$, puis déterminer $f^{-1}(x)$ pour tout $x \\in J$.",
+     "distracteurs": [
+      "$J = [-1, 0\\mathclose{[}$ et $f^{-1}(x) = \\dfrac{1 - x^2}{2x}$",
+      "$J = \\mathopen{]}-\\infty, -1]$ et $f^{-1}(x) = -\\dfrac{x^2 + 1}{2x}$",
+      "$J = [-1, 0\\mathclose{[}$ et $f^{-1}(x) = \\sqrt{x^2 + 1} + x$"
+     ],
+     "explication": "Avec l’expression conjuguée, pour $x \\geq 1$ : $f(x) = \\dfrac{-1}{\\sqrt{x^2 - 1} + x}$ ; le dénominateur est continu, positif et strictement croissant, donc $f$ est continue et strictement croissante sur $I$, avec $f(1) = -1$ et $\\lim\\limits_{x \\to +\\infty} f(x) = 0$. D’après le théorème de la bijection, $J = [-1, 0\\mathclose{[}$. Pour $x \\in J$ et $y \\geq 1$ : $f(y) = x \\Leftrightarrow \\sqrt{y^2 - 1} = x + y \\Leftrightarrow (x + y)^2 = y^2 - 1$ (avec $x + y \\geq 0$) $\\Leftrightarrow x^2 + 2xy = -1$. Donc $f^{-1}(x) = -\\dfrac{x^2 + 1}{2x}$. Pièges : $\\dfrac{1 - x^2}{2x}$ vient d’une erreur de signe sur $-1$ ; la forme $+\\infty - \\infty$ ne donne pas $-\\infty$, la conjuguée montre que la limite est $0$ ; on ne trouve pas $f^{-1}$ en « inversant » les opérations de $f$.",
+     "difficulte": "medium",
+     "cible": "D'après l'exercice #11 : forme ∞ − ∞ levée par la conjuguée, puis résolution de f(y) = x.",
+     "theoremes": [
+      "Théorème de la bijection",
+      "Multiplication par l'expression conjuguée"
+     ],
+     "bonne": "$J = [-1, 0\\mathclose{[}$ et $f^{-1}(x) = -\\dfrac{x^2 + 1}{2x}$"
+    },
+    {
+     "question": "Soit la fonction $f$ définie par : $f(x) = 1 - xE\\left(\\dfrac{1}{x}\\right)$ si $x \\neq 0$ et $f(0) = 0$, où $E$ désigne la partie entière. La fonction $f$ est-elle continue en $0$ ?",
+     "distracteurs": [
+      "Non : $E$ n’est pas continue, donc $f$ ne peut pas être continue en $0$.",
+      "Non : $\\lim\\limits_{x \\to 0} xE\\left(\\dfrac{1}{x}\\right) = 0$, donc $\\lim\\limits_{x \\to 0} f(x) = 1 \\neq f(0)$.",
+      "Oui, car $xE\\left(\\dfrac{1}{x}\\right) = x \\times \\dfrac{1}{x} = 1$ pour tout $x \\neq 0$."
+     ],
+     "explication": "On encadre $E\\left(\\dfrac{1}{x}\\right)$ par définition de la partie entière : $\\dfrac{1}{x} - 1 < E\\left(\\dfrac{1}{x}\\right) \\leq \\dfrac{1}{x}$. Si $x > 0$, en multipliant par $x$ : $1 - x < xE\\left(\\dfrac{1}{x}\\right) \\leq 1$, donc $0 \\leq f(x) < x$. Si $x < 0$, l’ordre change : $1 \\leq xE\\left(\\dfrac{1}{x}\\right) < 1 - x$, donc $x < f(x) \\leq 0$. Dans les deux cas $|f(x)| < |x|$, et d’après le théorème des gendarmes $\\lim\\limits_{x \\to 0} f(x) = 0 = f(0)$. Donc $f$ est continue en $0$. Pièges : une fonction composée avec $E$ peut être continue en un point ; $E\\left(\\dfrac{1}{x}\\right)$ n’est pas bornée près de $0$, le produit par $x$ ne tend pas vers $0$ (il tend vers $1$) ; $E\\left(\\dfrac{1}{x}\\right)$ n’est pas égal à $\\dfrac{1}{x}$.",
+     "difficulte": "medium",
+     "cible": "D'après l'exercice #18 : encadrement de la partie entière, gendarmes, attention au signe de x.",
+     "theoremes": [
+      "Théorème des gendarmes"
+     ],
+     "bonne": "Oui : pour $x \\neq 0$, $|f(x)| < |x|$, et le théorème des gendarmes donne $\\lim\\limits_{x \\to 0} f(x) = 0 = f(0)$."
+    },
+    {
+     "question": "Soit $f$ une fonction continue sur $\\mathbb{R}$ telle que : $(\\exists a \\in \\mathbb{R})$ $f \\circ f(a) = a$. Pour montrer que $(\\exists c \\in \\mathbb{R})$ $f(c) = c$, quelle démarche est correcte ?",
+     "distracteurs": [
+      "Appliquer le TVI à $g : x \\mapsto f(x) - x$ sur $[0, a]$, car $g(0) \\times g(a) \\leq 0$.",
+      "Prendre $c = a$ : de $f(f(a)) = a$, on déduit $f(a) = a$.",
+      "Appliquer le TVI à $g : x \\mapsto f(x) - a$ sur le segment de bornes $a$ et $f(a)$."
+     ],
+     "explication": "On considère $g(x) = f(x) - x$, continue sur $\\mathbb{R}$ (différence de fonctions continues), en particulier sur le segment $I$ de bornes $a$ et $f(a)$. $g(a) = f(a) - a$ et $g(f(a)) = f(f(a)) - f(a) = a - f(a) = -g(a)$, donc $g(a) \\times g(f(a)) = -g(a)^2 \\leq 0$. D’après le théorème des valeurs intermédiaires, il existe $c \\in I$ tel que $g(c) = 0$. Donc $f(c) = c$. Pièges : rien ne permet de connaître le signe de $g(0)$ ; $f(f(a)) = a$ n’entraîne pas $f(a) = a$ (ex. $f(x) = -x$, $a = 1$) ; avec $x \\mapsto f(x) - a$, on chercherait un antécédent de $a$, pas un point fixe.",
+     "difficulte": "medium",
+     "cible": "D'après l'exercice #22 : point fixe par le TVI appliqué à f(x) − x sur [a, f(a)].",
+     "theoremes": [
+      "Théorème des valeurs intermédiaires (TVI)"
+     ],
+     "bonne": "Appliquer le TVI à $g : x \\mapsto f(x) - x$ sur le segment de bornes $a$ et $f(a)$, car $g(f(a)) = -g(a)$."
+    },
+    {
+     "question": "Soit $f$ la fonction définie par $f(x) = x^3 + 2x - 1$. On sait que l’équation $f(x) = 0$ admet une solution unique $\\alpha$ et que $0 < \\alpha < \\dfrac{1}{2}$. Donner un encadrement de $\\alpha$ à $25 \\times 10^{-2}$ près en utilisant la méthode de dichotomie.",
+     "distracteurs": [
+      "$0 < \\alpha < \\dfrac{1}{4}$",
+      "$\\dfrac{1}{2} < \\alpha < \\dfrac{3}{4}$",
+      "$\\dfrac{1}{4} < \\alpha < \\dfrac{3}{8}$"
+     ],
+     "explication": "On part de $0 < \\alpha < \\dfrac{1}{2}$ (amplitude $0{,}5$) et on calcule $f$ au milieu $\\dfrac{1}{4}$ : $f\\left(\\dfrac{1}{4}\\right) = \\dfrac{1}{64} + \\dfrac{1}{2} - 1 = -\\dfrac{31}{64} < 0$, et $f\\left(\\dfrac{1}{2}\\right) = \\dfrac{1}{8} > 0$. Donc $f\\left(\\dfrac{1}{4}\\right) \\times f\\left(\\dfrac{1}{2}\\right) < 0$ et, d’après le TVI, $\\dfrac{1}{4} < \\alpha < \\dfrac{1}{2}$ : encadrement d’amplitude $0{,}25$. Pièges : $f\\left(\\dfrac{1}{4}\\right) < 0$ place $\\alpha$ du côté où $f$ devient positive, c’est-à-dire à droite de $\\dfrac{1}{4}$ ; $\\alpha < \\dfrac{1}{2}$ est déjà acquis ; $f\\left(\\dfrac{3}{8}\\right) < 0$ aussi, donc $\\alpha > \\dfrac{3}{8}$.",
+     "difficulte": "easy",
+     "cible": "D'après l'exercice #107 (question 3) : dichotomie, choix du demi-intervalle par le signe.",
+     "theoremes": [
+      "Méthode de dichotomie",
+      "Théorème des valeurs intermédiaires (TVI)"
+     ],
+     "bonne": "$\\dfrac{1}{4} < \\alpha < \\dfrac{1}{2}$"
+    },
+    {
+     "question": "Soit la fonction $f$ définie par $f(x) = \\arctan\\left(\\dfrac{x + 1}{x}\\right)$, et $g$ sa restriction à l’intervalle $\\mathopen{]}0, +\\infty\\mathclose{[}$. On montre que $g$ est une bijection de $\\mathopen{]}0, +\\infty\\mathclose{[}$ vers un intervalle $J$. Que valent $J$ et $g^{-1}(x)$ pour $x \\in J$ ?",
+     "distracteurs": [
+      "$J = \\left]\\dfrac{\\pi}{4}, \\dfrac{\\pi}{2}\\right[$ et $g^{-1}(x) = \\tan x - 1$",
+      "$J = \\left]0, \\dfrac{\\pi}{2}\\right[$ et $g^{-1}(x) = \\dfrac{1}{\\tan x - 1}$",
+      "$J = \\left]\\dfrac{\\pi}{4}, \\dfrac{\\pi}{2}\\right[$ et $g^{-1}(x) = \\dfrac{1}{1 - \\tan x}$"
+     ],
+     "explication": "$x \\mapsto 1 + \\dfrac{1}{x}$ est continue et strictement décroissante sur $\\mathopen{]}0, +\\infty\\mathclose{[}$ et $\\arctan$ est continue et strictement croissante : $g$ est continue et strictement décroissante. Quand $x \\to 0^+$, $1 + \\dfrac{1}{x} \\to +\\infty$ et $g(x) \\to \\dfrac{\\pi}{2}$ ; quand $x \\to +\\infty$, $1 + \\dfrac{1}{x} \\to 1$ et $g(x) \\to \\arctan 1 = \\dfrac{\\pi}{4}$. Donc $J = \\left]\\dfrac{\\pi}{4}, \\dfrac{\\pi}{2}\\right[$. Pour $x \\in J$ et $y > 0$ : $g(y) = x \\Leftrightarrow 1 + \\dfrac{1}{y} = \\tan x \\Leftrightarrow y = \\dfrac{1}{\\tan x - 1}$ (car $\\tan x > 1$ sur $J$). Pièges : $\\tan x - 1$ est $\\dfrac{1}{y}$, pas $y$ ; en $+\\infty$, $\\dfrac{x + 1}{x} \\to 1$ et non $0$ ; $\\dfrac{1}{1 - \\tan x}$ serait négatif sur $J$.",
+     "difficulte": "medium",
+     "cible": "D'après l'exercice #32 (question 2) : bijection par composition avec arctan, réciproque avec tan.",
+     "theoremes": [
+      "Théorème de la bijection",
+      "Fonction arc tangente"
+     ],
+     "bonne": "$J = \\left]\\dfrac{\\pi}{4}, \\dfrac{\\pi}{2}\\right[$ et $g^{-1}(x) = \\dfrac{1}{\\tan x - 1}$"
+    },
+    {
+     "question": "Montrer que : $\\arctan 2 + \\arctan 3 = \\dfrac{3\\pi}{4}$. Laquelle de ces affirmations est la bonne étape décisive ?",
+     "distracteurs": [
+      "$\\tan(\\arctan 2 + \\arctan 3) = -1$, donc $\\arctan 2 + \\arctan 3 = \\arctan(-1) = -\\dfrac{\\pi}{4}$.",
+      "$\\arctan 2 + \\arctan 3 = \\arctan 5$, car $\\arctan$ est additive.",
+      "$\\arctan 2 + \\arctan 3 \\in \\left]0, \\dfrac{\\pi}{2}\\right[$, car chaque terme est dans $\\left]0, \\dfrac{\\pi}{2}\\right[$."
+     ],
+     "explication": "On encadre la somme avant d’utiliser la tangente, car $\\tan$ n’est injective que sur un intervalle de longueur $\\pi$. $2 > 1$ et $3 > 1$, donc $\\arctan 2$ et $\\arctan 3$ sont dans $\\left]\\dfrac{\\pi}{4}, \\dfrac{\\pi}{2}\\right[$ et leur somme dans $\\left]\\dfrac{\\pi}{2}, \\pi\\right[$. Or $\\tan(\\arctan 2 + \\arctan 3) = \\dfrac{2 + 3}{1 - 2 \\times 3} = -1$. Le seul réel de $\\left]\\dfrac{\\pi}{2}, \\pi\\right[$ de tangente $-1$ est $\\dfrac{3\\pi}{4}$. Donc $\\arctan 2 + \\arctan 3 = \\dfrac{3\\pi}{4}$. Pièges : $-\\dfrac{\\pi}{4}$ oublie que la somme n’est pas dans $\\left]-\\dfrac{\\pi}{2}, \\dfrac{\\pi}{2}\\right[$ (elle est positive) ; $\\arctan$ n’est pas additive ; la somme de deux réels de $\\left]0, \\dfrac{\\pi}{2}\\right[$ peut dépasser $\\dfrac{\\pi}{2}$.",
+     "difficulte": "medium",
+     "cible": "D'après l'exercice #112 : encadrer la somme avant d'appliquer arctan(tan θ) = θ.",
+     "theoremes": [
+      "Fonction arc tangente"
+     ],
+     "bonne": "$\\arctan 2 + \\arctan 3 \\in \\left]\\dfrac{\\pi}{2}, \\pi\\right[$ et sa tangente vaut $-1$ ; or $\\dfrac{3\\pi}{4}$ est le seul réel de cet intervalle de tangente $-1$."
+    },
+    {
+     "question": "Soit $f$ la fonction définie par $f(x) = \\arctan\\left(\\dfrac{1 - x}{1 + x}\\right)$. On a montré que $f(x) = \\dfrac{\\pi}{4} - \\arctan x$ pour $x > -1$. Que vaut $f(x)$ pour $x < -1$ ?",
+     "distracteurs": [
+      "$f(x) = \\dfrac{\\pi}{4} - \\arctan x$, la même formule que pour $x > -1$",
+      "$f(x) = -\\arctan x + \\dfrac{5\\pi}{4}$",
+      "$f(x) = \\arctan x - \\dfrac{\\pi}{4}$"
+     ],
+     "explication": "Avec $\\theta = \\arctan x$ : $\\dfrac{1 - x}{1 + x} = \\tan\\left(\\dfrac{\\pi}{4} - \\theta\\right)$, et $\\arctan(\\tan\\varphi) = \\varphi$ seulement si $\\varphi \\in \\left]-\\dfrac{\\pi}{2}, \\dfrac{\\pi}{2}\\right[$. Pour $x < -1$ : $\\theta \\in \\left]-\\dfrac{\\pi}{2}, -\\dfrac{\\pi}{4}\\right[$, donc $\\dfrac{\\pi}{4} - \\theta \\in \\left]\\dfrac{\\pi}{2}, \\dfrac{3\\pi}{4}\\right[$ ; on retire $\\pi$ (période de $\\tan$) pour revenir dans $\\left]-\\dfrac{\\pi}{2}, \\dfrac{\\pi}{2}\\right[$ : $\\dfrac{\\pi}{4} - \\theta - \\pi = -\\theta - \\dfrac{3\\pi}{4} \\in \\left]-\\dfrac{\\pi}{2}, -\\dfrac{\\pi}{4}\\right[$. Donc $f(x) = -\\arctan x - \\dfrac{3\\pi}{4}$ pour $x < -1$ (ex. $x = -2$ : $\\arctan(-3) \\approx -1{,}25$). Pièges : la formule de $x > -1$ donne une valeur hors de $\\left]-\\dfrac{\\pi}{2}, \\dfrac{\\pi}{2}\\right[$ ; ajouter $\\pi$ éloigne encore de cet intervalle ; la dernière réponse change le signe de $\\arctan x$.",
+     "difficulte": "hard",
+     "cible": "D'après l'exercice #44 : arctan(tan φ) = φ seulement sur ]−π/2, π/2[, ajustement de π selon x.",
+     "theoremes": [
+      "Fonction arc tangente"
+     ],
+     "bonne": "$f(x) = -\\arctan x - \\dfrac{3\\pi}{4}$"
+    },
+    {
+     "question": "Soit $f$ la fonction définie par $f(x) = \\dfrac{\\sqrt{x^2 + 1} - \\sqrt{2}}{x - 1}$ si $x \\neq 1$ et $f(1) = a$. Déterminer $a$ pour que $f$ soit continue en $1$.",
+     "distracteurs": [
+      "$a = \\dfrac{\\sqrt{2}}{4}$",
+      "$a = 2\\sqrt{2}$",
+      "Aucune valeur : la forme $\\dfrac{0}{0}$ n’a pas de limite."
+     ],
+     "explication": "On multiplie par l’expression conjuguée $\\sqrt{x^2 + 1} + \\sqrt{2}$. Pour $x \\neq 1$ : $f(x) = \\dfrac{x^2 + 1 - 2}{(x - 1)\\left(\\sqrt{x^2 + 1} + \\sqrt{2}\\right)} = \\dfrac{x + 1}{\\sqrt{x^2 + 1} + \\sqrt{2}}$, donc $\\lim\\limits_{x \\to 1} f(x) = \\dfrac{2}{2\\sqrt{2}} = \\dfrac{\\sqrt{2}}{2}$. $f$ est continue en $1$ si et seulement si $f(1) = \\lim\\limits_{x \\to 1} f(x)$. Donc $a = \\dfrac{\\sqrt{2}}{2}$. Pièges : $\\dfrac{\\sqrt{2}}{4}$ oublie le facteur $x + 1$ de $x^2 - 1 = (x - 1)(x + 1)$ ; $2\\sqrt{2}$ renverse la fraction ; une forme $\\dfrac{0}{0}$ est indéterminée, pas impossible.",
+     "difficulte": "easy",
+     "cible": "D'après l'exercice #98 : conjuguée et factorisation de x² − 1.",
+     "theoremes": [
+      "Multiplication par l'expression conjuguée",
+      "Prolongement par continuité"
+     ],
+     "bonne": "$a = \\dfrac{\\sqrt{2}}{2}$"
+    },
+    {
+     "question": "Calculer $\\lim\\limits_{x \\to 0} \\dfrac{\\sqrt[3]{x + 1} - 1}{x}$.",
+     "distracteurs": [
+      "$0$",
+      "$1$",
+      "$3$"
+     ],
+     "explication": "On utilise l’identité $A - B = \\dfrac{A^3 - B^3}{A^2 + AB + B^2}$ avec $A = \\sqrt[3]{x + 1}$ et $B = 1$. Pour $x \\neq 0$, $x \\geq -1$ : $\\dfrac{\\sqrt[3]{x + 1} - 1}{x} = \\dfrac{(x + 1) - 1}{x\\left(\\sqrt[3]{(x + 1)^2} + \\sqrt[3]{x + 1} + 1\\right)} = \\dfrac{1}{\\sqrt[3]{(x + 1)^2} + \\sqrt[3]{x + 1} + 1}$. Quand $x \\to 0$, le dénominateur tend vers $3$. Donc la limite vaut $\\dfrac{1}{3}$ (c’est aussi le nombre dérivé de $x \\mapsto \\sqrt[3]{x}$ en $1$). Pièges : $0$ regarde le numérateur seul ; $1$ remplace $\\sqrt[3]{x + 1}$ par $x + 1$ ; $3$ renverse la fraction. La « conjuguée » d’une racine carrée ne suffit pas ici : il faut l’identité avec $A^2 + AB + B^2$.",
+     "difficulte": "easy",
+     "cible": "D'après l'exercice #118 (question 1) : identité A³ − B³ pour les racines cubiques.",
+     "theoremes": [
+      "Fonction racine n-ième et puissance rationnelle"
+     ],
+     "bonne": "$\\dfrac{1}{3}$"
+    },
+    {
+     "question": "Soit $f$ la fonction définie sur $\\mathbb{R}$ par $f(x) = \\dfrac{x}{1 + |x|}$. On sait que $f$ est une bijection de $\\mathbb{R}$ vers $J = \\mathopen{]}-1, 1\\mathclose{[}$. Calculer $f^{-1}(x)$ pour tout $x \\in J$.",
+     "distracteurs": [
+      "$f^{-1}(x) = \\dfrac{x}{1 + |x|}$",
+      "$f^{-1}(x) = \\dfrac{x}{1 - x}$",
+      "$f^{-1}(x) = \\dfrac{1 - |x|}{x}$"
+     ],
+     "explication": "On résout $f(y) = x$ en remarquant que $x$ et $y$ ont le même signe (car $1 + |y| > 0$). Soit $x \\in J$. Si $x \\geq 0$ : $y \\geq 0$ et $\\dfrac{y}{1 + y} = x \\Leftrightarrow y = \\dfrac{x}{1 - x}$. Si $x < 0$ : $y < 0$ et $\\dfrac{y}{1 - y} = x \\Leftrightarrow y = \\dfrac{x}{1 + x}$. Les deux cas s’écrivent $y = \\dfrac{x}{1 - |x|}$. Donc $(\\forall x \\in \\mathopen{]}-1, 1\\mathclose{[})$ : $f^{-1}(x) = \\dfrac{x}{1 - |x|}$. Pièges : $f$ n’est pas sa propre réciproque ; $\\dfrac{x}{1 - x}$ ne vaut que pour $x \\geq 0$ (on a oublié le second cas) ; la dernière réponse est l’inverse $\\dfrac{1}{f^{-1}(x)}$, pas $f^{-1}(x)$.",
+     "difficulte": "easy",
+     "cible": "D'après l'exercice #138 (question 2) : réciproque avec valeur absolue, deux cas selon le signe.",
+     "theoremes": [
+      "Théorème de la bijection"
+     ],
+     "bonne": "$f^{-1}(x) = \\dfrac{x}{1 - |x|}$"
+    },
+    {
+     "question": "Soit $f$ la fonction définie sur $\\mathbb{R}$ par $f(x) = \\dfrac{x}{x^2 + 1}$, croissante sur $[-1, 1]$ et décroissante sur $\\mathopen{]}-\\infty, -1]$ et sur $[1, +\\infty\\mathclose{[}$. Quelles affirmations sont vraies ?",
+     "distracteurs": [
+      "$f(\\mathbb{R}) = \\left]-\\dfrac{1}{2}, \\dfrac{1}{2}\\right[$.",
+      "$f\\left([0, +\\infty\\mathclose{[}\\right) = \\left[0, \\dfrac{1}{2}\\right[$, car $\\lim\\limits_{x \\to +\\infty} f(x) = 0$.",
+      "$f$ réalise une bijection de $\\mathbb{R}$ vers $\\left[-\\dfrac{1}{2}, \\dfrac{1}{2}\\right]$."
+     ],
+     "explication": "L’image d’un intervalle par une fonction continue et strictement monotone se lit aux bornes ; si $f$ change de sens, on découpe. Sur $[-1, 1]$ : $f$ continue, strictement croissante, $f(-1) = -\\dfrac{1}{2}$, $f(1) = \\dfrac{1}{2}$ : bijection vers $\\left[-\\dfrac{1}{2}, \\dfrac{1}{2}\\right]$. Sur $[1, +\\infty\\mathclose{[}$ : strictement décroissante, donc l’image est $\\left]\\lim\\limits_{+\\infty} f, f(1)\\right] = \\left]0, \\dfrac{1}{2}\\right]$. Pièges : $\\dfrac{1}{2}$ et $-\\dfrac{1}{2}$ sont atteints (en $1$ et $-1$), donc $f(\\mathbb{R}) = \\left[-\\dfrac{1}{2}, \\dfrac{1}{2}\\right]$ ; de même $f\\left([0, +\\infty\\mathclose{[}\\right) = \\left[0, \\dfrac{1}{2}\\right]$ (maximum en $1$) ; enfin $f$ n’est pas injective sur $\\mathbb{R}$ ($f(2) = f\\left(\\dfrac{1}{2}\\right) = \\dfrac{2}{5}$).",
+     "difficulte": "medium",
+     "cible": "D'après les exercices #108 et #110 : images d'intervalles, découpage selon le sens de variation.",
+     "theoremes": [
+      "Image d'un intervalle par une fonction continue",
+      "Théorème de la bijection"
+     ],
+     "bonnes": [
+      "$f$ réalise une bijection de $[-1, 1]$ vers $\\left[-\\dfrac{1}{2}, \\dfrac{1}{2}\\right]$.",
+      "$f\\left([1, +\\infty\\mathclose{[}\\right) = \\left]0, \\dfrac{1}{2}\\right]$."
+     ]
+    }
+   ]
+  },
+  {
+   "chapitre": "Dérivation et étude des fonctions",
+   "questions": [
+    {
+     "question": "Soit $f$ la fonction définie sur $[1;+\\infty\\mathclose{[}$ par : $f(x) = x - 2\\sqrt{x - 1}$, et $(C_f)$ sa courbe représentative dans un repère orthonormé $(O;\\vec{i};\\vec{j})$. Étudier la dérivabilité de $f$ à droite en $1$ et interpréter géométriquement le résultat.",
+     "distracteurs": [
+      "$f$ n’est pas dérivable à droite en $1$ ; $(C_f)$ admet au point $A(1;1)$ une demi-tangente verticale dirigée vers le haut.",
+      "$f$ est dérivable à droite en $1$ et $f'_d(1) = 1$ ; $(C_f)$ admet en $A(1;1)$ une demi-tangente de coefficient directeur $1$.",
+      "On ne peut pas étudier la dérivabilité à droite en $1$, car $f$ n’est pas définie à gauche de $1$."
+     ],
+     "explication": "On calcule la limite à droite en $1$ du taux d’accroissement. $f(1) = 1$ et, pour $x > 1$ : $\\dfrac{f(x) - f(1)}{x - 1} = \\dfrac{(x - 1) - 2\\sqrt{x - 1}}{x - 1} = 1 - \\dfrac{2}{\\sqrt{x - 1}}$, qui tend vers $-\\infty$ quand $x \\to 1^+$. Donc $f$ n’est pas dérivable à droite en $1$, et comme le taux tend vers $-\\infty$ à droite ($f(x) < f(1)$ juste après $1$), la demi-tangente verticale en $A(1;1)$ est dirigée vers le bas. Pièges : « vers le haut » inverse le sens (à droite, $-\\infty$ veut dire que la courbe descend) ; $f'_d(1) = 1$ ne garde que le terme $x$ ; on étudie justement la dérivabilité à droite parce que $f$ n’est définie qu’à droite de $1$.",
+     "difficulte": "medium",
+     "cible": "D'après l'exercice #127 (question 2) : dérivabilité à droite et sens de la demi-tangente verticale.",
+     "theoremes": [
+      "Dérivabilité à droite et à gauche"
+     ],
+     "bonne": "$f$ n’est pas dérivable à droite en $1$ ; $(C_f)$ admet au point $A(1;1)$ une demi-tangente verticale dirigée vers le bas."
+    },
+    {
+     "question": "Soit $f$ la fonction définie sur $[3, +\\infty\\mathclose{[}$ par $f(x) = \\sqrt[3]{x^3 - 3x^2}$. On admet que $f$ est une bijection de $[3, +\\infty\\mathclose{[}$ vers $J = [0, +\\infty\\mathclose{[}$ et que, pour $x > 3$ : $f'(x) = \\dfrac{x(x - 2)}{\\sqrt[3]{\\left(x^3 - 3x^2\\right)^2}}$. Montrer que $f^{-1}$ est dérivable en $2\\sqrt[3]{2}$ et calculer $\\left(f^{-1}\\right)'(2\\sqrt[3]{2})$.",
+     "distracteurs": [
+      "$\\left(f^{-1}\\right)'(2\\sqrt[3]{2}) = \\sqrt[3]{2}$",
+      "$\\left(f^{-1}\\right)'(2\\sqrt[3]{2}) = \\dfrac{1}{4}$",
+      "$f^{-1}$ n’est pas dérivable en $2\\sqrt[3]{2}$, car $2\\sqrt[3]{2} \\notin [3, +\\infty\\mathclose{[}$."
+     ],
+     "explication": "On cherche l’antécédent $y_0$ de $2\\sqrt[3]{2}$ ; si $f'(y_0) \\neq 0$, alors $\\left(f^{-1}\\right)'(f(y_0)) = \\dfrac{1}{f'(y_0)}$. $f(4) = \\sqrt[3]{64 - 48} = \\sqrt[3]{16} = 2\\sqrt[3]{2}$, donc $f^{-1}(2\\sqrt[3]{2}) = 4$. $f$ est dérivable en $4$ et $f'(4) = \\dfrac{4 \\times 2}{\\sqrt[3]{256}} = \\dfrac{8}{4\\sqrt[3]{4}} = \\dfrac{2}{\\sqrt[3]{4}} = \\sqrt[3]{2} \\neq 0$. Donc $f^{-1}$ est dérivable en $2\\sqrt[3]{2}$ et $\\left(f^{-1}\\right)'(2\\sqrt[3]{2}) = \\dfrac{1}{\\sqrt[3]{2}}$. Pièges : $\\sqrt[3]{2}$ est $f'(4)$, on a oublié d’inverser ; $\\dfrac{1}{4}$ inverse l’antécédent au lieu du nombre dérivé ; $2\\sqrt[3]{2}$ doit appartenir à $J$ (ensemble de départ de $f^{-1}$), pas à $[3, +\\infty\\mathclose{[}$.",
+     "difficulte": "medium",
+     "cible": "D'après l'exercice #197 (question 4.b) : dérivée de la réciproque en un point, antécédent à trouver.",
+     "theoremes": [
+      "Dérivée de la fonction réciproque"
+     ],
+     "bonne": "$\\left(f^{-1}\\right)'(2\\sqrt[3]{2}) = \\dfrac{1}{\\sqrt[3]{2}}$"
+    },
+    {
+     "question": "Soit $f$ la fonction définie sur $[0, +\\infty\\mathclose{[}$ par $f(x) = 3\\sqrt[3]{x + 1} - x$. On a, pour $x \\geq 0$ : $f'(x) = \\dfrac{1 - \\sqrt[3]{(x + 1)^2}}{\\sqrt[3]{(x + 1)^2}}$, et $f$ réalise une bijection de $[0, +\\infty\\mathclose{[}$ vers $J = \\mathopen{]}-\\infty, 3]$. Étudier la dérivabilité de $f^{-1}$ sur $J$.",
+     "distracteurs": [
+      "$f^{-1}$ est dérivable sur $J$ tout entier, car $f$ est dérivable sur $[0, +\\infty\\mathclose{[}$.",
+      "$f^{-1}$ est dérivable sur $J$ et $\\left(f^{-1}\\right)'_g(3) = 0$, car $f'(0) = 0$.",
+      "$f^{-1}$ n’est dérivable en aucun point de $J$, car $f$ est strictement décroissante."
+     ],
+     "explication": "$f^{-1}$ est dérivable en $y_0 = f(x_0)$ dès que $f'(x_0) \\neq 0$ ; là où $f'$ s’annule, on étudie le taux d’accroissement. Pour $x > 0$, $\\sqrt[3]{(x + 1)^2} > 1$, donc $f'(x) < 0$ ; et $f'(0) = 0$ avec $f(0) = 3$. Pour $y_0 < 3$, $x_0 = f^{-1}(y_0) > 0$ et $f'(x_0) \\neq 0$ : $f^{-1}$ est dérivable en $y_0$. En $3$ : $\\dfrac{f^{-1}(y) - f^{-1}(3)}{y - 3} = \\dfrac{x - 0}{f(x) - f(0)} \\to \\pm\\infty$ car $f'(0) = 0$. Donc $f^{-1}$ est dérivable sur $\\mathopen{]}-\\infty, 3\\mathclose{[}$, pas à gauche en $3$, et $(C_{f^{-1}})$ a une demi-tangente verticale en $(3, 0)$ (symétrique de la demi-tangente horizontale de $(C_f)$ en $(0, 3)$). Pièges : « $f$ dérivable » ne suffit pas, il faut $f' \\neq 0$ ; l’inverse de $0$ n’est pas $0$ ; la monotonie ne gêne en rien la dérivabilité.",
+     "difficulte": "hard",
+     "cible": "D'après l'exercice #200 (question 3.b) : f'(x0) = 0 ⇒ réciproque non dérivable, demi-tangente verticale.",
+     "theoremes": [
+      "Dérivée de la fonction réciproque",
+      "Dérivabilité à droite et à gauche"
+     ],
+     "bonne": "$f^{-1}$ est dérivable sur $\\mathopen{]}-\\infty, 3\\mathclose{[}$ mais pas à gauche en $3$ ; sa courbe admet une demi-tangente verticale au point $(3, 0)$."
+    },
+    {
+     "question": "Soit $f$ la fonction définie sur $\\mathbb{R}$ par : $f(x) = 2x^2 + b$ si $x \\leq 2$ et $f(x) = 2ax^3 + 11a$ si $x > 2$, où $a$ et $b$ sont deux nombres réels. Déterminer $a$ et $b$ pour que $f$ soit dérivable en $2$.",
+     "distracteurs": [
+      "$a = \\dfrac{1}{3}$, et $b$ quelconque",
+      "$a = \\dfrac{8}{27}$ et $b = 0$",
+      "$a = \\dfrac{1}{3}$ et $b = -1$"
+     ],
+     "explication": "$f$ est dérivable en $2$ si et seulement si elle est continue en $2$ et dérivable à gauche et à droite en $2$ avec le même nombre dérivé. Continuité : $f(2) = 8 + b$ et $\\lim\\limits_{x \\to 2^+} f(x) = 16a + 11a = 27a$, donc $27a = 8 + b$. Avec la continuité, les nombres dérivés à gauche et à droite sont ceux des deux expressions : $f'_g(2) = 4 \\times 2 = 8$ et $f'_d(2) = 6a \\times 4 = 24a$. Donc $24a = 8$, soit $a = \\dfrac{1}{3}$, puis $b = 27a - 8 = 1$. Pièges : sans la continuité, $f$ n’est pas dérivable en $2$, quel que soit l’accord des dérivées ($b$ n’est pas quelconque) ; $a = \\dfrac{8}{27}$, $b = 0$ assure la continuité seulement ; $b = -1$ vient d’une erreur de signe en isolant $b$.",
+     "difficulte": "medium",
+     "cible": "D'après l'exercice #195 : dérivabilité d'une fonction par morceaux = continuité + mêmes nombres dérivés.",
+     "theoremes": [
+      "Dérivabilité à droite et à gauche"
+     ],
+     "bonne": "$a = \\dfrac{1}{3}$ et $b = 1$"
+    },
+    {
+     "question": "Soit $f$ la fonction définie sur $\\mathbb{R}$ par : $f(x) = \\left(x^2 - 1\\right)^3\\left(x^4 - 16\\right)^2$. Que peut-on affirmer des racines de $f'$ autres que $-2$, $-1$, $1$ et $2$ ?",
+     "distracteurs": [
+      "$f'$ en a au moins quatre, une pour chaque racine de $f$.",
+      "$f'$ en a exactement une, $0$, car $f$ est paire.",
+      "$f'$ n’en a pas : les racines de $f'$ sont celles de $f$."
+     ],
+     "explication": "On repère les racines de $f$, puis on applique le théorème de Rolle sur chacun des intervalles qu’elles délimitent. $f(-2) = f(-1) = f(1) = f(2) = 0$. $f$ est un polynôme : continue sur $[-2, -1]$, $[-1, 1]$, $[1, 2]$ et dérivable sur leurs intérieurs. D’après le théorème de Rolle, il existe $c_1 \\in \\mathopen{]}-2, -1\\mathclose{[}$, $c_2 \\in \\mathopen{]}-1, 1\\mathclose{[}$ et $c_3 \\in \\mathopen{]}1, 2\\mathclose{[}$ tels que $f'(c_1) = f'(c_2) = f'(c_3) = 0$. Donc $f'$ admet au moins trois racines distinctes autres que $-2$, $-1$, $1$, $2$. Pièges : quatre racines de $f$ délimitent trois intervalles, pas quatre ; la parité donne $f'(0) = 0$ (c’est $c_2$), mais pas l’unicité ; Rolle donne des racines de $f'$ entre celles de $f$.",
+     "difficulte": "easy",
+     "cible": "D'après l'exercice #203 : théorème de Rolle sur les intervalles délimités par les racines de f.",
+     "theoremes": [
+      "Théorème de Rolle"
+     ],
+     "bonne": "$f'$ en a au moins trois, une dans chacun des intervalles $\\mathopen{]}-2, -1\\mathclose{[}$, $\\mathopen{]}-1, 1\\mathclose{[}$ et $\\mathopen{]}1, 2\\mathclose{[}$."
+    },
+    {
+     "question": "Soit $x > 0$. En appliquant le théorème des accroissements finis à la fonction $\\arctan$ sur $[0, x]$, quel encadrement de $\\arctan x$ obtient-on ?",
+     "distracteurs": [
+      "$\\dfrac{1}{1 + x^2} < \\arctan x < 1$",
+      "$x < \\arctan x < \\dfrac{x}{1 + x^2}$",
+      "$0 < \\arctan x < \\dfrac{x}{1 + x^2}$"
+     ],
+     "explication": "On applique le théorème des accroissements finis à $\\arctan$ sur $[0, x]$, puis on encadre $\\dfrac{1}{1 + c^2}$. Soit $x > 0$ : $\\arctan$ est continue sur $[0, x]$ et dérivable sur $\\mathopen{]}0, x\\mathclose{[}$, donc il existe $c \\in \\mathopen{]}0, x\\mathclose{[}$ tel que $\\arctan x - \\arctan 0 = \\dfrac{x}{1 + c^2}$. Comme $0 < c < x$ : $1 < 1 + c^2 < 1 + x^2$, d’où $\\dfrac{1}{1 + x^2} < \\dfrac{1}{1 + c^2} < 1$. En multipliant par $x > 0$, on obtient l’encadrement. Donc $\\dfrac{x}{1 + x^2} < \\arctan x < x$. Pièges : oublier le facteur $x - 0$ donne $\\dfrac{1}{1 + x^2} < \\arctan x < 1$ ; la fonction $t \\mapsto \\dfrac{1}{1 + t^2}$ est décroissante sur $\\mathbb{R}^+$, l’ordre ne se conserve pas en passant à l’inverse ; enfin $\\arctan x < \\dfrac{x}{1 + x^2}$ est faux (ex. $x = 1$ : $\\dfrac{\\pi}{4} > \\dfrac{1}{2}$).",
+     "difficulte": "medium",
+     "cible": "D'après les exercices #205, #335 (3.a) et le DS #262 (8.a) : TAF appliqué à arctan.",
+     "theoremes": [
+      "Théorème des accroissements finis (TAF)"
+     ],
+     "bonne": "$\\dfrac{x}{1 + x^2} < \\arctan x < x$"
+    },
+    {
+     "question": "Soit $f$ la fonction définie sur $\\left[\\dfrac{\\pi}{6}, \\dfrac{\\pi}{2}\\right]$ par $f(x) = \\dfrac{\\pi}{2} - \\sin x$, et $\\alpha$ l’unique solution de l’équation $f(x) = x$ dans cet intervalle. En majorant $|f'|$ sur $\\left[\\dfrac{\\pi}{6}, \\dfrac{\\pi}{2}\\right]$, puis en appliquant l’inégalité des accroissements finis entre $x$ et $\\alpha$, quelle inégalité obtient-on pour tout $x$ de cet intervalle ?",
+     "distracteurs": [
+      "$|f(x) - \\alpha| \\leq \\dfrac{1}{2}|x - \\alpha|$",
+      "$|f(x) - \\alpha| \\geq \\dfrac{\\sqrt{3}}{2}|x - \\alpha|$",
+      "$|f(x) - \\alpha| \\leq \\dfrac{\\sqrt{3}}{2}$"
+     ],
+     "explication": "On écrit $\\alpha = f(\\alpha)$ et on applique l’inégalité des accroissements finis à $f$ entre $x$ et $\\alpha$. $f$ est dérivable et $f'(t) = -\\cos t$. Sur $\\left[\\dfrac{\\pi}{6}, \\dfrac{\\pi}{2}\\right]$, $\\cos$ est décroissante et positive, donc $0 \\leq \\cos t \\leq \\cos\\dfrac{\\pi}{6} = \\dfrac{\\sqrt{3}}{2}$, soit $|f'(t)| \\leq \\dfrac{\\sqrt{3}}{2}$. Donc $|f(x) - \\alpha| = |f(x) - f(\\alpha)| \\leq \\dfrac{\\sqrt{3}}{2}|x - \\alpha|$. Pièges : $\\dfrac{1}{2} = \\sin\\dfrac{\\pi}{6}$, ce n’est pas le maximum de $|\\cos|$ sur l’intervalle ; l’inégalité des accroissements finis majore, elle ne minore pas ; sans le facteur $|x - \\alpha|$, on n’a écrit que la majoration de $|f'|$.",
+     "difficulte": "medium",
+     "cible": "D'après l'exercice #291 (question 2) : majorer |f'| sur l'intervalle, puis inégalité des accroissements finis avec α = f(α).",
+     "theoremes": [
+      "Inégalité des accroissements finis"
+     ],
+     "bonne": "$|f(x) - \\alpha| \\leq \\dfrac{\\sqrt{3}}{2}|x - \\alpha|$"
+    },
+    {
+     "question": "Soit $f$ la fonction définie sur $\\mathbb{R}^+$ par $f(x) = (x - 1)^2\\arctan\\left(\\dfrac{1}{x}\\right)$ si $x > 0$ et $f(0) = \\dfrac{\\pi}{2}$. Sachant que $(\\forall x > 0)$ : $\\arctan x + \\arctan\\dfrac{1}{x} = \\dfrac{\\pi}{2}$, étudier la dérivabilité de $f$ à droite en $0$.",
+     "distracteurs": [
+      "$f$ est dérivable à droite en $0$ et $f'_d(0) = -\\pi$.",
+      "$f$ est dérivable à droite en $0$ et $f'_d(0) = 1 - \\pi$.",
+      "$f$ n’est pas dérivable à droite en $0$, car $\\arctan\\dfrac{1}{x}$ n’est pas définie en $0$."
+     ],
+     "explication": "On remplace $\\arctan\\dfrac{1}{x}$ par $\\dfrac{\\pi}{2} - \\arctan x$ dans le taux d’accroissement, puis on utilise $\\lim\\limits_{x \\to 0} \\dfrac{\\arctan x}{x} = 1$. Pour $x > 0$ : $f(x) - f(0) = \\dfrac{\\pi}{2}\\left((x - 1)^2 - 1\\right) - (x - 1)^2\\arctan x = \\dfrac{\\pi}{2}x(x - 2) - (x - 1)^2\\arctan x$, donc $\\dfrac{f(x) - f(0)}{x} = \\dfrac{\\pi}{2}(x - 2) - (x - 1)^2\\dfrac{\\arctan x}{x} \\to -\\pi - 1$. Donc $f$ est dérivable à droite en $0$ et $f'_d(0) = -\\pi - 1$. Pièges : $-\\pi$ oublie le second terme, qui tend vers $-1$ ; $1 - \\pi$ vient d’une erreur de signe sur ce terme ; $f(0)$ est défini à part, et c’est la limite du taux qui décide.",
+     "difficulte": "hard",
+     "cible": "D'après le DS #262 (partie B, 7.b) : relation arctan x + arctan(1/x) puis limite usuelle arctan x / x.",
+     "theoremes": [
+      "Dérivabilité à droite et à gauche",
+      "Dérivée d'une fonction composée"
+     ],
+     "bonne": "$f$ est dérivable à droite en $0$ et $f'_d(0) = -\\pi - 1$."
+    },
+    {
+     "question": "Soit $f$ la fonction définie sur $\\mathbb{R}^+$ par $f(x) = (x - 1)^2\\arctan\\left(\\dfrac{1}{x}\\right)$ si $x > 0$ et $f(0) = \\dfrac{\\pi}{2}$, et $(C)$ sa courbe. Sachant que $(\\forall t > 0)$ : $\\dfrac{t}{1 + t^2} < \\arctan t < t$, quelle droite est asymptote à $(C)$ au voisinage de $+\\infty$ ?",
+     "distracteurs": [
+      "La droite d’équation $y = x - 1$",
+      "La droite d’équation $y = x + 2$",
+      "La droite d’équation $y = \\dfrac{\\pi}{2}x$"
+     ],
+     "explication": "On applique l’encadrement avec $t = \\dfrac{1}{x}$, on multiplie par $(x - 1)^2$, puis on encadre $f(x) - (x - 2)$. Pour $x > 1$ : $\\dfrac{x(x - 1)^2}{x^2 + 1} < f(x) < \\dfrac{(x - 1)^2}{x} = x - 2 + \\dfrac{1}{x}$. Or $\\dfrac{x(x - 1)^2}{x^2 + 1} - (x - 2) = \\dfrac{2}{x^2 + 1}$, donc $\\dfrac{2}{x^2 + 1} < f(x) - (x - 2) < \\dfrac{1}{x}$, et par le théorème des gendarmes $\\lim\\limits_{x \\to +\\infty}\\left(f(x) - (x - 2)\\right) = 0$. Donc la droite $y = x - 2$ est asymptote à $(C)$ au voisinage de $+\\infty$. Pièges : $y = x - 1$ remplace $(x - 1)^2$ par $x(x - 1)$ ; $y = x + 2$ est une erreur de signe ; $y = \\dfrac{\\pi}{2}x$ confond avec $\\arctan X \\to \\dfrac{\\pi}{2}$, alors qu’ici $\\dfrac{1}{x} \\to 0$.",
+     "difficulte": "hard",
+     "cible": "D'après le DS #262 (partie B, 8.b) : asymptote oblique par encadrement et gendarmes.",
+     "theoremes": [
+      "Branches infinies et asymptotes"
+     ],
+     "bonne": "La droite d’équation $y = x - 2$"
+    },
+    {
+     "question": "Soit $f$ la fonction définie sur $\\mathbb{R}$ par $f(x) = 1 + \\dfrac{x}{\\sqrt{1 + x^2}}$, et $(C)$ sa courbe. On a $f''(x) = \\dfrac{-3x}{(1 + x^2)^2\\sqrt{1 + x^2}}$ et la tangente $T$ à $(C)$ au point d’inflexion $A(0, 1)$ a pour équation $y = x + 1$. Quelle est la position relative de $(C)$ et de $T$ ?",
+     "distracteurs": [
+      "$(C)$ est au-dessous de $T$ sur $\\mathopen{]}-\\infty, 0]$ et au-dessus sur $[0, +\\infty\\mathclose{[}$.",
+      "$(C)$ est au-dessous de $T$ sur $\\mathbb{R}$, car $T$ est tangente à $(C)$.",
+      "$(C)$ est au-dessus de $T$ sur $\\mathbb{R}$, car $f$ est strictement croissante."
+     ],
+     "explication": "On étudie le signe de $d(x) = f(x) - (x + 1)$, ou on utilise la concavité. $f''(x)$ a le signe de $-3x$ : $(C)$ est convexe sur $\\mathopen{]}-\\infty, 0]$, donc au-dessus de ses tangentes, et concave sur $[0, +\\infty\\mathclose{[}$, donc au-dessous. Directement : pour $x \\geq 0$, l’inégalité des accroissements finis ($0 < f' \\leq 1$) donne $f(x) - 1 \\leq x$, soit $d(x) \\leq 0$, et $x \\mapsto f(x) - 1$ est impaire. Donc $(C)$ est au-dessus de $T$ sur $\\mathopen{]}-\\infty, 0]$ et au-dessous sur $[0, +\\infty\\mathclose{[}$ : $T$ traverse $(C)$ en $A$, comme en tout point d’inflexion. Pièges : la première réponse inverse les deux intervalles (signe de $-3x$) ; une tangente peut traverser la courbe, c’est le cas au point d’inflexion ; la croissance de $f$ ne dit rien de la position par rapport à une tangente.",
+     "difficulte": "medium",
+     "cible": "D'après l'exercice #333 (questions 3 à 5) : position courbe / tangente au point d'inflexion.",
+     "theoremes": [
+      "Concavité et point d'inflexion",
+      "Équation de la tangente"
+     ],
+     "bonne": "$(C)$ est au-dessus de $T$ sur $\\mathopen{]}-\\infty, 0]$ et au-dessous sur $[0, +\\infty\\mathclose{[}$."
+    },
+    {
+     "question": "Soit $f$ la fonction définie sur $[0, 1]$ par $f(x) = \\operatorname{Arctan}\\left(\\sqrt{\\dfrac{x}{1 - x}}\\right)$ si $x \\in [0, 1\\mathclose{[}$ et $f(1) = \\dfrac{\\pi}{2}$, et $(C)$ sa courbe. Quel point est centre de symétrie de $(C)$ ?",
+     "distracteurs": [
+      "$I\\left(\\dfrac{1}{2}, \\dfrac{\\pi}{2}\\right)$",
+      "L’origine $O$, car $\\operatorname{Arctan}$ est impaire.",
+      "Aucun : $f$ n’est ni paire ni impaire."
+     ],
+     "explication": "$I(a, b)$ est centre de symétrie de $(C)$ si, pour tout $x \\in [0, 1]$, $2a - x \\in [0, 1]$ et $f(2a - x) + f(x) = 2b$. Avec $a = \\dfrac{1}{2}$ : pour $x \\in \\mathopen{]}0, 1\\mathclose{[}$, $\\sqrt{\\dfrac{1 - x}{x}} = \\dfrac{1}{\\sqrt{\\frac{x}{1 - x}}}$, et pour $t > 0$, $\\operatorname{Arctan} t + \\operatorname{Arctan}\\dfrac{1}{t} = \\dfrac{\\pi}{2}$ ; donc $f(1 - x) + f(x) = \\dfrac{\\pi}{2}$ (et $f(0) + f(1) = \\dfrac{\\pi}{2}$). Donc $2b = \\dfrac{\\pi}{2}$ et $I\\left(\\dfrac{1}{2}, \\dfrac{\\pi}{4}\\right)$ est centre de symétrie de $(C)$ (c’est aussi son point d’inflexion). Pièges : $\\dfrac{\\pi}{2}$ est la somme $f(1 - x) + f(x) = 2b$, pas $b$ ; $(C)$ est définie sur $[0, 1]$, elle ne peut pas être symétrique par rapport à $O$ ; une courbe peut avoir un centre de symétrie autre que $O$ sans que $f$ soit impaire.",
+     "difficulte": "medium",
+     "cible": "D'après l'exercice #343 (question 6) : centre de symétrie I(a,b) avec f(2a−x) + f(x) = 2b.",
+     "theoremes": [
+      "Centre et axe de symétrie d'une courbe"
+     ],
+     "bonne": "$I\\left(\\dfrac{1}{2}, \\dfrac{\\pi}{4}\\right)$"
+    },
+    {
+     "question": "En utilisant la notion de dérivée, calculer $\\lim\\limits_{x \\to \\frac{\\sqrt{3}}{3}} \\dfrac{\\operatorname{Arctan} x - \\frac{\\pi}{6}}{x - \\frac{\\sqrt{3}}{3}}$.",
+     "distracteurs": [
+      "$\\dfrac{4}{3}$",
+      "$\\dfrac{1}{4}$",
+      "$1$"
+     ],
+     "explication": "On reconnaît un taux d’accroissement : la limite est le nombre dérivé de $\\operatorname{Arctan}$ en $\\dfrac{\\sqrt{3}}{3}$. Comme $\\tan\\dfrac{\\pi}{6} = \\dfrac{\\sqrt{3}}{3}$ et $\\dfrac{\\pi}{6} \\in \\left]-\\dfrac{\\pi}{2}, \\dfrac{\\pi}{2}\\right[$, on a $\\operatorname{Arctan}\\dfrac{\\sqrt{3}}{3} = \\dfrac{\\pi}{6}$. $\\operatorname{Arctan}$ est dérivable sur $\\mathbb{R}$, de dérivée $x \\mapsto \\dfrac{1}{1 + x^2}$, donc la limite vaut $\\dfrac{1}{1 + \\frac{1}{3}} = \\dfrac{3}{4}$. Pièges : $\\dfrac{4}{3} = 1 + \\tan^2\\dfrac{\\pi}{6}$ est la dérivée de $\\tan$ en $\\dfrac{\\pi}{6}$, on a confondu $\\operatorname{Arctan}$ et sa réciproque ; $\\dfrac{1}{4}$ prend $x^2 = 3$ au lieu de $\\dfrac{1}{3}$ ; $1$ confond avec $\\lim\\limits_{x \\to 0} \\dfrac{\\operatorname{Arctan} x}{x}$.",
+     "difficulte": "easy",
+     "cible": "D'après l'exercice #284 (question 1) : limite = nombre dérivé.",
+     "theoremes": [
+      "Dérivées des fonctions usuelles"
+     ],
+     "bonne": "$\\dfrac{3}{4}$"
+    },
+    {
+     "question": "Pour tout réel $x \\neq 0$, on pose $k(x) = \\arctan x + \\arctan\\dfrac{1}{x}$. On vérifie que $k$ est dérivable sur $\\mathbb{R}^*$ et que $k'(x) = 0$. Que vaut $k(x)$ ?",
+     "distracteurs": [
+      "$k(x) = \\dfrac{\\pi}{2}$ pour tout $x \\neq 0$, car $k' = 0$ sur $\\mathbb{R}^*$.",
+      "$k(x) = 0$ pour tout $x \\neq 0$, car $k$ est impaire.",
+      "$k(x) = \\dfrac{\\pi}{4}$ pour tout $x \\neq 0$, car $k(1) = \\dfrac{\\pi}{4}$."
+     ],
+     "explication": "Une fonction dérivable de dérivée nulle sur un INTERVALLE y est constante ; $\\mathbb{R}^*$ est la réunion de deux intervalles. $k'(x) = \\dfrac{1}{1 + x^2} - \\dfrac{1}{x^2} \\times \\dfrac{1}{1 + \\frac{1}{x^2}} = 0$. Sur $\\mathopen{]}0, +\\infty\\mathclose{[}$, $k$ est constante, égale à $k(1) = 2 \\times \\dfrac{\\pi}{4} = \\dfrac{\\pi}{2}$ ; sur $\\mathopen{]}-\\infty, 0\\mathclose{[}$, elle est constante, égale à $k(-1) = -\\dfrac{\\pi}{2}$. Donc $k(x) = \\dfrac{\\pi}{2}$ si $x > 0$ et $k(x) = -\\dfrac{\\pi}{2}$ si $x < 0$. Pièges : la constante peut changer d’un intervalle à l’autre ; $k$ est impaire, mais une fonction impaire n’est pas nulle pour autant ; $k(1) = \\arctan 1 + \\arctan 1 = \\dfrac{\\pi}{2}$, pas $\\dfrac{\\pi}{4}$.",
+     "difficulte": "hard",
+     "cible": "D'après le DS #262 (7.a) et l'exercice #196 : dérivée nulle sur une réunion d'intervalles.",
+     "theoremes": [
+      "Dérivée d'une fonction composée",
+      "Dérivées des fonctions usuelles"
+     ],
+     "bonne": "$k(x) = \\dfrac{\\pi}{2}$ si $x > 0$, et $k(x) = -\\dfrac{\\pi}{2}$ si $x < 0$."
+    },
+    {
+     "question": "Soit $f$ la fonction définie sur $\\mathbb{R}$ par $f(x) = \\dfrac{\\operatorname{Arctan} x}{x}$ si $x \\neq 0$ et $f(0) = 1$, et $(C)$ sa courbe. Quelles affirmations sont vraies ?",
+     "distracteurs": [
+      "$f$ est impaire, comme $\\operatorname{Arctan}$.",
+      "$\\lim\\limits_{x \\to +\\infty} f(x) = \\dfrac{\\pi}{2}$.",
+      "$f$ n’est pas dérivable en $0$, car $f(0)$ est défini à part."
+     ],
+     "explication": "Parité : $\\mathbb{R}$ est symétrique et $f(-x) = \\dfrac{-\\operatorname{Arctan} x}{-x} = f(x)$ : $f$ est paire (quotient de deux fonctions impaires). En $0$ : pour $x > 0$, l’encadrement par les accroissements finis $\\dfrac{x}{1 + x^2} < \\operatorname{Arctan} x < x$ donne $-\\dfrac{x}{1 + x^2} < \\dfrac{f(x) - 1}{x} < 0$, donc le taux tend vers $0$ à droite, et à gauche par parité. Donc $f'(0) = 0$ : tangente horizontale en $(0, 1)$. En $+\\infty$ : $\\operatorname{Arctan} x \\to \\dfrac{\\pi}{2}$ et $x \\to +\\infty$, donc $f(x) \\to 0$ (asymptote $y = 0$). Pièges : le quotient de deux fonctions impaires est pair ; $\\dfrac{\\pi}{2}$ est la limite du numérateur seul ; une valeur définie à part n’empêche pas la dérivabilité, c’est la limite du taux qui décide.",
+     "difficulte": "medium",
+     "cible": "D'après les exercices #342 et #339 : parité, dérivabilité en 0 par encadrement, limite en +∞.",
+     "theoremes": [
+      "Fonctions paires et impaires",
+      "Dérivabilité à droite et à gauche"
+     ],
+     "bonnes": [
+      "$f$ est paire.",
+      "$f$ est dérivable en $0$ et $f'(0) = 0$ : $(C)$ admet une tangente horizontale au point $(0, 1)$."
+     ]
+    }
+   ]
+  },
+  {
+   "chapitre": "Suites numériques",
+   "questions": [
+    {
+     "question": "On considère les suites $(a_n)$, $(u_n)$ et $(S_n)$ définies par : $a_n = \\arctan(n!)$, $u_n = a_{n+1} - a_n$ et $S_n = \\sum\\limits_{k=0}^{n} u_k$. Montrer que la suite $(S_n)$ est convergente et calculer sa limite.",
+     "distracteurs": [
+      "$(S_n)$ converge et $\\lim\\limits_{n \\to +\\infty} S_n = \\dfrac{\\pi}{2}$.",
+      "$(S_n)$ converge et $\\lim\\limits_{n \\to +\\infty} S_n = 0$, car $\\lim\\limits_{n \\to +\\infty} u_n = 0$.",
+      "$(S_n)$ diverge, car c’est une somme de $n + 1$ termes."
+     ],
+     "explication": "La somme $S_n$ est télescopique : ses termes se simplifient deux à deux. $S_n = (a_1 - a_0) + (a_2 - a_1) + \\dots + (a_{n+1} - a_n) = a_{n+1} - a_0$. Or $a_0 = \\arctan(0!) = \\arctan 1 = \\dfrac{\\pi}{4}$, et $(n + 1)! \\to +\\infty$ avec $\\lim\\limits_{x \\to +\\infty} \\arctan x = \\dfrac{\\pi}{2}$, donc $a_{n+1} \\to \\dfrac{\\pi}{2}$ par composition. Donc $(S_n)$ converge et $\\lim\\limits_{n \\to +\\infty} S_n = \\dfrac{\\pi}{2} - \\dfrac{\\pi}{4} = \\dfrac{\\pi}{4}$. Pièges : $0! = 1$, pas $0$, donc $a_0 \\neq 0$ ; que $u_n \\to 0$ ne dit rien de la limite de la somme ; une somme d’un nombre croissant de termes peut converger.",
+     "difficulte": "easy",
+     "cible": "D'après l'exercice #512 : somme télescopique, 0! = 1, limite composée avec arctan.",
+     "theoremes": [
+      "Convergence et divergence",
+      "Limite et continuité d'une fonction composée"
+     ],
+     "bonne": "$(S_n)$ converge et $\\lim\\limits_{n \\to +\\infty} S_n = \\dfrac{\\pi}{4}$."
+    },
+    {
+     "question": "On considère la suite $(v_n)_{n \\geq 2}$ définie par $v_n = \\sum\\limits_{k=2}^{n} \\dfrac{1}{k^2 - 1}$. Sachant que $\\dfrac{1}{k - 1} - \\dfrac{1}{k + 1} = \\dfrac{2}{k^2 - 1}$, quelle est la limite de $(v_n)$ ?",
+     "distracteurs": [
+      "$\\dfrac{1}{2}$",
+      "$\\dfrac{3}{2}$",
+      "$1$"
+     ],
+     "explication": "On sépare la somme en deux sommes dont la plupart des termes se compensent ; ici l’écart entre les deux fractions est de $2$, il reste donc deux termes au début et deux à la fin. $v_n = \\dfrac{1}{2}\\sum\\limits_{k=2}^{n}\\left(\\dfrac{1}{k - 1} - \\dfrac{1}{k + 1}\\right) = \\dfrac{1}{2}\\left(1 + \\dfrac{1}{2} - \\dfrac{1}{n} - \\dfrac{1}{n + 1}\\right)$. Donc $\\lim\\limits_{n \\to +\\infty} v_n = \\dfrac{1}{2} \\times \\dfrac{3}{2} = \\dfrac{3}{4}$. Pièges : $\\dfrac{1}{2}$ télescope comme si les fractions étaient consécutives (il ne resterait que $1$) ; $\\dfrac{3}{2}$ oublie le facteur $\\dfrac{1}{2}$ ; $1$ cumule les deux erreurs.",
+     "difficulte": "medium",
+     "cible": "D'après l'exercice #513 (question 2) : somme « télescopique à pas 2 ».",
+     "theoremes": [
+      "Somme de termes consécutifs",
+      "Convergence et divergence"
+     ],
+     "bonne": "$\\dfrac{3}{4}$"
+    },
+    {
+     "question": "On considère la suite $(u_n)$ définie par $u_0 = 1$ et $u_{n+1} = 1 + \\dfrac{1}{1 + u_n}$. On a montré que $u_n \\in \\left[1, \\dfrac{3}{2}\\right]$ et que $\\left|u_{n+1} - \\sqrt{2}\\right| \\leq \\dfrac{1}{4}\\left|u_n - \\sqrt{2}\\right|$ pour tout $n$. Que peut-on conclure ?",
+     "distracteurs": [
+      "$(u_n)$ n’a pas de limite, car elle n’est pas monotone.",
+      "$(u_n)$ converge vers $\\dfrac{3}{2}$, car elle est majorée par $\\dfrac{3}{2}$.",
+      "$(u_n)$ converge vers $\\sqrt{2}$ ou vers $-\\sqrt{2}$, car $\\ell^2 = 2$."
+     ],
+     "explication": "On itère l’inégalité : par récurrence, $\\left|u_n - \\sqrt{2}\\right| \\leq \\left(\\dfrac{1}{4}\\right)^n\\left|u_0 - \\sqrt{2}\\right|$, et $\\left(\\dfrac{1}{4}\\right)^n \\to 0$ car $-1 < \\dfrac{1}{4} < 1$. D’après le théorème des gendarmes, $\\left|u_n - \\sqrt{2}\\right| \\to 0$. Donc $(u_n)$ converge et $\\lim\\limits_{n \\to +\\infty} u_n = \\sqrt{2}$. Pièges : une suite peut converger sans être monotone (ici les termes sautent de part et d’autre de $\\sqrt{2}$) ; un majorant n’est pas forcément la limite ; $-\\sqrt{2}$ est exclu puisque $u_n \\geq 1$.",
+     "difficulte": "medium",
+     "cible": "D'après les exercices #518 et #531 : suite non monotone qui converge, inégalité |u(n+1) − ℓ| ≤ k|u(n) − ℓ|.",
+     "theoremes": [
+      "Suites récurrentes u(n+1) = f(u(n))",
+      "Théorème des gendarmes"
+     ],
+     "bonne": "$(u_n)$ converge et $\\lim\\limits_{n \\to +\\infty} u_n = \\sqrt{2}$."
+    },
+    {
+     "question": "Soit $(u_n)$ la suite définie par $u_0 = 4$ et $u_{n+1} = \\dfrac{1}{2}\\left(\\dfrac{3}{u_n} + u_n\\right)$. On a montré que $(\\forall n \\in \\mathbb{N})$ : $u_n > \\sqrt{3}$ et que $(u_n)$ est décroissante. Que peut-on en déduire ?",
+     "distracteurs": [
+      "$(u_n)$ converge vers $\\sqrt{3}$, car elle est minorée par $\\sqrt{3}$.",
+      "$(u_n)$ converge vers $0$, car elle est décroissante et minorée par $0$.",
+      "$(u_n)$ tend vers $-\\infty$, car elle est décroissante."
+     ],
+     "explication": "Une suite décroissante et minorée converge ; sa limite se calcule ensuite. $(u_n)$ est décroissante et minorée par $\\sqrt{3}$ : elle converge vers un réel $\\ell$, et par passage à la limite dans $u_n > \\sqrt{3}$, $\\ell \\geq \\sqrt{3} > 0$. La fonction $x \\mapsto \\dfrac{1}{2}\\left(\\dfrac{3}{x} + x\\right)$ est continue en $\\ell$, donc $\\ell = \\dfrac{1}{2}\\left(\\dfrac{3}{\\ell} + \\ell\\right)$, soit $\\ell^2 = 3$. Donc $\\ell = \\sqrt{3}$. Pièges : être minorée par $\\sqrt{3}$ ne prouve pas que la limite vaut $\\sqrt{3}$ (elle est minorée par $1$ aussi) ; la limite n’est pas « le » minorant qu’on a choisi ; une suite décroissante et minorée ne peut pas tendre vers $-\\infty$.",
+     "difficulte": "medium",
+     "cible": "D'après l'exercice #520 : monotone et bornée ⇒ converge ; limite par l'équation ℓ = f(ℓ), pas par le minorant.",
+     "theoremes": [
+      "Suite monotone et bornée : convergence",
+      "Suites récurrentes u(n+1) = f(u(n))"
+     ],
+     "bonne": "$(u_n)$ converge vers un réel $\\ell \\geq \\sqrt{3}$ ; comme $\\ell = \\dfrac{1}{2}\\left(\\dfrac{3}{\\ell} + \\ell\\right)$, on obtient $\\ell = \\sqrt{3}$."
+    },
+    {
+     "question": "Soit $(u_n)_{n \\in \\mathbb{N}^*}$ la suite définie par $u_n = \\sum\\limits_{k=1}^{n} \\dfrac{1}{k}$. On a montré que $(\\forall n \\in \\mathbb{N}^*)$ : $u_{2n} - u_n \\geq \\dfrac{1}{2}$ et que $(u_n)$ est strictement croissante. Que peut-on en déduire ?",
+     "distracteurs": [
+      "$(u_n)$ converge, car $u_{n+1} - u_n = \\dfrac{1}{n + 1}$ tend vers $0$.",
+      "$(u_n)$ converge vers $\\dfrac{1}{2}$.",
+      "On ne peut rien conclure : une suite croissante peut converger."
+     ],
+     "explication": "On raisonne par l’absurde : si $(u_n)$ convergeait vers $\\ell$, alors $(u_{2n})$ convergerait aussi vers $\\ell$ et $u_{2n} - u_n \\to 0$, ce qui contredit $u_{2n} - u_n \\geq \\dfrac{1}{2}$. Donc $(u_n)$ diverge. Une suite croissante qui n’est pas majorée tend vers $+\\infty$ (si elle était majorée, elle convergerait). Donc $\\lim\\limits_{n \\to +\\infty} u_n = +\\infty$. Pièges : $u_{n+1} - u_n \\to 0$ ne suffit pas pour converger (c’est tout l’intérêt de cet exercice) ; $\\dfrac{1}{2}$ minore un écart, pas la suite ; une suite croissante converge seulement si elle est majorée, et la question 1 montre justement qu’elle ne l’est pas.",
+     "difficulte": "medium",
+     "cible": "D'après l'exercice #525 : série harmonique, u(2n) − u(n) ≥ 1/2 contredit la convergence.",
+     "theoremes": [
+      "Convergence et divergence",
+      "Suite majorée, minorée, monotone"
+     ],
+     "bonne": "$(u_n)$ diverge et $\\lim\\limits_{n \\to +\\infty} u_n = +\\infty$."
+    },
+    {
+     "question": "Pour tout $n$ de $\\mathbb{N}$, on considère la fonction $f_n$ définie sur $\\left]-\\dfrac{\\pi}{2}, \\dfrac{\\pi}{2}\\right[$ par $f_n(x) = \\tan x - x - n$, et $\\alpha_n$ l’unique solution de l’équation $f_n(x) = 0$ dans cet intervalle. On a montré que $(\\alpha_n)$ est croissante. Quelle est sa limite ?",
+     "distracteurs": [
+      "$+\\infty$, car $\\tan\\alpha_n - \\alpha_n = n$ tend vers $+\\infty$.",
+      "Un réel $\\ell < \\dfrac{\\pi}{2}$ qu’on ne peut pas calculer.",
+      "$\\dfrac{\\pi}{4}$"
+     ],
+     "explication": "$(\\alpha_n)$ est croissante et majorée par $\\dfrac{\\pi}{2}$ : elle converge vers un réel $\\ell \\leq \\dfrac{\\pi}{2}$. Si $\\ell < \\dfrac{\\pi}{2}$, $\\tan$ serait continue en $\\ell$ et $\\tan\\alpha_n - \\alpha_n \\to \\tan\\ell - \\ell$, un réel ; or $\\tan\\alpha_n - \\alpha_n = n \\to +\\infty$ : contradiction. Donc $\\lim\\limits_{n \\to +\\infty} \\alpha_n = \\dfrac{\\pi}{2}$. Pièges : $\\alpha_n$ reste dans $\\left]-\\dfrac{\\pi}{2}, \\dfrac{\\pi}{2}\\right[$, c’est $\\tan\\alpha_n$ qui tend vers $+\\infty$ ; le raisonnement par l’absurde permet justement de calculer $\\ell$ ; $\\dfrac{\\pi}{4}$ correspond à $\\tan x = 1$, sans lien avec $n$.",
+     "difficulte": "hard",
+     "cible": "D'après l'exercice #529 : suite de solutions, limite par l'absurde.",
+     "theoremes": [
+      "Suite monotone et bornée : convergence",
+      "Limites et ordre"
+     ],
+     "bonne": "$\\dfrac{\\pi}{2}$"
+    },
+    {
+     "question": "Quelles suites convergent vers $0$ ?",
+     "distracteurs": [
+      "$u_n = \\dfrac{5n + (-1)^n}{4n - 3(-1)^n}$",
+      "$u_n = \\dfrac{3^n + (-3)^n}{2^n}$",
+      "$u_n = (-1)^n$"
+     ],
+     "explication": "On écrit chaque suite à l’aide de suites de référence. $\\dfrac{3^n + (-3)^n}{5^n} = \\left(\\dfrac{3}{5}\\right)^n + \\left(-\\dfrac{3}{5}\\right)^n \\to 0$ car $-1 < \\pm\\dfrac{3}{5} < 1$. $\\left|\\dfrac{\\sin n}{n}(-1)^n\\right| \\leq \\dfrac{1}{n} \\to 0$ : gendarmes. En divisant par $n$, $\\dfrac{5n + (-1)^n}{4n - 3(-1)^n} = \\dfrac{5 + \\frac{(-1)^n}{n}}{4 - \\frac{3(-1)^n}{n}} \\to \\dfrac{5}{4}$. $\\dfrac{3^n + (-3)^n}{2^n}$ vaut $2\\left(\\dfrac{3}{2}\\right)^n$ pour $n$ pair et $0$ pour $n$ impair : pas de limite. $(-1)^n$ n’a pas de limite. Pièges : la présence de $(-1)^n$ n’empêche pas la convergence quand on divise par une suite qui tend vers l’infini ; il faut $|q| < 1$ pour que $q^n \\to 0$.",
+     "difficulte": "easy",
+     "cible": "D'après l'exercice #534 : (−1)ⁿ et qⁿ, encadrement et suites géométriques.",
+     "theoremes": [
+      "Limites des suites de référence",
+      "Théorème des gendarmes"
+     ],
+     "bonnes": [
+      "$u_n = \\dfrac{3^n + (-3)^n}{5^n}$",
+      "$u_n = \\dfrac{\\sin n}{n}(-1)^n$, pour $n \\geq 1$"
+     ]
+    },
+    {
+     "question": "Soit $(u_n)$ la suite définie par $u_0 = 0$ et $u_{n+1} = \\sqrt{12 + u_n}$. On sait que $(\\forall n \\in \\mathbb{N})$ : $0 \\leq u_n < 4$. Pourquoi a-t-on $4 - u_{n+1} \\leq \\dfrac{1}{4}(4 - u_n)$ ?",
+     "distracteurs": [
+      "Parce que $4 - u_{n+1} = \\dfrac{4 - u_n}{4 + \\sqrt{12 + u_n}}$ et $\\sqrt{12 + u_n} \\geq 4$.",
+      "Parce que $4 - u_{n+1} = \\dfrac{4 - u_n}{4 - \\sqrt{12 + u_n}}$ et $4 - \\sqrt{12 + u_n} \\geq 4$.",
+      "Parce que $(u_n)$ est croissante et majorée par $4$."
+     ],
+     "explication": "On écrit $4 - \\sqrt{12 + u_n}$ à l’aide de l’expression conjuguée, puis on minore le dénominateur. $4 - u_{n+1} = 4 - \\sqrt{12 + u_n} = \\dfrac{16 - (12 + u_n)}{4 + \\sqrt{12 + u_n}} = \\dfrac{4 - u_n}{4 + \\sqrt{12 + u_n}}$. Comme $\\sqrt{12 + u_n} \\geq 0$, $4 + \\sqrt{12 + u_n} \\geq 4$, et $4 - u_n > 0$. Donc $4 - u_{n+1} \\leq \\dfrac{1}{4}(4 - u_n)$. Pièges : $\\sqrt{12 + u_n} < 4$ puisque $u_n < 4$, la minoration par $4$ est fausse ; le conjugué donne un $+$ au dénominateur ; la monotonie et le majorant ne donnent aucune inégalité de ce type.",
+     "difficulte": "medium",
+     "cible": "D'après l'exercice #535 (question 2.a) : conjuguée et minoration du dénominateur.",
+     "theoremes": [
+      "Limites et ordre",
+      "Suites récurrentes u(n+1) = f(u(n))"
+     ],
+     "bonne": "Parce que $4 - u_{n+1} = \\dfrac{4 - u_n}{4 + \\sqrt{12 + u_n}}$ et $4 + \\sqrt{12 + u_n} \\geq 4$."
+    },
+    {
+     "question": "Soit $(u_n)$ la suite numérique définie par $u_0 = 1$ et $u_{n+1} = u_n + \\dfrac{1}{2^n}$ pour tout $n \\in \\mathbb{N}$. Exprimer $u_n$ en fonction de $n$.",
+     "distracteurs": [
+      "$u_n = 3 - \\dfrac{1}{2^n}$",
+      "$u_n = 2 - \\dfrac{1}{2^{n-1}}$",
+      "$u_n = 1 + \\dfrac{n}{2^n}$"
+     ],
+     "explication": "On additionne les égalités $u_{k+1} - u_k = \\left(\\dfrac{1}{2}\\right)^k$ pour $k$ allant de $0$ à $n - 1$ : on obtient une somme de $n$ termes consécutifs d’une suite géométrique. $u_n - u_0 = \\sum\\limits_{k=0}^{n-1}\\left(\\dfrac{1}{2}\\right)^k = \\dfrac{1 - \\left(\\frac{1}{2}\\right)^n}{1 - \\frac{1}{2}} = 2 - \\dfrac{1}{2^{n-1}}$. Donc $u_n = 3 - \\dfrac{1}{2^{n-1}}$ (vérification : $u_0 = 1$, $u_1 = 2$) et $\\lim\\limits_{n \\to +\\infty} u_n = 3$. Pièges : $3 - \\dfrac{1}{2^n}$ compte un terme de trop ou de moins ($u_0$ vaudrait $2$) ; $2 - \\dfrac{1}{2^{n-1}}$ oublie $u_0 = 1$ ; la suite n’est ni arithmétique ni géométrique, c’est la suite des différences qui est géométrique.",
+     "difficulte": "easy",
+     "cible": "D'après l'exercice #536 : somme télescopique des différences, nombre de termes.",
+     "theoremes": [
+      "Somme de termes consécutifs",
+      "Suites arithmétiques et géométriques"
+     ],
+     "bonne": "$u_n = 3 - \\dfrac{1}{2^{n-1}}$"
+    },
+    {
+     "question": "Soit $(u_n)$ la suite définie par $u_0 = \\dfrac{\\sqrt[3]{2}}{2}$ et $u_{n+1} = \\sqrt[3]{\\dfrac{1 - u_n^{3}}{7}}$, avec $0 < u_n < 1$. On pose $v_n = 8u_n^{3} - 1$. Que peut-on affirmer ?",
+     "distracteurs": [
+      "$(v_n)$ est géométrique de raison $\\dfrac{1}{7}$, et $\\lim\\limits_{n \\to +\\infty} u_n = \\dfrac{1}{2}$.",
+      "$(v_n)$ est géométrique de raison $-\\dfrac{1}{7}$, et $\\lim\\limits_{n \\to +\\infty} u_n = 0$.",
+      "$(v_n)$ est arithmétique de raison $-\\dfrac{1}{7}$, et $(u_n)$ diverge."
+     ],
+     "explication": "On exprime $v_{n+1}$ en fonction de $u_n^3$, puis de $v_n$. $u_{n+1}^3 = \\dfrac{1 - u_n^3}{7}$, donc $v_{n+1} = \\dfrac{8 - 8u_n^3}{7} - 1 = \\dfrac{1 - 8u_n^3}{7} = -\\dfrac{1}{7}v_n$. Avec $v_0 = 8 \\times \\dfrac{1}{4} - 1 = 1$ : $v_n = \\left(-\\dfrac{1}{7}\\right)^n \\to 0$. Donc $u_n^3 = \\dfrac{v_n + 1}{8} \\to \\dfrac{1}{8}$ et, par continuité de la racine cubique, $u_n \\to \\dfrac{1}{2}$. Pièges : le signe vient de $1 - 8u_n^3 = -v_n$ ; c’est $(v_n)$ qui tend vers $0$, pas $(u_n)$ ; $v_{n+1}$ s’obtient en multipliant $v_n$, la suite est géométrique.",
+     "difficulte": "medium",
+     "cible": "D'après l'exercice #541 : suite auxiliaire géométrique, puis retour à (uₙ) par continuité.",
+     "theoremes": [
+      "Suite auxiliaire arithmétique ou géométrique",
+      "Limite et continuité d'une fonction composée"
+     ],
+     "bonne": "$(v_n)$ est géométrique de raison $-\\dfrac{1}{7}$, et $\\lim\\limits_{n \\to +\\infty} u_n = \\dfrac{1}{2}$."
+    },
+    {
+     "question": "Soit $(u_n)$ la suite définie par $u_0 = 1$ et $u_{n+1} = f(u_n)$, où $f(x) = \\dfrac{1}{1 + x}$ est continue et strictement décroissante sur $[0, +\\infty\\mathclose{[}$. Que peut-on affirmer ?",
+     "distracteurs": [
+      "$(u_n)$ est décroissante, car $f$ est décroissante.",
+      "$(u_n)$ est croissante, car $f \\circ f$ est croissante.",
+      "$(u_n)$ diverge, car elle n’est pas monotone."
+     ],
+     "explication": "Quand $f$ est décroissante, $f \\circ f$ est croissante : ce sont les suites extraites $(u_{2n})$ et $(u_{2n+1})$, définies par $u_{2n+2} = f \\circ f(u_{2n})$, qui sont monotones. Ici $u_0 = 1$, $u_1 = \\dfrac{1}{2}$, $u_2 = \\dfrac{2}{3}$, $u_3 = \\dfrac{3}{5}$ : $(u_n)$ n’est pas monotone, $(u_{2n})$ décroît et $(u_{2n+1})$ croît ; elles sont même adjacentes, de limite $\\dfrac{\\sqrt{5} - 1}{2}$ (solution positive de $\\ell = \\dfrac{1}{1 + \\ell}$). Pièges : la monotonie de $f$ ne donne pas celle de $(u_n)$ (c’est le cas d’une $f$ croissante qui donne une suite monotone) ; la croissance de $f \\circ f$ porte sur les suites extraites ; une suite non monotone peut converger.",
+     "difficulte": "hard",
+     "cible": "D'après les exercices #531, #515 et #518 : f décroissante ⇒ suites extraites (u(2n)), (u(2n+1)).",
+     "theoremes": [
+      "Suites récurrentes u(n+1) = f(u(n))",
+      "Suites adjacentes"
+     ],
+     "bonne": "$(u_n)$ n’est pas monotone, mais $(u_{2n})$ et $(u_{2n+1})$ sont monotones, de sens contraires."
+    },
+    {
+     "question": "On pose $S_n = \\sum\\limits_{k=1}^{n} \\dfrac{1}{\\sqrt{k}}$ pour $n \\geq 1$. Le théorème des accroissements finis appliqué à $t \\mapsto \\sqrt{t}$ sur $[k, k + 1]$ donne $\\dfrac{1}{2\\sqrt{k + 1}} \\leq \\sqrt{k + 1} - \\sqrt{k} \\leq \\dfrac{1}{2\\sqrt{k}}$, d’où $2\\left(\\sqrt{n + 1} - 1\\right) \\leq S_n \\leq 2\\sqrt{n} - 1$. Quelle est la limite de $\\dfrac{S_n}{\\sqrt{n}}$ ?",
+     "distracteurs": [
+      "$+\\infty$, car $S_n$ tend vers $+\\infty$.",
+      "$0$, car $\\dfrac{1}{\\sqrt{k}}$ tend vers $0$.",
+      "$1$"
+     ],
+     "explication": "On divise l’encadrement par $\\sqrt{n} > 0$, puis on applique le théorème des gendarmes. $2\\dfrac{\\sqrt{n + 1} - 1}{\\sqrt{n}} \\leq \\dfrac{S_n}{\\sqrt{n}} \\leq 2 - \\dfrac{1}{\\sqrt{n}}$. Or $\\dfrac{\\sqrt{n + 1}}{\\sqrt{n}} = \\sqrt{1 + \\dfrac{1}{n}} \\to 1$ et $\\dfrac{1}{\\sqrt{n}} \\to 0$ : les deux bornes tendent vers $2$. Donc $\\lim\\limits_{n \\to +\\infty} \\dfrac{S_n}{\\sqrt{n}} = 2$. Pièges : $S_n \\to +\\infty$ mais $\\sqrt{n}$ aussi, c’est une forme indéterminée ; que les termes tendent vers $0$ ne dit rien de la somme ; $1$ oublie le facteur $2$ de l’encadrement.",
+     "difficulte": "medium",
+     "cible": "D'après les exercices #564 et #346 : encadrement d'une somme par le TAF, puis gendarmes.",
+     "theoremes": [
+      "Théorème des accroissements finis (TAF)",
+      "Théorème des gendarmes"
+     ],
+     "bonne": "$2$"
+    }
+   ]
+  },
+  {
+   "chapitre": "Fonctions logarithmiques",
+   "questions": [
+    {
+     "question": "Soit $f$ la fonction définie sur $\\mathopen{]}1, +\\infty\\mathclose{[}$ par $f(x) = \\ln(\\ln x)$. Le théorème des accroissements finis donne, pour tout entier $k \\geq 2$ : $0 \\leq f(k + 1) - f(k) \\leq \\dfrac{1}{k\\ln k}$. On pose $S_n = \\sum\\limits_{k=2}^{n} \\dfrac{1}{k\\ln k}$. Que peut-on conclure ?",
+     "distracteurs": [
+      "$(S_n)$ converge, car $\\dfrac{1}{k\\ln k} \\to 0$.",
+      "$S_n \\leq \\ln\\left(\\ln(n + 1)\\right) - \\ln(\\ln 2)$, donc $(S_n)$ est majorée et converge.",
+      "$S_n = \\ln\\left(\\ln(n + 1)\\right) - \\ln(\\ln 2)$, la somme est télescopique."
+     ],
+     "explication": "On somme l’inégalité de droite pour $k$ de $2$ à $n$ : la somme des $f(k + 1) - f(k)$ se télescope. $S_n \\geq \\sum\\limits_{k=2}^{n}\\left(f(k + 1) - f(k)\\right) = f(n + 1) - f(2) = \\ln\\left(\\ln(n + 1)\\right) - \\ln(\\ln 2)$. Or $\\ln(n + 1) \\to +\\infty$, donc $\\ln\\left(\\ln(n + 1)\\right) \\to +\\infty$. Donc $\\lim\\limits_{n \\to +\\infty} S_n = +\\infty$. Pièges : que le terme général tende vers $0$ ne suffit pas pour converger ; l’inégalité $f(k + 1) - f(k) \\leq \\dfrac{1}{k\\ln k}$ minore $S_n$, elle ne la majore pas ; il n’y a pas égalité, seulement un encadrement.",
+     "difficulte": "medium",
+     "cible": "D'après l'exercice #750 : minoration d'une somme par une somme télescopique (TAF).",
+     "theoremes": [
+      "Dérivée logarithmique (u′/u)"
+     ],
+     "bonne": "$S_n \\geq \\ln\\left(\\ln(n + 1)\\right) - \\ln(\\ln 2)$, donc $\\lim\\limits_{n \\to +\\infty} S_n = +\\infty$."
+    }
+   ]
+  },
+  {
+   "chapitre": "Fonctions exponentielles",
+   "questions": [
+    {
+     "question": "Calculer $\\lim\\limits_{x \\to +\\infty} \\left(\\dfrac{x + 1}{x - 3}\\right)^{x}$.",
+     "distracteurs": [
+      "$1$, car $\\dfrac{x + 1}{x - 3} \\to 1$.",
+      "$+\\infty$",
+      "$e$"
+     ],
+     "explication": "On écrit la puissance sous forme exponentielle : pour $x > 3$, $\\left(\\dfrac{x + 1}{x - 3}\\right)^{x} = e^{x\\ln\\left(\\frac{x + 1}{x - 3}\\right)}$, avec $\\dfrac{x + 1}{x - 3} = 1 + \\dfrac{4}{x - 3}$. Avec $X = \\dfrac{4}{x - 3} \\to 0$ : $x\\ln(1 + X) = \\dfrac{\\ln(1 + X)}{X} \\times \\dfrac{4x}{x - 3} \\to 1 \\times 4 = 4$. Par continuité de l’exponentielle, la limite vaut $e^{4}$. Pièges : « $1^{+\\infty}$ » est une forme indéterminée, pas $1$ ; $e$ oublie le facteur $4$ ; la base tend vers $1$, la puissance ne tend pas pour autant vers $+\\infty$.",
+     "difficulte": "medium",
+     "cible": "D'après le DS #331 (exercice 1, question 3) : forme 1^∞ par a^b = e^(b ln a).",
+     "theoremes": [
+      "Limites usuelles de l'exponentielle"
+     ],
+     "bonne": "$e^{4}$"
+    },
+    {
+     "question": "Calculer $\\lim\\limits_{x \\to 0^{+}} \\dfrac{x^{x} - 1}{\\ln(x + 1)}$.",
+     "distracteurs": [
+      "$0$",
+      "$1$",
+      "Elle n’existe pas, car $x^x$ n’est pas défini en $0$."
+     ],
+     "explication": "On écrit $x^{x} = e^{x\\ln x}$ et on fait apparaître deux limites usuelles. Pour $x > 0$ : $\\dfrac{x^{x} - 1}{\\ln(x + 1)} = \\dfrac{e^{x\\ln x} - 1}{x\\ln x} \\times \\ln x \\times \\dfrac{x}{\\ln(1 + x)}$. Quand $x \\to 0^+$, $x\\ln x \\to 0$, donc le premier facteur tend vers $1$ ($\\lim\\limits_{X \\to 0}\\dfrac{e^X - 1}{X} = 1$) ; $\\dfrac{x}{\\ln(1 + x)} \\to 1$ et $\\ln x \\to -\\infty$. Donc la limite vaut $-\\infty$. Pièges : numérateur et dénominateur tendent tous deux vers $0$, la forme $\\dfrac{0}{0}$ ne vaut pas $0$ ; $1$ suppose $x^x - 1$ « comme » $x$, alors que c’est « comme » $x\\ln x$ ; on étudie une limite à droite, $x^x$ n’a pas besoin d’être défini en $0$.",
+     "difficulte": "hard",
+     "cible": "D'après le DS #331 (exercice 1, question 2) : x^x = e^(x ln x), produit de limites usuelles.",
+     "theoremes": [
+      "Limites usuelles de l'exponentielle"
+     ],
+     "bonne": "$-\\infty$"
+    },
+    {
+     "question": "Calculer $\\lim\\limits_{x \\to +\\infty} x\\left(2^{\\frac{1}{x}} - 1\\right)$.",
+     "distracteurs": [
+      "$0$",
+      "$1$",
+      "$2$"
+     ],
+     "explication": "On écrit $2^{\\frac{1}{x}} = e^{\\frac{\\ln 2}{x}}$ et on pose $X = \\dfrac{\\ln 2}{x} \\to 0$. $x\\left(2^{\\frac{1}{x}} - 1\\right) = \\ln 2 \\times \\dfrac{e^{X} - 1}{X}$ et $\\lim\\limits_{X \\to 0}\\dfrac{e^{X} - 1}{X} = 1$. Donc la limite vaut $\\ln 2$. Pièges : « $+\\infty \\times 0$ » est indéterminé, pas $0$ ; $1$ oublie le facteur $\\ln 2$ (c’est la limite pour la base $e$) ; $2$ confond la base et le résultat.",
+     "difficulte": "easy",
+     "cible": "D'après le DS #436 (exercice 1, question 2) : exponentielle de base a, limite usuelle (e^X − 1)/X.",
+     "theoremes": [
+      "Fonction exponentielle de base a",
+      "Limites usuelles de l'exponentielle"
+     ],
+     "bonne": "$\\ln 2$"
+    },
+    {
+     "question": "Calculer $\\lim\\limits_{x \\to +\\infty} (\\ln x)^{\\frac{1}{\\ln x}}$.",
+     "distracteurs": [
+      "$e$",
+      "$+\\infty$",
+      "$0$"
+     ],
+     "explication": "On écrit la puissance sous forme exponentielle : pour $x > 1$, $(\\ln x)^{\\frac{1}{\\ln x}} = e^{\\frac{\\ln(\\ln x)}{\\ln x}}$. Avec $X = \\ln x \\to +\\infty$ : $\\dfrac{\\ln X}{X} \\to 0$. Par continuité de l’exponentielle en $0$, la limite vaut $e^{0} = 1$. Pièges : $e$ vient de la forme $\\left(1 + \\dfrac{1}{X}\\right)^{X}$, qui n’est pas celle-ci ; « $+\\infty^{0}$ » est une forme indéterminée ; l’exposant tend vers $0$ mais reste positif, et la base tend vers $+\\infty$ : le résultat n’est pas $0$.",
+     "difficulte": "medium",
+     "cible": "D'après le DS #436 (exercice 1, question 4) : forme ∞⁰, a^b = e^(b ln a).",
+     "theoremes": [
+      "Fonction exponentielle de base a"
+     ],
+     "bonne": "$1$"
+    },
+    {
+     "question": "Soit $f$ la fonction définie sur $\\mathbb{R}^{+}$ par $f(x) = \\dfrac{e^{x} - 1}{x}$ si $x > 0$ et $f(0) = 1$. On a montré que $\\lim\\limits_{x \\to 0^{+}} \\dfrac{e^{x} - 1 - x}{x^2} = \\dfrac{1}{2}$. Étudier la dérivabilité de $f$ à droite en $0$.",
+     "distracteurs": [
+      "$f$ est dérivable à droite en $0$ et $f'_d(0) = 1$.",
+      "$f$ est dérivable à droite en $0$ et $f'_d(0) = 0$.",
+      "$f$ n’est pas dérivable à droite en $0$, car $f(0)$ est défini à part."
+     ],
+     "explication": "On écrit le taux d’accroissement en $0$ et on reconnaît la limite donnée. Pour $x > 0$ : $\\dfrac{f(x) - f(0)}{x - 0} = \\dfrac{\\frac{e^{x} - 1}{x} - 1}{x} = \\dfrac{e^{x} - 1 - x}{x^2} \\to \\dfrac{1}{2}$. Donc $f$ est dérivable à droite en $0$, $f'_d(0) = \\dfrac{1}{2}$ : sa courbe admet au point $(0, 1)$ une demi-tangente de coefficient directeur $\\dfrac{1}{2}$. Pièges : $1 = \\exp'(0)$ est le nombre dérivé de l’exponentielle, pas celui de $f$ ; $0$ arrête le calcul à $f(x) \\to 1$ ; une valeur définie à part n’empêche pas la dérivabilité, c’est la limite du taux qui décide.",
+     "difficulte": "medium",
+     "cible": "D'après le DS #331 (exercice 3, questions 10-11) : taux d'accroissement de (e^x − 1)/x en 0.",
+     "theoremes": [
+      "Limites usuelles de l'exponentielle"
+     ],
+     "bonne": "$f$ est dérivable à droite en $0$ et $f'_d(0) = \\dfrac{1}{2}$."
+    },
+    {
+     "question": "Soit $f$ la fonction définie sur $\\mathbb{R}^{+}$ par $f(x) = \\dfrac{e^{x} - 1}{x}$ si $x > 0$ et $f(0) = 1$. $f$ admet une fonction réciproque $f^{-1}$ définie sur $[1, +\\infty\\mathclose{[}$, et pour $x > 0$ : $f'(x) = \\dfrac{xe^{x} - e^{x} + 1}{x^2}$. Calculer $\\left(f^{-1}\\right)'(e - 1)$.",
+     "distracteurs": [
+      "$\\dfrac{1}{e - 1}$",
+      "$e$",
+      "$\\dfrac{1}{e}$"
+     ],
+     "explication": "On cherche l’antécédent de $e - 1$, puis $\\left(f^{-1}\\right)'(f(a)) = \\dfrac{1}{f'(a)}$ si $f'(a) \\neq 0$. $f(1) = e - 1$, donc $f^{-1}(e - 1) = 1$. $f'(1) = \\dfrac{e - e + 1}{1} = 1 \\neq 0$. Donc $\\left(f^{-1}\\right)'(e - 1) = \\dfrac{1}{f'(1)} = 1$. Pièges : $\\dfrac{1}{e - 1}$ inverse la valeur au lieu du nombre dérivé ; $e$ et $\\dfrac{1}{e}$ viennent d’un nombre dérivé faux, $f'(1) = e$, obtenu en dérivant le seul $e^{x}$ du numérateur.",
+     "difficulte": "medium",
+     "cible": "D'après le DS #331 (exercice 3, question 16) : dérivée de la réciproque en f(1).",
+     "theoremes": [
+      "Dérivée et propriétés de l'exponentielle"
+     ],
+     "bonne": "$1$"
+    },
+    {
+     "question": "Soit $f$ la fonction définie sur $[-1, +\\infty\\mathclose{[}$ par $f(x) = (x + 1)e^{\\frac{\\ln(1 + x)}{x}}$ si $x \\neq 0$ et $x \\neq -1$, $f(0) = e$, $f(-1) = 1$. On a, pour $x > 0$ : $f(x) - x = x\\left(e^{\\frac{\\ln(1 + x)}{x}} - 1\\right) + e^{\\frac{\\ln(1 + x)}{x}}$. Quelle est la nature de la branche infinie de la courbe de $f$ au voisinage de $+\\infty$ ?",
+     "distracteurs": [
+      "La droite d’équation $y = x + 1$ est asymptote.",
+      "La droite d’équation $y = x$ est asymptote.",
+      "Une branche parabolique de direction l’axe des ordonnées."
+     ],
+     "explication": "On calcule $\\lim \\dfrac{f(x)}{x}$, puis $\\lim\\left(f(x) - x\\right)$. Avec $u = \\dfrac{\\ln(1 + x)}{x} \\to 0$ : $\\dfrac{f(x)}{x} = \\dfrac{x + 1}{x}e^{u} \\to 1$. Ensuite $x\\left(e^{u} - 1\\right) = \\dfrac{e^{u} - 1}{u} \\times \\ln(1 + x) \\to 1 \\times (+\\infty)$ et $e^{u} \\to 1$, donc $f(x) - x \\to +\\infty$. Donc la courbe admet une branche parabolique de direction la droite $y = x$. Pièges : $y = x + 1$ remplace $e^{u}$ par $1$ trop tôt ; $y = x$ suppose $f(x) - x \\to 0$, or le terme $x\\left(e^{u} - 1\\right)$ se comporte comme $\\ln(1 + x)$ ; la direction $(Oy)$ demanderait $\\dfrac{f(x)}{x} \\to \\pm\\infty$.",
+     "difficulte": "hard",
+     "cible": "D'après le DS #332 (exercice 2, questions 6 à 8) : f(x)/x → 1 puis f(x) − x → +∞.",
+     "theoremes": [
+      "Limites usuelles de l'exponentielle"
+     ],
+     "bonne": "Une branche parabolique de direction la droite d’équation $y = x$."
+    },
+    {
+     "question": "Soit $f$ la fonction définie sur $\\mathbb{R}^{+}$ par $f(x) = \\dfrac{x}{e^{x} - \\ln x}$ si $x > 0$ et $f(0) = 0$. Étudier la dérivabilité de $f$ à droite en $0$.",
+     "distracteurs": [
+      "$f$ est dérivable à droite en $0$ et $f'_d(0) = 1$, car $e^{0} = 1$.",
+      "$f$ n’est pas dérivable à droite en $0$, car $\\ln$ n’est pas définie en $0$.",
+      "$\\lim\\limits_{x \\to 0^+}\\dfrac{f(x)}{x} = +\\infty$ : demi-tangente verticale à l’origine."
+     ],
+     "explication": "On calcule la limite à droite en $0$ du taux d’accroissement. Pour $x > 0$ : $\\dfrac{f(x) - f(0)}{x - 0} = \\dfrac{1}{e^{x} - \\ln x}$. Quand $x \\to 0^+$, $e^{x} \\to 1$ et $-\\ln x \\to +\\infty$, donc $e^{x} - \\ln x \\to +\\infty$ et le taux tend vers $0$. Donc $f$ est dérivable à droite en $0$ et $f'_d(0) = 0$ : la courbe admet à l’origine une demi-tangente horizontale. Pièges : le terme $-\\ln x$ l’emporte sur $e^{x}$ ; on étudie la dérivabilité À DROITE justement parce que $\\ln$ n’est définie que sur $\\mathopen{]}0, +\\infty\\mathclose{[}$ ; c’est le dénominateur qui tend vers $+\\infty$, pas le taux.",
+     "difficulte": "easy",
+     "cible": "D'après le DS #436 (exercice 2, question 7) : taux d'accroissement 1/(e^x − ln x).",
+     "theoremes": [
+      "Limites usuelles de l'exponentielle"
+     ],
+     "bonne": "$f$ est dérivable à droite en $0$ et $f'_d(0) = 0$ : demi-tangente horizontale à l’origine."
+    },
+    {
+     "question": "Calculer $\\lim\\limits_{x \\to 0} \\dfrac{e^{x^2} - e^{x}}{x^{2} - x}$.",
+     "distracteurs": [
+      "$0$",
+      "$-1$",
+      "$e$"
+     ],
+     "explication": "On met $e^{x}$ en facteur pour faire apparaître la limite usuelle $\\dfrac{e^{X} - 1}{X}$ avec $X = x^2 - x$. Pour $x \\neq 0$, $x \\neq 1$ : $\\dfrac{e^{x^2} - e^{x}}{x^2 - x} = e^{x} \\times \\dfrac{e^{x^2 - x} - 1}{x^2 - x}$. Quand $x \\to 0$, $X = x^2 - x \\to 0$ et $X \\neq 0$, donc le second facteur tend vers $1$ ; $e^{x} \\to 1$. Donc la limite vaut $1$. Pièges : numérateur et dénominateur tendent vers $0$, la limite n’est pas $0$ pour autant ; $-1$ vient d’une erreur de signe en factorisant ; $e$ confond $e^{x}$ et $e^{1}$.",
+     "difficulte": "easy",
+     "cible": "D'après le DS #331 (exercice 1, question 1) : factoriser par e^x, limite usuelle (e^X − 1)/X.",
+     "theoremes": [
+      "Limites usuelles de l'exponentielle",
+      "Dérivée et propriétés de l'exponentielle"
+     ],
+     "bonne": "$1$"
+    }
+   ]
+  }
+ ]
+}

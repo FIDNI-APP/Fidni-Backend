@@ -1,0 +1,169 @@
+{
+ "niveaux": [
+  "2ème Bac SM",
+  "2ème Bac PC/SVT"
+ ],
+ "type": "approfondissement",
+ "chapitres": [
+  {
+   "chapitre": "Fonctions logarithmiques",
+   "questions": [
+    {
+     "question": "Résoudre dans $\\mathbb{R}$ l’équation : $\\ln\\sqrt{2x - 3} = \\ln(6 - x) - \\dfrac{1}{2}\\ln x$.",
+     "distracteurs": [
+      "$S = \\{-12, 3\\}$",
+      "$S = \\{-12\\}$",
+      "$S = \\{3, 12\\}$"
+     ],
+     "explication": "On cherche d’abord les réels pour lesquels l’équation a un sens, puis on se ramène à $\\ln A = \\ln B$. L’équation a un sens si et seulement si $2x - 3 > 0$, $6 - x > 0$ et $x > 0$, soit $x \\in \\left]\\dfrac{3}{2}, 6\\right[$. Elle équivaut alors à $\\dfrac{1}{2}\\ln(2x - 3) + \\dfrac{1}{2}\\ln x = \\ln(6 - x)$, soit $\\ln\\left(x(2x - 3)\\right) = \\ln\\left((6 - x)^2\\right)$, donc $2x^2 - 3x = 36 - 12x + x^2$, c’est-à-dire $x^2 + 9x - 36 = 0$ : $x = 3$ ou $x = -12$. Seul $3$ appartient à $\\left]\\dfrac{3}{2}, 6\\right[$. Donc $S = \\{3\\}$. Pièges : $-12$ est solution de l’équation du second degré, mais $\\ln x$ n’y est pas défini (le domaine se cherche AVANT de transformer) ; $12$ vient d’une erreur de signe sur $-12x$.",
+     "difficulte": "easy",
+     "cible": "D'après l'exercice #733 (question 1) : domaine de validité, puis ln A = ln B.",
+     "theoremes": [
+      "Dérivée et propriétés du logarithme"
+     ],
+     "bonne": "$S = \\{3\\}$"
+    },
+    {
+     "question": "Résoudre dans $\\mathbb{R}$ l’inéquation : $\\ln\\left(\\dfrac{x + 2}{x - 1}\\right) \\leq 0$.",
+     "distracteurs": [
+      "$S = \\mathopen{]}-2, 1\\mathclose{[}$",
+      "$S = \\mathopen{]}-\\infty, 1\\mathclose{[}$",
+      "$S = \\mathopen{]}1, +\\infty\\mathclose{[}$"
+     ],
+     "explication": "On cherche le domaine de validité, puis on utilise $\\ln X \\leq 0 \\iff 0 < X \\leq 1$. L’inéquation a un sens si et seulement si $\\dfrac{x + 2}{x - 1} > 0$, soit $x \\in \\mathopen{]}-\\infty, -2\\mathclose{[} \\cup \\mathopen{]}1, +\\infty\\mathclose{[}$. Sur ce domaine, $\\dfrac{x + 2}{x - 1} \\leq 1 \\iff \\dfrac{x + 2}{x - 1} - 1 \\leq 0 \\iff \\dfrac{3}{x - 1} \\leq 0 \\iff x < 1$. Donc $S = \\mathopen{]}-\\infty, -2\\mathclose{[}$. Pièges : sur $\\mathopen{]}-2, 1\\mathclose{[}$ le quotient est négatif, le logarithme n’y est pas défini ; $\\mathopen{]}-\\infty, 1\\mathclose{[}$ oublie le domaine ; on ne multiplie pas par $x - 1$ sans connaître son signe.",
+     "difficulte": "easy",
+     "cible": "D'après l'exercice #734 (question 1) : domaine puis ln X ≤ 0 ⇔ 0 < X ≤ 1.",
+     "theoremes": [
+      "Dérivée et propriétés du logarithme"
+     ],
+     "bonne": "$S = \\mathopen{]}-\\infty, -2\\mathclose{[}$"
+    },
+    {
+     "question": "Calculer $\\lim\\limits_{x \\to +\\infty} x\\ln\\left(\\dfrac{x - 1}{x + 1}\\right)$.",
+     "distracteurs": [
+      "$0$",
+      "$2$",
+      "$-\\infty$"
+     ],
+     "explication": "On écrit $\\dfrac{x - 1}{x + 1} = 1 + X$ avec $X \\to 0$, pour utiliser $\\lim\\limits_{X \\to 0}\\dfrac{\\ln(1 + X)}{X} = 1$. Pour $x > 1$ : $\\dfrac{x - 1}{x + 1} = 1 - \\dfrac{2}{x + 1}$, donc avec $X = -\\dfrac{2}{x + 1} \\to 0$ : $x\\ln\\left(\\dfrac{x - 1}{x + 1}\\right) = \\dfrac{\\ln(1 + X)}{X} \\times \\dfrac{-2x}{x + 1}$. Le premier facteur tend vers $1$, le second vers $-2$. Donc la limite vaut $-2$. Pièges : « $\\infty \\times 0$ » est une forme indéterminée, pas $0$ ; le logarithme d’un nombre inférieur à $1$ est négatif, d’où le signe ; $-\\infty$ ne regarde que le facteur $x$.",
+     "difficulte": "medium",
+     "cible": "D'après l'exercice #735 (question 8) : forme ∞ × 0, limite usuelle ln(1 + X)/X.",
+     "theoremes": [
+      "Limites usuelles du logarithme"
+     ],
+     "bonne": "$-2$"
+    },
+    {
+     "question": "Calculer $\\lim\\limits_{x \\to 0} \\dfrac{\\ln(\\cos x)}{x}$.",
+     "distracteurs": [
+      "$-\\dfrac{1}{2}$",
+      "$1$",
+      "Elle n’existe pas : la forme $\\dfrac{0}{0}$ est indéterminée."
+     ],
+     "explication": "On écrit $\\cos x = 1 + (\\cos x - 1)$ pour utiliser $\\dfrac{\\ln(1 + X)}{X}$, puis une limite trigonométrique usuelle. Pour $x \\neq 0$ proche de $0$ : $\\dfrac{\\ln(\\cos x)}{x} = \\dfrac{\\ln\\left(1 + (\\cos x - 1)\\right)}{\\cos x - 1} \\times \\dfrac{\\cos x - 1}{x}$. Le premier facteur tend vers $1$ et $\\dfrac{\\cos x - 1}{x} = -x \\times \\dfrac{1 - \\cos x}{x^2} \\to 0 \\times \\dfrac{1}{2} = 0$. Donc la limite vaut $0$. Pièges : $-\\dfrac{1}{2}$ est la limite de $\\dfrac{\\ln(\\cos x)}{x^2}$ ; $1$ confond avec $\\dfrac{\\ln(1 + x)}{x}$ ; « indéterminée » veut dire qu’il faut transformer l’écriture, pas que la limite n’existe pas.",
+     "difficulte": "medium",
+     "cible": "D'après l'exercice #735 (question 6) : ln(1 + X)/X combiné à (1 − cos x)/x².",
+     "theoremes": [
+      "Limites usuelles du logarithme"
+     ],
+     "bonne": "$0$"
+    },
+    {
+     "question": "Soit $n \\in \\mathbb{N}$ avec $n \\geq 3$, et $f_n(x) = nx + 2\\ln x$ sur $\\mathopen{]}0, +\\infty\\mathclose{[}$. L’équation $f_n(x) = 0$ admet une seule solution $\\alpha_n$. Sachant que $(\\forall x > 0)$ : $\\sqrt{x} > \\ln x$, que peut-on affirmer ?",
+     "distracteurs": [
+      "$\\dfrac{1}{\\sqrt{n}} < \\alpha_n < \\dfrac{1}{n}$, donc $\\lim\\limits_{n \\to +\\infty} \\alpha_n = 0$.",
+      "$\\dfrac{1}{n} < \\alpha_n < \\dfrac{1}{\\sqrt{n}}$, donc $\\lim\\limits_{n \\to +\\infty} \\alpha_n = 1$.",
+      "$\\lim\\limits_{n \\to +\\infty} \\alpha_n = +\\infty$, car $n\\alpha_n = -2\\ln\\alpha_n$."
+     ],
+     "explication": "$f_n$ est continue et strictement croissante ($f_n'(x) = n + \\dfrac{2}{x} > 0$) : on compare $f_n\\left(\\dfrac{1}{n}\\right)$ et $f_n\\left(\\dfrac{1}{\\sqrt{n}}\\right)$ à $0 = f_n(\\alpha_n)$. $f_n\\left(\\dfrac{1}{n}\\right) = 1 - 2\\ln n < 0$ car $\\ln n \\geq \\ln 3 > \\dfrac{1}{2}$ ; $f_n\\left(\\dfrac{1}{\\sqrt{n}}\\right) = \\sqrt{n} - \\ln n > 0$ d’après $\\sqrt{x} > \\ln x$. Donc $\\dfrac{1}{n} < \\alpha_n < \\dfrac{1}{\\sqrt{n}}$ et, par le théorème des gendarmes, $\\lim\\limits_{n \\to +\\infty} \\alpha_n = 0$. Pièges : $\\dfrac{1}{n} < \\dfrac{1}{\\sqrt{n}}$ pour $n \\geq 2$, l’ordre est imposé ; les deux bornes tendent vers $0$, pas vers $1$ ; $n\\alpha_n = -2\\ln\\alpha_n$ est vrai, mais ne dit rien de $\\alpha_n$ sans encadrement.",
+     "difficulte": "medium",
+     "cible": "D'après l'exercice #736 : encadrement de la solution αₙ par f(1/n) < 0 < f(1/√n).",
+     "theoremes": [
+      "Limites usuelles du logarithme",
+      "Dérivée et propriétés du logarithme"
+     ],
+     "bonne": "$\\dfrac{1}{n} < \\alpha_n < \\dfrac{1}{\\sqrt{n}}$, donc $\\lim\\limits_{n \\to +\\infty} \\alpha_n = 0$."
+    },
+    {
+     "question": "On admet que $(\\forall x \\in \\mathbb{R}^+)$ : $x - \\dfrac{x^2}{2} \\leq \\ln(1 + x) \\leq x$, et on pose $p_n = \\prod\\limits_{k=1}^{n}\\left(1 + \\dfrac{k}{n^2}\\right)$ pour $n \\in \\mathbb{N}^*$. Quelle est la limite de $(p_n)$ ?",
+     "distracteurs": [
+      "$1$, car chaque facteur tend vers $1$.",
+      "$e$",
+      "$+\\infty$, car c’est un produit de $n$ facteurs supérieurs à $1$."
+     ],
+     "explication": "Le logarithme d’un produit est la somme des logarithmes : on encadre $\\ln(p_n)$, puis on revient à $p_n$. Avec $x = \\dfrac{k}{n^2}$ et en sommant : $\\sum\\limits_{k=1}^{n}\\dfrac{k}{n^2} - \\sum\\limits_{k=1}^{n}\\dfrac{k^2}{2n^4} \\leq \\ln(p_n) \\leq \\sum\\limits_{k=1}^{n}\\dfrac{k}{n^2}$, soit $\\dfrac{n + 1}{2n} - \\dfrac{(n + 1)(2n + 1)}{12n^3} \\leq \\ln(p_n) \\leq \\dfrac{n + 1}{2n}$. Les deux bornes tendent vers $\\dfrac{1}{2}$, donc $\\ln(p_n) \\to \\dfrac{1}{2}$ et, par continuité de l’exponentielle (réciproque de $\\ln$), $p_n \\to e^{\\frac{1}{2}} = \\sqrt{e}$. Pièges : le nombre de facteurs augmente avec $n$, « $1^\\infty$ » est indéterminé ; $e$ oublie le facteur $\\dfrac{1}{2}$ de $\\sum k = \\dfrac{n(n + 1)}{2}$ ; des facteurs supérieurs à $1$ peuvent donner un produit borné.",
+     "difficulte": "hard",
+     "cible": "D'après l'exercice #737 : encadrement de ln(1 + x), passage au logarithme d'un produit.",
+     "theoremes": [
+      "Dérivée et propriétés du logarithme"
+     ],
+     "bonne": "$\\sqrt{e}$"
+    },
+    {
+     "question": "Soit $f$ la fonction définie sur $\\mathopen{]}0, +\\infty\\mathclose{[}$ par $f(x) = \\dfrac{x + 1}{x - 1} \\times \\dfrac{\\ln x}{2}$ si $x \\neq 1$ et $f(1) = 1$, et $(C_f)$ sa courbe. Étudier la branche infinie de $(C_f)$ au voisinage de $+\\infty$.",
+     "distracteurs": [
+      "$(C_f)$ admet une asymptote horizontale, car $\\dfrac{x + 1}{x - 1} \\to 1$.",
+      "$(C_f)$ admet une branche parabolique de direction l’axe des ordonnées au voisinage de $+\\infty$.",
+      "$(C_f)$ admet la droite d’équation $y = \\dfrac{1}{2}x$ comme asymptote."
+     ],
+     "explication": "$\\lim\\limits_{x \\to +\\infty} f(x) = +\\infty$ ($\\dfrac{x + 1}{x - 1} \\to 1$ et $\\ln x \\to +\\infty$) : on étudie $\\lim\\limits_{x \\to +\\infty} \\dfrac{f(x)}{x}$. $\\dfrac{f(x)}{x} = \\dfrac{x + 1}{2(x - 1)} \\times \\dfrac{\\ln x}{x} \\to \\dfrac{1}{2} \\times 0 = 0$. Donc $(C_f)$ admet une branche parabolique de direction l’axe des abscisses au voisinage de $+\\infty$. Pièges : une asymptote horizontale demande une limite FINIE de $f$, or $f(x) \\to +\\infty$ ; la direction $(Oy)$ correspond à $\\dfrac{f(x)}{x} \\to \\pm\\infty$ ; $\\dfrac{1}{2}$ vient du premier facteur, mais $\\dfrac{\\ln x}{x} \\to 0$.",
+     "difficulte": "easy",
+     "cible": "D'après l'exercice #741 (question 3.b) : lim f(x)/x = 0 ⇒ branche parabolique de direction (Ox).",
+     "theoremes": [
+      "Limites usuelles du logarithme"
+     ],
+     "bonne": "$(C_f)$ admet une branche parabolique de direction l’axe des abscisses au voisinage de $+\\infty$."
+    },
+    {
+     "question": "Soit $f$ la fonction définie sur $\\mathopen{]}0, +\\infty\\mathclose{[}$ par $f(x) = x - 1 - \\dfrac{\\ln x}{x^2}$, et $(C)$ sa courbe. On a $f'(x) = \\dfrac{-1 + x^3 + 2\\ln x}{x^3}$. En quel point $A$ la tangente $(T)$ à $(C)$ est-elle parallèle à la droite $D : y = x - 1$ ?",
+     "distracteurs": [
+      "$A(1, 0)$",
+      "$A\\left(e, e - 1 - \\dfrac{1}{e^2}\\right)$",
+      "Aucun : $D$ est asymptote à $(C)$, donc aucune tangente ne lui est parallèle."
+     ],
+     "explication": "La tangente est parallèle à $D$ lorsque son coefficient directeur vaut celui de $D$, c’est-à-dire $1$ : on résout $f'(x) = 1$. $f'(x) = 1 \\iff -1 + x^3 + 2\\ln x = x^3 \\iff \\ln x = \\dfrac{1}{2} \\iff x = \\sqrt{e}$. Et $f(\\sqrt{e}) = \\sqrt{e} - 1 - \\dfrac{\\frac{1}{2}}{e} = \\sqrt{e} - 1 - \\dfrac{1}{2e}$. Donc $A\\left(\\sqrt{e}, \\sqrt{e} - 1 - \\dfrac{1}{2e}\\right)$. Pièges : en $A(1, 0)$, $f'(1) = 0$ : la tangente y est horizontale ; $x = e$ résout $\\ln x = 1$, on a oublié le facteur $2$ ; une courbe peut avoir une tangente parallèle à son asymptote.",
+     "difficulte": "medium",
+     "cible": "D'après l'exercice #745 (question 4) : tangente parallèle à une droite ⇔ f'(x) = pente.",
+     "theoremes": [
+      "Dérivée et propriétés du logarithme"
+     ],
+     "bonne": "$A\\left(\\sqrt{e}, \\sqrt{e} - 1 - \\dfrac{1}{2e}\\right)$"
+    },
+    {
+     "question": "Soit $f$ la fonction définie sur $\\mathopen{]}0, +\\infty\\mathclose{[}$ par $f(x) = \\ln\\left(\\dfrac{x + 1}{x}\\right)$, strictement décroissante, et, pour $n \\in \\mathbb{N}^*$, $x_n$ l’unique solution de l’équation $f(x) = \\dfrac{1}{n}$. Que peut-on affirmer ?",
+     "distracteurs": [
+      "$(x_n)$ est décroissante, car $f$ est décroissante.",
+      "$(x_n)$ est croissante et majorée, donc convergente.",
+      "$\\lim\\limits_{n \\to +\\infty} x_n = 0$, car $\\dfrac{1}{n} \\to 0$."
+     ],
+     "explication": "On compare $f(x_{n+1})$ et $f(x_n)$, puis on utilise la décroissance de $f$. $f(x_{n+1}) = \\dfrac{1}{n + 1} < \\dfrac{1}{n} = f(x_n)$ et $f$ est strictement décroissante, donc $x_{n+1} > x_n$ : $(x_n)$ est croissante. Si elle était majorée, elle convergerait vers un réel $\\ell > 0$ et, par continuité de $f$, $f(\\ell) = \\lim \\dfrac{1}{n} = 0$, impossible car $f(\\ell) = \\ln\\left(1 + \\dfrac{1}{\\ell}\\right) > 0$. Donc $\\lim\\limits_{n \\to +\\infty} x_n = +\\infty$ (on peut aussi résoudre : $x_n = \\dfrac{1}{e^{\\frac{1}{n}} - 1}$). Pièges : une fonction décroissante RENVERSE l’ordre, $\\dfrac{1}{n}$ décroît donc $x_n$ croît ; « majorée » est exactement ce qui est faux ; $f(x) \\to 0$ quand $x \\to +\\infty$, pas quand $x \\to 0$.",
+     "difficulte": "medium",
+     "cible": "D'après l'exercice #746 (question 4) : suite des solutions de f(x) = 1/n, monotonie et limite.",
+     "theoremes": [
+      "Limites usuelles du logarithme",
+      "Dérivée et propriétés du logarithme"
+     ],
+     "bonne": "$(x_n)$ est croissante et $\\lim\\limits_{n \\to +\\infty} x_n = +\\infty$."
+    },
+    {
+     "question": "Quelles inégalités sont vraies pour tout réel $x > 0$ ?",
+     "distracteurs": [
+      "$\\ln x \\geq 1 - x$",
+      "$\\ln(1 + x) \\geq x$",
+      "$x\\ln x \\geq 0$"
+     ],
+     "explication": "On étudie à chaque fois une fonction différence. $k(x) = x - 1 - \\ln x$ : $k'(x) = \\dfrac{x - 1}{x}$, minimum $k(1) = 0$, donc $\\ln x \\leq x - 1$. $h(x) = \\sqrt{x} - \\ln x$ : $h'(x) = \\dfrac{\\sqrt{x} - 2}{2x}$, minimum $h(4) = 2 - 2\\ln 2 > 0$, donc $\\ln x < \\sqrt{x}$. Contre-exemples : $x = \\dfrac{1}{10}$ donne $\\ln x \\approx -2{,}3 < 1 - x = 0{,}9$ ; $\\ln(1 + x) \\leq x$ (c’est la première inégalité appliquée à $1 + x$), avec égalité seulement en $0$ ; $x\\ln x < 0$ sur $\\mathopen{]}0, 1\\mathclose{[}$. Pièges : retourner une inégalité vraie ne donne pas une inégalité vraie ; $\\ln x$ est négatif sur $\\mathopen{]}0, 1\\mathclose{[}$.",
+     "difficulte": "medium",
+     "cible": "D'après les exercices #741 (6.a), #736 (2) et #737 (1) : inégalités de référence par étude de fonction.",
+     "theoremes": [
+      "Dérivée et propriétés du logarithme"
+     ],
+     "bonnes": [
+      "$\\ln x \\leq x - 1$",
+      "$\\ln x < \\sqrt{x}$"
+     ]
+    }
+   ]
+  }
+ ]
+}
