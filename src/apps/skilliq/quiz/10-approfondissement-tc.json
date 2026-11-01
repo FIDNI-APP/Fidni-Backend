@@ -1,0 +1,669 @@
+{
+ "niveau": "Tronc commun Sciences",
+ "type": "approfondissement",
+ "chapitres": [
+  {
+   "chapitre": "Arithmétique dans ℕ",
+   "questions": [
+    {
+     "question": "Soit $n$ un nombre entier naturel. Étudier la parité du nombre $A = (2n + 1)(2n + 3)$.",
+     "distracteurs": [
+      "$A$ est pair pour tout $n$, car c’est le produit de deux entiers consécutifs.",
+      "$A$ est pair si $n$ est pair, et impair si $n$ est impair.",
+      "On ne peut pas conclure sans connaître $n$."
+     ],
+     "explication": "On étudie la parité de chaque facteur. $2n + 1$ et $2n + 3$ sont impairs, et le produit de deux nombres impairs est impair. Donc $A$ est impair pour tout $n \\in \\mathbb{N}$. Pièges : $2n + 1$ et $2n + 3$ ne sont pas consécutifs (ils diffèrent de $2$), ce sont deux impairs consécutifs ; la parité de $A$ ne dépend pas de celle de $n$ : chaque facteur est impair quel que soit $n$.",
+     "difficulte": "easy",
+     "cible": "D'après le DS #294 (exercice 1, question 1.a) : produit de deux impairs.",
+     "theoremes": [
+      "Parité de la somme et du produit"
+     ],
+     "bonne": "$A$ est impair pour tout $n$."
+    },
+    {
+     "question": "Soit $n$ un nombre entier naturel. Étudier la parité du nombre $B = n^2 + 5n + 2026$.",
+     "distracteurs": [
+      "$B$ est impair pour tout $n$.",
+      "$B$ est pair si $n$ est pair, et impair si $n$ est impair.",
+      "$B$ est pair, car $2026$ est pair."
+     ],
+     "explication": "On factorise : $B = n(n + 5) + 2026$. Si $n$ est pair, $n(n + 5)$ est pair ; si $n$ est impair, $n + 5$ est pair, donc $n(n + 5)$ est pair. Dans les deux cas $n(n + 5)$ est pair, et $2026$ aussi : la somme de deux nombres pairs est paire. Donc $B$ est pair pour tout $n$. Pièges : quand $n$ est impair, c’est le facteur $n + 5$ qui est pair ; « $2026$ est pair » ne suffit pas, il faut aussi la parité de $n^2 + 5n$.",
+     "difficulte": "easy",
+     "cible": "D'après le DS #294 (exercice 1, question 1.b) : n et n + 5 de parités différentes.",
+     "theoremes": [
+      "Parité de la somme et du produit"
+     ],
+     "bonne": "$B$ est pair pour tout $n$, car $n^2 + 5n = n(n + 5)$ est pair."
+    },
+    {
+     "question": "On pose $x = 31^{n+1} + 31^n \\times 13$, où $n$ est un entier naturel. Pourquoi $x$ est-il un multiple de $11$ ?",
+     "distracteurs": [
+      "Parce que $x = 44^{n}$ et $44 = 11 \\times 4$.",
+      "Parce que $31 + 13 = 44$, donc $x = 44^{2n+1}$.",
+      "Parce que $31^{n+1} + 31^n \\times 13 = 31^{2n+1} \\times 13$."
+     ],
+     "explication": "On met $31^n$ en facteur : $31^{n+1} = 31^n \\times 31$, donc $x = 31^n(31 + 13) = 44 \\times 31^n$. Comme $44 = 11 \\times 4$, $x = 11 \\times \\left(4 \\times 31^n\\right)$ avec $4 \\times 31^n \\in \\mathbb{N}$. Donc $x$ est un multiple de $11$. Pièges : $a^n + b^n \\neq (a + b)^n$ ; la factorisation garde $31^n$, elle ne transforme pas la somme en puissance de $44$ ; on ajoute les exposants pour un PRODUIT de puissances, pas pour une somme.",
+     "difficulte": "easy",
+     "cible": "D'après le DS #294 (exercice 1, question 2.a) : factorisation par 31ⁿ.",
+     "theoremes": [
+      "Propriétés de la divisibilité"
+     ],
+     "bonne": "Parce que $x = 31^n(31 + 13) = 44 \\times 31^n = 11 \\times 4 \\times 31^n$."
+    },
+    {
+     "question": "On pose $a = 300$ et $b = 120$. Déterminer le PGCD et le PPCM de $a$ et $b$.",
+     "distracteurs": [
+      "$\\mathrm{PGCD}(a, b) = 60$ et $\\mathrm{PPCM}(a, b) = 36000$",
+      "$\\mathrm{PGCD}(a, b) = 30$ et $\\mathrm{PPCM}(a, b) = 1200$",
+      "$\\mathrm{PGCD}(a, b) = 120$ et $\\mathrm{PPCM}(a, b) = 300$"
+     ],
+     "explication": "On décompose en facteurs premiers : $300 = 2^2 \\times 3 \\times 5^2$ et $120 = 2^3 \\times 3 \\times 5$. Le PGCD prend les facteurs communs avec le plus petit exposant : $2^2 \\times 3 \\times 5 = 60$ ; le PPCM prend tous les facteurs avec le plus grand exposant : $2^3 \\times 3 \\times 5^2 = 600$ (et $60 \\times 600 = 300 \\times 120$). Pièges : $36000 = 300 \\times 120$ est un multiple commun, pas le plus petit ; $120$ ne divise pas $300$, ce n’est donc pas le PGCD.",
+     "difficulte": "easy",
+     "cible": "D'après le DS #294 (exercice 2) : PGCD et PPCM par la décomposition en facteurs premiers.",
+     "theoremes": [
+      "PGCD et PPCM par la décomposition en facteurs premiers",
+      "Décomposition en facteurs premiers"
+     ],
+     "bonne": "$\\mathrm{PGCD}(a, b) = 60$ et $\\mathrm{PPCM}(a, b) = 600$"
+    },
+    {
+     "question": "Soient $x$ et $y$ deux entiers naturels. On a $xy - 2y + 3x = (x - 2)(y + 3) + 6$. Quels sont tous les couples $(x, y)$ d’entiers naturels vérifiant $xy - 2y + 3x = 18$ ?",
+     "distracteurs": [
+      "$(3, 9)$, $(4, 3)$ et $(5, 1)$",
+      "$(3, 9)$, $(4, 3)$, $(5, 1)$, $(6, 0)$, $(8, -1)$ et $(14, -2)$",
+      "$(3, 15)$, $(4, 6)$, $(5, 3)$ et $(8, 0)$"
+     ],
+     "explication": "L’équation équivaut à $(x - 2)(y + 3) = 12$. Comme $y + 3 \\geq 3$, $y + 3$ est un diviseur de $12$ supérieur ou égal à $3$ : $3$, $4$, $6$ ou $12$, et alors $x - 2 = 4$, $3$, $2$ ou $1$. Donc $(x, y) \\in \\{(6, 0), (5, 1), (4, 3), (3, 9)\\}$. Pièges : $0$ est un entier naturel, $(6, 0)$ compte ; $y + 3 = 1$ ou $2$ donnerait $y < 0$ ; oublier le $+6$ conduit à $(x - 2)(y + 3) = 18$ et à d’autres couples.",
+     "difficulte": "medium",
+     "cible": "D'après le DS #294 (exercice 3) : factorisation puis diviseurs.",
+     "theoremes": [
+      "Propriétés de la divisibilité"
+     ],
+     "bonne": "$(3, 9)$, $(4, 3)$, $(5, 1)$ et $(6, 0)$"
+    },
+    {
+     "question": "Soit $n$ un nombre entier naturel. On a $\\dfrac{2n^2 + 3n + 11}{2n + 1} = n + 1 + \\dfrac{10}{2n + 1}$. Quels sont les entiers naturels $n$ tels que $\\dfrac{2n^2 + 3n + 11}{2n + 1} \\in \\mathbb{N}$ ?",
+     "distracteurs": [
+      "$n = 2$ seulement",
+      "Tous les entiers naturels, car $n + 1 \\in \\mathbb{N}$",
+      "$n = 1$ ou $n = 5$"
+     ],
+     "explication": "Comme $n + 1 \\in \\mathbb{N}$, le quotient est un entier naturel si et seulement si $2n + 1$ divise $10$. Les diviseurs de $10$ sont $1$, $2$, $5$ et $10$ ; $2n + 1$ est impair, donc $2n + 1 = 1$ ou $2n + 1 = 5$, soit $n = 0$ ou $n = 2$ (vérification : $11$ et $\\dfrac{25}{5} = 5$). Pièges : $n = 0$ est un entier naturel ; il ne suffit pas que $n + 1$ soit entier, la fraction $\\dfrac{10}{2n + 1}$ doit l’être aussi ; $1$ et $5$ sont les valeurs de $2n + 1$, pas de $n$.",
+     "difficulte": "medium",
+     "cible": "D'après le DS #52 (exercice 3) : écriture n + 1 + 10/(2n + 1), diviseurs impairs.",
+     "theoremes": [
+      "Propriétés de la divisibilité"
+     ],
+     "bonne": "$n = 0$ ou $n = 2$"
+    },
+    {
+     "question": "Soit $p$ un nombre premier tel que $p \\geq 5$. Quels sont les restes possibles de la division euclidienne de $p$ par $6$ ?",
+     "distracteurs": [
+      "$1$, $3$ ou $5$",
+      "$1$, $2$, $3$, $4$ ou $5$",
+      "$5$ seulement"
+     ],
+     "explication": "On écrit $p = 6q + r$ avec $0 \\leq r \\leq 5$ et on élimine les restes impossibles. Si $r \\in \\{0, 2, 4\\}$, $p$ est pair, donc divisible par $2$ ; si $r = 3$, $p = 3(2q + 1)$ est divisible par $3$. Comme $p \\geq 5$ est premier, il n’est divisible ni par $2$ ni par $3$. Donc $r = 1$ ou $r = 5$ (ex. $7 = 6 + 1$, $11 = 6 + 5$). Pièges : un reste $3$ donne un multiple de $3$ ; « impair » ne suffit pas ; $7$ montre que le reste $1$ est possible.",
+     "difficulte": "medium",
+     "cible": "D'après l'exercice #78 : restes modulo 6 d'un nombre premier p ≥ 5.",
+     "theoremes": [
+      "Propriétés de la divisibilité",
+      "Critères de divisibilité"
+     ],
+     "bonne": "$1$ ou $5$"
+    },
+    {
+     "question": "Le nombre $3131$ est-il premier ?",
+     "distracteurs": [
+      "Oui : il n’est divisible ni par $2$, ni par $3$, ni par $5$, ni par $7$.",
+      "Non, car il est divisible par $3$.",
+      "Oui, car il est impair."
+     ],
+     "explication": "Pour savoir si $n$ est premier, on teste les nombres premiers $p$ tels que $p^2 \\leq n$ ; ici $\\sqrt{3131} \\approx 55{,}9$, il faut aller jusqu’à $53$. On remarque $3131 = 31 \\times 100 + 31 = 31 \\times 101$. Donc $3131$ n’est pas premier. Pièges : s’arrêter à $7$ ne suffit pas ; la somme des chiffres vaut $8$, donc $3131$ n’est pas divisible par $3$ ; beaucoup de nombres impairs ne sont pas premiers.",
+     "difficulte": "easy",
+     "cible": "D'après l'exercice #66 : test de primalité jusqu'à √n.",
+     "theoremes": [
+      "Test de primalité (diviseurs premiers ≤ √n)"
+     ],
+     "bonne": "Non : $3131 = 31 \\times 101$."
+    },
+    {
+     "question": "Le nombre $n^2 + n + 41$ est-il premier pour tout entier naturel $n$ ?",
+     "distracteurs": [
+      "Oui : on l’a vérifié pour $n = 0, 1, \\dots, 10$.",
+      "Non : pour $n = 1$, on obtient $43$, qui n’est pas premier.",
+      "Oui, car $41$ est premier."
+     ],
+     "explication": "Pour montrer qu’une propriété « pour tout $n$ » est fausse, un contre-exemple suffit. Pour $n = 40$ : $40^2 + 40 + 41 = 40 \\times 41 + 41 = 41 \\times 41 = 41^2$, qui n’est pas premier. Donc la propriété est fausse. Pièges : des vérifications pour quelques valeurs ne prouvent rien pour tout $n$ ; $43$ est premier ; que $41$ soit premier ne dit rien de $n^2 + n + 41$.",
+     "difficulte": "medium",
+     "cible": "D'après l'exercice #67 : contre-exemple n = 40.",
+     "theoremes": [
+      "Test de primalité (diviseurs premiers ≤ √n)",
+      "Décomposition en facteurs premiers"
+     ],
+     "bonne": "Non : pour $n = 40$, on obtient $40^2 + 40 + 41 = 41^2$."
+    },
+    {
+     "question": "Pour quels entiers naturels $n$ ($n \\neq 5$) le nombre $\\dfrac{n + 6}{n - 5}$ est-il un entier naturel ?",
+     "distracteurs": [
+      "$n = 4$, $n = 6$ ou $n = 16$",
+      "$n = 1$ ou $n = 11$",
+      "$n = 16$ seulement"
+     ],
+     "explication": "On écrit $\\dfrac{n + 6}{n - 5} = \\dfrac{(n - 5) + 11}{n - 5} = 1 + \\dfrac{11}{n - 5}$. Il faut que $n - 5$ divise $11$ et que le résultat soit positif. Si $n - 5 = 1$ : $n = 6$ (quotient $12$) ; si $n - 5 = 11$ : $n = 16$ (quotient $2$). Si $n - 5 = -1$, $n = 4$ donne $1 - 11 = -10 \\notin \\mathbb{N}$ ; $n - 5 = -11$ donne $n < 0$. Donc $n = 6$ ou $n = 16$. Pièges : $n = 4$ donne un entier, mais négatif ; $1$ et $11$ sont les valeurs de $n - 5$ ; $n = 6$ convient aussi.",
+     "difficulte": "medium",
+     "cible": "D'après les exercices #77 et #73 : écriture 1 + 11/(n − 5), signe du quotient.",
+     "theoremes": [
+      "Propriétés de la divisibilité"
+     ],
+     "bonne": "$n = 6$ ou $n = 16$"
+    }
+   ]
+  },
+  {
+   "chapitre": "Ensembles de nombres ℕ, ℤ, 𝔻, ℚ et ℝ",
+   "questions": [
+    {
+     "question": "Montrer que $\\left(\\sqrt{14 - 6\\sqrt{5}} + \\sqrt{14 + 6\\sqrt{5}}\\right) \\in \\mathbb{N}$. Quelle est sa valeur ?",
+     "distracteurs": [
+      "$2\\sqrt{5}$",
+      "$\\sqrt{28}$",
+      "$0$"
+     ],
+     "explication": "On reconnaît des carrés : $(3 \\pm \\sqrt{5})^2 = 9 \\pm 6\\sqrt{5} + 5 = 14 \\pm 6\\sqrt{5}$. Donc $\\sqrt{14 - 6\\sqrt{5}} = |3 - \\sqrt{5}| = 3 - \\sqrt{5}$ (car $3 = \\sqrt{9} > \\sqrt{5}$) et $\\sqrt{14 + 6\\sqrt{5}} = 3 + \\sqrt{5}$. La somme vaut $6 \\in \\mathbb{N}$. Pièges : $\\sqrt{a^2} = |a|$, et $\\sqrt{5} - 3 < 0$ ne peut pas être une racine carrée (d’où $2\\sqrt{5}$, faux) ; $\\sqrt{a} + \\sqrt{b} \\neq \\sqrt{a + b}$.",
+     "difficulte": "medium",
+     "cible": "D'après le DS #294 (exercice 4, question b) : 14 ± 6√5 = (3 ± √5)².",
+     "theoremes": [
+      "Identités remarquables",
+      "Propriétés des racines carrées"
+     ],
+     "bonne": "$6$"
+    },
+    {
+     "question": "Pourquoi a-t-on $\\dfrac{-31}{2^7 \\times 5^{11}} \\in \\mathbb{D}$ ?",
+     "distracteurs": [
+      "Parce que c’est un nombre rationnel.",
+      "Parce que $\\dfrac{-31}{2^7 \\times 5^{11}} = \\dfrac{-31}{10^{18}}$.",
+      "Il n’est pas décimal, car son dénominateur n’est pas une puissance de $10$."
+     ],
+     "explication": "Un nombre est décimal s’il s’écrit $\\dfrac{a}{10^n}$ avec $a \\in \\mathbb{Z}$ et $n \\in \\mathbb{N}$. On complète les puissances de $2$ pour avoir autant de $2$ que de $5$ : on multiplie par $2^4$ en haut et en bas : $\\dfrac{-31 \\times 2^4}{2^{11} \\times 5^{11}} = \\dfrac{-496}{10^{11}} \\in \\mathbb{D}$. Pièges : tout rationnel n’est pas décimal ($\\dfrac{1}{3} \\notin \\mathbb{D}$) ; $2^7 \\times 5^{11} \\neq 10^{18}$ ; on peut transformer le dénominateur avant de conclure.",
+     "difficulte": "easy",
+     "cible": "D'après le DS #294 (exercice 4, question a) : écrire a/10ⁿ en complétant les puissances de 2.",
+     "theoremes": [
+      "Caractérisation des nombres décimaux",
+      "Propriétés des puissances"
+     ],
+     "bonne": "Parce que $\\dfrac{-31}{2^7 \\times 5^{11}} = \\dfrac{-31 \\times 2^4}{2^{11} \\times 5^{11}} = \\dfrac{-496}{10^{11}}$."
+    },
+    {
+     "question": "Montrer que $\\left(\\sqrt{14} - \\sqrt{\\dfrac{2}{7}}\\right)^2 \\in \\mathbb{Q}$. Quelle est sa valeur ?",
+     "distracteurs": [
+      "$\\dfrac{100}{7}$",
+      "$\\dfrac{96}{7}$",
+      "$16$"
+     ],
+     "explication": "On développe avec $(a - b)^2 = a^2 - 2ab + b^2$ : $14 - 2\\sqrt{14 \\times \\dfrac{2}{7}} + \\dfrac{2}{7} = 14 - 2\\sqrt{4} + \\dfrac{2}{7} = 10 + \\dfrac{2}{7} = \\dfrac{72}{7} \\in \\mathbb{Q}$. Pièges : $\\dfrac{100}{7}$ oublie le double produit ; $\\dfrac{96}{7} = 14 - \\dfrac{2}{7}$ utilise $(a - b)^2 = a^2 - b^2$, qui est faux ; le double produit est $2\\sqrt{4} = 4$, pas $\\sqrt{4}$.",
+     "difficulte": "easy",
+     "cible": "D'après le DS #294 (exercice 4, question c) : identité (a − b)², produit de racines.",
+     "theoremes": [
+      "Identités remarquables",
+      "Propriétés des racines carrées"
+     ],
+     "bonne": "$\\dfrac{72}{7}$"
+    },
+    {
+     "question": "Factoriser l’expression $A = 8x^3 + 27$.",
+     "distracteurs": [
+      "$A = (2x + 3)^3$",
+      "$A = (2x + 3)\\left(4x^2 + 6x + 9\\right)$",
+      "$A = (2x - 3)\\left(4x^2 + 6x + 9\\right)$"
+     ],
+     "explication": "On reconnaît une somme de cubes : $8x^3 + 27 = (2x)^3 + 3^3$ et $a^3 + b^3 = (a + b)\\left(a^2 - ab + b^2\\right)$. Avec $a = 2x$ et $b = 3$ : $A = (2x + 3)\\left(4x^2 - 6x + 9\\right)$. Pièges : $(2x + 3)^3$ contient aussi des termes en $x^2$ et en $x$ ; le signe du terme $ab$ est $-$ dans la somme de cubes ; $(a - b)\\left(a^2 + ab + b^2\\right)$ est la DIFFÉRENCE de cubes.",
+     "difficulte": "easy",
+     "cible": "D'après le DS #294 (exercice 5, question 8) : somme de deux cubes.",
+     "theoremes": [
+      "Identités remarquables"
+     ],
+     "bonne": "$A = (2x + 3)\\left(4x^2 - 6x + 9\\right)$"
+    },
+    {
+     "question": "Soit $n$ un entier naturel et $a = (2n + 1)(2n + 3)(2n + 5)(2n + 7) + 16$. Montrer que $\\sqrt{a} \\in \\mathbb{N}$. Que vaut $\\sqrt{a}$ ?",
+     "distracteurs": [
+      "$\\sqrt{a} = 4n^2 + 16n + 7$",
+      "$\\sqrt{a} = (2n + 4)^2$",
+      "$\\sqrt{a} = 4n^2 + 16n + 15$"
+     ],
+     "explication": "On regroupe les facteurs extrêmes et les facteurs du milieu : $(2n + 1)(2n + 7) = 4n^2 + 16n + 7$ et $(2n + 3)(2n + 5) = 4n^2 + 16n + 15$. Avec $t = 4n^2 + 16n + 11$ : $a = (t - 4)(t + 4) + 16 = t^2$. Comme $t > 0$, $\\sqrt{a} = 4n^2 + 16n + 11 \\in \\mathbb{N}$ (vérification : $n = 0$ donne $a = 105 + 16 = 121 = 11^2$). Pièges : $4n^2 + 16n + 7$ et $4n^2 + 16n + 15$ sont les deux produits, la racine est leur moyenne ; $(2n + 4)^2 = 4n^2 + 16n + 16$.",
+     "difficulte": "hard",
+     "cible": "D'après le DS #294 (bonus) : regrouper les facteurs, (t − 4)(t + 4) + 16 = t².",
+     "theoremes": [
+      "Identités remarquables"
+     ],
+     "bonne": "$\\sqrt{a} = 4n^2 + 16n + 11$"
+    },
+    {
+     "question": "Montrer que $\\left(3 + \\sqrt{5}\\right)^3 + \\left(3 - \\sqrt{5}\\right)^3$ est un nombre entier naturel pair. Que vaut-il ?",
+     "distracteurs": [
+      "$216$",
+      "$54$",
+      "$72$"
+     ],
+     "explication": "On développe avec $(a \\pm b)^3 = a^3 \\pm 3a^2b + 3ab^2 \\pm b^3$ : les termes en $\\sqrt{5}$ s’annulent et il reste $2\\left(3^3 + 3 \\times 3 \\times (\\sqrt{5})^2\\right) = 2(27 + 45) = 144$. On peut aussi utiliser $a^3 + b^3 = (a + b)^3 - 3ab(a + b)$ avec $a + b = 6$ et $ab = 9 - 5 = 4$ : $216 - 72 = 144$, pair. Pièges : $216 = (a + b)^3$ oublie le terme $-3ab(a + b)$ ; $54 = 2 \\times 27$ oublie le terme $3ab^2$ ; $72$ est ce terme seul.",
+     "difficulte": "medium",
+     "cible": "D'après le DS #52 (exercice 6, question 11) : cubes conjugués.",
+     "theoremes": [
+      "Identités remarquables"
+     ],
+     "bonne": "$144$"
+    },
+    {
+     "question": "Simplifier $\\sqrt{49 + 20\\sqrt{6}}$.",
+     "distracteurs": [
+      "$7 + \\sqrt{20\\sqrt{6}}$",
+      "$2 + 5\\sqrt{6}$",
+      "$7 + 2\\sqrt{5}$"
+     ],
+     "explication": "On cherche $a + b\\sqrt{6}$ (avec $a, b > 0$) dont le carré vaut $49 + 20\\sqrt{6}$ : $(a + b\\sqrt{6})^2 = a^2 + 6b^2 + 2ab\\sqrt{6}$, d’où $ab = 10$ et $a^2 + 6b^2 = 49$ : $a = 5$, $b = 2$. En effet $(5 + 2\\sqrt{6})^2 = 25 + 24 + 20\\sqrt{6}$. Donc $\\sqrt{49 + 20\\sqrt{6}} = 5 + 2\\sqrt{6}$. Pièges : $\\sqrt{a + b} \\neq \\sqrt{a} + \\sqrt{b}$ ; $(2 + 5\\sqrt{6})^2 = 154 + 20\\sqrt{6}$ ; $(7 + 2\\sqrt{5})^2$ contient $\\sqrt{5}$, pas $\\sqrt{6}$.",
+     "difficulte": "medium",
+     "cible": "D'après l'exercice #188 : racine d'une expression de la forme (a + b√6)².",
+     "theoremes": [
+      "Identités remarquables",
+      "Propriétés des racines carrées"
+     ],
+     "bonne": "$5 + 2\\sqrt{6}$"
+    }
+   ]
+  },
+  {
+   "chapitre": "Ordre dans ℝ",
+   "questions": [
+    {
+     "question": "Comparer les nombres $a = \\sqrt{2023} - \\sqrt{2025}$ et $b = \\sqrt{2024} - \\sqrt{2026}$.",
+     "distracteurs": [
+      "$a > b$",
+      "$a = b$, car les écarts sous les racines sont égaux.",
+      "On ne peut pas les comparer sans calculatrice."
+     ],
+     "explication": "Avec l’expression conjuguée : $a = \\dfrac{2023 - 2025}{\\sqrt{2023} + \\sqrt{2025}} = \\dfrac{-2}{\\sqrt{2023} + \\sqrt{2025}}$ et $b = \\dfrac{-2}{\\sqrt{2024} + \\sqrt{2026}}$. Le dénominateur de $b$ est plus grand, donc $\\dfrac{2}{\\sqrt{2024} + \\sqrt{2026}} < \\dfrac{2}{\\sqrt{2023} + \\sqrt{2025}}$, et en multipliant par $-1$ : $b > a$. Donc $a < b$. Pièges : multiplier par un négatif renverse l’inégalité ; $\\sqrt{x} - \\sqrt{y}$ ne dépend pas seulement de $x - y$ ; la conjuguée permet de comparer sans calculatrice.",
+     "difficulte": "medium",
+     "cible": "D'après le DS #302 (exercice 1, question 1) : conjuguée, comparaison d'inverses.",
+     "theoremes": [
+      "Ordre et opérations"
+     ],
+     "bonne": "$a < b$"
+    },
+    {
+     "question": "Donner, sous forme d’intervalle, l’ensemble des solutions de l’inéquation $x - \\dfrac{x + 1}{2} < 3x - 2(1 - 2x)$.",
+     "distracteurs": [
+      "$\\left]-\\infty, \\dfrac{3}{13}\\right[$",
+      "$\\left]\\dfrac{3}{14}, +\\infty\\right[$",
+      "$\\mathopen{]}-\\infty, -1\\mathclose{[}$"
+     ],
+     "explication": "On simplifie chaque membre, puis on multiplie par $2 > 0$. $x - \\dfrac{x + 1}{2} = \\dfrac{x - 1}{2}$ et $3x - 2(1 - 2x) = 7x - 2$. L’inéquation équivaut à $x - 1 < 14x - 4$, soit $3 < 13x$, c’est-à-dire $x > \\dfrac{3}{13}$. Donc $S = \\left]\\dfrac{3}{13}, +\\infty\\right[$. Pièges : diviser par $13 > 0$ ne change pas le sens ; $\\dfrac{3}{14}$ vient d’un oubli : on n’a multiplié que la fraction par $2$ ; $-2(1 - 2x) = -2 + 4x$, pas $-2 - 4x$ (d’où $\\mathopen{]}-\\infty, -1\\mathclose{[}$).",
+     "difficulte": "easy",
+     "cible": "D'après le DS #281 (exercice 1, question 2) : inéquation du premier degré.",
+     "theoremes": [
+      "Ordre et opérations"
+     ],
+     "bonne": "$\\left]\\dfrac{3}{13}, +\\infty\\right[$"
+    },
+    {
+     "question": "Résoudre dans $\\mathbb{R}$ l’équation $\\left|3 - |x - 1|\\right| = 5$.",
+     "distracteurs": [
+      "$S = \\{-7, -1, 3, 9\\}$",
+      "$S = \\{9\\}$",
+      "$S = \\{-1, 3\\}$"
+     ],
+     "explication": "$|X| = 5 \\iff X = 5$ ou $X = -5$. Ici : $3 - |x - 1| = 5 \\iff |x - 1| = -2$, impossible ; ou $3 - |x - 1| = -5 \\iff |x - 1| = 8 \\iff x = 9$ ou $x = -7$. Donc $S = \\{-7, 9\\}$. Pièges : une valeur absolue n’est jamais négative, $|x - 1| = -2$ n’a pas de solution ($-1$ et $3$ résolvent $|x - 1| = 2$) ; $|x - 1| = 8$ a deux solutions.",
+     "difficulte": "medium",
+     "cible": "D'après le DS #281 (exercice 3, question 7) : valeurs absolues emboîtées.",
+     "theoremes": [
+      "Propriétés de la valeur absolue"
+     ],
+     "bonne": "$S = \\{-7, 9\\}$"
+    },
+    {
+     "question": "Résoudre dans $\\mathbb{R}$ l’inéquation $|2x + 1| \\geq 2$.",
+     "distracteurs": [
+      "$S = \\left[-\\dfrac{3}{2}, \\dfrac{1}{2}\\right]$",
+      "$S = \\left[\\dfrac{1}{2}, +\\infty\\right[$",
+      "$S = \\left]-\\infty, -\\dfrac{1}{2}\\right] \\cup \\left[\\dfrac{3}{2}, +\\infty\\right[$"
+     ],
+     "explication": "$|X| \\geq r$ (avec $r > 0$) $\\iff X \\geq r$ ou $X \\leq -r$. Donc $2x + 1 \\geq 2$ ou $2x + 1 \\leq -2$, soit $x \\geq \\dfrac{1}{2}$ ou $x \\leq -\\dfrac{3}{2}$. Donc $S = \\left]-\\infty, -\\dfrac{3}{2}\\right] \\cup \\left[\\dfrac{1}{2}, +\\infty\\right[$. Pièges : $\\left[-\\dfrac{3}{2}, \\dfrac{1}{2}\\right]$ est la solution de $|2x + 1| \\leq 2$ ; il y a deux cas ; la dernière réponse inverse les signes.",
+     "difficulte": "easy",
+     "cible": "D'après le DS #281 (exercice 3, question 9) : |X| ≥ r ⇔ X ≥ r ou X ≤ −r.",
+     "theoremes": [
+      "Valeur absolue et intervalles (|x − a| ≤ r)"
+     ],
+     "bonne": "$S = \\left]-\\infty, -\\dfrac{3}{2}\\right] \\cup \\left[\\dfrac{1}{2}, +\\infty\\right[$"
+    },
+    {
+     "question": "Pour tout $x \\in \\mathopen{]}0, 1\\mathclose{[}$, on a montré que $\\left|\\sqrt{1 + 2x} - (1 + x)\\right| \\leq \\dfrac{1}{2}x^2$. Que donne cette inégalité pour $x = 10^{-4}$ ?",
+     "distracteurs": [
+      "$1{,}0001$ est une valeur approchée de $\\sqrt{1{,}0002}$ à $10^{-4}$ près seulement.",
+      "$1{,}0001$ est une valeur approchée de $\\sqrt{1{,}0002}$ à $10^{-8}$ près, mais pas mieux.",
+      "$1{,}0002$ est une valeur approchée de $\\sqrt{1{,}0001}$ à $5 \\times 10^{-9}$ près."
+     ],
+     "explication": "Avec $x = 10^{-4}$ : $1 + 2x = 1{,}0002$ et $1 + x = 1{,}0001$, donc $\\left|\\sqrt{1{,}0002} - 1{,}0001\\right| \\leq \\dfrac{1}{2} \\times 10^{-8} = 5 \\times 10^{-9}$. Donc $1{,}0001$ est une valeur approchée de $\\sqrt{1{,}0002}$ à $5 \\times 10^{-9}$ près. Pièges : la précision est donnée par $\\dfrac{1}{2}x^2$, pas par $x$ ; $10^{-8} = x^2$ oublie le facteur $\\dfrac{1}{2}$ ; les rôles de $1{,}0001$ et de $1{,}0002$ ne s’échangent pas.",
+     "difficulte": "medium",
+     "cible": "D'après le DS #281 (exercice 4) : approximation à une précision donnée.",
+     "theoremes": [
+      "Approximation d'un nombre à une précision donnée",
+      "Propriétés de la valeur absolue"
+     ],
+     "bonne": "$1{,}0001$ est une valeur approchée de $\\sqrt{1{,}0002}$ à $5 \\times 10^{-9}$ près."
+    },
+    {
+     "question": "Soient $x$ et $y$ deux nombres réels tels que $x < y < 3$. On pose $a = x^2 - 6x + 1$ et $b = y^2 - 6y + 1$. Comparer $a$ et $b$.",
+     "distracteurs": [
+      "$a < b$, car $x < y$.",
+      "$a - b = (x - y)(x + y - 6) < 0$, car $x - y < 0$.",
+      "On ne peut pas comparer $a$ et $b$ sans connaître $x$ et $y$."
+     ],
+     "explication": "On factorise la différence : $a - b = x^2 - y^2 - 6(x - y) = (x - y)(x + y - 6)$. Or $x - y < 0$ et, comme $x < 3$ et $y < 3$, $x + y < 6$, donc $x + y - 6 < 0$. Le produit de deux négatifs est positif : $a - b > 0$. Donc $a > b$. Pièges : $t \\mapsto t^2 - 6t + 1$ n’est pas croissante sur $\\mathopen{]}-\\infty, 3\\mathclose{[}$ (elle y décroît) ; il faut le signe des DEUX facteurs ; la factorisation permet de conclure sans valeurs.",
+     "difficulte": "medium",
+     "cible": "D'après le DS #302 (exercice 2) : factoriser a − b et étudier le signe de chaque facteur.",
+     "theoremes": [
+      "Ordre et opérations"
+     ],
+     "bonne": "$a - b = (x - y)(x + y - 6) > 0$, donc $a > b$."
+    },
+    {
+     "question": "Soit $a$ un nombre réel de $\\mathopen{]}0, 1\\mathclose{[}$. On a montré que $\\left|\\dfrac{1 + \\sqrt{a}}{2} - 1\\right| < \\dfrac{1}{2}|a - 1|$. Que peut-on en déduire pour $a = 0{,}6$ ?",
+     "distracteurs": [
+      "$0{,}6$ est une valeur approchée de $\\dfrac{1 + \\sqrt{0{,}6}}{2}$ à $0{,}2$ près.",
+      "$1$ est une valeur approchée de $\\dfrac{1 + \\sqrt{0{,}6}}{2}$ à $0{,}4$ près seulement.",
+      "$\\dfrac{1}{2}$ est une valeur approchée de $\\dfrac{1 + \\sqrt{0{,}6}}{2}$ à $0{,}2$ près."
+     ],
+     "explication": "On remplace $a$ par $0{,}6$ : $\\left|\\dfrac{1 + \\sqrt{0{,}6}}{2} - 1\\right| < \\dfrac{1}{2} \\times 0{,}4 = 0{,}2$. Donc $1$ est une valeur approchée de $\\dfrac{1 + \\sqrt{0{,}6}}{2}$ à $0{,}2$ près (en fait il vaut environ $0{,}887$). Pièges : le nombre de référence est $1$, celui qui figure dans la valeur absolue ; $0{,}4 = |a - 1|$ oublie le facteur $\\dfrac{1}{2}$ ; $\\dfrac{1}{2}$ est la borne inférieure de l’encadrement $\\dfrac{1}{2} < \\dfrac{1 + \\sqrt{a}}{2} < 1$, pas une approximation à $0{,}2$ près.",
+     "difficulte": "easy",
+     "cible": "D'après le DS #302 (exercice 4) : lire la valeur approchée dans |X − 1| < 0,2.",
+     "theoremes": [
+      "Approximation d'un nombre à une précision donnée"
+     ],
+     "bonne": "$1$ est une valeur approchée de $\\dfrac{1 + \\sqrt{0{,}6}}{2}$ à $0{,}2$ près."
+    },
+    {
+     "question": "Soit $x$ un nombre réel tel que $1 < x < 2$, et $A = x^2 - 3x + 2$. On a $A = (x - 2)(x - 1) = \\left(x - \\dfrac{3}{2}\\right)^2 - \\dfrac{1}{4}$. Quel est l’encadrement de $A$ le plus précis ?",
+     "distracteurs": [
+      "$-3 < A < 3$, obtenu en encadrant $x^2$, $-3x$ et $2$ séparément.",
+      "$-1 < A < 0$, obtenu par la forme $(x - 2)(x - 1)$.",
+      "$-\\dfrac{1}{4} < A < \\dfrac{1}{4}$, car un carré est compris entre $0$ et $\\dfrac{1}{4}$."
+     ],
+     "explication": "Les trois écritures donnent trois encadrements. Directement : $1 < x^2 < 4$ et $-6 < -3x < -3$, d’où $-3 < A < 3$. Factorisée : $-1 < x - 2 < 0$ et $0 < x - 1 < 1$, d’où $-1 < A < 0$. Canonique : $x - \\dfrac{3}{2} \\in \\left]-\\dfrac{1}{2}, \\dfrac{1}{2}\\right[$, donc $0 \\leq \\left(x - \\dfrac{3}{2}\\right)^2 < \\dfrac{1}{4}$ et $-\\dfrac{1}{4} \\leq A < 0$. C’est le plus précis (amplitude $\\dfrac{1}{4}$). Pièges : encadrer chaque terme séparément perd beaucoup de précision ; la dernière réponse oublie le $-\\dfrac{1}{4}$.",
+     "difficulte": "medium",
+     "cible": "D'après le DS #301 (questions 5 à 8) : trois encadrements de la même expression.",
+     "theoremes": [
+      "Ordre et opérations"
+     ],
+     "bonne": "$-\\dfrac{1}{4} \\leq A < 0$, obtenu par la forme $\\left(x - \\dfrac{3}{2}\\right)^2 - \\dfrac{1}{4}$."
+    },
+    {
+     "question": "Soient $a$ et $b$ deux réels tels que $a \\geq \\dfrac{1}{2}$, $b \\leq 1$ et $a - b = 3$. On a montré que $\\dfrac{1}{2} \\leq a \\leq 4$ et $-\\dfrac{5}{2} \\leq b \\leq 1$. Que vaut $A = \\sqrt{(a + b - 5)^2} + \\sqrt{(a + b + 2)^2}$ ?",
+     "distracteurs": [
+      "$A = 2a + 2b - 3$",
+      "$A = -3$",
+      "$A = 2a + 2b + 7$"
+     ],
+     "explication": "$\\sqrt{X^2} = |X|$ : on cherche le signe de $a + b - 5$ et de $a + b + 2$. Comme $b = a - 3$, $a + b = 2a - 3 \\in [-2, 5]$. Donc $a + b - 5 \\leq 0$ et $a + b + 2 \\geq 0$, et $A = -(a + b - 5) + (a + b + 2) = 7$. Pièges : $\\sqrt{X^2} = X$ seulement si $X \\geq 0$ (d’où $2a + 2b - 3$, faux) ; une racine carrée est positive, $A = -3$ est impossible.",
+     "difficulte": "medium",
+     "cible": "D'après le DS #295 (questions 4-5) : √(X²) = |X| et signe par encadrement.",
+     "theoremes": [
+      "Propriétés de la valeur absolue",
+      "Ordre et opérations"
+     ],
+     "bonne": "$A = 7$"
+    },
+    {
+     "question": "Quelles équivalences sont vraies ?",
+     "distracteurs": [
+      "$|x - 2| \\geq 2 \\iff x \\in [0, 4]$",
+      "$\\left|1 - |x - 1|\\right| = 1 \\iff x \\in \\{1, 3\\}$",
+      "$|x + 1| \\leq 2 \\iff x \\in [-1, 3]$"
+     ],
+     "explication": "$|x - a| \\leq r \\iff a - r \\leq x \\leq a + r$ : $|x - 1| \\leq 4 \\iff x \\in [-3, 5]$. $|2x - 3| = 5 \\iff 2x - 3 = 5$ ou $2x - 3 = -5$, soit $x = 4$ ou $x = -1$. En revanche : $|x - 2| \\geq 2 \\iff x \\leq 0$ ou $x \\geq 4$ (l’extérieur de l’intervalle) ; $\\left|1 - |x - 1|\\right| = 1 \\iff |x - 1| = 0$ ou $|x - 1| = 2$, soit $x \\in \\{-1, 1, 3\\}$ (on a oublié $-1$) ; $|x + 1| = |x - (-1)|$, donc $|x + 1| \\leq 2 \\iff x \\in [-3, 1]$. Pièges : le centre de $|x + 1|$ est $-1$ ; « $\\geq$ » donne l’extérieur.",
+     "difficulte": "medium",
+     "cible": "D'après les DS #302 et #281 (exercice 3) : équations et inéquations avec valeur absolue.",
+     "theoremes": [
+      "Valeur absolue et intervalles (|x − a| ≤ r)",
+      "Propriétés de la valeur absolue"
+     ],
+     "bonnes": [
+      "$|x - 1| \\leq 4 \\iff x \\in [-3, 5]$",
+      "$|2x - 3| = 5 \\iff x = 4$ ou $x = -1$"
+     ]
+    }
+   ]
+  },
+  {
+   "chapitre": "Équations, inéquations et systèmes",
+   "questions": [
+    {
+     "question": "Résoudre dans $\\mathbb{R}$ l’inéquation $(x + 2)^2 \\geq (2x - 5)^2$.",
+     "distracteurs": [
+      "$S = \\mathopen{]}-\\infty, 1] \\cup [7, +\\infty\\mathclose{[}$",
+      "$S = \\mathopen{]}-\\infty, 7]$",
+      "$S = [-7, -1]$"
+     ],
+     "explication": "On passe tout dans un membre et on factorise une différence de carrés : $(x + 2)^2 - (2x - 5)^2 = (x + 2 - 2x + 5)(x + 2 + 2x - 5) = (7 - x)(3x - 3)$. Tableau de signes : ce produit est positif ou nul entre les racines $1$ et $7$. Donc $S = [1, 7]$. Pièges : « prendre la racine » en écrivant $x + 2 \\geq 2x - 5$ oublie les valeurs absolues (d’où $\\mathopen{]}-\\infty, 7]$) ; le produit $(7 - x)(3x - 3)$ est positif ENTRE ses racines car les coefficients de $x$ sont de signes contraires.",
+     "difficulte": "medium",
+     "cible": "D'après le DS #281 (exercice 2, question 4) : différence de carrés et tableau de signes.",
+     "theoremes": [
+      "Signe de ax + b"
+     ],
+     "bonne": "$S = [1, 7]$"
+    },
+    {
+     "question": "Résoudre dans $\\mathbb{R}$ l’inéquation $\\dfrac{x^2 - 4}{x + 3} \\leq 0$.",
+     "distracteurs": [
+      "$S = [-2, 2]$",
+      "$S = \\mathopen{]}-\\infty, -3] \\cup [-2, 2]$",
+      "$S = \\mathopen{]}-3, -2] \\cup [2, +\\infty\\mathclose{[}$"
+     ],
+     "explication": "On factorise $x^2 - 4 = (x - 2)(x + 2)$ et on dresse le tableau de signes de $x - 2$, $x + 2$ et $x + 3$ (valeur interdite $-3$). Le quotient est négatif sur $\\mathopen{]}-\\infty, -3\\mathclose{[}$, positif sur $\\mathopen{]}-3, -2\\mathclose{[}$, négatif sur $\\mathopen{]}-2, 2\\mathclose{[}$, positif sur $\\mathopen{]}2, +\\infty\\mathclose{[}$, et nul en $\\pm 2$. Donc $S = \\mathopen{]}-\\infty, -3\\mathclose{[} \\cup [-2, 2]$. Pièges : le dénominateur change aussi le signe, on ne peut pas l’ignorer ; $-3$ est une valeur interdite, le crochet y est ouvert ; la dernière réponse correspond à $\\geq 0$.",
+     "difficulte": "medium",
+     "cible": "D'après le DS #281 (exercice 2, question 5) : tableau de signes d'un quotient.",
+     "theoremes": [
+      "Signe de ax + b"
+     ],
+     "bonne": "$S = \\mathopen{]}-\\infty, -3\\mathclose{[} \\cup [-2, 2]$"
+    },
+    {
+     "question": "Donner, sous forme d’intervalle, l’ensemble des solutions de l’inéquation $9 - x^2 < 0$.",
+     "distracteurs": [
+      "$S = \\mathopen{]}-3, 3\\mathclose{[}$",
+      "$S = \\mathopen{]}3, +\\infty\\mathclose{[}$",
+      "$S = \\mathopen{]}-\\infty, -3\\mathclose{[}$"
+     ],
+     "explication": "$9 - x^2 < 0 \\iff x^2 > 9 \\iff |x| > 3$ (car $\\sqrt{x^2} = |x|$), soit $x < -3$ ou $x > 3$. Donc $S = \\mathopen{]}-\\infty, -3\\mathclose{[} \\cup \\mathopen{]}3, +\\infty\\mathclose{[}$. Pièges : $\\mathopen{]}-3, 3\\mathclose{[}$ résout $9 - x^2 > 0$ ; « $x^2 > 9 \\iff x > 3$ » oublie les nombres négatifs ($(-4)^2 = 16 > 9$).",
+     "difficulte": "easy",
+     "cible": "D'après le DS #296 (question 2) : x² > 9 ⇔ |x| > 3.",
+     "theoremes": [
+      "Signe du trinôme"
+     ],
+     "bonne": "$S = \\mathopen{]}-\\infty, -3\\mathclose{[} \\cup \\mathopen{]}3, +\\infty\\mathclose{[}$"
+    },
+    {
+     "question": "Résoudre dans $\\mathbb{R}$ l’inéquation $\\dfrac{x^2 - x}{x + 2} \\geq 0$.",
+     "distracteurs": [
+      "$S = [-2, 0] \\cup [1, +\\infty\\mathclose{[}$",
+      "$S = \\mathopen{]}-\\infty, -2\\mathclose{[} \\cup [0, 1]$",
+      "$S = [1, +\\infty\\mathclose{[}$"
+     ],
+     "explication": "On factorise $x^2 - x = x(x - 1)$ ; valeurs qui annulent : $0$ et $1$ ; valeur interdite : $-2$. Tableau de signes : négatif sur $\\mathopen{]}-\\infty, -2\\mathclose{[}$, positif sur $\\mathopen{]}-2, 0\\mathclose{[}$, négatif sur $\\mathopen{]}0, 1\\mathclose{[}$, positif sur $\\mathopen{]}1, +\\infty\\mathclose{[}$. Donc $S = \\mathopen{]}-2, 0] \\cup [1, +\\infty\\mathclose{[}$. Pièges : $-2$ annule le dénominateur, il est exclu ; la deuxième réponse est l’ensemble où le quotient est $\\leq 0$ ; simplifier par $x$ ferait perdre des solutions.",
+     "difficulte": "medium",
+     "cible": "D'après le DS #296 (question 14) : tableau de signes d'un quotient.",
+     "theoremes": [
+      "Signe de ax + b",
+      "Signe du trinôme"
+     ],
+     "bonne": "$S = \\mathopen{]}-2, 0] \\cup [1, +\\infty\\mathclose{[}$"
+    },
+    {
+     "question": "Résoudre dans $\\mathbb{R}$ l’inéquation $(x - 1)(2x + 1) \\geq 0$.",
+     "distracteurs": [
+      "$S = \\left[-\\dfrac{1}{2}, 1\\right]$",
+      "$S = [1, +\\infty\\mathclose{[}$",
+      "$S = \\left]-\\infty, \\dfrac{1}{2}\\right] \\cup [1, +\\infty\\mathclose{[}$"
+     ],
+     "explication": "Le trinôme $(x - 1)(2x + 1) = 2x^2 - x - 1$ a pour racines $1$ et $-\\dfrac{1}{2}$ ; il a le signe de $a = 2 > 0$ à l’extérieur des racines. Donc $S = \\left]-\\infty, -\\dfrac{1}{2}\\right] \\cup [1, +\\infty\\mathclose{[}$. Pièges : entre les racines, le trinôme est négatif ; un produit est positif quand ses deux facteurs ont le même signe, pas seulement quand $x - 1 \\geq 0$ ; la racine de $2x + 1$ est $-\\dfrac{1}{2}$.",
+     "difficulte": "easy",
+     "cible": "D'après le DS #301 (question 12) : signe du trinôme à l'extérieur des racines.",
+     "theoremes": [
+      "Signe du trinôme"
+     ],
+     "bonne": "$S = \\left]-\\infty, -\\dfrac{1}{2}\\right] \\cup [1, +\\infty\\mathclose{[}$"
+    },
+    {
+     "question": "Pour montrer que, pour tout $x \\in \\mathbb{R}$, $x^4 - x^3 + x^2 - x + 1 > 0$, quelle écriture permet de conclure ?",
+     "distracteurs": [
+      "$x^4 - x^3 + x^2 - x + 1 = (x^2 - x)^2 + 1$",
+      "$x^4 + x^2 + 1 > x^3 + x$, car une somme de carrés est positive.",
+      "$x^4 - x^3 + x^2 - x + 1 = (x - 1)^4 + 1$"
+     ],
+     "explication": "On regroupe $x^4 - x^3$ pour faire apparaître un carré, puis on met le reste sous forme canonique. $x^4 - x^3 + \\dfrac{x^2}{4} = x^2\\left(x - \\dfrac{1}{2}\\right)^2$ ; il reste $\\dfrac{3}{4}x^2 - x + 1 = \\dfrac{3}{4}\\left(x - \\dfrac{2}{3}\\right)^2 + \\dfrac{2}{3}$. Une somme de deux carrés et de $\\dfrac{2}{3} > 0$ est strictement positive. Pièges : $(x^2 - x)^2 = x^4 - 2x^3 + x^2$, le terme en $x^3$ ne correspond pas ; « $x^4 + x^2 + 1 > x^3 + x$ » est ce qu’il faut démontrer, pas une justification ; $(x - 1)^4$ contient $-4x^3$.",
+     "difficulte": "hard",
+     "cible": "D'après le DS #295 (question 14) et l'exercice #89 (1ère Bac SM) : carré + forme canonique.",
+     "theoremes": [
+      "Forme canonique d'un trinôme"
+     ],
+     "bonne": "$x^4 - x^3 + x^2 - x + 1 = x^2\\left(x - \\dfrac{1}{2}\\right)^2 + \\dfrac{3}{4}\\left(x - \\dfrac{2}{3}\\right)^2 + \\dfrac{2}{3}$"
+    }
+   ]
+  },
+  {
+   "chapitre": "Calcul vectoriel dans le plan",
+   "questions": [
+    {
+     "question": "Sur un segment $[AB]$ de longueur $8$ cm, on place le point $M$ tel que $\\overrightarrow{MA} + 3\\overrightarrow{MB} = \\vec{0}$. Où se trouve $M$ ?",
+     "distracteurs": [
+      "Sur $[AB]$, avec $AM = 2$ cm, car $\\overrightarrow{AM} = \\dfrac{1}{4}\\overrightarrow{AB}$.",
+      "Sur $[AB]$, avec $AM = \\dfrac{8}{3}$ cm.",
+      "En dehors du segment, après $B$, car $\\overrightarrow{MA} = -3\\overrightarrow{MB}$."
+     ],
+     "explication": "On exprime $\\overrightarrow{AM}$ en fonction de $\\overrightarrow{AB}$ avec la relation de Chasles : $\\overrightarrow{MB} = \\overrightarrow{MA} + \\overrightarrow{AB}$, donc $\\overrightarrow{MA} + 3\\overrightarrow{MA} + 3\\overrightarrow{AB} = \\vec{0}$, soit $\\overrightarrow{AM} = \\dfrac{3}{4}\\overrightarrow{AB}$. Donc $M \\in [AB]$ et $AM = \\dfrac{3}{4} \\times 8 = 6$ cm. Pièges : le point est plus proche du point qui a le plus grand coefficient ($B$), d’où $AM = 6$ et non $2$ ; $\\overrightarrow{MA}$ et $\\overrightarrow{MB}$ de sens contraires signifie justement que $M$ est ENTRE $A$ et $B$.",
+     "difficulte": "easy",
+     "cible": "D'après l'exercice #766 : relation de Chasles pour exprimer AM.",
+     "theoremes": [
+      "Relation de Chasles"
+     ],
+     "bonne": "Sur $[AB]$, avec $AM = 6$ cm, car $\\overrightarrow{AM} = \\dfrac{3}{4}\\overrightarrow{AB}$."
+    },
+    {
+     "question": "Soit un parallélogramme $ABCD$, $I$ le milieu de $[BC]$ et $E$ le point tel que $\\overrightarrow{AE} = \\dfrac{2}{3}\\overrightarrow{AC}$. On a $\\overrightarrow{DE} = \\dfrac{1}{3}\\overrightarrow{DA} + \\dfrac{2}{3}\\overrightarrow{DC}$. Quelle relation montre que $D$, $E$ et $I$ sont alignés ?",
+     "distracteurs": [
+      "$\\overrightarrow{DE} = \\dfrac{1}{3}\\overrightarrow{DI}$",
+      "$\\overrightarrow{DI} = \\dfrac{2}{3}\\overrightarrow{DE}$",
+      "$\\overrightarrow{DE} = \\overrightarrow{DI}$"
+     ],
+     "explication": "On exprime $\\overrightarrow{DI}$ avec les mêmes vecteurs : $\\overrightarrow{DI} = \\overrightarrow{DC} + \\overrightarrow{CI}$ et $\\overrightarrow{CI} = \\dfrac{1}{2}\\overrightarrow{CB} = \\dfrac{1}{2}\\overrightarrow{DA}$ ($ABCD$ parallélogramme). Donc $\\overrightarrow{DI} = \\overrightarrow{DC} + \\dfrac{1}{2}\\overrightarrow{DA}$ et $\\dfrac{2}{3}\\overrightarrow{DI} = \\dfrac{2}{3}\\overrightarrow{DC} + \\dfrac{1}{3}\\overrightarrow{DA} = \\overrightarrow{DE}$ : les vecteurs sont colinéaires, $D$, $E$, $I$ sont alignés. Pièges : $\\overrightarrow{CB} = \\overrightarrow{DA}$ dans $ABCD$ ; le coefficient se lit sur $\\overrightarrow{DC}$ ; $E \\neq I$.",
+     "difficulte": "medium",
+     "cible": "D'après l'exercice #442 : décomposer DI sur (DA, DC), colinéarité.",
+     "theoremes": [
+      "Condition de colinéarité de deux vecteurs",
+      "Relation de Chasles"
+     ],
+     "bonne": "$\\overrightarrow{DE} = \\dfrac{2}{3}\\overrightarrow{DI}$"
+    },
+    {
+     "question": "$ABC$ est un triangle et $G$ le point tel que $3\\overrightarrow{GA} + 2\\overrightarrow{GB} - \\overrightarrow{GC} = \\vec{0}$. Exprimer $\\overrightarrow{AG}$ en fonction de $\\overrightarrow{AB}$ et $\\overrightarrow{AC}$.",
+     "distracteurs": [
+      "$\\overrightarrow{AG} = \\dfrac{1}{2}\\overrightarrow{AB} + \\dfrac{1}{4}\\overrightarrow{AC}$",
+      "$\\overrightarrow{AG} = \\dfrac{2}{5}\\overrightarrow{AB} - \\dfrac{1}{5}\\overrightarrow{AC}$",
+      "$\\overrightarrow{AG} = 2\\overrightarrow{AB} - \\overrightarrow{AC}$"
+     ],
+     "explication": "On introduit $A$ dans chaque vecteur : $\\overrightarrow{GB} = \\overrightarrow{GA} + \\overrightarrow{AB}$ et $\\overrightarrow{GC} = \\overrightarrow{GA} + \\overrightarrow{AC}$. Alors $3\\overrightarrow{GA} + 2\\overrightarrow{GA} + 2\\overrightarrow{AB} - \\overrightarrow{GA} - \\overrightarrow{AC} = \\vec{0}$, soit $4\\overrightarrow{GA} + 2\\overrightarrow{AB} - \\overrightarrow{AC} = \\vec{0}$, donc $\\overrightarrow{AG} = \\dfrac{1}{2}\\overrightarrow{AB} - \\dfrac{1}{4}\\overrightarrow{AC}$. Pièges : le coefficient de $\\overrightarrow{GA}$ est $3 + 2 - 1 = 4$, pas $5$ ; le signe de $-\\overrightarrow{GC}$ se retrouve devant $\\overrightarrow{AC}$ ; il faut diviser par $4$.",
+     "difficulte": "medium",
+     "cible": "D'après le DS #302 (exercice 5, question 13) : relation de Chasles, somme des coefficients 4.",
+     "theoremes": [
+      "Relation de Chasles"
+     ],
+     "bonne": "$\\overrightarrow{AG} = \\dfrac{1}{2}\\overrightarrow{AB} - \\dfrac{1}{4}\\overrightarrow{AC}$"
+    },
+    {
+     "question": "$ABC$ est un triangle, $G$ le point tel que $3\\overrightarrow{GA} + 2\\overrightarrow{GB} - \\overrightarrow{GC} = \\vec{0}$ et $K$ le point tel que $3\\overrightarrow{KA} + 2\\overrightarrow{KB} = \\vec{0}$. Quelle relation montre que $G$, $K$ et $C$ sont alignés ?",
+     "distracteurs": [
+      "$\\overrightarrow{GC} = 4\\overrightarrow{GK}$",
+      "$\\overrightarrow{GK} = 5\\overrightarrow{GC}$",
+      "$\\overrightarrow{GC} = -5\\overrightarrow{GK}$"
+     ],
+     "explication": "On introduit $K$ dans $3\\overrightarrow{GA} + 2\\overrightarrow{GB}$ : $3(\\overrightarrow{GK} + \\overrightarrow{KA}) + 2(\\overrightarrow{GK} + \\overrightarrow{KB}) = 5\\overrightarrow{GK} + \\left(3\\overrightarrow{KA} + 2\\overrightarrow{KB}\\right) = 5\\overrightarrow{GK}$. La relation de $G$ devient $5\\overrightarrow{GK} - \\overrightarrow{GC} = \\vec{0}$, soit $\\overrightarrow{GC} = 5\\overrightarrow{GK}$ : $G$, $K$, $C$ sont alignés. Pièges : le coefficient est $3 + 2 = 5$ ; les rôles de $K$ et $C$ ne s’échangent pas ; le signe vient de $-\\overrightarrow{GC}$ passé de l’autre côté.",
+     "difficulte": "medium",
+     "cible": "D'après le DS #302 (exercice 5, question 15) : regroupement par K, colinéarité.",
+     "theoremes": [
+      "Condition de colinéarité de deux vecteurs",
+      "Relation de Chasles"
+     ],
+     "bonne": "$\\overrightarrow{GC} = 5\\overrightarrow{GK}$"
+    },
+    {
+     "question": "$CHAT$ est un parallélogramme de centre $O$, et $I$ est le milieu de $[AT]$. Pourquoi a-t-on $\\overrightarrow{HT} + \\overrightarrow{CA} = 4\\overrightarrow{OI}$ ?",
+     "distracteurs": [
+      "Parce que $\\overrightarrow{HT} = \\overrightarrow{CA}$ dans un parallélogramme.",
+      "Parce que $\\overrightarrow{OA} + \\overrightarrow{OT} = \\overrightarrow{OI}$.",
+      "Parce que $\\overrightarrow{HT} + \\overrightarrow{CA} = 2\\overrightarrow{HA}$."
+     ],
+     "explication": "Les diagonales $[CA]$ et $[HT]$ d’un parallélogramme ont le même milieu $O$ : $\\overrightarrow{HT} = 2\\overrightarrow{OT}$ et $\\overrightarrow{CA} = 2\\overrightarrow{OA}$. Comme $I$ est le milieu de $[AT]$, $\\overrightarrow{OA} + \\overrightarrow{OT} = 2\\overrightarrow{OI}$. Donc $\\overrightarrow{HT} + \\overrightarrow{CA} = 2\\left(\\overrightarrow{OT} + \\overrightarrow{OA}\\right) = 4\\overrightarrow{OI}$. Pièges : les diagonales d’un parallélogramme ne sont pas égales (seulement de même milieu) ; la caractérisation du milieu donne $2\\overrightarrow{OI}$, pas $\\overrightarrow{OI}$.",
+     "difficulte": "medium",
+     "cible": "D'après le DS #281 (exercice 5, question 15) : milieu des diagonales, caractérisation du milieu.",
+     "theoremes": [
+      "Caractérisation vectorielle du milieu d'un segment",
+      "Caractérisation vectorielle d'un parallélogramme"
+     ],
+     "bonne": "Parce que $\\overrightarrow{HT} = 2\\overrightarrow{OT}$, $\\overrightarrow{CA} = 2\\overrightarrow{OA}$ ($O$ milieu des diagonales) et $\\overrightarrow{OA} + \\overrightarrow{OT} = 2\\overrightarrow{OI}$."
+    },
+    {
+     "question": "$ABC$ est un triangle, $E$ le point tel que $\\overrightarrow{AE} = \\dfrac{1}{3}\\overrightarrow{AC}$ et $F$ le point tel que $\\overrightarrow{AF} = 3\\overrightarrow{AB}$. Quelle relation montre que $(BE)$ et $(FC)$ sont parallèles ?",
+     "distracteurs": [
+      "$\\overrightarrow{FC} = \\dfrac{1}{3}\\overrightarrow{BE}$",
+      "$\\overrightarrow{FC} = -3\\overrightarrow{BE}$",
+      "$\\overrightarrow{BE} = 3\\overrightarrow{FC}$"
+     ],
+     "explication": "On décompose les deux vecteurs à partir de $A$ : $\\overrightarrow{FC} = \\overrightarrow{AC} - \\overrightarrow{AF} = 3\\overrightarrow{AE} - 3\\overrightarrow{AB} = 3\\left(\\overrightarrow{AE} - \\overrightarrow{AB}\\right) = 3\\overrightarrow{BE}$. Les vecteurs sont colinéaires, donc $(BE)$ et $(FC)$ sont parallèles. Pièges : $\\overrightarrow{AC} = 3\\overrightarrow{AE}$, pas $\\dfrac{1}{3}\\overrightarrow{AE}$ ; $\\overrightarrow{AE} - \\overrightarrow{AB} = \\overrightarrow{BE}$ (et non $\\overrightarrow{EB}$) ; les rôles des deux vecteurs ne s’échangent pas.",
+     "difficulte": "easy",
+     "cible": "D'après l'exercice #441 : colinéarité FC = 3BE.",
+     "theoremes": [
+      "Condition de colinéarité de deux vecteurs",
+      "Relation de Chasles"
+     ],
+     "bonne": "$\\overrightarrow{FC} = 3\\overrightarrow{BE}$"
+    },
+    {
+     "question": "$ABC$ est un triangle. On construit le point $D$ tel que $\\overrightarrow{AD} = \\overrightarrow{AB} - \\overrightarrow{AC}$. Que peut-on affirmer ?",
+     "distracteurs": [
+      "$\\overrightarrow{AD} = \\overrightarrow{BC}$, donc $ADCB$ est un parallélogramme.",
+      "$D$ est le milieu de $[BC]$.",
+      "$ABDC$ est un parallélogramme."
+     ],
+     "explication": "Relation de Chasles : $\\overrightarrow{AB} - \\overrightarrow{AC} = \\overrightarrow{AB} + \\overrightarrow{CA} = \\overrightarrow{CA} + \\overrightarrow{AB} = \\overrightarrow{CB}$. Donc $\\overrightarrow{AD} = \\overrightarrow{CB}$, ce qui caractérise le parallélogramme $ADBC$. Pièges : $\\overrightarrow{AB} - \\overrightarrow{AC} = \\overrightarrow{CB}$, pas $\\overrightarrow{BC}$ ; la différence de deux vecteurs n’a rien à voir avec un milieu ; $ABDC$ parallélogramme voudrait dire $\\overrightarrow{AB} = \\overrightarrow{CD}$, ce qui donne $\\overrightarrow{AD} = \\overrightarrow{AB} + \\overrightarrow{AC}$.",
+     "difficulte": "easy",
+     "cible": "D'après l'exercice #762 : différence de vecteurs et parallélogramme.",
+     "theoremes": [
+      "Relation de Chasles",
+      "Caractérisation vectorielle d'un parallélogramme"
+     ],
+     "bonne": "$\\overrightarrow{AD} = \\overrightarrow{CB}$, donc $ADBC$ est un parallélogramme."
+    },
+    {
+     "question": "$G$ est le centre de gravité du triangle $ABC$ et $A'$ le milieu de $[BC]$. Quelles affirmations sont vraies ?",
+     "distracteurs": [
+      "$\\overrightarrow{AG} = \\dfrac{1}{2}\\overrightarrow{AA'}$",
+      "$G$ est le milieu de $[AA']$",
+      "$\\overrightarrow{GA} + \\overrightarrow{GB} + \\overrightarrow{GC} = \\overrightarrow{AG}$"
+     ],
+     "explication": "Avec Chasles : $\\overrightarrow{GB} + \\overrightarrow{GC} = 2\\overrightarrow{GA'}$ ($A'$ milieu de $[BC]$), donc $\\overrightarrow{GA} + \\overrightarrow{GB} + \\overrightarrow{GC} = \\overrightarrow{GA} + 2\\overrightarrow{GA'}$, nul pour le centre de gravité, situé aux deux tiers de la médiane depuis le sommet : $\\overrightarrow{AG} = \\dfrac{2}{3}\\overrightarrow{AA'}$. Pièges : $G$ n’est pas le milieu de la médiane ; la somme $\\overrightarrow{GA} + \\overrightarrow{GB} + \\overrightarrow{GC}$ est le vecteur nul.",
+     "difficulte": "easy",
+     "cible": "D'après l'exercice #446 : centre de gravité, caractérisations vectorielles.",
+     "theoremes": [
+      "Caractérisation vectorielle du milieu d'un segment",
+      "Relation de Chasles"
+     ],
+     "bonnes": [
+      "$\\overrightarrow{GA} + \\overrightarrow{GB} + \\overrightarrow{GC} = \\vec{0}$",
+      "$\\overrightarrow{AG} = \\dfrac{2}{3}\\overrightarrow{AA'}$"
+     ]
+    }
+   ]
+  }
+ ]
+}

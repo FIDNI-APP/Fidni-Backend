@@ -277,6 +277,17 @@ check('doublon ignoré : publié sans cocher « pas un doublon »', r.status_cod
       and Content.objects.filter(json_content__import__cle='depot-copie').exists(), getattr(r, 'data', None))
 r = ad.post(f'/api/pilotage/ia/{jd.id}/doublon/', {'ignorer': False}, format='json')
 check('ignorer : refusé sur un brouillon déjà publié', r.status_code == 409)
+# Doublon publié après le dépôt (01/11/2026) : absent du contrôle enregistré, il apparaît sur la carte au refus.
+call_command('ia_deposer', dossier(dict(FICHE, cle='depot-tardif', titre='Doublon venu après'), []), stdout=io.StringIO())
+jt = IAJob.objects.get(options__cle='depot-tardif')
+for c_ in jt.result['controles']:
+    c_['doublons'] = []
+jt.save()
+r = ad.post(f'/api/pilotage/ia/{jt.id}/publier/', {'doublon_ok': False}, format='json')
+jt.refresh_from_db()
+check('doublon apparu après le dépôt : publication refusée, puis signalé sur la carte (bouton « Ignorer »)',
+      r.status_code == 400 and depot.carte(jt)['doublons'] > 0, (r.status_code, depot.carte(jt)['doublons']))
+jt.delete()
 
 # ---------------------------------------------------------------- modifier à la main dans l'éditeur (15/10/2026)
 call_command('ia_deposer', dossier(dict(FICHE, cle='depot-editeur', titre='Fiche à retoucher')), stdout=io.StringIO())
