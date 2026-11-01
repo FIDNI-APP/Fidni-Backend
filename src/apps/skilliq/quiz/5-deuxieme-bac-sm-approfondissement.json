@@ -13,7 +13,7 @@
       "$-\\infty$",
       "$0$"
      ],
-     "explication": "Pour $x<0$, $\\sqrt{x^2}=|x|=-x$. Avec l’expression conjuguée : $\\sqrt{x^2+x+1}+x=\\dfrac{x+1}{\\sqrt{x^2+x+1}-x}$ et $\\sqrt{x^2+x+1}-x=-x\\left(\\sqrt{1+\\frac1x+\\frac1{x^2}}+1\\right)$, donc le quotient se comporte comme $\\dfrac{x}{-2x}$ : la limite vaut $-\\frac12$. Pièges : $\\frac12$ est la limite de $\\sqrt{x^2+x+1}-x$ en $+\\infty$ (on a oublié que $x$ est négatif) ; $-\\infty$ vient de $\\sqrt{x^2}=x$, faux pour $x<0$ ; $0$ tranche la forme $\\infty-\\infty$ sans calcul.",
+     "explication": "Pour $x<0$, $\\sqrt{x^2}=|x|=-x$. Avec l’expression conjuguée : $\\sqrt{x^2+x+1}+x=\\dfrac{x+1}{\\sqrt{x^2+x+1}-x}$ et $\\sqrt{x^2+x+1}-x=-x\\left(\\sqrt{1+\\frac1x+\\frac1{x^2}}+1\\right)$, donc le quotient se comporte comme $\\dfrac{x}{-2x}$ : la limite vaut $-\\frac12$. Pièges : $\\frac12$ est la limite de $\\sqrt{x^2+x+1}-x$ en $+\\infty$ (on a oublié que $x$ est négatif) ; $-\\infty$ vient de $\\sqrt{x^2}=x$, faux pour $x<0$ ; $0$ conclut sans lever la forme $\\infty-\\infty$ sans calcul.",
      "difficulte": "hard",
      "cible": "Racine de $x^2$ en $-\\infty$ : $|x|=-x$ ; forme $\\infty-\\infty$ levée par le conjugué.",
      "theoremes": [
@@ -109,7 +109,7 @@
       "$\\frac{1}{2}$",
       "$+\\infty$"
      ],
-     "explication": "Avec $a^3-b^3=(a-b)(a^2+ab+b^2)$, $a=\\sqrt[3]{x^3+x^2}$ et $b=x$ : $a-b=\\dfrac{x^2}{a^2+ab+b^2}$. Or $a=x\\left(1+\\frac1x\\right)^{1/3}$, donc $a^2+ab+b^2=x^2\\left[\\left(1+\\frac1x\\right)^{2/3}+\\left(1+\\frac1x\\right)^{1/3}+1\\right]$ se comporte comme $3x^2$ : la limite vaut $\\frac13$. Pièges : « $\\sqrt[3]{x^3+x^2}\\approx x$, donc la différence tend vers $0$ » tranche une forme $\\infty-\\infty$ sans calcul ; $\\frac12$ est la limite de $\\sqrt{x^2+x}-x$ (racine carrée, pas cubique).",
+     "explication": "Avec $a^3-b^3=(a-b)(a^2+ab+b^2)$, $a=\\sqrt[3]{x^3+x^2}$ et $b=x$ : $a-b=\\dfrac{x^2}{a^2+ab+b^2}$. Or $a=x\\left(1+\\frac1x\\right)^{1/3}$, donc $a^2+ab+b^2=x^2\\left[\\left(1+\\frac1x\\right)^{2/3}+\\left(1+\\frac1x\\right)^{1/3}+1\\right]$ se comporte comme $3x^2$ : la limite vaut $\\frac13$. Pièges : « $\\sqrt[3]{x^3+x^2}\\approx x$, donc la différence tend vers $0$ » conclut sans lever la forme $\\infty-\\infty$ ; $\\frac12$ est la limite de $\\sqrt{x^2+x}-x$ (racine carrée, pas cubique).",
      "difficulte": "hard",
      "cible": "Racine cubique : identité $a^3-b^3$ (conjugué généralisé).",
      "theoremes": [
@@ -160,7 +160,7 @@
       "$0$ en $0$, et $0$ en $+\\infty$.",
       "Pas de limite en $0$, et $1$ en $+\\infty$."
      ],
-     "explication": "En $0$ : $\\left|x\\sin\\frac1x\\right|\\le|x|\\to0$, donc la limite est $0$ (gendarmes). En $+\\infty$ : avec $t=\\frac1x\\to0^+$, $x\\sin\\frac1x=\\dfrac{\\sin t}{t}\\to1$. Pièges : $\\dfrac{\\sin u}{u}\\to1$ seulement quand $u\\to0$ ; en $0$, $u=\\frac1x$ part à l’infini ; $\\sin\\frac1x$ oscille, mais multiplié par $x\\to0$ il est écrasé.",
+     "explication": "En $0$ : $\\left|x\\sin\\frac1x\\right|\\le|x|\\to0$, donc la limite est $0$ (gendarmes). En $+\\infty$ : avec $t=\\frac1x\\to0^+$, $x\\sin\\frac1x=\\dfrac{\\sin t}{t}\\to1$. Pièges : $\\dfrac{\\sin u}{u}\\to1$ seulement quand $u\\to0$ ; en $0$, $u=\\frac1x$ tend vers l’infini ; $\\sin\\frac1x$ oscille, mais reste borné, et $x\\to0$.",
      "difficulte": "hard",
      "cible": "$\\frac{\\sin u}{u}\\to1$ seulement si $u\\to0$ ; borné × tend vers 0.",
      "theoremes": [
@@ -246,7 +246,7 @@
       "$0$",
       "Elle n’a pas de limite : c’est une forme $\\frac{\\infty}{\\infty}$."
      ],
-     "explication": "En divisant par $4^n$, le terme dominant : $u_n=\\dfrac{\\left(\\frac34\\right)^n-1}{\\left(\\frac34\\right)^n+1}$, et $\\left(\\frac34\\right)^n\\to0$ car $0<\\frac34<1$ : $u_n\\to\\frac{0-1}{0+1}=-1$. Pièges : $1$ oublie le signe moins ; $0$ tranche la forme indéterminée au hasard ; une forme indéterminée ne veut pas dire « pas de limite » : il faut factoriser par le terme dominant.",
+     "explication": "En divisant par $4^n$, le terme dominant : $u_n=\\dfrac{\\left(\\frac34\\right)^n-1}{\\left(\\frac34\\right)^n+1}$, et $\\left(\\frac34\\right)^n\\to0$ car $0<\\frac34<1$ : $u_n\\to\\frac{0-1}{0+1}=-1$. Pièges : $1$ oublie le signe moins ; $0$ conclut sans lever la forme indéterminée ; une forme indéterminée ne veut pas dire « pas de limite » : il faut factoriser par le terme dominant.",
      "difficulte": "medium",
      "cible": "Factoriser par le terme dominant $4^n$ ; $q^n$ avec $|q|<1$.",
      "theoremes": [
@@ -412,7 +412,7 @@
       "Non : la courbe a une demi-tangente verticale en $0$.",
       "Oui, mais on ne peut pas calculer $f^{\\prime}_d(0)$, car $\\frac{1}{2\\sqrt{x}}$ n’est pas défini en $0$."
      ],
-     "explication": "$\\dfrac{f(x)-f(0)}{x-0}=\\dfrac{x\\sqrt x}{x}=\\sqrt x\\to0$ quand $x\\to0^+$ : $f$ est dérivable à droite en $0$, $f^{\\prime}_d(0)=0$, et sa courbe a une demi-tangente horizontale à l’origine. Pièges : la règle du produit est une condition suffisante, pas nécessaire : un facteur non dérivable n’empêche pas le produit de l’être ; la demi-tangente verticale est celle de $x\\mapsto\\sqrt x$ seule ; en un point délicat, on revient au taux d’accroissement au lieu d’une formule.",
+     "explication": "$\\dfrac{f(x)-f(0)}{x-0}=\\dfrac{x\\sqrt x}{x}=\\sqrt x\\to0$ quand $x\\to0^+$ : $f$ est dérivable à droite en $0$, $f^{\\prime}_d(0)=0$, et sa courbe a une demi-tangente horizontale à l’origine. Pièges : la règle du produit est une condition suffisante, pas nécessaire : un facteur non dérivable n’empêche pas le produit de l’être ; la demi-tangente verticale est celle de $x\\mapsto\\sqrt x$ seule ; en $0$, il faut passer par le taux d’accroissement, la formule de $f^{\\prime}(x)$ ne vaut que pour $x>0$.",
      "difficulte": "medium",
      "cible": "Dérivabilité en un point : taux d’accroissement, pas les règles de calcul.",
      "theoremes": [
