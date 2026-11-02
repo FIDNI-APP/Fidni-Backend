@@ -440,7 +440,9 @@ def publier(job, *, doublon_ok, auteur):
             with open(os.path.join(d, 'figures', nom), 'wb') as fh:
                 fh.write(base64.b64decode(b64))
         for f in fiches:
-            fiche = dict(f, doublon_ok=bool(doublon_ok))
+            # "doublon_ok" de la fiche : vérifié à la main au dépôt de Claude (l'IA du site ne peut pas le mettre,
+            # _completer l'enlève) ; le contrôle l'a déjà respecté, la publication aussi (01/11/2026).
+            fiche = dict(f, doublon_ok=bool(doublon_ok or f.get('doublon_ok')))
             content, _ = importing.import_fiche(fiche, d, api_base=getattr(settings, 'IA_API_BASE', 'https://api.fidni.fr'),
                                                edition=(r.get('editions') or {}).get(f.get('cle')))
             js = dict(content.json_content)
