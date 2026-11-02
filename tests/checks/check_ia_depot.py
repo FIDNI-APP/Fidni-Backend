@@ -288,6 +288,13 @@ jt.refresh_from_db()
 check('doublon apparu après le dépôt : publication refusée, puis signalé sur la carte (bouton « Ignorer »)',
       r.status_code == 400 and depot.carte(jt)['doublons'] > 0, (r.status_code, depot.carte(jt)['doublons']))
 jt.delete()
+# Fiche déposée avec "doublon_ok" (vérifié à la main) : ni bouton ni refus à la publication (01/11/2026).
+call_command('ia_deposer', dossier(dict(FICHE, cle='depot-verifie', titre='Même énoncé, vérifié', doublon_ok=True), []),
+             stdout=io.StringIO())
+jv = IAJob.objects.get(options__cle='depot-verifie')
+r = ad.post(f'/api/pilotage/ia/{jv.id}/publier/', {'doublon_ok': False}, format='json')
+check('« doublon_ok » de la fiche : aucun doublon sur la carte, publication acceptée',
+      depot.carte(jv)['doublons'] == 0 and r.status_code == 200, (depot.carte(jv)['doublons'], r.status_code, getattr(r, 'data', None)))
 
 # ---------------------------------------------------------------- modifier à la main dans l'éditeur (15/10/2026)
 call_command('ia_deposer', dossier(dict(FICHE, cle='depot-editeur', titre='Fiche à retoucher')), stdout=io.StringIO())
