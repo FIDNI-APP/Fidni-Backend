@@ -15,7 +15,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from .serializers import UserSerializer, UserSettingsSerializer
-from .models import SubjectGrade, UserProfile, ViewHistory, get_random_avatar
+from .models import AVATARS_LIONS, SubjectGrade, UserProfile, ViewHistory, avatar_lion_url, get_random_avatar
 from apps.things.models import Content
 from apps.caracteristics.models import Subject, ClassLevel
 from apps.interactions.models import Complete, Save
@@ -154,6 +154,23 @@ class AvatarUploadView(APIView):
             'message': 'Avatar removed successfully',
             'avatar_url': profile.avatar
         })
+
+
+class AvatarChoixView(APIView):
+    """L'élève choisit un lionceau : seul un nom de la liste est accepté, jamais une adresse libre."""
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        nom = request.data.get('avatar')
+        if nom not in AVATARS_LIONS:
+            return Response({'error': 'Avatar inconnu.'}, status=status.HTTP_400_BAD_REQUEST)
+        profile = request.user.profile
+        if profile.avatar_file:
+            profile.avatar_file.delete(save=False)
+            profile.avatar_file = None
+        profile.avatar_url = avatar_lion_url(nom)
+        profile.save()
+        return Response({'avatar_url': profile.avatar_url})
 
 
 # ============ ONBOARDING ============

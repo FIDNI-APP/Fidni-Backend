@@ -11,6 +11,7 @@ from apps.caracteristics.hubs import hub_view, levels_view, national_years_view
 
 from apps.things.views import ContentViewSet, SolutionViewSet, CommentViewSet, ProposedSolutionViewSet
 from apps.users.views import (
+    AvatarChoixView,
     AvatarUploadView,
     get_current_user,
     UserProfileViewSet, UserSettingsView, mark_content_viewed, OnboardingView,
@@ -98,6 +99,7 @@ urlpatterns = [
 
     # Avatar upload - MUST be before router to avoid conflict with /api/users/<username>/
     path('api/users/avatar/', AvatarUploadView.as_view(), name='avatar-upload'),
+    path('api/users/avatar/choisir/', AvatarChoixView.as_view(), name='avatar-choisir'),
     # Update own profile (no username in URL)
     path('api/users/me/', UpdateMeView.as_view(), name='update-me'),
 
