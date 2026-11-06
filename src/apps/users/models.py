@@ -3,6 +3,7 @@
 import os
 import random
 import uuid
+from django.conf import settings
 from django.db import models
 from django.contrib.auth.models import User
 from django.db.models.signals import post_save
@@ -12,27 +13,16 @@ from django.contrib.contenttypes.models import ContentType
 from django.contrib.contenttypes.fields import GenericForeignKey
 
 
-DEFAULT_AVATARS = [
-    "https://api.dicebear.com/7.x/avataaars/svg?seed=Felix",
-    "https://api.dicebear.com/7.x/avataaars/svg?seed=Aneka",
-    "https://api.dicebear.com/7.x/avataaars/svg?seed=Luna",
-    "https://api.dicebear.com/7.x/avataaars/svg?seed=Max",
-    "https://api.dicebear.com/7.x/avataaars/svg?seed=Sophie",
-    "https://api.dicebear.com/7.x/avataaars/svg?seed=Oliver",
-    "https://api.dicebear.com/7.x/avataaars/svg?seed=Emma",
-    "https://api.dicebear.com/7.x/avataaars/svg?seed=Leo",
-    "https://api.dicebear.com/7.x/avataaars/svg?seed=Mia",
-    "https://api.dicebear.com/7.x/avataaars/svg?seed=Jack",
-    "https://api.dicebear.com/7.x/avataaars/svg?seed=Zoe",
-    "https://api.dicebear.com/7.x/avataaars/svg?seed=Noah",
-    "https://api.dicebear.com/7.x/avataaars/svg?seed=Lily",
-    "https://api.dicebear.com/7.x/avataaars/svg?seed=Lucas",
-    "https://api.dicebear.com/7.x/avataaars/svg?seed=Ava",
-]
+# Les lionceaux de Fidni, servis par le frontend (public/avatars/lion-XX.webp).
+AVATARS_LIONS = tuple(f'lion-{i:02d}' for i in range(1, 37))
+
+
+def avatar_lion_url(nom):
+    return f"{settings.FRONTEND_URL.rstrip('/')}/avatars/{nom}.webp"
 
 
 def get_random_avatar():
-    return random.choice(DEFAULT_AVATARS)
+    return avatar_lion_url(random.choice(AVATARS_LIONS))
 
 
 def user_avatar_path(instance, filename):

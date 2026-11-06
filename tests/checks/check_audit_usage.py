@@ -263,8 +263,9 @@ check('par difficulté affichée', any(x['type'] == 'exercise' and x['declared']
                                      and x['review_share'] == 100 for x in d['by_difficulty']), d['by_difficulty'])
 check('questions les moins réussies (hors « Tout réussi »)', d['hardest_questions'][0]['id'] == ex_easy.id
       and d['hardest_questions'][0]['label'] in ('Q1', 'Q2') and d['hardest_questions'][0]['n'] == 6, d['hardest_questions'][:1])
+# 24 : les lignes de s[7], datées du 05/10/2026, sont sorties pour de bon de la fenêtre de 30 jours (depuis le 05/11/2026).
 check('origine des auto-évaluations (période)', d['assessment_sources']['tout'] == 2
-      and d['assessment_sources']['question'] == 26,
+      and d['assessment_sources']['question'] == 24,
       d['assessment_sources'])
 fb = d['feedback']
 check('ressenti donné : 5 avis d’élèves (admin exclu)', fb['total'] == 5 and fb['students_period'] == 5
