@@ -138,6 +138,16 @@ def _user_progress(items, user):
             for cid, (a, ok) in counts.items()}
 
 
+def _user_viewed(items, user):
+    """Ids des contenus de la page que l'élève a déjà ouverts (ViewHistory), une requête pour la page.
+    Sert au repère « Déjà ouvert » des cartes."""
+    if user is None or not items:
+        return set()
+    rows = ViewHistory.objects.filter(user=user, content_type=ContentType.objects.get_for_model(Content),
+                                      object_id__in=[c.id for c in items]).values_list('object_id', flat=True)
+    return {int(oid) for oid in rows}
+
+
 def _viewer(request):
     user = getattr(request, 'user', None)
     return user if getattr(user, 'is_authenticated', False) else None
@@ -300,13 +310,17 @@ class ContentViewSet(VoteMixin, viewsets.ModelViewSet):
 
     def _decorate(self, request, items, data):
         """Après la pagination (seulement la page affichée) : ressenti des élèves, progression de l'élève
-        connecté (une requête pour la page) et, en mode Cartes (view=card), l'énoncé allégé."""
+        connecté et contenus déjà ouverts (une requête chacun pour la page) et, en mode Cartes (view=card), l'énoncé allégé."""
         felt = _felt(items)
-        progress = _user_progress(items, _viewer(request))
+        viewer = _viewer(request)
+        progress = _user_progress(items, viewer)
+        viewed = _user_viewed(items, viewer)
         card = request.query_params.get('view') == 'card'
         for row in data:
             row['felt'] = felt.get(row['id'])
             row['user_progress'] = progress.get(row['id'])
+            # Visiteur : null (rien n'est suivi) ; élève : déjà ouvert ou non.
+            row['user_viewed'] = (row['id'] in viewed) if viewer is not None else None
             if card and 'json_content' in row:
                 row['json_content'] = _card_structure(row['json_content'])
         return data
