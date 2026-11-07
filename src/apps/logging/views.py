@@ -1,18 +1,16 @@
 from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.decorators import action
-from django.db.models import Count, Avg, F
+from django.db.models import Count, Avg
 from django.utils import timezone
 from django.http import Http404
 from datetime import timedelta
 import time
-from .models import ErrorLog, APILog, SystemEvent, PageView, UserInteraction, UserSession, ABTestVariant
+from .models import ErrorLog, APILog, SystemEvent, PageView, UserInteraction, UserSession
 from .serializers import (
     ErrorLogSerializer, APILogSerializer, SystemEventSerializer, ErrorLogStatsSerializer,
-    PageViewSerializer, UserInteractionSerializer,
-    ABTestImpressionSerializer, ABTestConversionSerializer, AnalyticsStatsSerializer,
+    AnalyticsStatsSerializer,
 )
 
 
@@ -135,108 +133,6 @@ class SystemEventViewSet(viewsets.ModelViewSet):
 # ---------------------------------------------------------------------------
 # Analytics
 # ---------------------------------------------------------------------------
-
-def _get_or_create_session(session_id, user=None, ip_address=None, user_agent=None):
-    session, created = UserSession.objects.get_or_create(
-        session_id=session_id,
-        defaults={
-            'user': user if user and user.is_authenticated else None,
-            'ip_address': ip_address,
-            'user_agent': user_agent,
-        }
-    )
-    if not created:
-        session.last_activity = timezone.now()
-        session.save(update_fields=['last_activity'])
-    return session
-
-
-@api_view(['POST'])
-@permission_classes([AllowAny])
-def track_pageview(request):
-    serializer = PageViewSerializer(data=request.data)
-    if not serializer.is_valid():
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    data = serializer.validated_data
-    user = request.user if request.user.is_authenticated else None
-    session = _get_or_create_session(
-        session_id=data['session_id'], user=user,
-        ip_address=request.META.get('REMOTE_ADDR'),
-        user_agent=request.META.get('HTTP_USER_AGENT'),
-    )
-    PageView.objects.create(
-        path=data['path'], page_title=data.get('page_title'),
-        referrer=data.get('referrer'), user=user,
-        session_id=data['session_id'],
-        ip_address=request.META.get('REMOTE_ADDR'),
-        user_agent=request.META.get('HTTP_USER_AGENT'),
-        device_type=data.get('device_type'), browser=data.get('browser'), os=data.get('os'),
-    )
-    session.pages_viewed = F('pages_viewed') + 1
-    session.save(update_fields=['pages_viewed'])
-    return Response({'status': 'tracked'}, status=status.HTTP_201_CREATED)
-
-
-@api_view(['POST'])
-@permission_classes([AllowAny])
-def update_page_time(request):
-    path = request.data.get('path')
-    session_id = request.data.get('session_id')
-    time_on_page = request.data.get('time_on_page')
-    if path and session_id and time_on_page:
-        PageView.objects.filter(path=path, session_id=session_id).order_by('-timestamp').first().update(time_on_page=time_on_page)
-    return Response({'status': 'updated'})
-
-
-@api_view(['POST'])
-@permission_classes([AllowAny])
-def track_interaction(request):
-    serializer = UserInteractionSerializer(data=request.data)
-    if not serializer.is_valid():
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    data = serializer.validated_data
-    user = request.user if request.user.is_authenticated else None
-    UserInteraction.objects.create(
-        interaction_type=data['interaction_type'], element_id=data.get('element_id'),
-        element_text=data.get('element_text'), page_path=data['page_path'],
-        variant=data.get('variant'), user=user,
-        session_id=data['session_id'], metadata=data.get('metadata'),
-    )
-    session = UserSession.objects.filter(session_id=data['session_id']).first()
-    if session:
-        session.interactions_count = F('interactions_count') + 1
-        session.save(update_fields=['interactions_count'])
-    return Response({'status': 'tracked'}, status=status.HTTP_201_CREATED)
-
-
-@api_view(['POST'])
-@permission_classes([AllowAny])
-def track_abtest_impression(request):
-    serializer = ABTestImpressionSerializer(data=request.data)
-    if not serializer.is_valid():
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    data = serializer.validated_data
-    variant, _ = ABTestVariant.objects.get_or_create(test_name=data['test_name'], variant_name=data['variant_name'])
-    variant.impressions = F('impressions') + 1
-    variant.save(update_fields=['impressions'])
-    return Response({'status': 'tracked'}, status=status.HTTP_201_CREATED)
-
-
-@api_view(['POST'])
-@permission_classes([AllowAny])
-def track_abtest_conversion(request):
-    serializer = ABTestConversionSerializer(data=request.data)
-    if not serializer.is_valid():
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    data = serializer.validated_data
-    variant = ABTestVariant.objects.filter(test_name=data['test_name'], variant_name=data['variant_name']).first()
-    if variant:
-        variant.conversions = F('conversions') + 1
-        variant.save(update_fields=['conversions'])
-        variant.refresh_from_db()
-        variant.calculate_conversion_rate()
-    return Response({'status': 'tracked'}, status=status.HTTP_201_CREATED)
-
 
 @api_view(['GET'])
 @permission_classes([IsAdminUser])  # réservé aux admins (était ouvert à tous)

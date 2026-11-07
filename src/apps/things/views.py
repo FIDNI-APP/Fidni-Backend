@@ -28,7 +28,8 @@ from apps.interactions.views import VoteMixin
 from apps.users.models import ViewHistory
 from rest_framework.permissions import IsAuthenticated, IsAdminUser, AllowAny
 from config.permissions import CanCreateContent, IsAdminMember, IsAuthorOrStaffOrReadOnly
-from config.throttling import ContentViewThrottle, PdfParseThrottle, ProposedSolutionThrottle
+from config.throttling import (ApiMembreThrottle, ApiVisiteurThrottle, ContentViewThrottle, ContenuVisiteurJour,
+                               ContenuVisiteurMinute, PdfParseThrottle, ProposedSolutionThrottle)
 
 import hashlib
 import logging
@@ -247,6 +248,14 @@ class StandardResultsSetPagination(PageNumberPagination):
     page_size = 20
     page_size_query_param = 'page_size'
     max_page_size = 100
+    VISITEUR_MAX = 30  # visiteur non connecté (07/11/2026) : tout le catalogue en 8 requêtes, c'était trop simple
+
+    def get_page_size(self, request):
+        size = super().get_page_size(request)
+        user = getattr(request, 'user', None)
+        if size and not (user and user.is_authenticated):
+            return min(size, self.VISITEUR_MAX)
+        return size
 
 
 # =====================
@@ -264,6 +273,9 @@ class ContentViewSet(VoteMixin, viewsets.ModelViewSet):
     permission_classes = [CanCreateContent, IsAuthorOrStaffOrReadOnly]
     author_only_actions = ('update', 'partial_update', 'destroy', 'solution')
     pagination_class = StandardResultsSetPagination
+    # Limites globales, plus celles des contenus pour les visiteurs (07/11/2026). Une action qui déclare ses
+    # propres throttle_classes (vues, ressenti, aide) garde les siennes.
+    throttle_classes = [ApiVisiteurThrottle, ApiMembreThrottle, ContenuVisiteurMinute, ContenuVisiteurJour]
 
     # Subclasses set this to scope automatically
     content_type_scope = None

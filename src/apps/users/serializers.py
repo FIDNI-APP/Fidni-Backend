@@ -195,6 +195,7 @@ class UserSerializer(serializers.ModelSerializer):
             data.pop('email', None)
         data.pop('first_name', None)
         data.pop('last_name', None)
+        data.pop('is_superuser', None)  # qui administre le site ne regarde personne d'autre
         if isinstance(data.get('profile'), dict):
             for field in self.PRIVATE_PROFILE_FIELDS:
                 data['profile'].pop(field, None)

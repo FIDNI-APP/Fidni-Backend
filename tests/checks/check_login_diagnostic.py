@@ -72,7 +72,7 @@ check('adresse inconnue', d['accounts'] == [] and any('Aucun compte' in w for w 
 for _ in range(16):
     visitor.post('/api/auth/login/', {'identifier': 'amine@x.fr', 'password': 'faux'}, format='json')
 d = pc.get('/api/pilotage/connexion/', {'q': 'amine@x.fr'}).data
-check('bloqué après 15 essais : signalé', any(t['blocked'] for t in d['throttles'])
+check('bloqué après 15 essais : signalé', any(t['ip_blocked'] for t in d['throttles'])
       and any('Bloqué' in w for w in d['warnings']) and any(l['status'] == 429 for l in d['logs']), (d['throttles'], d['warnings']))
 check('requête trop courte refusée', pc.get('/api/pilotage/connexion/', {'q': 'a'}).status_code == 400)
 

@@ -16,7 +16,9 @@ env = environ.Env()
 env.read_env(BASE_DIR / '.env')
 
 DEBUG = os.getenv('DEBUG', 'False') == 'True'
-SECRET_KEY = os.getenv('SECRET_KEY', 'gr-5s4^9^nz%*1)843r*7)+xrk!zc3==nm#zgroldi0*x#y+8e')
+# Pas de clé de repli connue : l'ancienne était écrite ici, donc publique (dépôt GitHub). prod.py exige
+# SECRET_KEY ; en local et dans les vérifications, une clé aléatoire par processus suffit.
+SECRET_KEY = os.getenv('SECRET_KEY') or __import__('secrets').token_urlsafe(50)
 ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '*').split(',')
 
 OPENAI_MODEL = os.getenv('OPENAI_MODEL', 'o4-mini')
@@ -318,11 +320,15 @@ REST_FRAMEWORK = {
         "config.throttling.ApiMembreThrottle",
     ],
     "DEFAULT_THROTTLE_RATES": {
-        "api_visiteur": os.getenv("API_VISITEUR_RATE", "1500/min"),  # tout l'API, par IP, visiteurs non connectés
+        "api_visiteur": os.getenv("API_VISITEUR_RATE", "300/min"),  # tout l'API, par IP, visiteurs non connectés
+        # Contenus (exercices, leçons, examens) pour les visiteurs, par IP (07/11/2026) : freine la copie du site.
+        "contenu_minute": os.getenv("CONTENU_MINUTE_RATE", "60/min"),
+        "contenu_jour": os.getenv("CONTENU_JOUR_RATE", "3000/day"),
         "api_membre": os.getenv("API_MEMBRE_RATE", "600/min"),       # tout l'API, par compte connecté
         "auth": "40/min",           # connexion, inscription (par IP : une classe entière passe)
         "content_view": "120/min",  # comptage des vues d'un contenu (par IP)
-        "login_account": "15/hour", # essais de connexion sur un même compte
+        "login_account": "15/hour", # essais de connexion sur un même compte, depuis une même IP
+        "login_identifier": "100/hour",  # essais sur un même compte, toutes IP confondues
         "token_refresh": "60/min",  # renouvellement silencieux des jetons (par IP)
         "auth_email": "5/hour",     # renvoi de confirmation, mot de passe oublié (par IP)
         "pdf_parse": "20/hour",     # analyse de PDF (coûteuse, par utilisateur)
@@ -346,4 +352,8 @@ SIMPLE_JWT = {
     "USER_ID_CLAIM": "user_id",
     "AUTH_TOKEN_CLASSES": ("rest_framework_simplejwt.tokens.AccessToken",),
     "TOKEN_TYPE_CLAIM": "token_type",
+    # Chaque renouvellement donne un nouveau jeton de rafraîchissement et met l'ancien sur liste noire : un
+    # jeton volé ne sert qu'une fois (07/11/2026). Le front garde le nouveau (apiClient.refreshAccessToken).
+    "ROTATE_REFRESH_TOKENS": True,
+    "BLACKLIST_AFTER_ROTATION": True,
 }

@@ -44,6 +44,16 @@ class ApiMembreThrottle(UserRateThrottle):
         return super().get_cache_key(request, view)
 
 
+class ContenuVisiteurMinute(ApiVisiteurThrottle):
+    """Contenus lus par un visiteur non connecté, par IP et par minute (07/11/2026) : copie du site freinée."""
+    scope = 'contenu_minute'
+
+
+class ContenuVisiteurJour(ApiVisiteurThrottle):
+    """Même chose par jour : assez pour une classe derrière l'IP du lycée, pas pour aspirer tout le site."""
+    scope = 'contenu_jour'
+
+
 class ContentViewThrottle(_ClientIPThrottle):
     """Comptage des vues d'un contenu (24/10/2026, après 38 129 fausses vues en une heure) : par IP, assez large pour
     toute une classe derrière l'IP du lycée."""
@@ -56,13 +66,29 @@ class AuthRateThrottle(_ClientIPThrottle):
     scope = 'auth'
 
 
-class LoginAccountThrottle(SimpleRateThrottle):
-    """Essais de connexion sur UN compte, d'où qu'ils viennent : c'est ce qui arrête
-    vraiment la recherche d'un mot de passe, même répartie sur plusieurs adresses."""
+def _identifiant(request):
+    return str(request.data.get('identifier') or request.data.get('username') or '').strip().lower()
+
+
+class LoginAccountThrottle(_ClientIPThrottle):
+    """Essais de connexion sur UN compte depuis UNE adresse (07/11/2026). Avant, la clé était le seul
+    identifiant : n'importe qui pouvait bloquer le compte d'un élève une heure en tapant 15 faux mots de passe."""
     scope = 'login_account'
 
     def get_cache_key(self, request, view):
-        identifier = str(request.data.get('identifier') or request.data.get('username') or '').strip().lower()
+        identifier = _identifiant(request)
+        if not identifier:
+            return None
+        return self.cache_format % {'scope': self.scope, 'ident': f'{identifier}|{self.get_ident(request)}'}
+
+
+class LoginIdentifierThrottle(SimpleRateThrottle):
+    """Essais sur UN compte, toutes adresses confondues : arrête la recherche d'un mot de passe répartie sur
+    beaucoup d'IP, avec un plafond assez haut pour qu'un inconnu ne bloque pas le titulaire."""
+    scope = 'login_identifier'
+
+    def get_cache_key(self, request, view):
+        identifier = _identifiant(request)
         if not identifier:
             return None
         return self.cache_format % {'scope': self.scope, 'ident': identifier}
