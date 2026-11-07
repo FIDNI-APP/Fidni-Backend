@@ -38,21 +38,28 @@ def _pct(part, whole):
 DIFFICULTES = ('easy', 'medium', 'hard')
 
 
+def _niveau(meta):
+    """Difficulté d'une question pour les statistiques : « très difficile » (very_hard, 07/11/2026, questions seulement,
+    affiché aux élèves) y compte comme difficile, pour que la maîtrise et les objectifs gardent leurs trois niveaux."""
+    d = meta.get('difficulty')
+    return 'hard' if d == 'very_hard' else d if d in DIFFICULTES else None
+
+
 def _questions_full(structure):
     """(chemin, points, théorèmes, difficulté | None) de chaque question, chemins alignés sur
     QuestionProgress.question_path. Théorèmes : noms exacts de la base (meta.theorems, apps/caracteristics/
-    theoremes.py) ; difficulté : meta.difficulty de la sous-question, sinon de la question."""
+    theoremes.py) ; difficulté : meta.difficulty de la sous-question, sinon de la question (voir _niveau)."""
     for block in (structure or {}).get('blocks', []):
         if block.get('type') != 'question':
             continue
         meta = block.get('meta') or {}
-        level = meta.get('difficulty') if meta.get('difficulty') in DIFFICULTES else None
+        level = _niveau(meta)
         subs = block.get('subQuestions') or []
         if subs:
             for sub in subs:
                 sm = sub.get('meta') or {}
                 yield (f"{block.get('id')}.{sub.get('id')}", float(sub.get('points') or 0), de_la_question(sm),
-                       sm.get('difficulty') if sm.get('difficulty') in DIFFICULTES else level)
+                       _niveau(sm) or level)
         else:
             yield str(block.get('id')), float(block.get('points') or 0), de_la_question(meta), level
 

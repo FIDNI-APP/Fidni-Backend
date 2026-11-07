@@ -23,6 +23,8 @@ FORMAT = 'fidni-fiche/1'
 EDITORIAL_USERNAME = 'Fidni'  # auteur des contenus importés (compte éditorial, sans mot de passe)
 TYPES = {'exercice': 'exercise', 'examen': 'exam', 'lecon': 'lesson'}
 DIFFICULTIES = {'facile': 'easy', 'moyen': 'medium', 'difficile': 'hard'}
+# Une question peut aller plus haut que son contenu (07/11/2026) : un exercice « moyen » peut en avoir une très difficile.
+DIFFICULTIES_QUESTION = {**DIFFICULTIES, 'très difficile': 'very_hard'}
 EXAM_HARD_SHARE, EXAM_EASY_SHARE = 0.35, 0.60  # part des points (examen) : voir exam_difficulty
 ORIGINS = {'officiel', 'original', 'autorise'}  # document public officiel / rédigé pour Fidni / avec l'accord de l'auteur
 CALLOUTS = {'theorem', 'property', 'definition', 'lemma', 'corollary', 'example', 'remark', 'proof', 'method', 'warning'}
@@ -258,16 +260,16 @@ def exam_difficulty(fiche: dict) -> str | None:
     for b in fiche.get('blocs') or []:
         if isinstance(b, dict) and b.get('type') == 'question':
             finals += [q for q in (b.get('sous_questions') or [b]) if isinstance(q, dict)]
-    if not finals or any(q.get('difficulte') not in DIFFICULTIES for q in finals):
+    if not finals or any(q.get('difficulte') not in DIFFICULTIES_QUESTION for q in finals):
         return None
     points = [q['points'] if _num(q.get('points')) and q['points'] > 0 else None for q in finals]
     weights = points if all(points) else [1] * len(finals)  # barème incomplet : questions à égalité
     total = sum(weights)
 
-    def share(level):
-        return sum(w for q, w in zip(finals, weights) if q['difficulte'] == level) / total
+    def share(*levels):
+        return sum(w for q, w in zip(finals, weights) if q['difficulte'] in levels) / total
 
-    if share('difficile') >= EXAM_HARD_SHARE:
+    if share('difficile', 'très difficile') >= EXAM_HARD_SHARE:
         return 'hard'
     if share('facile') >= EXAM_EASY_SHARE:
         return 'easy'
@@ -369,8 +371,8 @@ def _validate_meta(q, where, errors):
             close = difflib.get_close_matches(nom, list(theoremes_programme().values()), n=3, cutoff=0.5)
             errors.append(f'{where} : théorème inconnu « {nom} »'
                           + (f' (proche : {", ".join(close)})' if close else ' — liste : programme officiel (annexe C)'))
-    if q.get('difficulte') is not None and q['difficulte'] not in DIFFICULTIES:
-        errors.append(f'{where} : difficulte {sorted(DIFFICULTIES)}')
+    if q.get('difficulte') is not None and q['difficulte'] not in DIFFICULTIES_QUESTION:
+        errors.append(f'{where} : difficulte {sorted(DIFFICULTIES_QUESTION)}')
     if q.get('duree_secondes') is not None and not (isinstance(q['duree_secondes'], int) and q['duree_secondes'] > 0):
         errors.append(f'{where} : duree_secondes entier positif')
     if q.get('indice') is not None:
@@ -458,7 +460,7 @@ def _meta(q: dict) -> dict:
     if theoremes:
         meta['theorems'] = theoremes
     if q.get('difficulte'):
-        meta['difficulty'] = DIFFICULTIES[q['difficulte']]
+        meta['difficulty'] = DIFFICULTIES_QUESTION[q['difficulte']]
     if q.get('duree_secondes'):
         meta['expected_seconds'] = q['duree_secondes']
     if q.get('erreurs_frequentes'):
