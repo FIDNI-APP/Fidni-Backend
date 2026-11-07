@@ -58,6 +58,7 @@ INSTALLED_APPS = [
     'apps.notifications.apps.NotificationsConfig',
     'apps.documents.apps.DocumentsConfig',
     'apps.copies.apps.CopiesConfig',
+    'apps.defis.apps.DefisConfig',
 ]
 
 MIDDLEWARE = [
@@ -337,6 +338,7 @@ REST_FRAMEWORK = {
         "content_report": "20/hour",  # signalements d'erreurs sur les contenus (par utilisateur)
         "client_error": "30/hour",  # erreurs d'affichage envoyées par le navigateur (par IP)
         "copies_upload": "600/hour",  # pages de copies envoyées (par professeur)
+        "defi_reponse": "60/min",  # réponses, indices et solutions du défi du jour (par compte ou par IP)
         "copies_ia": "60/hour",  # corrections, découpages, imports de sujet par l’IA (par professeur)
     },
     "UNAUTHENTICATED_USER": None

@@ -55,6 +55,7 @@ ACTIONS = {
     'charger-plus',       # « Charger plus » dans une liste
     'recherche-vide',     # recherche sans résultat
     'accueil-reprendre', 'accueil-pour-toi', 'annoncer-ds',  # accueil connecté
+    'defi-repondu', 'defi-trouve', 'defi-indice', 'defi-solution', 'defi-archives',  # défi du jour
     'prog-entrainer',     # Ma progression › chapitre : « S'entraîner »
     'prog-chapitre',      # Ma progression : détail d'un chapitre ouvert
     # Retirés le 16/10/2026 (plus jamais envoyés : onglet Activité, anciens boutons de Ma progression) :
