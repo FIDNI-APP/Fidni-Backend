@@ -20,7 +20,8 @@ from django.utils import timezone
 from django.utils.encoding import force_str
 from django.utils.http import urlsafe_base64_decode
 
-from config.throttling import AuthRateThrottle, EmailRateThrottle, LoginAccountThrottle, TokenRefreshThrottle
+from config.throttling import (AuthRateThrottle, EmailRateThrottle, LoginAccountThrottle, LoginIdentifierThrottle,
+                               TokenRefreshThrottle)
 from apps.users.serializers import (
     UserSerializer,
 )
@@ -60,7 +61,7 @@ class LoginView(views.APIView):
     """Connexion par e-mail OU nom d'utilisateur ; renvoie les jetons JWT et le profil."""
     permission_classes = [AllowAny]
     authentication_classes = []  # Skip authentication
-    throttle_classes = [AuthRateThrottle, LoginAccountThrottle]
+    throttle_classes = [AuthRateThrottle, LoginAccountThrottle, LoginIdentifierThrottle]
 
     def post(self, request):
         identifier = (request.data.get('identifier') or '').strip()
@@ -111,7 +112,7 @@ def _session(user, request):
 
 class ThrottledTokenObtainPairView(TokenObtainPairView):
     """Ancienne route /api/token/ (nom d'utilisateur uniquement), gardée pour compatibilité."""
-    throttle_classes = [AuthRateThrottle, LoginAccountThrottle]
+    throttle_classes = [AuthRateThrottle, LoginAccountThrottle, LoginIdentifierThrottle]
 
 
 class ThrottledTokenRefreshView(TokenRefreshView):

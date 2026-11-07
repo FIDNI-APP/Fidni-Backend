@@ -25,7 +25,7 @@ from rest_framework.response import Response
 from apps.logging.models import APILog, ErrorLog
 from apps.users.admin_dashboard import IsSuperuser
 from apps.users.models import GoogleAccount
-from config.throttling import LoginAccountThrottle
+from config.throttling import LoginAccountThrottle, LoginIdentifierThrottle
 
 AUTH_PATHS = ('/api/auth/', '/api/token')
 GOOGLE_PATH = '/api/auth/google/'
@@ -47,8 +47,10 @@ CODE_HINT = {
 
 
 def _throttle_state(identifiers):
-    """Essais de connexion dans l'heure pour chaque identifiant (clé du LoginAccountThrottle)."""
-    throttle = LoginAccountThrottle()
+    """Essais de connexion dans l'heure pour chaque identifiant, toutes adresses confondues (LoginIdentifierThrottle).
+    Le blocage par adresse (LoginAccountThrottle, identifiant + IP) n'est pas listé : il ne touche que cette IP."""
+    throttle = LoginIdentifierThrottle()
+    par_ip = LoginAccountThrottle().num_requests
     now = time.time()
     out = []
     for ident in identifiers:
@@ -57,7 +59,7 @@ def _throttle_state(identifiers):
         if history:
             blocked = len(history) >= throttle.num_requests
             out.append({'identifier': ident, 'attempts': len(history), 'limit': throttle.num_requests,
-                        'blocked': blocked,
+                        'blocked': blocked, 'ip_blocked': len(history) >= par_ip,
                         'until_minutes': round((min(history) + throttle.duration - now) / 60) if blocked else None})
     return out
 
@@ -154,6 +156,9 @@ def login_diagnostic(request):
         if t['blocked']:
             warnings.append(f'Bloqué après {t["attempts"]} essais avec « {t["identifier"]} » : '
                             f'nouvel essai possible dans {t["until_minutes"]} min environ.')
+        elif t['ip_blocked']:
+            warnings.append(f'Bloqué depuis l’adresse utilisée : {t["attempts"]} essais avec « {t["identifier"]} » '
+                            f'dans l’heure. Les autres adresses (autre réseau, 4G) passent.')
 
     path_q = Q()
     for path in AUTH_PATHS:

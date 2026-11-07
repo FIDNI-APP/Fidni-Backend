@@ -7,9 +7,9 @@ from .client_errors import client_error
 from .views import (
     ErrorLogViewSet, APILogViewSet, SystemEventViewSet,
     test_errors, test_post_error,
-    track_pageview, update_page_time, track_interaction,
-    track_abtest_impression, track_abtest_conversion, get_analytics_stats,
+    get_analytics_stats,
 )
+from .csp import csp_report
 
 router = DefaultRouter()
 router.register(r'errors', ErrorLogViewSet, basename='error')
@@ -22,11 +22,9 @@ urlpatterns = [
     path('test/errors/', test_errors, name='test-errors'),
     path('test/post-error/', test_post_error, name='test-post-error'),
 
-    # Analytics endpoints
-    path('analytics/pageview/', track_pageview, name='track-pageview'),
-    path('analytics/pageview/update-time/', update_page_time, name='update-page-time'),
-    path('analytics/interaction/', track_interaction, name='track-interaction'),
-    path('analytics/abtest/impression/', track_abtest_impression, name='abtest-impression'),
-    path('analytics/abtest/conversion/', track_abtest_conversion, name='abtest-conversion'),
+    # Suivi d'audience : seulement la lecture des statistiques (équipe). Les routes d'écriture anonymes
+    # (pages vues, interactions, tests A/B) n'étaient appelées par aucun client : retirées le 07/11/2026.
     path('analytics/stats/', get_analytics_stats, name='analytics-stats'),
+    # Rapports de la politique de sécurité du contenu (CSP) envoyés par les navigateurs.
+    path('csp/', csp_report, name='csp-report'),
 ]

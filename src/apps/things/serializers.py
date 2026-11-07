@@ -30,6 +30,35 @@ def expected_minutes(structure):
 # SOLUTION
 # =====================
 
+
+# Ce que les lecteurs ne reçoivent pas (07/11/2026). `import` : notes de travail de l'équipe (document source,
+# corrections, comptes qui ont publié). Réponses : solutions, indices et erreurs fréquentes ne partent pas dans
+# les listes envoyées aux visiteurs non connectés (le catalogue entier se copiait en quelques requêtes) : ils les
+# voient en ouvrant le contenu. Les membres connectés gardent le mode « Énoncés » complet ; l'auteur et l'équipe
+# reçoivent tout (édition).
+INTERNE = frozenset({'import'})
+REPONSES = frozenset({'solution', 'solutions', 'hint', 'hints', 'indice', 'erreurs_frequentes'})
+
+
+def _sans(valeur, cles):
+    if isinstance(valeur, dict):
+        return {k: _sans(v, cles) for k, v in valeur.items() if k not in cles}
+    if isinstance(valeur, list):
+        return [_sans(v, cles) for v in valeur]
+    return valeur
+
+
+def structure_publique(serializer, instance, json_content):
+    """Structure d'un contenu telle que ce lecteur peut la recevoir."""
+    request = serializer.context.get('request')
+    user = getattr(request, 'user', None)
+    if user and user.is_authenticated and (user.is_staff or user.is_superuser or instance.author_id == user.id):
+        return json_content
+    view = serializer.context.get('view')
+    visiteur = not (user and user.is_authenticated)
+    cles = INTERNE | REPONSES if visiteur and getattr(view, 'action', None) == 'list' else INTERNE
+    return _sans(json_content, cles)
+
 class SolutionSerializer(serializers.ModelSerializer):
     author = AuthorSerializer(read_only=True)
     vote_count = serializers.IntegerField(read_only=True)
@@ -140,7 +169,7 @@ class ContentSerializer(serializers.ModelSerializer):
     def to_representation(self, instance):
         data = super().to_representation(instance)
         json_content = instance.json_content or {}
-        data['json_content'] = json_content
+        data['json_content'] = structure_publique(self, instance, json_content)
         data['total_points'] = get_total_points(json_content)
         data['item_count'] = get_item_count(json_content)
         data['section_count'] = get_section_count(json_content)
@@ -235,7 +264,7 @@ class ContentListSerializer(serializers.ModelSerializer):
         data = super().to_representation(instance)
         # La structure est une colonne de la même ligne : déjà chargée, pas de requête en plus.
         json_content = instance.json_content or {}
-        data['json_content'] = json_content
+        data['json_content'] = structure_publique(self, instance, json_content)
         data['total_points'] = get_total_points(json_content)
         data['item_count'] = get_item_count(json_content)
         # Parties d'un examen : lues par la carte, dont la structure est tronquée en mode Cartes (view=card).

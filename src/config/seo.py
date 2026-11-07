@@ -23,6 +23,7 @@ import time
 import urllib.request
 
 from django.conf import settings
+from django.core.cache import cache
 from django.http import HttpResponse, HttpResponsePermanentRedirect
 
 SECTIONS = {'exercise': 'exercises', 'lesson': 'lessons', 'exam': 'exams'}
@@ -36,6 +37,28 @@ MAX_TEXT = 6000
 MAX_SOLUTION = 14000
 
 _index_cache = {'html': None, 'at': 0.0}
+
+# Pages de contenu pré-remplies (énoncé et corrigé, sans JavaScript) : par adresse IP, 30 par minute et 600 par
+# jour (07/11/2026), sinon tout le site se copiait en boucle sur /exercises/<id>. Les robots des moteurs vérifiés
+# par Cloudflare passent : une règle de transformation y pose « X-Fidni-Robot: true » (valeur de cf.client.bot,
+# écrite à chaque requête, donc impossible à imiter depuis un navigateur).
+PAGES_LIMITES = (('minute', 30, 60), ('jour', 600, 86400))
+
+
+def _trop_de_pages(request):
+    if request.META.get('HTTP_X_FIDNI_ROBOT') == 'true':
+        return False
+    ip = request.META.get('HTTP_CF_CONNECTING_IP') or request.META.get('REMOTE_ADDR') or ''
+    for nom, limite, duree in PAGES_LIMITES:
+        key = f'seo:{nom}:{ip}:{int(time.time() // duree)}'
+        cache.add(key, 0, duree)
+        try:
+            n = cache.incr(key)
+        except ValueError:  # clé expirée entre add et incr
+            n = 1
+        if n > limite:
+            return True
+    return False
 
 
 def _index_html():
@@ -153,6 +176,12 @@ def _render(page, *, title, description, url, body, json_ld=None, status=200, no
 
 def content_page(request, section, pk):
     from apps.things.models import Content
+
+    if _trop_de_pages(request):
+        r = HttpResponse('Trop de pages demandées depuis cette adresse. Réessaie dans une minute.', status=429,
+                         content_type='text/plain; charset=utf-8')
+        r['Retry-After'] = '60'
+        return r
 
     page = _index_html()
     site = settings.FRONTEND_URL.rstrip('/')

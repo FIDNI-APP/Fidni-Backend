@@ -116,7 +116,12 @@ check('mode Cartes : 6 blocs au plus', len(card[moyen.id]['json_content']['block
       and len(rows[moyen.id]['json_content']['blocks']) == 10, len(card[moyen.id]['json_content']['blocks']))
 check('mode Cartes : barème et nombre de questions calculés sur tout l’énoncé',
       card[moyen.id]['item_count'] == rows[moyen.id]['item_count'] == 4, card[moyen.id]['item_count'])
-check('sans view=card : énoncé complet avec solutions', has_solution(rows[dur.id]['json_content']))
+check('sans view=card, visiteur : énoncé sans les solutions (dans le contenu ouvert)',
+      not has_solution(rows[dur.id]['json_content']) and has_solution(c.get(f'/api/contents/{dur.id}/').data['json_content']))
+c.force_authenticate(eleve)
+check('sans view=card, membre : énoncé complet avec solutions (mode « Énoncés »)',
+      has_solution({x['id']: x for x in c.get('/api/contents/', {'type': 'exercise'}).data['results']}[dur.id]['json_content']))
+c.force_authenticate(None)
 sujet = make('Sujet en 4 parties', 'hard', kind='exam', json_content={'version': '2.1', 'blocks': [
     blk for i in range(4) for blk in ({'id': f'p{i}', 'type': 'section', 'content': {'html': f'Exercice {i + 1}'}},
                                       {'id': f'q{i}', 'type': 'question', 'content': {'html': '<p>x</p>'}})]})
