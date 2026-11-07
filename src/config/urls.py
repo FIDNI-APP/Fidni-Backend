@@ -246,6 +246,8 @@ urlpatterns = [
     path('api/classrooms/', include('apps.classrooms.urls')),
     # Copies corrigées (élève) et images signées des copies (apps/copies)
     path('api/', include(copies_api_urls)),
+    # Défi du jour (apps/defis)
+    path('api/', include('apps.defis.urls')),
 
     # Concours (ENSA / ENSAM / Médecine + tips + simulations)
     path('api/concours/', include('apps.concours.urls')),

@@ -457,6 +457,11 @@ TRACKED_ACTIONS = [
     ('accueil-reprendre', 'Accueil : « Reprendre »'),
     ('accueil-pour-toi', 'Accueil : contenu « Pour toi »'),
     ('annoncer-ds', '« Annoncer mon DS »'),
+    ('defi-repondu', 'Défi du jour : réponse envoyée'),
+    ('defi-trouve', 'Défi du jour : trouvé'),
+    ('defi-indice', 'Défi du jour : indice ouvert'),
+    ('defi-solution', 'Défi du jour : solution vue sans avoir trouvé'),
+    ('defi-archives', 'Défi du jour : défis précédents ouverts'),
     ('prog-entrainer', 'Ma progression : « S’entraîner »'),
     ('prog-chapitre', 'Ma progression : détail d’un chapitre ouvert'),
     ('accueil-objectif', 'Accueil : bouton « Où j’en suis »'),
@@ -936,6 +941,7 @@ def live(request):
     Aujourd'hui et hier (vues, membres actifs, inscriptions, travail, visiteurs non connectés), ce qui attend
     (signalements, travaux de l'IA) et l'activité récente de tous les membres réels.
     """
+    from apps.defis.admin_api import a_valider as defis_a_valider
     from apps.ia import depot as ia_depot
     from apps.ia.models import IAJob
     from apps.skilliq.models import SkillQuestion
@@ -975,6 +981,8 @@ def live(request):
             'brouillons': ia_depot.travaux().filter(status__in=[IAJob.PRET, IAJob.ERREUR]).count(),
             # Questions de quiz rédigées par l'IA, invisibles des élèves tant qu'elles ne sont pas validées.
             'quiz_a_relire': SkillQuestion.objects.filter(a_relire=True).count(),
+            # Défis du jour à venir rédigés par Claude, invisibles tant qu'ils ne sont pas validés.
+            'defis_a_valider': defis_a_valider(),
         },
         'activity': recent_activity(real_ids, 20),
     })

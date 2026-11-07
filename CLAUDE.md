@@ -53,6 +53,7 @@ backend/
 | `learningpath` | Parcours vidéo | — |
 | `logging` | Logs API/erreurs en base | — |
 | `notifications` | Cloche : nouveau commentaire sur un contenu avec lequel on a interagi, réponse à son commentaire (regroupées par contenu), signalement traité avec la réponse de l'admin (`kind=report`, `message`) | `Notification` |
+| `defis` | Défi du jour : un même problème par jour pour tous les niveaux, réponse vérifiée par le serveur, indices, série ; relecture dans Pilotage › Défis | `Defi`, `TentativeDefi` |
 | `copies` | Copies des élèves : correction assistée par l’IA (Classes › Évaluations) | `Evaluation`, `Copie`, `Page`, `Lot`, `UsageCopies` |
 | `documents` | Éditeur de documents « façon Word » (page `/documents` du front) : documents privés de chaque membre | `Document` (`html`, `orientation`, `marges`) |
 

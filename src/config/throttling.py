@@ -131,3 +131,14 @@ class CopiesUploadThrottle(UserRateThrottle):
 class CopiesIAThrottle(UserRateThrottle):
     """Demandes de correction par l'IA, découpages, imports de sujet (le quota mensuel limite le coût)."""
     scope = 'copies_ia'
+
+
+class DefiReponseThrottle(_ClientIPThrottle):
+    """Réponses au défi du jour (07/11/2026) : par compte pour un membre, par IP pour un visiteur. Freine les essais
+    automatiques de valeurs ; assez large pour une classe derrière une seule IP."""
+    scope = 'defi_reponse'
+
+    def get_cache_key(self, request, view):
+        if request.user and request.user.is_authenticated:
+            return self.cache_format % {'scope': self.scope, 'ident': f'u{request.user.pk}'}
+        return super().get_cache_key(request, view)
