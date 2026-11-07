@@ -14,10 +14,10 @@ Ressenti, dans cet ordre :
 1. au moins 5 avis (DifficultyFeedback, donnés sur la difficulté affichée aujourd'hui) et
    |(plus dur − plus facile) / avis| ≥ 0,4 → un niveau au-dessus ou au-dessous de l'annonce (basis 'avis') ;
    s'il n'y a pas de niveau au-delà (« plus dur » sur un Difficile), on passe à la règle 2 ;
-2. au moins 8 élèves et l'intervalle de Wilson à 80 % de R entièrement hors de la bande annoncée → la bande
+2. au moins 5 élèves et l'intervalle de Wilson à 80 % de R entièrement hors de la bande annoncée → la bande
    de R (basis 'reussite') ;
 3. sinon « comme annoncé » (basis 'annonce').
-Pas assez de données (n < 8 et moins de 5 avis) → None. Le temps n'entre pas en compte (chrono facultatif).
+Pas assez de données (n < 5 et moins de 5 avis) → None. Le temps n'entre pas en compte (chrono facultatif).
 
 Calcul en lot, gardé 6 h par contenu (aucune tâche planifiée) ; un avis donné vide le cache du contenu.
 """
@@ -33,7 +33,8 @@ COMPLETE_SCORE = {'success': 1.0, 'review': 0.25}
 EASY_FROM, HARD_BELOW = 0.70, 0.40
 BANDS = {'easy': (EASY_FROM, math.inf), 'medium': (HARD_BELOW, EASY_FROM), 'hard': (-math.inf, HARD_BELOW)}
 Z80 = 1.2816  # intervalle de confiance à 80 %
-MIN_STUDENTS, MIN_VOTES, VOTE_SHIFT = 8, 5, 0.4
+# 5 élèves (07/11/2026, 8 avant) : même seuil que le rapport d'usage ; Wilson à 80 % garde les petits nombres prudents.
+MIN_STUDENTS, MIN_VOTES, VOTE_SHIFT = 5, 5, 0.4
 TTL = 6 * 3600
 
 

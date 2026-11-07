@@ -103,10 +103,10 @@ check('comptes maison et auteur exclus : n = 12, 12 %', f and f['n'] == 12 and f
 check('forme du ressenti (C1)', f and set(f) == {'level', 'declared', 'differs', 'n', 'success_pct', 'votes', 'basis'}
       and f['declared'] == 'medium' and f['votes'] == {'easier': 0, 'as_said': 0, 'harder': 0}, f)
 
-peu = make('Seulement 7 élèves')
-for u in students(7):
+peu = make('Seulement 4 élèves')
+for u in students(4):
     assess(u, peu, ['review'] * 4)
-check('moins de 8 élèves et moins de 5 avis : pas de ressenti', felt(peu) is None, felt(peu))
+check('moins de 5 élèves et moins de 5 avis : pas de ressenti', felt(peu) is None, felt(peu))
 
 flou = make('Facile à 60 %', diff='easy')
 for u in students(8):
