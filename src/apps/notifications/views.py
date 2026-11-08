@@ -29,6 +29,9 @@ def _url(n):
         return f'/profile/{n.recipient.username}?tab=messages&message={n.id}'
     if n.kind in (Notification.KIND_QUIZ, Notification.KIND_COPIE):
         return n.link
+    # Espace Discussions : la discussion, sur la dernière réponse regroupée s'il y en a une.
+    if n.target.startswith('discussion:'):
+        return f'{n.link}#reponse-{n.comment_id}' if n.comment_id else n.link
     # Page d'un exercice, d'une leçon ou d'un examen : on ouvre la discussion sur le commentaire,
     # avec le champ de réponse prêt (ContentDetail lit « ?commentaire= »).
     if n.target.startswith('content:') and n.comment_id:

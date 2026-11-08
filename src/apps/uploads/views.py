@@ -94,9 +94,7 @@ class FileAttachmentViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_403_FORBIDDEN
             )
 
-        # Delete the actual file from storage
-        if instance.file:
-            instance.file.delete(save=False)
-
+        # Le fichier du stockage part avec, sauf s'il sert encore à une copie (FileAttachment.delete_file).
+        instance.delete_file()
         instance.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)

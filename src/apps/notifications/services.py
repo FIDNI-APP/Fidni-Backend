@@ -79,8 +79,10 @@ def concours_participants(target_type, obj):
     return ids
 
 
-def notify(*, target, title, link, comment_id, author_id, text, participants, reply_to=None):
-    """Prévient les participants (regroupé par contenu tant que ce n'est pas lu). Renvoie le nombre de membres prévenus."""
+def notify(*, target, title, link, comment_id, author_id, text, participants, reply_to=None,
+           kind=Notification.KIND_COMMENT):
+    """Prévient les participants (regroupé par cible et par type tant que ce n'est pas lu). Renvoie le nombre de
+    membres prévenus. `kind` : type de la notification des participants (« nouveau commentaire » par défaut)."""
     from apps.users.account_deletion import DELETED_USERNAME
 
     reply_to = reply_to if reply_to and reply_to != author_id else None
@@ -88,7 +90,7 @@ def notify(*, target, title, link, comment_id, author_id, text, participants, re
     # Réglage du profil « Notifications de commentaires » désactivé : on respecte son choix.
     active = set(User.objects.filter(id__in=wanted, is_active=True).exclude(username=DELETED_USERNAME)
                  .exclude(profile__comment_notifications=False).values_list('id', flat=True))
-    groups = {Notification.KIND_COMMENT: active - {reply_to}}
+    groups = {kind: active - {reply_to}}
     if reply_to in active:
         groups[Notification.KIND_REPLY] = {reply_to}
     now, short = timezone.now(), excerpt(text)

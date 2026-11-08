@@ -68,6 +68,12 @@ class FileAttachment(models.Model):
             return self.file.url
         return None
 
+    def delete_file(self):
+        """Efface le fichier du stockage, sauf si une autre pièce jointe y renvoie encore : un commentaire repris en
+        discussion (08/11/2026, discussions/0002) garde sa pièce jointe, la discussion en a une copie du même fichier."""
+        if self.file and not FileAttachment.objects.filter(file=self.file.name).exclude(pk=self.pk).exists():
+            self.file.delete(save=False)
+
     @property
     def file_size_formatted(self):
         """Human-readable file size"""

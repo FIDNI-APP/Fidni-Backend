@@ -142,3 +142,13 @@ class DefiReponseThrottle(_ClientIPThrottle):
         if request.user and request.user.is_authenticated:
             return self.cache_format % {'scope': self.scope, 'ident': f'u{request.user.pk}'}
         return super().get_cache_key(request, view)
+
+
+class DiscussionThrottle(UserRateThrottle):
+    """Nouvelles discussions (08/11/2026) : chacune sollicite l'équipe et des élèves (apps/discussions/services.py)."""
+    scope = 'discussion'
+
+
+class DiscussionReponseThrottle(UserRateThrottle):
+    """Réponses dans les discussions : large pour un échange, freine le spam."""
+    scope = 'discussion_reponse'

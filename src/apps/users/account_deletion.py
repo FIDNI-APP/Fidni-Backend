@@ -35,10 +35,13 @@ def is_deleted_account(user):
 def _public_contributions():
     """(modèle, champ auteur) des contenus publics d'un compte."""
     from apps.concours.models import ConcoursComment, ConcoursExam, ConcoursTip
+    from apps.discussions.models import Discussion, Reply
     from apps.things.models import Comment, Content, ProposedSolution, Solution
     return [
         (Content, 'author'), (Solution, 'author'), (Comment, 'author'), (ProposedSolution, 'author'),
         (ConcoursExam, 'created_by'), (ConcoursTip, 'created_by'), (ConcoursComment, 'author'),
+        # Espace Discussions (08/11/2026) : les réponses avant les discussions (supprimées avec elles sinon).
+        (Reply, 'author'), (Discussion, 'author'),
     ]
 
 
@@ -46,8 +49,7 @@ def _delete_files(queryset):
     """Supprime des pièces jointes et leurs fichiers (S3 ou disque)."""
     for attachment in queryset:
         try:
-            if attachment.file:
-                attachment.file.delete(save=False)
+            attachment.delete_file()  # gardé s'il sert encore à une copie (FileAttachment.delete_file)
         except Exception:  # un fichier déjà absent du stockage ne doit pas bloquer la suppression
             logger.warning('Fichier introuvable lors de la suppression : %s', attachment.pk)
         attachment.delete()
