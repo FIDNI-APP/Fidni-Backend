@@ -248,6 +248,8 @@ urlpatterns = [
     path('api/', include(copies_api_urls)),
     # Défi du jour (apps/defis)
     path('api/', include('apps.defis.urls')),
+    # Espace Discussions (apps/discussions, 08/11/2026)
+    path('api/', include('apps.discussions.urls')),
 
     # Concours (ENSA / ENSAM / Médecine + tips + simulations)
     path('api/concours/', include('apps.concours.urls')),

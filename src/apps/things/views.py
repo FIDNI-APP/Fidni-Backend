@@ -1346,8 +1346,7 @@ class CommentViewSet(VoteMixin, viewsets.ModelViewSet):
             frontier = list(Comment.objects.filter(parent_id__in=frontier).values_list('id', flat=True))
             ids += frontier
         for attachment in FileAttachment.objects.filter(content_type=ct, object_id__in=ids):
-            if attachment.file:
-                attachment.file.delete(save=False)
+            attachment.delete_file()  # gardé s'il sert encore à la discussion qui reprend ce commentaire
             attachment.delete()
         instance.delete()
 

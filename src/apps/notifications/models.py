@@ -12,6 +12,9 @@ class Notification(models.Model):
     - « quiz » (13/10/2026) : le quiz d'un chapitre de son niveau vient d'être mis en ligne (skilliq/annonces.py).
     - « copie » (15/10/2026) : son professeur a publié sa copie corrigée (apps/copies).
     - « message » (21/10/2026) : message de l'équipe Fidni (equipe.py), lu en entier dans l'onglet Messages du profil.
+    - Espace Discussions (08/11/2026, apps/discussions/services.py), cible « discussion:<id> », `comment_id` = la
+      réponse : « discussion » (nouvelle discussion où il peut aider), « reponse » (réponse dans une discussion qu'il
+      suit), « mention » (il est cité avec @pseudo).
     Tant qu'il ne l'a pas lue, les nouveaux commentaires du même contenu s'ajoutent à la même notification
     (`count`) au lieu d'en créer une par commentaire.
     """
@@ -21,9 +24,14 @@ class Notification(models.Model):
     KIND_QUIZ = 'quiz'
     KIND_COPIE = 'copie'
     KIND_MESSAGE = 'message'
+    KIND_DISCUSSION = 'discussion'
+    KIND_REPONSE = 'reponse'
+    KIND_MENTION = 'mention'
     KIND_CHOICES = [(KIND_COMMENT, 'Nouveau commentaire'), (KIND_REPLY, 'Réponse à son commentaire'),
                     (KIND_REPORT, 'Signalement traité'), (KIND_QUIZ, 'Nouveau quiz de chapitre'),
-                    (KIND_COPIE, 'Copie corrigée'), (KIND_MESSAGE, 'Message de l’équipe')]
+                    (KIND_COPIE, 'Copie corrigée'), (KIND_MESSAGE, 'Message de l’équipe'),
+                    (KIND_DISCUSSION, 'Nouvelle discussion'), (KIND_REPONSE, 'Réponse dans une discussion suivie'),
+                    (KIND_MENTION, 'Mention dans une discussion')]
 
     recipient = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notifications')
     kind = models.CharField(max_length=10, choices=KIND_CHOICES)
