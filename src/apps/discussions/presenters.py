@@ -4,7 +4,7 @@ from collections import defaultdict
 
 from django.contrib.auth.models import User
 from django.contrib.contenttypes.models import ContentType
-from django.db.models import Count, Prefetch
+from django.db.models import Count, F, Prefetch
 
 from apps.interactions.models import Complete, Vote
 from apps.notifications.services import sans_formule_coupee
@@ -95,6 +95,9 @@ def cards(discussions, request):
             repliers[did].append(uid)
     users = {u.id: u for u in User.objects.filter(id__in={u for lst in repliers.values() for u in lst})
              .select_related('profile')}
+    # Répondue = au moins une réponse d'un autre membre que l'auteur (même règle que le tri « sans réponse »).
+    answered = set(Reply.objects.filter(discussion_id__in=ids).exclude(author_id=F('discussion__author_id'))
+                   .values_list('discussion_id', flat=True).distinct())
     out = []
     for d in discussions:
         out.append({
@@ -107,6 +110,7 @@ def cards(discussions, request):
             'created_at': d.created_at,
             'last_activity_at': d.last_activity_at,
             'reply_count': d.reply_count,
+            'answered': d.id in answered,
             'utile': utiles.get(d.id, 0),
             'user_utile': d.id in mine,
             'followed': d.id in followed,

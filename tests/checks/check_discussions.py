@@ -177,6 +177,12 @@ check('détail : corps, réponses dans l\'ordre, utiles', r.status_code == 200 a
 check('détail : statut de l\'élève sur le contenu tagué', r.data['tags'][0]['status'] == 'success', r.data['tags'][0])
 check('détail : derniers à répondre', {x['username'] for x in r.data['repliers']} >= {'badr', 'chaima'}, r.data['repliers'])
 check('visiteur : lecture du détail', client().get(f'/api/discussions/{d1.id}/').status_code == 200)
+seul = Discussion.objects.create(title='Je me réponds à moi-même', author=badr, class_level=sm)
+Reply.objects.create(discussion=seul, author=badr, body='précision')
+cards = {x['id']: x for x in client().get('/api/discussions/?niveau=tous').data['results']}
+check('« répondue » : réponse d\'un autre membre seulement', cards[d1.id]['answered'] is True and cards[seul.id]['answered'] is False,
+      (cards[d1.id]['answered'], cards[seul.id]['answered']))
+seul.delete()
 
 # --- Liste ---------------------------------------------------------------------------------------------------------
 pc_disc = Discussion.objects.create(title='Ondes : la célérité', author=chaima, class_level=pc, salon='methodes')
