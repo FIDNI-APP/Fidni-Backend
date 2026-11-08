@@ -177,6 +177,12 @@ check('détail : corps, réponses dans l\'ordre, utiles', r.status_code == 200 a
 check('détail : statut de l\'élève sur le contenu tagué', r.data['tags'][0]['status'] == 'success', r.data['tags'][0])
 check('détail : derniers à répondre', {x['username'] for x in r.data['repliers']} >= {'badr', 'chaima'}, r.data['repliers'])
 check('visiteur : lecture du détail', client().get(f'/api/discussions/{d1.id}/').status_code == 200)
+seul = Discussion.objects.create(title='Je me réponds à moi-même', author=badr, class_level=sm)
+Reply.objects.create(discussion=seul, author=badr, body='précision')
+cards = {x['id']: x for x in client().get('/api/discussions/?niveau=tous').data['results']}
+check('« répondue » : réponse d\'un autre membre seulement', cards[d1.id]['answered'] is True and cards[seul.id]['answered'] is False,
+      (cards[d1.id]['answered'], cards[seul.id]['answered']))
+seul.delete()
 
 # --- Liste ---------------------------------------------------------------------------------------------------------
 pc_disc = Discussion.objects.create(title='Ondes : la célérité', author=chaima, class_level=pc, salon='methodes')
@@ -305,6 +311,12 @@ check('commande rejouée : nouvelle réponse et nouveau fil ajoutés', Discussio
       (Discussion.objects.count(), dr.reply_count, out.getvalue()))
 call_command('reprendre_commentaires', stdout=StringIO())
 check('commande rejouée une seconde fois : rien en double', Discussion.objects.count() == 3 and Reply.objects.filter(discussion=dr).count() == 3)
+# Migration 0003 (jouée au déploiement du site) : même reprise, un commentaire écrit entre-temps la rejoint.
+Comment.objects.create(content_item=ex, author=chaima, content='<p>Écrit sur l’ancien site après la reprise.</p>', parent=c1)
+importlib.import_module('apps.discussions.migrations.0003_reprise_complement').rattraper(django_apps, None)
+dr.refresh_from_db()
+check('migration 0003 : le commentaire écrit entre-temps est repris', dr.reply_count == 4 and Discussion.objects.count() == 3,
+      (dr.reply_count, Discussion.objects.count()))
 
 print(f'\n{sum(results)}/{len(results)} vérifications réussies')
 sys.exit(0 if all(results) else 1)
