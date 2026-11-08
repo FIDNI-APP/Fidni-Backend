@@ -311,6 +311,12 @@ check('commande rejouée : nouvelle réponse et nouveau fil ajoutés', Discussio
       (Discussion.objects.count(), dr.reply_count, out.getvalue()))
 call_command('reprendre_commentaires', stdout=StringIO())
 check('commande rejouée une seconde fois : rien en double', Discussion.objects.count() == 3 and Reply.objects.filter(discussion=dr).count() == 3)
+# Migration 0003 (jouée au déploiement du site) : même reprise, un commentaire écrit entre-temps la rejoint.
+Comment.objects.create(content_item=ex, author=chaima, content='<p>Écrit sur l’ancien site après la reprise.</p>', parent=c1)
+importlib.import_module('apps.discussions.migrations.0003_reprise_complement').rattraper(django_apps, None)
+dr.refresh_from_db()
+check('migration 0003 : le commentaire écrit entre-temps est repris', dr.reply_count == 4 and Discussion.objects.count() == 3,
+      (dr.reply_count, Discussion.objects.count()))
 
 print(f'\n{sum(results)}/{len(results)} vérifications réussies')
 sys.exit(0 if all(results) else 1)
