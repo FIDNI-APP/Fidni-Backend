@@ -7,6 +7,8 @@ Le navigateur n'envoie que le motif de la route (jamais l'adresse exacte ni le c
 comptes maison ne sont pas comptés. Une même personne n'est comptée qu'une fois par jour dans `visitors`.
 Les visiteurs non connectés sont aussi comptés à part (anon_count, anon_visitors), et chaque page vue alimente
 la ligne du jour « site / visites » (personnes distinctes sur tout le site).
+Depuis le 09/11/2026, les pages et gestes d'un membre connecté sont aussi gardés à son nom (UsageMember, 6 mois),
+pour son journal dans Pilotage › Membres ; les filtres et les visiteurs non connectés restent anonymes.
 """
 import hashlib
 import re
@@ -21,7 +23,7 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.throttling import AnonRateThrottle, UserRateThrottle
 
-from apps.users.models import UsageDaily
+from apps.users.models import UsageDaily, UsageMember
 
 # « ? » : segment facultatif d'un motif (« /exercises/niveau/:level/:chapter? ») ; sans lui, les pages de niveau et de
 # chapitre n'étaient jamais comptées (refusées en 400) depuis le 06/10/2026.
@@ -130,6 +132,19 @@ def _bump(day, kind, name, new_visitor, anon):
         UsageDaily.objects.filter(date=day, kind=kind, name=name).update(**inc)
 
 
+def _bump_membre(user, day, kind, name):
+    """Même page ou geste, rattaché au membre (UsageMember) : son journal dans Pilotage › Membres (09/11/2026)."""
+    now = timezone.now()
+    q = UsageMember.objects.filter(user=user, date=day, kind=kind, name=name)
+    if q.update(count=F('count') + 1, last_at=now):
+        return
+    try:
+        with transaction.atomic():
+            UsageMember.objects.create(user=user, date=day, kind=kind, name=name, count=1, first_at=now, last_at=now)
+    except IntegrityError:
+        q.update(count=F('count') + 1, last_at=now)
+
+
 @api_view(['POST'])
 @permission_classes([AllowAny])
 @throttle_classes([UsageAnonThrottle, UsageUserThrottle])
@@ -172,6 +187,8 @@ def record(request):
     new_visitor = cache.add(f'usage:jour:{day.isoformat()}:{tag}:{who}', 1, 26 * 3600)
     anon = user is None
     _bump(day, kind, name, new_visitor, anon)
+    if user is not None and kind in (UsageDaily.KIND_PAGE, UsageDaily.KIND_ACTION):
+        _bump_membre(user, day, kind, name)
     if kind == UsageDaily.KIND_PAGE:
         # Personnes distinctes sur tout le site ce jour-là (membres et visiteurs non connectés).
         new_on_site = cache.add(f'usage:site:{day.isoformat()}:{who}', 1, 26 * 3600)

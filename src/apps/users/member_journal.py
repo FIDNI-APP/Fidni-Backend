@@ -7,7 +7,8 @@ Avant, la fiche d'un membre montrait 8 lignes (« A consulté », « A commenté
   (QuestionHelp), « Tout réussi », contenu réussi / à revoir (Complete), favori, j'aime, ajout à une liste, ressenti,
   signalement, commentaire, solution proposée, chrono d'examen, correction par IA ;
 - hors contenu : quiz (dernier passage seulement, avec son score ; quiz commencé), DS annoncé, DS blanc, liste créée,
-  classe rejointe, cahier créé, simulation de concours, inscription, dernière connexion.
+  classe rejointe, cahier créé, simulation de concours, défi du jour (09/11/2026), inscription, dernière connexion ;
+- pages vues et gestes du jour (UsageMember, depuis le 09/11/2026, gardés 6 mois) : `pages` et `gestes` de chaque jour.
 Les documents privés du membre (apps/documents) ne sont jamais montrés.
 
 Fenêtre de JOURS jours par page (`avant` : date exclue, la plus récente d'abord) ; une fenêtre vide passe à la
@@ -42,6 +43,19 @@ def _ref(c):
     return {'id': c.id, 'type': c.type, 'title': c.title, 'url': f'/{TYPE_PATH.get(c.type, "exercises")}/{c.id}'}
 
 
+def _defi_label(t):
+    """« Défi du 08/11 « La somme des chiffres » : trouvé le jour même en 2 essais, 1 indice »."""
+    essais = f'{t.essais} essai{"s" if t.essais > 1 else ""}'
+    indices = f', {t.indices_vus} indice{"s" if t.indices_vus > 1 else ""}' if t.indices_vus else ''
+    if t.statut == 'trouve':
+        etat = f'trouvé{" le jour même" if t.le_jour_meme else ""} en {essais}{indices}'
+    elif t.statut == 'rate':
+        etat = f'solution vue après {essais}{indices}'
+    else:
+        etat = f'commencé ({essais}{indices})' if t.essais or t.indices_vus else 'ouvert'
+    return f'Défi du {t.defi.date:%d/%m} « {t.defi.titre} » : {etat}'
+
+
 def _fenetre(user, debut, fin):
     """Jours de [debut, fin) : [{date, minutes, contenus, evenements}], du plus récent au plus ancien."""
     from apps.classrooms.models import ClassroomMembership
@@ -51,9 +65,12 @@ def _fenetre(user, debut, fin):
     from apps.notebooks.models import Notebook
     from apps.skilliq.models import APPROFONDISSEMENT, QuizEnCours, SkillAssessment
     from apps.things.models import Comment, Content, ContentReport, DifficultyFeedback, ProposedSolution
+    from apps.defis.models import TentativeDefi
     from apps.things.views import _walk_questions_meta
-    from apps.users.models import ViewHistory
+    from apps.users.admin_dashboard import TRACKED_ACTIONS
+    from apps.users.models import UsageMember, ViewHistory
 
+    ACTION_LABEL = dict(TRACKED_ACTIONS)
     t0, t1 = _bornes(debut, fin)
     ct = ContentType.objects.get_for_model(Content)
     contenus = defaultdict(dict)    # (jour, content_id) -> entrée
@@ -174,13 +191,26 @@ def _fenetre(user, debut, fin):
         evt(user.date_joined, 'inscription', 'Inscription')
     if user.last_login and t0 <= user.last_login < t1:
         evt(user.last_login, 'connexion', 'Dernière connexion')
+    # Défi du jour (09/11/2026) : une ligne par défi tenté, à l'heure du dernier geste (essai, indice, abandon).
+    for t in (TentativeDefi.objects.filter(user=user, updated_at__gte=t0, updated_at__lt=t1)
+              .select_related('defi')):
+        evt(t.updated_at, 'defi', _defi_label(t), f'/defis/{t.defi.date.isoformat()}')
+
+    # ── Pages vues et gestes du membre (UsageMember, 6 mois), regroupés par jour
+    navigation = defaultdict(lambda: {'pages': [], 'gestes': []})
+    for u in UsageMember.objects.filter(user=user, date__gte=debut, date__lt=fin).order_by('first_at'):
+        ligne = {'name': u.name, 'count': u.count, 'premier': u.first_at.isoformat(), 'dernier': u.last_at.isoformat()}
+        if u.kind == 'page':
+            navigation[u.date]['pages'].append(ligne)
+        else:
+            navigation[u.date]['gestes'].append({**ligne, 'label': ACTION_LABEL.get(u.name, u.name)})
 
     # ── Contenus et libellés des questions (en lot)
     ids = {cid for (_, cid) in contenus}
     objets = {c.id: c for c in Content.objects.filter(id__in=ids).only('id', 'type', 'title', 'json_content')}
     libelles = {cid: {p: lab for p, lab, _ in _walk_questions_meta(c.json_content or {})} for cid, c in objets.items()}
 
-    jours = sorted({j for (j, _) in contenus} | set(evenements), reverse=True)
+    jours = sorted({j for (j, _) in contenus} | set(evenements) | set(navigation), reverse=True)
     out = []
     for j in jours:
         lignes = []
@@ -217,8 +247,11 @@ def _fenetre(user, debut, fin):
             })
         lignes.sort(key=lambda x: (x['fin'] or '', x['minutes']), reverse=True)
         evts = sorted(evenements.get(j, []), key=lambda x: x['at'], reverse=True)
+        nav = navigation.get(j, {'pages': [], 'gestes': []})
         out.append({'date': j.isoformat(), 'minutes': round(minutes.get(j, 0) / 60), 'contenus': lignes,
-                    'evenements': [{**x, 'at': x['at'].isoformat()} for x in evts]})
+                    'evenements': [{**x, 'at': x['at'].isoformat()} for x in evts],
+                    'pages': sorted(nav['pages'], key=lambda p: -p['count']),
+                    'gestes': sorted(nav['gestes'], key=lambda g: -g['count'])})
     return out
 
 

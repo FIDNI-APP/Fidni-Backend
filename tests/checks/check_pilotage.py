@@ -341,6 +341,16 @@ lim = Chapter.objects.get(name='Limites et continuité')
 SkillAssessment.objects.create(user=dina, chapter=lim, class_level=level, score=6, max_score=8)
 UpcomingTest.objects.create(user=dina, subject=subject, date=today + timedelta(days=5))
 Document.objects.create(user=dina, title='Mon brouillon secret', html='<p>privé</p>')
+# Défi du jour et pages / gestes rattachés au membre (09/11/2026).
+from apps.defis.models import Defi, TentativeDefi  # noqa: E402
+from apps.users.models import UsageMember  # noqa: E402
+_defi = Defi.objects.create(cle='defi-journal', date=today, titre='La somme des chiffres', theme='arithmetique',
+                            difficulte='easy', enonce='<p>?</p>', consigne='', reponse='12', indices=[], solution='<p>12</p>')
+TentativeDefi.objects.create(user=dina, defi=_defi, statut='trouve', essais=2, indices_vus=1, le_jour_meme=True)
+UsageMember.objects.create(user=dina, date=today, kind='page', name='/defis', count=3, first_at=_base - timedelta(minutes=40), last_at=_base)
+UsageMember.objects.create(user=dina, date=today, kind='page', name='/progression', count=1, first_at=_base, last_at=_base)
+UsageMember.objects.create(user=dina, date=today, kind='action', name='imprimer', count=2, first_at=_base, last_at=_base)
+UsageMember.objects.create(user=alice, date=today, kind='page', name='/quiz', count=1, first_at=_base, last_at=_base)
 # Activité ancienne (30 jours) : dans une page suivante.
 StudyTimeDay.objects.create(user=dina, object_id=ex.id, date=today - timedelta(days=30), seconds=600)
 
@@ -362,6 +372,15 @@ check('journal : détail par question, libellés de la page', ('Q1', 'réussie �
 check('journal : favori', any(g['kind'] == 'favori' for g in cont.get('gestes', [])), cont.get('gestes'))
 evts = {e['kind']: e['label'] for e in jour.get('evenements', [])}
 check('journal : quiz avec son score, DS annoncé', evts.get('quiz', '').endswith(': 75 %') and 'DS annoncé' in evts.get('ds', ''), evts)
+check('journal : défi du jour trouvé, essais et indices',
+      'Défi du' in evts.get('defi', '') and 'trouvé le jour même en 2 essais, 1 indice' in evts.get('defi', ''), evts)
+check('journal : lien vers le défi', any(e['kind'] == 'defi' and e['url'] == f'/defis/{today.isoformat()}'
+                                         for e in jour.get('evenements', [])), jour.get('evenements'))
+pages = [(p['name'], p['count']) for p in jour.get('pages', [])]
+check('journal : pages vues du jour, la plus vue d’abord', pages == [('/defis', 3), ('/progression', 1)], pages)
+check('journal : gestes avec leur libellé', [(g['name'], g['count']) for g in jour.get('gestes', [])] == [('imprimer', 2)]
+      and jour['gestes'][0]['label'] != 'imprimer', jour.get('gestes'))
+check('journal : pas les pages d’un autre membre', '/quiz' not in str(jour.get('pages')))
 check('journal : documents privés jamais montrés', 'secret' not in str(j) and 'brouillon' not in str(j))
 check('journal : nombre de requêtes borné', len(ctx.captured_queries) <= 45, len(ctx.captured_queries))
 check('journal : page suivante proposée', j['suivant'] and j['plus_ancien'] == (now - timedelta(days=60)).date().isoformat(), j)
