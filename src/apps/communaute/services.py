@@ -7,33 +7,17 @@ Protection des mineurs (décidé le 08/11/2026) :
   tous (users/serializers.py).
 """
 import logging
-from datetime import date
 
 from django.contrib.auth.models import User
 from django.db import IntegrityError, transaction
 from django.utils import timezone
 
 from apps.notifications.models import Notification
+from apps.users.identity import est_mineur
 
 from .models import BANNIERES, Abonnement, Blocage, ProfilPublic
 
 logger = logging.getLogger('django')
-MAJORITE = 18
-
-
-def est_mineur(user):
-    """Élève de moins de 18 ans, ou dont l'âge est inconnu. Un professeur ou un membre de l'équipe ne l'est jamais."""
-    if user.is_staff or user.is_superuser:
-        return False
-    profile = getattr(user, 'profile', None)
-    if profile is not None and profile.user_type == 'teacher':
-        return False
-    naissance = getattr(profile, 'birth_date', None)
-    if not naissance:
-        return True
-    today = date.today()
-    age = today.year - naissance.year - ((today.month, today.day) < (naissance.month, naissance.day))
-    return age < MAJORITE
 
 
 def role(user):

@@ -11,6 +11,7 @@ Quand :
 - à l'affichage d'un profil : toutes les familles (la maîtrise et « Membre fondateur » ne changent que là).
 Le premier calcul d'un compte enregistre sans notification ce qu'il avait déjà gagné (ProfilPublic.badges_init_le).
 """
+import logging
 from datetime import datetime, timedelta, timezone as dt_timezone
 
 from django.contrib.auth.models import User
@@ -20,6 +21,7 @@ from django.utils import timezone
 
 from .models import BadgeObtenu
 
+logger = logging.getLogger('django')
 PALIERS = {1: 'Bronze', 2: 'Argent', 3: 'Or'}
 FONDATEUR_AVANT = datetime(2027, 1, 1, tzinfo=dt_timezone.utc)
 QUIZ_REUSSI = 80  # % : un quiz du cours ou un approfondissement « réussi »
@@ -98,10 +100,15 @@ def _exercices_reussis(user):
 
 def chapitres_maitrises(user, calculer=True):
     """Chapitres « maîtrisés » de Ma progression, au niveau de l'élève : [{id, name}] (même calcul, en cache).
-    calculer=False : seulement s'ils sont déjà calculés (None sinon), sans remplir le cache (maitrise.en_cache)."""
+    None quand on ne le sait pas, ce qui n'est pas « aucun » : calculer=False et rien en cache (maitrise.en_cache, sans le
+    remplir), ou calcul en échec (journalisé : le profil s'affiche sans ce bloc plutôt que de tomber)."""
     from apps.users import maitrise
     level = getattr(getattr(user, 'profile', None), 'class_level', None)
-    data = maitrise.evaluer(user, level) if calculer else maitrise.en_cache(user, level)
+    try:
+        data = maitrise.evaluer(user, level) if calculer else maitrise.en_cache(user, level)
+    except Exception:
+        logger.exception('Communauté : maîtrise illisible pour le membre %s', user.id)
+        return None
     if data is None:
         return None
     return [{'id': c['id'], 'name': c['name']} for c in data['chapters'] if c.get('etat') == 'maitrise']
@@ -208,8 +215,8 @@ def catalogue(user, est_proprietaire, chiffres=None):
             continue
         item = {'id': b['id'], 'nom': b['nom'], 'unite': b['unite'], 'un': b['un'], 'paliers': list(b['paliers']),
                 'palier': palier, 'obtenu_le': quand}
-        if est_proprietaire and chiffres is not None:
-            item['valeur'] = chiffres.get(b['id'], 0)
+        if est_proprietaire and chiffres is not None and b['id'] in chiffres:
+            item['valeur'] = chiffres[b['id']]  # chiffre inconnu (maîtrise en échec) : pas de barre, plutôt qu'un faux 0
         out.append(item)
     # Obtenus d'abord (du plus haut palier au plus bas), puis ceux à gagner.
     out.sort(key=lambda x: (-x['palier'], FAMILLES.index(x['id'])))

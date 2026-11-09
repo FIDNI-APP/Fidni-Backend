@@ -16,7 +16,7 @@ import re
 from datetime import timedelta
 
 from django.contrib.auth.models import User
-from django.db.models import Case, Count, IntegerField, Q, Value, When
+from django.db.models import Case, Count, F, IntegerField, Q, Value, When
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 from rest_framework.decorators import api_view, permission_classes, throttle_classes
@@ -51,6 +51,12 @@ def _refus(e):
 
 def _users(qs):
     return qs.select_related('profile', 'profile__class_level', 'profil_public')
+
+
+def _actifs_dabord():
+    """Les plus récemment actifs d'abord, ceux sans activité connue à la fin. Sans nulls_last, PostgreSQL les mettrait en
+    tête d'un tri décroissant (SQLite, des vérifications, à la fin : la différence ne se voit qu'en production)."""
+    return F('profile__last_activity_date').desc(nulls_last=True)
 
 
 @api_view(['GET'])
@@ -146,7 +152,7 @@ def demandes(request):
 @throttle_classes([CommunauteThrottle])
 def repondre_demande(request, username, reponse):
     demandeur = _membre(username)
-    if not demandeur:
+    if not demandeur or reponse not in ('accepter', 'refuser'):
         return _introuvable()
     ok = S.accepter(request.user, demandeur) if reponse == 'accepter' else S.refuser(request.user, demandeur)
     if not ok:
@@ -191,7 +197,7 @@ def membres(request):
             When(username__istartswith=q, then=Value(0)), default=Value(1), output_field=IntegerField()))
         qs = qs.order_by('debut', 'username')
     else:
-        qs = qs.order_by('-profile__last_activity_date', '-date_joined')
+        qs = qs.order_by(_actifs_dabord(), '-date_joined')
     return _liste(request, _users(qs.distinct()))
 
 
@@ -208,16 +214,17 @@ def decouvrir(request):
     if classes:
         ids = set(ClassroomMembership.objects.filter(classroom_id__in=classes).values_list('student_id', flat=True))
         ids |= set(Classroom.objects.filter(id__in=classes).values_list('owner_id', flat=True))
-        classe = list(_users(base.filter(id__in=ids)).order_by('-profile__last_activity_date')[:12])
+        classe = list(_users(base.filter(id__in=ids)).order_by(_actifs_dabord())[:12])
 
+    # Vérifiés d'abord : un professeur sans réglages enregistrés n'a pas de ligne (NULL), donc nulls_last ici aussi.
     profs = list(_users(base.filter(_role_q('prof'))).annotate(n=Count('content_items', distinct=True))
-                 .order_by('-profil_public__verifie', '-n', '-profile__last_activity_date')[:8])
+                 .order_by(F('profil_public__verifie').desc(nulls_last=True), '-n', _actifs_dabord())[:8])
 
     niveau = []
     level_id = getattr(getattr(viewer, 'profile', None), 'class_level_id', None)
     if level_id:
         niveau = list(_users(base.filter(_role_q('eleve'), profile__class_level_id=level_id))
-                      .exclude(id__in=[u.id for u in classe]).order_by('-profile__last_activity_date')[:8])
+                      .exclude(id__in=[u.id for u in classe]).order_by(_actifs_dabord())[:8])
 
     utiles = B.classement_utiles(timezone.now() - timedelta(days=30))
     series = B.classement_series()
@@ -237,6 +244,18 @@ def _mini(u, request):
     return author(u, request)
 
 
+def _avant(request):
+    """Curseur du fil (?avant=<date ISO>) : maintenant s'il est absent ou illisible (parse_datetime lève ValueError sur
+    une date bien formée mais impossible, comme le 45 du mois)."""
+    try:
+        quand = parse_datetime(request.query_params.get('avant') or '')
+    except ValueError:
+        quand = None
+    if quand is None:
+        return timezone.now()
+    return timezone.make_aware(quand) if timezone.is_naive(quand) else quand
+
+
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def fil(request):
@@ -244,7 +263,7 @@ def fil(request):
     from apps.discussions.models import Discussion
     from apps.things.models import Content
     from apps.discussions.presenters import TYPE_PATH
-    avant = parse_datetime(request.query_params.get('avant') or '') or timezone.now()
+    avant = _avant(request)
     suivis = list(Abonnement.objects.filter(abonne=request.user, statut=Abonnement.ACCEPTE).values_list('suivi_id', flat=True))
     if not suivis:
         return Response({'results': [], 'suite': None, 'suivis': 0})

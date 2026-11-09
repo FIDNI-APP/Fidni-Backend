@@ -6,7 +6,8 @@ import os
 import runpy
 import sys
 import tempfile
-from datetime import date, datetime, timedelta, timezone as dt_timezone
+from datetime import date, timedelta
+from unittest import mock
 
 BACKEND = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, BACKEND + '/src')
@@ -25,6 +26,7 @@ from django.conf import settings  # noqa: E402
 from django.contrib.auth.models import User  # noqa: E402
 from django.contrib.contenttypes.models import ContentType  # noqa: E402
 from django.core.cache import cache  # noqa: E402
+from django.utils import timezone  # noqa: E402
 from rest_framework.test import APIClient  # noqa: E402
 from apps.caracteristics.models import Chapter, ClassLevel, Subject  # noqa: E402
 from apps.classrooms.models import Classroom, ClassroomMembership  # noqa: E402
@@ -117,6 +119,11 @@ check('Bannière par défaut choisie d’après le pseudo', d['banniere'] in ('z
 adulte.profile.location = 'Fès'
 adulte.profile.save()
 check('Ville d’un majeur visible', client().get('/api/communaute/profils/adulte/').json()['ville'] == 'Fès')
+check('API /users/ : ville d’un mineur cachée à un visiteur', 'location' not in client().get('/api/users/mineur/').json()['profile'])
+check('… et à un autre membre', 'location' not in client(amina).get('/api/users/mineur/').json()['profile'])
+check('… mais pas au propriétaire ni à l’équipe', client(mineur).get('/api/users/mineur/').json()['profile'].get('location') == 'Rabat'
+      and client(equipe).get('/api/users/mineur/').json()['profile'].get('location') == 'Rabat')
+check('API /users/ : ville d’un majeur visible', client().get('/api/users/adulte/').json()['profile'].get('location') == 'Fès')
 check('Membre inconnu : 404', client().get('/api/communaute/profils/personne/').status_code == 404)
 deleted_account_user()
 check('Compte supprimé : pas de profil', client().get(f'/api/communaute/profils/{DELETED_USERNAME}/').status_code == 404)
@@ -155,6 +162,8 @@ check('amina est prévenue (« accepte »)', len(notifs(amina, 'accepte')) == 1)
 check('Accepter une demande qui n’existe pas : 404', client(mineur).post('/api/communaute/demandes/badr/accepter/').status_code == 404)
 
 client(badr).post('/api/communaute/profils/mineur/suivre/')
+check('Réponse inconnue à une demande : 404, la demande reste', client(mineur).post('/api/communaute/demandes/badr/nimporte/').status_code == 404
+      and Abonnement.objects.filter(abonne=badr, suivi=mineur, statut='en_attente').exists())
 r = client(mineur).post('/api/communaute/demandes/badr/refuser/')
 check('Refuser une demande', r.status_code == 200 and not Abonnement.objects.filter(abonne=badr, suivi=mineur).exists())
 client(chaima).post('/api/communaute/profils/mineur/suivre/')
@@ -256,6 +265,14 @@ Complete.objects.filter(user=amina).delete()
 client().get('/api/communaute/profils/amina/')
 check('Badge gardé quand le chiffre redescend', BadgeObtenu.objects.filter(user=amina, badge='exercices', palier=1).exists())
 
+maitrise.forget(badr.id)
+with mock.patch('apps.users.maitrise.evaluer', side_effect=RuntimeError('panne')):
+    r = client(badr).get('/api/communaute/profils/badr/')
+    check('« Ma progression » en panne : le profil s’affiche quand même', r.status_code == 200, r.status_code)
+    d = r.json()
+    check('… sans chapitres ni chiffre de maîtrise : inconnus, pas zéro', d['chapitres'] is None
+          and all(c['id'] != 'maitrise' for c in d['chiffres'])
+          and 'valeur' not in next(b for b in d['badges'] if b['id'] == 'maitrise'), (d['chapitres'], d['chiffres']))
 check('Unité au singulier pour 1 : « 1 publication », « 10 publications »',
       B.texte_seuil('auteur', 1) == '1 publication' and B.texte_seuil('auteur', 10) == '10 publications'
       and B.texte_seuil('entraide', 1) == '1 « utile » reçu' and B.texte_seuil('fondateur', 1) == '')
@@ -302,6 +319,11 @@ r = client(badr).get('/api/communaute/membres/?role=prof').json()
 check('Filtre Professeurs', [m['username'] for m in r['results']] == ['prof'], r)
 r = client(badr).get(f'/api/communaute/membres/?role=eleve&niveau={pc.id}').json()
 check('Filtre niveau', [m['username'] for m in r['results']] == ['chaima'], r)
+chaima.profile.last_activity_date = timezone.now() + timedelta(hours=1)
+chaima.profile.save()
+r = client(badr).get('/api/communaute/membres/?role=eleve').json()
+check('Sans recherche : le plus récemment actif d’abord, ceux sans activité connue à la fin (PostgreSQL aussi)',
+      r['results'][0]['username'] == 'chaima', [m['username'] for m in r['results']])
 check('L’équipe n’est ni élève ni professeur', 'equipe' not in [m['username'] for m in client(badr).get(
     '/api/communaute/membres/?role=eleve').json()['results']])
 Blocage.objects.create(auteur=chaima, bloque=badr)
@@ -313,6 +335,7 @@ classe = Classroom.objects.create(name='TS1', owner=prof, class_level=sm)
 ClassroomMembership.objects.create(classroom=classe, student=badr)
 ClassroomMembership.objects.create(classroom=classe, student=adulte)
 ProfilPublic.objects.filter(user=prof).update(verifie=True)
+membre('prof2', date(1980, 1, 1), teacher=True)  # sans réglages enregistrés (NULL) ni activité : après le professeur vérifié
 d = client(badr).get('/api/communaute/decouvrir/').json()
 check('Ta classe : camarades et professeur', {m['username'] for m in d['classe']} == {'prof', 'adulte'}, d['classe'])
 check('Professeurs : le professeur vérifié', d['profs'] and d['profs'][0]['username'] == 'prof' and d['profs'][0]['verifie'])
@@ -332,6 +355,8 @@ types = {(x['type'], x['membre']['username']) for x in r['results']}
 check('Fil : publication et badges du professeur suivi', ('publication', 'prof') in types and ('badge', 'prof') in types, types)
 client(chaima).post('/api/communaute/profils/mineur/suivre/')
 check('Demande en attente : rien dans le fil', client(chaima).get('/api/communaute/fil/').json()['results'] == [])
+for curseur in ('2026-13-45T00:00:00', 'nimporte', '2026-11-09T10:00:00'):
+    check(f'Fil : curseur {curseur!r} sans erreur', client(amina).get('/api/communaute/fil/', {'avant': curseur}).status_code == 200)
 
 print('--- État du défi du jour')
 r = client().get('/api/defis/etat/').json()

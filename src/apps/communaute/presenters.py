@@ -1,4 +1,5 @@
 """Ce que l'API de la communauté renvoie : cartes de membres (par lots) et profil public complet."""
+import logging
 from datetime import timedelta
 
 from django.contrib.contenttypes.models import ContentType
@@ -10,6 +11,7 @@ from . import badges as B
 from .models import Abonnement, ProfilPublic
 from .services import banniere_par_defaut, est_mineur, profil_public, relation, role, voit_listes
 
+logger = logging.getLogger('django')
 CALENDRIER_JOURS = 84  # 12 semaines de défis sur le profil
 ACTIVITE = 6
 
@@ -77,13 +79,9 @@ def _top_badges(mine, vitrine, n=3):
 def _chiffres(user, rl, valeurs, serie_en_cours):
     from apps.things.models import Content
     if rl == 'eleve':
-        return [
-            {'id': 'serie', 'valeur': serie_en_cours, 'record': valeurs.get('serie', 0)},
-            {'id': 'exercices', 'valeur': valeurs.get('exercices', 0)},
-            {'id': 'maitrise', 'valeur': valeurs.get('maitrise', 0)},
-            {'id': 'approfondi', 'valeur': valeurs.get('approfondi', 0)},
-            {'id': 'entraide', 'valeur': valeurs.get('entraide', 0)},
-        ]
+        # Un chiffre inconnu (maîtrise en échec) n'est pas affiché : ce n'est pas un zéro.
+        return [{'id': 'serie', 'valeur': serie_en_cours, 'record': valeurs.get('serie', 0)}] + [
+            {'id': f, 'valeur': valeurs[f]} for f in ('exercices', 'maitrise', 'approfondi', 'entraide') if f in valeurs]
     contenus = Content.objects.filter(author=user)
     ct = ContentType.objects.get_for_model(Content)
     from apps.interactions.models import Vote
@@ -128,8 +126,11 @@ def profil(user, viewer, request):
 
     trouves = jours_trouves(user)
     chiffres_badges = B.valeurs(user, cache_defi=trouves)
-    B.actualiser(user, valeurs_connues=chiffres_badges)
-    catalogue = B.catalogue(user, proprietaire, chiffres_badges if proprietaire else None)
+    try:
+        B.actualiser(user, valeurs_connues=chiffres_badges)
+    except Exception:  # des paliers pas enregistrés cette fois-ci ne doivent pas empêcher de voir le profil
+        logger.exception('Communauté : badges non actualisés pour le membre %s', user.id)
+    catalogue =B.catalogue(user, proprietaire, chiffres_badges if proprietaire else None)
     par_id = {b['id']: b for b in catalogue if b['palier']}  # vitrine : badges obtenus seulement, dans l'ordre choisi
 
     profile = getattr(user, 'profile', None)

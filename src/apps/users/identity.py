@@ -9,9 +9,26 @@ from datetime import date
 from apps.caracteristics.models import School
 
 MIN_AGE, MAX_AGE = 8, 100  # bornes de vraisemblance (élèves de collège/lycée, enseignants)
+MAJORITE = 18
 
 # Lettres de toutes les écritures (latin accentué, arabe…), espaces, apostrophes, traits d'union.
 _NAME_RE = re.compile(r"^[^\W\d_](?:[^\W\d_]|[ '’.\-])*$")
+
+
+def est_mineur(user):
+    """Élève de moins de 18 ans, ou dont l'âge est inconnu. Un professeur ou un membre de l'équipe ne l'est jamais.
+    Protection des mineurs : ville cachée aux autres (serializers.py), abonnés à valider (apps/communaute)."""
+    if user.is_staff or user.is_superuser:
+        return False
+    profile = getattr(user, 'profile', None)
+    if profile is not None and profile.user_type == 'teacher':
+        return False
+    naissance = getattr(profile, 'birth_date', None)
+    if not naissance:
+        return True
+    today = date.today()
+    age = today.year - naissance.year - ((today.month, today.day) < (naissance.month, naissance.day))
+    return age < MAJORITE
 
 
 def _squash(value):
