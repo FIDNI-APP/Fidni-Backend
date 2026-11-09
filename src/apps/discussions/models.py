@@ -1,9 +1,9 @@
-"""Espace Discussions (08/11/2026) : un forum par salons, à part des contenus.
+"""Forum et commentaires (08/11/2026, séparés le 09/11/2026), deux genres de messages dans un même modèle.
 
-Constat du 08/11/2026 : 8 commentaires pour 5 747 vues sous les contenus, presque aucun avec une réponse. La
-discussion quitte le bas des pages : chaque discussion a un titre, un salon, et peut taguer des leçons, des exercices
-et des examens (`contents`), affichés en cartes. La page d'un contenu montre les discussions qui le taguent (onglet
-« Discussions »). Les commentaires existants sont repris en discussions (migration 0002, `legacy_comment_id`).
+Forum : un sujet avec un titre, dans un salon, qui peut taguer des leçons, des exercices et des examens (`contents`).
+Commentaire : un message écrit sous un contenu (onglet « Commentaires » de sa page), sans titre ni salon, qui n'attend
+pas forcément de réponse. Ils partagent les réponses, les votes, les pièces jointes et le suivi. Les commentaires
+d'avant le 08/11/2026 ont été repris ici (migration 0002, `legacy_comment_id`), genre fixé par la migration 0004.
 
 Votes « utile » : les votes (interactions.Vote, valeur 1) des discussions et des réponses.
 """
@@ -25,6 +25,10 @@ SALONS = [
 ]
 SALON_KEYS = {k for k, _ in SALONS}
 
+FORUM, COMMENTAIRE = 'forum', 'commentaire'
+GENRES = [(FORUM, 'Discussion du forum'), (COMMENTAIRE, 'Commentaire sous un contenu')]
+GENRE_KEYS = {k for k, _ in GENRES}
+
 
 def plain_text(body):
     """Texte d'un message écrit avec l'éditeur (HTML, maths en $…$) : sans balises, espaces simples."""
@@ -32,7 +36,9 @@ def plain_text(body):
 
 
 class Discussion(VotableMixin, models.Model):
-    title = models.CharField(max_length=160)
+    genre = models.CharField(max_length=12, choices=GENRES, default=FORUM)
+    # Vide pour un commentaire : on le présente par son texte et par son contenu.
+    title = models.CharField(max_length=160, blank=True)
     body = models.TextField(blank=True, default='')
     author = models.ForeignKey(User, on_delete=models.PROTECT, related_name='discussions')
     salon = models.CharField(max_length=20, choices=SALONS, default='entraide')
@@ -56,10 +62,11 @@ class Discussion(VotableMixin, models.Model):
             models.Index(fields=['salon', '-last_activity_at'], name='disc_salon_activite'),
             models.Index(fields=['class_level', '-last_activity_at'], name='disc_niveau_activite'),
             models.Index(fields=['-last_activity_at'], name='disc_activite'),
+            models.Index(fields=['genre', '-last_activity_at'], name='disc_genre_activite'),
         ]
 
     def __str__(self):
-        return self.title
+        return self.title or plain_text(self.body)[:80]
 
     def save(self, *args, **kwargs):
         from apps.things.search_text import normalize

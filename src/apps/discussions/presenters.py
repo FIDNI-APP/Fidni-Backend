@@ -1,5 +1,5 @@
-"""Ce que l'API de l'espace Discussions renvoie : cartes de discussion, détail avec réponses, cartes des contenus
-tagués. Tout est chargé par lots (une page = une poignée de requêtes, quelle que soit sa taille)."""
+"""Ce que l'API du forum et des commentaires renvoie : cartes, détail avec réponses, cartes des contenus tagués. Tout
+est chargé par lots (une page = une poignée de requêtes, quelle que soit sa taille)."""
 from collections import defaultdict
 
 from django.contrib.auth.models import User
@@ -13,6 +13,7 @@ from apps.uploads.serializers import FileAttachmentSerializer
 from apps.users.serializers import AuthorSerializer
 
 from .models import Discussion, Follow, Reply, plain_text
+from .services import link
 
 TYPE_PATH = {'exercise': 'exercises', 'exam': 'exams', 'lesson': 'lessons'}
 TYPE_RANK = {'exercise': 0, 'exam': 1, 'lesson': 2}
@@ -102,6 +103,8 @@ def cards(discussions, request):
     for d in discussions:
         out.append({
             'id': d.id,
+            'genre': d.genre,
+            'url': link(d),
             'title': d.title,
             'excerpt': excerpt(d.body),
             'salon': d.salon,

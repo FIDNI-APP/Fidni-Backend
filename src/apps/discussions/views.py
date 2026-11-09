@@ -1,7 +1,8 @@
-"""API de l'espace Discussions (08/11/2026).
+"""API du forum et des commentaires sous les contenus (08/11/2026, séparés le 09/11/2026).
 
-GET  /api/discussions/                     liste (salon, niveau, chapitre, contenu, recherche, tri, page)
-POST /api/discussions/                     nouvelle discussion {title, body, salon, class_level, content_ids, file_ids}
+GET  /api/discussions/                     liste (genre, salon, niveau, chapitre, contenu, recherche, tri, page)
+POST /api/discussions/                     du forum {title, body, salon, class_level, content_ids, file_ids}
+                                           ou commentaire {genre: commentaire, body, content_ids: [un contenu], file_ids}
 GET|PATCH|DELETE /api/discussions/<id>/    détail (avec les réponses) ; modifier, supprimer : auteur ou équipe
 POST /api/discussions/<id>/repondre/       {body, reply_to, file_ids}
 POST /api/discussions/<id>/utile/          vote « utile » (bascule)
@@ -35,8 +36,8 @@ from config.throttling import (ApiMembreThrottle, ApiVisiteurThrottle, ContenuVi
                                DiscussionThrottle)
 
 from . import presenters
-from .models import SALON_KEYS, SALONS, Discussion, Follow, Reply, plain_text
-from .services import later, notify_new_discussion, notify_new_reply
+from .models import COMMENTAIRE, FORUM, GENRE_KEYS, SALON_KEYS, SALONS, Discussion, Follow, Reply, plain_text
+from .services import delete_files, later, notify_new_comment, notify_new_discussion, notify_new_reply
 
 PAGE = 20
 TRIS = ('recentes', 'populaires', 'sans_reponse', 'suivies')
@@ -103,18 +104,6 @@ def _owner_or_staff(request, obj):
     return bool(user and (obj.author_id == user.id or user.is_staff or user.is_superuser))
 
 
-def _delete_files(objs):
-    """Fichiers rattachés à des messages supprimés : effacés du stockage avec eux."""
-    from apps.uploads.models import FileAttachment
-    for model, ids in objs:
-        if not ids:
-            continue
-        ct = ContentType.objects.get_for_model(model)
-        for attachment in FileAttachment.objects.filter(content_type=ct, object_id__in=ids):
-            attachment.delete_file()  # gardé s'il sert encore au commentaire repris (FileAttachment.delete_file)
-            attachment.delete()
-
-
 def _attach(obj, file_ids, user):
     from apps.things.views import attach_own_files
     if isinstance(file_ids, list):
@@ -177,13 +166,19 @@ def discussions(request):
     if request.method == 'POST':
         return _create(request)
     qs, level = _scope(request)
+    content = request.query_params.get('contenu')
+    # Sans `genre` : le forum. Avec `contenu` seul (ancien site, jusqu'à son déploiement) : tout ce qui concerne ce contenu.
+    genre = request.query_params.get('genre') or (None if content else FORUM)
+    if genre is not None:
+        if genre not in GENRE_KEYS:
+            return Response({'error': 'genre inconnu'}, status=400)
+        qs = qs.filter(genre=genre)
     salon = request.query_params.get('salon')
     if salon:
         qs = qs.filter(salon=salon if salon in SALON_KEYS else '-')
     chapter = request.query_params.get('chapitre')
     if chapter:
         qs = qs.filter(id__in=Discussion.objects.filter(contents__chapters__id=_id(chapter) or -1).values('id'))
-    content = request.query_params.get('contenu')
     if content:
         qs = qs.filter(id__in=Discussion.objects.filter(contents__id=_id(content) or -1).values('id'))
     author = request.query_params.get('auteur')
@@ -217,9 +212,48 @@ def discussions(request):
     })
 
 
+def _create_comment(request):
+    """Commentaire sous un contenu : un message, sans titre ni salon, au niveau de ce contenu."""
+    if not DiscussionReponseThrottle().allow_request(request, None):
+        return Response({'error': 'Trop de messages d’un coup. Réessaie dans un moment.'}, status=429)
+    body, error = _reply_body(request, vide='Écris ton commentaire.')
+    if error:
+        return Response(error, status=400)
+    ids = _content_ids(request.data.get('content_ids'))
+    if not ids or len(ids) != 1:
+        return Response({'content_ids': 'Un commentaire est écrit sous un contenu.'}, status=400)
+    level = Content.objects.get(pk=ids[0]).class_levels.order_by('order').first()
+    with transaction.atomic():
+        d = Discussion.objects.create(author=request.user, genre=COMMENTAIRE, body=body, class_level=level)
+        d.contents.set(ids)
+        Follow.objects.get_or_create(discussion=d, user=request.user)
+        _attach(d, request.data.get('file_ids'), request.user)
+    later(notify_new_comment, d)
+    d = presenters.card_queryset(Discussion.objects.filter(pk=d.pk)).get()
+    return Response(presenters.detail(d, request), status=201)
+
+
+def _edit_comment(request, d):
+    """Un commentaire ne se modifie que dans son texte : ni titre, ni salon, ni contenu."""
+    body = request.data.get('body')
+    body = body if isinstance(body, str) else ''
+    if not plain_text(body) and not d.attachments.exists():
+        return Response({'body': 'Écris ton commentaire.'}, status=400)
+    if len(body) > BODY_MAX:
+        return Response({'body': f'{BODY_MAX} caractères au maximum.'}, status=400)
+    d.body, d.edited_at = body, timezone.now()
+    d.save(update_fields=['body', 'edited_at'])
+    return Response(presenters.detail(d, request))
+
+
 def _create(request):
     if not _member(request):
         return Response({'error': 'connexion requise'}, status=401)
+    genre = request.data.get('genre') or FORUM
+    if genre not in GENRE_KEYS:
+        return Response({'genre': 'Genre inconnu.'}, status=400)
+    if genre == COMMENTAIRE:
+        return _create_comment(request)
     if not DiscussionThrottle().allow_request(request, None):
         return Response({'error': 'Trop de discussions d’un coup. Réessaie dans un moment.'}, status=429)
     values, errors = _validate(request.data)
@@ -247,9 +281,11 @@ def discussion(request, pk):
     if not _owner_or_staff(request, d):
         return Response({'error': 'Réservé à son auteur.'}, status=403)
     if request.method == 'DELETE':
-        _delete_files([(Discussion, [d.id]), (Reply, list(d.replies.values_list('id', flat=True)))])
+        delete_files([(Discussion, [d.id]), (Reply, list(d.replies.values_list('id', flat=True)))])
         d.delete()
         return Response(status=204)
+    if d.genre == COMMENTAIRE:
+        return _edit_comment(request, d)
     values, errors = _validate(request.data, partial=True)
     if errors:
         return Response(errors, status=400)
@@ -265,12 +301,12 @@ def discussion(request, pk):
     return Response(presenters.detail(d, request))
 
 
-def _reply_body(request):
+def _reply_body(request, vide='Écris ta réponse.'):
     body = request.data.get('body')
     body = body if isinstance(body, str) else ''
     has_files = isinstance(request.data.get('file_ids'), list) and bool(request.data.get('file_ids'))
     if not plain_text(body) and not has_files:
-        return None, {'body': 'Écris ta réponse.'}
+        return None, {'body': vide}
     if len(body) > BODY_MAX:
         return None, {'body': f'{BODY_MAX} caractères au maximum.'}
     return body, None
@@ -307,7 +343,7 @@ def reponse(request, pk):
         return Response({'error': 'Réservé à son auteur.'}, status=403)
     if request.method == 'DELETE':
         did = r.discussion_id
-        _delete_files([(Reply, [r.id])])
+        delete_files([(Reply, [r.id])])
         r.delete()
         last = Reply.objects.filter(discussion_id=did).aggregate(m=Max('created_at'))['m']
         d = Discussion.objects.get(pk=did)
@@ -370,8 +406,9 @@ def suivre(request, pk):
 @throttle_classes(LECTURE)
 def panneau(request):
     """Colonne de l'espace : salons (nombre de discussions), contenus les plus discutés et membres les plus utiles
-    sur 30 jours, discussions sans réponse — au niveau demandé (?niveau=, défaut : celui de l'élève)."""
+    sur 30 jours, discussions sans réponse — au niveau demandé (?niveau=, défaut : celui de l'élève). Forum seulement."""
     qs, level = _scope(request)
+    qs = qs.filter(genre=FORUM)
     counts = dict(qs.values('salon').annotate(n=Count('id')).values_list('salon', 'n'))
     since = timezone.now() - timedelta(days=30)
     recent = qs.filter(last_activity_at__gte=since)
@@ -409,9 +446,10 @@ def panneau(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def compteur(request):
-    """Discussions sans réponse à son niveau, hors les siennes (entrée « Discussions » du menu)."""
+    """Discussions du forum sans réponse à son niveau, hors les siennes (entrée « Discussions » du menu). Un commentaire
+    n'attend pas forcément de réponse : il ne compte pas."""
     qs, _ = _scope(request)
-    return Response({'sans_reponse': _unanswered(qs.exclude(author=request.user)).count()})
+    return Response({'sans_reponse': _unanswered(qs.filter(genre=FORUM).exclude(author=request.user)).count()})
 
 
 @api_view(['GET'])

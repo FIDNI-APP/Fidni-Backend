@@ -259,20 +259,20 @@ def _avant(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def fil(request):
-    """Activité des membres suivis (abonnements acceptés) : discussions lancées, badges gagnés, contenus publiés."""
-    from apps.discussions.models import Discussion
+    """Activité des membres suivis (abonnements acceptés) : discussions lancées, commentaires, badges gagnés, contenus publiés."""
+    from apps.discussions.models import COMMENTAIRE, Discussion
     from apps.things.models import Content
     from apps.discussions.presenters import TYPE_PATH
+    from apps.discussions.services import link, titre
     avant = _avant(request)
     suivis = list(Abonnement.objects.filter(abonne=request.user, statut=Abonnement.ACCEPTE).values_list('suivi_id', flat=True))
     if not suivis:
         return Response({'results': [], 'suite': None, 'suivis': 0})
     items = []
     for d in Discussion.objects.filter(author_id__in=suivis, created_at__lt=avant).select_related(
-            'author__profile', 'author__profile__class_level').order_by('-created_at')[:FIL_PAGE]:
-        items.append({'type': 'discussion', 'date': d.created_at, 'membre': d.author,
-                      'objet': {'id': d.id, 'titre': d.title, 'url': f'/discussions/{d.id}', 'salon': d.salon,
-                                'reponses': d.reply_count}})
+            'author__profile', 'author__profile__class_level').prefetch_related('contents').order_by('-created_at')[:FIL_PAGE]:
+        items.append({'type': 'commentaire' if d.genre == COMMENTAIRE else 'discussion', 'date': d.created_at, 'membre': d.author,
+                      'objet': {'id': d.id, 'titre': titre(d), 'url': link(d), 'salon': d.salon, 'reponses': d.reply_count}})
     for b in B.recents_obtenus(suivis, avant=avant, limite=FIL_PAGE):
         info = B.PAR_ID.get(b.badge)
         if info:

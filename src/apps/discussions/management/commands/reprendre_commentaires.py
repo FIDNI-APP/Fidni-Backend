@@ -12,7 +12,7 @@ from django.apps import apps
 from django.core.management.base import BaseCommand
 from django.db import transaction
 
-from apps.discussions.models import Discussion, Reply
+from apps.discussions.models import COMMENTAIRE, FORUM, Discussion, Reply
 
 
 class Command(BaseCommand):
@@ -23,5 +23,8 @@ class Command(BaseCommand):
         migration = importlib.import_module('apps.discussions.migrations.0002_reprise_commentaires')
         with transaction.atomic():
             migration.reprendre(apps, None)
+            # La reprise crée des discussions du forum : un commentaire repris reste un commentaire, sans titre.
+            Discussion.objects.filter(genre=FORUM, legacy_comment_id__isnull=False, contents__isnull=False) \
+                .update(genre=COMMENTAIRE, title='')
         self.stdout.write(f'{Discussion.objects.count() - before[0]} discussion(s) et '
                           f'{Reply.objects.count() - before[1]} réponse(s) reprises.')
