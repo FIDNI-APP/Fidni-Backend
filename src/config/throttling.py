@@ -152,3 +152,8 @@ class DiscussionThrottle(UserRateThrottle):
 class DiscussionReponseThrottle(UserRateThrottle):
     """Réponses dans les discussions : large pour un échange, freine le spam."""
     scope = 'discussion_reponse'
+
+
+class CommunauteThrottle(UserRateThrottle):
+    """Abonnements, demandes et blocages (09/11/2026) : chaque abonnement prévient quelqu'un."""
+    scope = 'communaute'

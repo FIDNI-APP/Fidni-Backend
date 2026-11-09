@@ -5,6 +5,7 @@ from . import admin_api, views
 urlpatterns = [
     path('defis/aujourdhui/', views.du_jour, name='defi-du-jour'),
     path('defis/archives/', views.archives, name='defi-archives'),
+    path('defis/etat/', views.etat, name='defi-etat'),
     path('defis/<str:jour>/', views.detail, name='defi-detail'),
     path('defis/<str:jour>/repondre/', views.repondre, name='defi-repondre'),
     path('defis/<str:jour>/indice/', views.indice, name='defi-indice'),

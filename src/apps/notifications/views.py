@@ -27,7 +27,8 @@ def _url(n):
     # Réponse à un signalement : le message en entier, dans l'onglet « Messages » du profil (18/10/2026).
     if n.kind in (Notification.KIND_REPORT, Notification.KIND_MESSAGE):
         return f'/profile/{n.recipient.username}?tab=messages&message={n.id}'
-    if n.kind in (Notification.KIND_QUIZ, Notification.KIND_COPIE):
+    if n.kind in (Notification.KIND_QUIZ, Notification.KIND_COPIE, Notification.KIND_ABONNE, Notification.KIND_DEMANDE,
+                  Notification.KIND_ACCEPTE, Notification.KIND_BADGE):
         return n.link
     # Espace Discussions : la discussion, sur la dernière réponse regroupée s'il y en a une.
     if n.target.startswith('discussion:'):

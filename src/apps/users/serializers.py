@@ -2,6 +2,7 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
 from django.utils import timezone
+from .identity import est_mineur
 from .models import UserProfile, SubjectGrade
 from .nouveautes import a_voir
 from apps.caracteristics.models import ClassLevel, Subject
@@ -199,6 +200,9 @@ class UserSerializer(serializers.ModelSerializer):
         if isinstance(data.get('profile'), dict):
             for field in self.PRIVATE_PROFILE_FIELDS:
                 data['profile'].pop(field, None)
+            # La ville d'un élève mineur (ou d'âge inconnu) ne se montre pas aux autres (09/11/2026).
+            if est_mineur(instance):
+                data['profile'].pop('location', None)
         return data
 
     def get_is_self(self, obj):
