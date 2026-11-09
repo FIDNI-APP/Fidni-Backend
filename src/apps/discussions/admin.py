@@ -5,8 +5,8 @@ from .models import Discussion, Reply
 
 @admin.register(Discussion)
 class DiscussionAdmin(admin.ModelAdmin):
-    list_display = ('title', 'author', 'salon', 'class_level', 'reply_count', 'last_activity_at')
-    list_filter = ('salon', 'class_level')
+    list_display = ('__str__', 'genre', 'author', 'salon', 'class_level', 'reply_count', 'last_activity_at')
+    list_filter = ('genre', 'salon', 'class_level')
     search_fields = ('title', 'body', 'author__username')
     raw_id_fields = ('author', 'contents')
 

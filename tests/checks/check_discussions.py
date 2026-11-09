@@ -1,6 +1,7 @@
-"""Espace Discussions (08/11/2026) : créer, taguer des contenus, lister (salon, niveau, chapitre, contenu, recherche,
-tris), répondre, « utile », suivre, notifications (aidants, réponses, mentions), droits, panneau, compteur, recherche
-de contenus, suppression de compte, et reprise des commentaires (migration 0002)."""
+"""Forum et commentaires (08/11/2026, séparés le 09/11/2026) : créer, taguer des contenus, lister (genre, salon, niveau,
+chapitre, contenu, recherche, tris), répondre, « utile », suivre, notifications (aidants, commentaires, réponses,
+mentions), droits, panneau, compteur, recherche de contenus, suppression de compte, contenu supprimé, reprise des anciens
+commentaires (migration 0002) et classement des messages existants (migration 0004)."""
 import importlib
 import os
 import runpy
@@ -30,8 +31,8 @@ from django.utils import timezone  # noqa: E402
 from rest_framework.test import APIClient  # noqa: E402
 from apps.caracteristics.models import Chapter, ClassLevel, Subject  # noqa: E402
 from apps.classrooms.models import Classroom, ClassroomMembership, ClassroomSubject  # noqa: E402
-from apps.discussions.models import Discussion, Follow, Reply  # noqa: E402
-from apps.discussions.services import MAX_AIDANTS, aidants, notify_new_discussion, notify_new_reply  # noqa: E402
+from apps.discussions.models import COMMENTAIRE, FORUM, Discussion, Follow, Reply  # noqa: E402
+from apps.discussions.services import MAX_AIDANTS, aidants, notify_new_comment, notify_new_discussion, notify_new_reply  # noqa: E402
 from apps.interactions.models import Complete, Vote  # noqa: E402
 from apps.notifications.models import Notification  # noqa: E402
 from apps.things.models import Comment, Content  # noqa: E402
@@ -251,6 +252,145 @@ dp.refresh_from_db()
 check('compte supprimé : discussions et réponses gardées', dp.author.username == DELETED_USERNAME
       and Reply.objects.filter(author__username=DELETED_USERNAME, discussion=d1).exists())
 
+# --- Commentaires sous un contenu : un autre genre que le forum ---------------------------------------------------------
+print('--- Commentaires')
+Notification.objects.all().delete()
+check('une discussion sans genre : le forum', d1.genre == FORUM and client(amina).get(f'/api/discussions/{d1.id}/').data['url'] == f'/discussions/{d1.id}')
+r = client(badr).post('/api/discussions/', {'genre': 'commentaire', 'body': '<p>Merci pour cet exercice, très clair.</p>', 'content_ids': [ex.id]}, format='json')
+check('commentaire : ni titre ni salon demandés', r.status_code == 201 and r.data['genre'] == COMMENTAIRE and r.data['title'] == '', getattr(r, 'data', r))
+com = Discussion.objects.get(pk=r.data['id'])
+lien = f'/exercises/{ex.id}?onglet=discussions&fil={com.id}'
+check('commentaire : mène à l’onglet de son contenu', r.data['url'] == lien, r.data['url'])
+check('commentaire : au niveau de son contenu, auteur suivi d’office', com.class_level_id == sm.id and Follow.objects.filter(discussion=com, user=badr).exists())
+check('commentaire : le contenu reste visible', [x['id'] for x in r.data['tags']] == [ex.id], r.data['tags'])
+com_lecon = Discussion.objects.get(pk=client(chaima).post('/api/discussions/', {'genre': 'commentaire', 'body': '<p>$x$</p>', 'content_ids': [lecon.id]}, format='json').data['id'])
+check('commentaire sous une leçon : le bon chemin', f'/lessons/{lecon.id}?onglet=discussions&fil={com_lecon.id}' == client().get(f'/api/discussions/{com_lecon.id}/').data['url'])
+for bad, why in (({'genre': 'commentaire', 'body': '<p>x</p>'}, 'sans contenu'),
+                 ({'genre': 'commentaire', 'body': '<p>x</p>', 'content_ids': []}, 'liste vide'),
+                 ({'genre': 'commentaire', 'body': '<p>x</p>', 'content_ids': [ex.id, lecon.id]}, 'deux contenus'),
+                 ({'genre': 'commentaire', 'body': '<p>x</p>', 'content_ids': [999999]}, 'contenu inexistant'),
+                 ({'genre': 'commentaire', 'body': '<p> </p>', 'content_ids': [ex.id]}, 'vide'),
+                 ({'genre': 'bidon', 'title': 'Titre correct', 'body': 'x'}, 'genre inconnu')):
+    r = client(amina).post('/api/discussions/', bad, format='json')
+    check(f'commentaire refusé : {why}', r.status_code == 400, (r.status_code, getattr(r, 'data', None)))
+check('commentaire : visiteur refusé', client().post('/api/discussions/', {'genre': 'commentaire', 'body': 'x', 'content_ids': [ex.id]}, format='json').status_code == 401)
+
+# Listes : chacun chez soi.
+forum_ids = {x['id'] for x in client().get('/api/discussions/?niveau=tous').data['results']}
+com_ids = {x['id'] for x in client().get('/api/discussions/?niveau=tous&genre=commentaire').data['results']}
+check('liste par défaut : le forum, sans les commentaires', d1.id in forum_ids and com.id not in forum_ids and com_lecon.id not in forum_ids, forum_ids)
+check('?genre=commentaire : les commentaires seulement', com_ids == {com.id, com_lecon.id}, com_ids)
+check('?genre=forum : pareil que par défaut', {x['id'] for x in client().get('/api/discussions/?niveau=tous&genre=forum').data['results']} == forum_ids)
+sur_ex = {x['id'] for x in client().get(f'/api/discussions/?niveau=tous&genre=commentaire&contenu={ex.id}').data['results']}
+check('commentaires d’un contenu : pas ceux d’un autre, pas le forum', sur_ex == {com.id}, sur_ex)
+sujets = {x['id'] for x in client().get(f'/api/discussions/?niveau=tous&genre=forum&contenu={ex.id}').data['results']}
+check('forum sur un contenu : pas les commentaires', d1.id in sujets and com.id not in sujets, sujets)
+tout = {x['id'] for x in client().get(f'/api/discussions/?niveau=tous&contenu={ex.id}').data['results']}
+check('ancien site (?contenu= sans genre) : tout ce qui concerne le contenu', {d1.id, com.id} <= tout, tout)
+check('?genre=bidon : refusé', client().get('/api/discussions/?genre=bidon').status_code == 400)
+check('commentaires : recherche', [x['id'] for x in client().get('/api/discussions/?niveau=tous&genre=commentaire&q=tres+clair').data['results']] == [com.id])
+check('commentaires : par niveau', com_lecon.id in {x['id'] for x in client(badr).get('/api/discussions/?genre=commentaire').data['results']})
+r = client(badr).get('/api/discussions/?niveau=tous&tri=sans_reponse')
+check('sans réponse : jamais un commentaire', com.id not in [x['id'] for x in r.data['results']] and com_lecon.id not in [x['id'] for x in r.data['results']])
+avant = client(chaima).get('/api/discussions/compteur/').data['sans_reponse']
+Discussion.objects.create(genre=COMMENTAIRE, author=amina, body='<p>x</p>', class_level=pc)
+check('compteur du menu : un commentaire ne compte pas', client(chaima).get('/api/discussions/compteur/').data['sans_reponse'] == avant)
+check('panneau : le forum seulement', client(badr).get('/api/discussions/panneau/?niveau=tous').data['total'] == Discussion.objects.filter(genre=FORUM).count())
+
+# Notifications : personne n'est sollicité pour aider.
+autre_ex = Content.objects.create(type='exercise', title='Autre exercice', author=equipe, subject=maths, json_content={})
+autre_ex.class_levels.add(sm)
+Complete.objects.create(user=badr, content_type=ct, object_id=str(autre_ex.id), status='success')
+for e in eleves[:2]:
+    Complete.objects.create(user=e, content_type=ct, object_id=str(autre_ex.id), status='review')
+c2 = Discussion.objects.get(pk=client(amina).post('/api/discussions/', {'genre': 'commentaire', 'body': '<p>Une remarque, @chaima regarde.</p>', 'content_ids': [autre_ex.id]}, format='json').data['id'])
+Notification.objects.all().delete()
+notify_new_comment(c2)
+kinds = {n.recipient.username: n.kind for n in Notification.objects.filter(target=f'discussion:{c2.id}')}
+check('commentaire : « a commenté » pour ceux qui ont travaillé le contenu', kinds.get('badr') == 'comment' and kinds.get(eleves[0].username) == 'comment', kinds)
+check('commentaire : équipe et professeur prévenus', kinds.get('equipe') == 'comment' and kinds.get('prof') == 'comment', kinds)
+check('commentaire : pas de sollicitation « discussion »', 'discussion' not in kinds.values(), kinds)
+check('commentaire : mention gardée, l’auteur non prévenu', kinds.get('chaima') == 'mention' and 'amina' not in kinds, kinds)
+n = Notification.objects.get(recipient=badr, target=f'discussion:{c2.id}')
+check('notification du commentaire : titre du contenu, lien de l’onglet', n.title == 'Autre exercice' and n.link == f'/exercises/{autre_ex.id}?onglet=discussions&fil={c2.id}', (n.title, n.link))
+url = next(x['url'] for x in client(badr).get('/api/notifications/').data.get('results', []) if x['id'] == n.id)
+check('lien renvoyé à la cloche : l’onglet du contenu', url == n.link, url)
+
+# Répondre à un commentaire.
+Notification.objects.all().delete()
+r = client(badr).post(f'/api/discussions/{c2.id}/repondre/', {'body': '<p>Oui, bien vu.</p>'}, format='json')
+rc = Reply.objects.get(pk=r.data['id'])
+notify_new_reply(rc)
+n = Notification.objects.get(recipient=amina, target=f'discussion:{c2.id}')
+check('réponse à un commentaire : son auteur reçoit « a répondu à ton commentaire »', n.kind == 'reply' and n.title == 'Autre exercice', (n.kind, n.title))
+url = next(x['url'] for x in client(amina).get('/api/notifications/').data.get('results', []) if x['id'] == n.id)
+check('lien de la cloche : la réponse, dans l’onglet du contenu', url == f'/exercises/{autre_ex.id}?onglet=discussions&fil={c2.id}#reponse-{rc.id}', url)
+Follow.objects.get_or_create(discussion=c2, user=chaima)
+Notification.objects.all().delete()
+r2 = Reply.objects.get(pk=client(amina).post(f'/api/discussions/{c2.id}/repondre/', {'body': '<p>Merci.</p>', 'reply_to': rc.id}, format='json').data['id'])
+notify_new_reply(r2)
+got = {n.recipient.username: n.kind for n in Notification.objects.filter(target=f'discussion:{c2.id}')}
+check('réponse à une réponse : « reply » pour celui visé, « reponse » pour les autres suiveurs', got == {'badr': 'reply', 'chaima': 'reponse'}, got)
+rmention = Reply.objects.create(discussion=c2, author=badr, body='<p>@amina regarde</p>')
+Notification.objects.all().delete()
+notify_new_reply(rmention)
+got = [n.kind for n in Notification.objects.filter(target=f'discussion:{c2.id}', recipient=amina)]
+check('auteur du commentaire cité dans la réponse : une seule notification', got == ['mention'], got)
+check('« utile » sur un commentaire', client(badr).post(f'/api/discussions/{c2.id}/utile/').data == {'utile': 1, 'user_utile': True})
+
+# Modifier : le texte seulement.
+r = client(amina).patch(f'/api/discussions/{c2.id}/', {'body': '<p>Une remarque corrigée.</p>', 'title': 'Titre glissé', 'salon': 'bac', 'content_ids': [ex.id]}, format='json')
+c2.refresh_from_db()
+check('modifier un commentaire : texte seulement (ancien site compris)', r.status_code == 200 and c2.title == '' and c2.salon == 'entraide' and r.data['edited_at']
+      and [x['id'] for x in r.data['tags']] == [autre_ex.id] and 'corrigee' in c2.search_text, getattr(r, 'data', r))
+check('modifier un commentaire : vide refusé', client(amina).patch(f'/api/discussions/{c2.id}/', {'body': '<p> </p>'}, format='json').status_code == 400)
+check('modifier un commentaire : réservé à l’auteur', client(chaima).patch(f'/api/discussions/{c2.id}/', {'body': '<p>x</p>'}, format='json').status_code == 403)
+
+# Contenu supprimé : ses commentaires partent avec lui, le forum reste.
+tag_forum = Discussion.objects.create(title='Sujet sur cet exercice', author=badr, class_level=sm)
+tag_forum.contents.add(autre_ex)
+Notification.objects.create(recipient=badr, kind='comment', target=f'discussion:{c2.id}', title='x', link='/x')
+ident = autre_ex.id
+autre_ex.delete()
+check('contenu supprimé : ses commentaires et leurs notifications partent', not Discussion.objects.filter(pk=c2.id).exists()
+      and not Reply.objects.filter(discussion_id=c2.id).exists() and not Notification.objects.filter(target=f'discussion:{c2.id}').exists())
+tag_forum.refresh_from_db()
+check('contenu supprimé : une discussion du forum reste, sans le tag', tag_forum.contents.count() == 0 and ident not in tag_forum.contents.values_list('id', flat=True))
+
+# --- Messages existants : le genre fixé par la migration 0004 -----------------------------------------------------------
+print('--- Classement des messages existants')
+m4 = importlib.import_module('apps.discussions.migrations.0004_commentaires_et_forum')
+def ancien(titre, corps, contenus=(ex,), legacy=None):  # noqa: E302
+    d = Discussion.objects.create(title=titre, body=corps, author=amina, legacy_comment_id=legacy)
+    d.contents.set(contenus)
+    return d
+for args in (('Monsieur pour l’exercice 2, si on montre que…', '<p>Monsieur pour l’exercice 2, si on montre que 1 est solution, ça suffit ?</p>'),
+             ('À propos de « Devoir surveillé »', '<p>💔💔😭</p>'),
+             ('Salut toi, ça va ?', '<p>Salut <strong>toi</strong>, ça va ? Oui.</p>'),
+             ('suggestion', 'suggestion'),
+             ('$\\lim_{x \\to 1} f$', '<p>$\\lim_{x \\to 1} f$</p>')):
+    d = ancien(*args)
+    m4.classer(django_apps, None)
+    d.refresh_from_db()
+    check(f'écrit sous un contenu : commentaire, titre vidé ({args[0][:24]})', d.genre == COMMENTAIRE and d.title == '', (d.genre, d.title))
+repris = ancien('Un titre sans rapport', '<p>Texte tout autre.</p>', legacy=987654)
+vrai = ancien('Comment lever cette indétermination ?', '<p>Je bloque sur la question 3.</p>')
+sans_tag = ancien('Message sans contenu', 'Message sans contenu', contenus=())
+deux = ancien('Sur deux contenus', 'Sur deux contenus', contenus=(ex, lecon))
+perdu = ancien('Repris, contenu supprimé', 'autre', contenus=(), legacy=987655)
+m4.classer(django_apps, None)
+for d in (repris, vrai, sans_tag, deux, perdu):
+    d.refresh_from_db()
+check('ancien commentaire repris : commentaire', repris.genre == COMMENTAIRE and repris.title == '')
+check('titre écrit à part : reste du forum, titre gardé', vrai.genre == FORUM and vrai.title == 'Comment lever cette indétermination ?')
+check('aucun ou plusieurs contenus : reste du forum', sans_tag.genre == FORUM and deux.genre == FORUM)
+check('repris mais sans contenu : reste du forum, jamais sans titre', perdu.genre == FORUM and perdu.title == 'Repris, contenu supprimé')
+m4.annuler(django_apps, None)
+repris.refresh_from_db()
+check('retour arrière : forum, titre refabriqué', repris.genre == FORUM and repris.title == 'Texte tout autre.', (repris.genre, repris.title))
+m4.classer(django_apps, None)
+Discussion.objects.filter(pk__in=[repris.pk, vrai.pk, sans_tag.pk, deux.pk, perdu.pk]).delete()
+
 # --- Reprise des commentaires (migration 0002) ---------------------------------------------------------------------
 Discussion.objects.all().delete()
 t0 = timezone.now() - timedelta(days=10)
@@ -309,6 +449,8 @@ r5 = Reply.objects.filter(legacy_comment_id=c5.id).first()
 check('commande rejouée : nouvelle réponse et nouveau fil ajoutés', Discussion.objects.count() == 3 and r5 is not None
       and r5.reply_to.legacy_comment_id == c3.id and dr.reply_count == 3 and '1 discussion(s) et 1 réponse(s)' in out.getvalue(),
       (Discussion.objects.count(), dr.reply_count, out.getvalue()))
+check('commande rejouée : les messages repris sont des commentaires, sans titre', set(Discussion.objects.values_list('genre', 'title')) == {(COMMENTAIRE, '')},
+      list(Discussion.objects.values_list('genre', 'title')))
 call_command('reprendre_commentaires', stdout=StringIO())
 check('commande rejouée une seconde fois : rien en double', Discussion.objects.count() == 3 and Reply.objects.filter(discussion=dr).count() == 3)
 # Migration 0003 (jouée au déploiement du site) : même reprise, un commentaire écrit entre-temps la rejoint.

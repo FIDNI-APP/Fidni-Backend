@@ -26,6 +26,8 @@ from django.conf import settings  # noqa: E402
 from django.contrib.auth.models import User  # noqa: E402
 from django.contrib.contenttypes.models import ContentType  # noqa: E402
 from django.core.cache import cache  # noqa: E402
+from django.db import connection  # noqa: E402
+from django.test.utils import CaptureQueriesContext  # noqa: E402
 from django.utils import timezone  # noqa: E402
 from rest_framework.test import APIClient  # noqa: E402
 from apps.caracteristics.models import Chapter, ClassLevel, Subject  # noqa: E402
@@ -353,6 +355,37 @@ check('Fil : rien de ceux qu’on ne suit pas', all(x['membre']['username'] == '
 r = client(amina).get('/api/communaute/fil/').json()
 types = {(x['type'], x['membre']['username']) for x in r['results']}
 check('Fil : publication et badges du professeur suivi', ('publication', 'prof') in types and ('badge', 'prof') in types, types)
+sous_contenu = Content.objects.filter(author=prof).first()
+com_fil = Discussion.objects.create(genre='commentaire', author=prof, body='<p>Attention à la question 2.</p>')
+com_fil.contents.add(sous_contenu)
+sujet_fil = Discussion.objects.create(title='Méthode pour les suites', author=prof, body='<p>x</p>')
+r = client(amina).get('/api/communaute/fil/').json()
+vu_com = next((x for x in r['results'] if x['type'] == 'commentaire'), None)
+check('Fil : un commentaire dit où il est écrit, et y mène', vu_com is not None and vu_com['objet']['titre'] == sous_contenu.title
+      and vu_com['objet']['url'].endswith(f'/{sous_contenu.id}?onglet=discussions&fil={com_fil.id}'), vu_com)
+vu_sujet = next((x for x in r['results'] if x['type'] == 'discussion'), None)
+check('Fil : une discussion du forum garde son titre et sa page', vu_sujet is not None and vu_sujet['objet']['titre'] == 'Méthode pour les suites'
+      and vu_sujet['objet']['url'] == f'/discussions/{sujet_fil.id}', vu_sujet)
+rep_com = Reply.objects.create(discussion=com_fil, author=prof, body='<p>Précision.</p>')
+act = client(adulte).get('/api/communaute/profils/prof/').json()['activite']
+a_com = next((x for x in act if x['type'] == 'commentaire'), None)
+a_rep = next((x for x in act if x['type'] == 'reponse' and x['id'] == rep_com.id), None)
+check('Profil : un commentaire dans l’activité, sous son contenu', a_com is not None and a_com['titre'] == sous_contenu.title and '?onglet=discussions' in a_com['url'], act)
+check('Profil : une réponse à un commentaire mène à sa ligne', a_rep is not None and a_rep['titre'] == sous_contenu.title and a_rep['url'].endswith(f'#reponse-{rep_com.id}'), act)
+with CaptureQueriesContext(connection) as q_avant:
+    client(adulte).get('/api/communaute/profils/prof/')
+with CaptureQueriesContext(connection) as q_fil_avant:
+    client(amina).get('/api/communaute/fil/')
+for i in range(4):
+    d_q = Discussion.objects.create(genre='commentaire', author=prof, body=f'<p>Commentaire {i}.</p>')
+    d_q.contents.add(sous_contenu)
+    Reply.objects.create(discussion=d_q, author=prof, body='<p>Réponse.</p>')
+with CaptureQueriesContext(connection) as q_apres:
+    client(adulte).get('/api/communaute/profils/prof/')
+check('Profil : pas une requête par commentaire', len(q_apres) <= len(q_avant) + 2, (len(q_avant), len(q_apres)))
+with CaptureQueriesContext(connection) as q_fil_apres:
+    client(amina).get('/api/communaute/fil/')
+check('Fil : pas une requête par commentaire', len(q_fil_apres) <= len(q_fil_avant) + 2, (len(q_fil_avant), len(q_fil_apres)))
 client(chaima).post('/api/communaute/profils/mineur/suivre/')
 check('Demande en attente : rien dans le fil', client(chaima).get('/api/communaute/fil/').json()['results'] == [])
 for curseur in ('2026-13-45T00:00:00', 'nimporte', '2026-11-09T10:00:00'):

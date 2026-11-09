@@ -99,17 +99,18 @@ def _chiffres(user, rl, valeurs, serie_en_cours):
 
 
 def _activite(user):
-    """Dernières discussions lancées et réponses écrites (publiques dans le forum), avec leurs « utile »."""
-    from apps.discussions.models import Discussion, Reply
+    """Dernières discussions lancées, commentaires et réponses écrits (tous publics), avec leurs « utile »."""
+    from apps.discussions.models import COMMENTAIRE, Discussion, Reply
     from apps.discussions.presenters import utile_counts
-    disc = list(Discussion.objects.filter(author=user).order_by('-created_at')[:ACTIVITE])
-    reps = list(Reply.objects.filter(author=user).select_related('discussion').order_by('-created_at')[:ACTIVITE])
+    from apps.discussions.services import link, reply_link, titre
+    disc = list(Discussion.objects.filter(author=user).prefetch_related('contents').order_by('-created_at')[:ACTIVITE])
+    reps = list(Reply.objects.filter(author=user).select_related('discussion').prefetch_related('discussion__contents')
+                .order_by('-created_at')[:ACTIVITE])
     u_disc, _ = utile_counts(Discussion, [d.id for d in disc], None)
     u_rep, _ = utile_counts(Reply, [r.id for r in reps], None)
-    items = [{'type': 'discussion', 'id': d.id, 'titre': d.title, 'url': f'/discussions/{d.id}', 'date': d.created_at,
-              'utiles': u_disc.get(d.id, 0), 'reponses': d.reply_count} for d in disc]
-    items += [{'type': 'reponse', 'id': r.id, 'titre': r.discussion.title,
-               'url': f'/discussions/{r.discussion_id}#reponse-{r.id}', 'date': r.created_at,
+    items = [{'type': 'commentaire' if d.genre == COMMENTAIRE else 'discussion', 'id': d.id, 'titre': titre(d),
+              'url': link(d), 'date': d.created_at, 'utiles': u_disc.get(d.id, 0), 'reponses': d.reply_count} for d in disc]
+    items += [{'type': 'reponse', 'id': r.id, 'titre': titre(r.discussion), 'url': reply_link(r), 'date': r.created_at,
                'utiles': u_rep.get(r.id, 0)} for r in reps]
     return sorted(items, key=lambda x: x['date'], reverse=True)[:ACTIVITE]
 
