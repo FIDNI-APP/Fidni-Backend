@@ -14,7 +14,7 @@ from django.utils import timezone
 
 # À changer à chaque modification des CGU ou de la politique de confidentialité :
 # les comptes existants devront les accepter de nouveau.
-TERMS_VERSION = '2026-10-15'  # 10-15 : copie des données sur demande par e-mail ; 09-28 .2 : AdSense ; .3 : annonces personnalisées ; 09-29 : hébergeur OVH au lieu d'AWS ; .2 : date de naissance
+TERMS_VERSION = '2026-11-09'  # 11-09 : pages vues et gestes gardés par membre 6 mois (journal du Pilotage) ; 10-15 : copie des données sur demande par e-mail ; 09-28 .2 : AdSense ; .3 : annonces personnalisées ; 09-29 : hébergeur OVH au lieu d'AWS ; .2 : date de naissance
 
 # Journaux techniques (adresses IP, requêtes) : la CNIL recommande 6 mois à 1 an.
 LOG_RETENTION = timedelta(days=180)
@@ -66,6 +66,9 @@ def purge_old_logs():
                          (SystemEvent, 'timestamp'), (UserInteraction, 'timestamp'), (UserSession, 'started_at')):
         if field in {f.name for f in model._meta.get_fields()}:
             total += model.objects.filter(**{f'{field}__lt': cutoff}).delete()[0]
+    # Pages vues et gestes rattachés à un membre (journal de Pilotage › Membres) : même durée que les journaux.
+    from apps.users.models import UsageMember
+    total += UsageMember.objects.filter(date__lt=cutoff.date()).delete()[0]
     # Notifications déjà lues depuis plus de 6 mois : elles ne servent plus à rien.
     from apps.notifications.models import Notification
     total += Notification.objects.filter(read_at__lt=cutoff).delete()[0]

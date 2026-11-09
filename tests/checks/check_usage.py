@@ -24,7 +24,7 @@ from rest_framework.test import APIClient  # noqa: E402
 from apps.caracteristics.models import ClassLevel, Subject  # noqa: E402
 from apps.interactions.models import Complete, QuestionProgress  # noqa: E402
 from apps.things.models import Content  # noqa: E402
-from apps.users.models import UsageDaily  # noqa: E402
+from apps.users.models import UsageDaily, UsageMember  # noqa: E402
 
 settings.ALLOWED_HOSTS = ['*']
 cache.clear()
@@ -234,6 +234,28 @@ check('source de l’auto-évaluation enregistrée', src == {'q1': 'tout', 'q2.s
 cl.post(f'/api/contents/{ex.id}/assess_question/', {'question_path': 'q1', 'status': 'success'}, format='json')
 check('sans source : « question par question »',
       QuestionProgress.objects.get(user=eleves[1], question_path='q1').source == 'question')
+
+# ── Pages et gestes rattachés au membre (journal du Pilotage, 09/11/2026)
+mine = {(u.kind, u.name): u.count for u in UsageMember.objects.filter(user=eleves[0])}
+check('membre : sa page et ses gestes gardés à son nom', mine == {('page', '/exercises/:id'): 1, ('action', 'imprimer'): 1,
+                                                                  ('action', 'filtre-chapitre'): 1}, mine)
+cache.clear()  # hors de la fenêtre de 5 s du double envoi
+client(eleves[0]).post('/api/usage/', {'kind': 'page', 'name': '/exercises/:id'}, format='json')
+u = UsageMember.objects.get(user=eleves[0], kind='page', name='/exercises/:id')
+check('membre : deuxième vue du jour → même ligne, compteur à 2', u.count == 2 and u.last_at >= u.first_at, (u.count,))
+check('visiteur non connecté, robot, compte maison : rien au nom de personne',
+      not UsageMember.objects.exclude(user__in=eleves).exists(), list(UsageMember.objects.values_list('user__username', flat=True)))
+client(eleves[1]).post('/api/usage/', {'kind': 'filtre', 'name': 'exercise:difficulte:hard'}, format='json')
+check('valeur de filtre : jamais au nom du membre', not UsageMember.objects.filter(kind='filtre').exists())
+from apps.users.legal import purge_old_logs  # noqa: E402
+from django.utils import timezone as _tz  # noqa: E402
+from datetime import timedelta as _td  # noqa: E402
+_vieux = _tz.now() - _td(days=200)
+UsageMember.objects.create(user=eleves[1], date=_vieux.date(), kind='page', name='/', count=1, first_at=_vieux, last_at=_vieux)
+purge_old_logs()
+check('purge : lignes de plus de 6 mois supprimées, les récentes gardées',
+      not UsageMember.objects.filter(date__lt=(_tz.now() - _td(days=180)).date()).exists()
+      and UsageMember.objects.filter(user=eleves[0]).exists())
 
 print(f'\n{sum(results)}/{len(results)} vérifications réussies')
 sys.exit(0 if all(results) else 1)

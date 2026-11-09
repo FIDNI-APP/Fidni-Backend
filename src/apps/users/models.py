@@ -490,6 +490,31 @@ class UsageDaily(models.Model):
         return f"{self.date} · {self.kind} {self.name} : {self.count}"
 
 
+class UsageMember(models.Model):
+    """Pages vues et gestes d'un membre connecté, jour par jour (journal de Pilotage › Membres, depuis le 09/11/2026).
+
+    Mêmes envois que UsageDaily (apps/users/usage.py), mais rattachés au compte : une ligne par (membre, jour, kind,
+    name), avec le nombre de fois et la première et la dernière heure. kind = « page » (motif de route, jamais
+    l'adresse exacte) ou « action » (liste fermée). Ni adresse IP ni contenu. Supprimées après LOG_RETENTION
+    (purger_journaux, 6 mois) et avec le compte ; annoncé dans la politique de confidentialité.
+    """
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='usage_jours')
+    date = models.DateField()
+    kind = models.CharField(max_length=10)
+    name = models.CharField(max_length=80)
+    count = models.PositiveIntegerField(default=0)
+    first_at = models.DateTimeField()
+    last_at = models.DateTimeField()
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=['user', 'date', 'kind', 'name'], name='unique_usage_member_day')]
+        indexes = [models.Index(fields=['user', 'date'], name='usage_member_user_date'),
+                   models.Index(fields=['date'], name='usage_member_date')]
+
+    def __str__(self):
+        return f"{self.user_id} · {self.date} · {self.kind} {self.name} : {self.count}"
+
+
 class GoogleAccount(models.Model):
     """Compte Google lié (connexion avec Google, 10/10/2026). `sub` = identifiant Google stable de la personne
     (l'e-mail peut changer). Supprimé avec le compte ; exporté avec « Mes données »."""
