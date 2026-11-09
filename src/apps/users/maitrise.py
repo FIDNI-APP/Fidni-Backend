@@ -511,13 +511,23 @@ def _regularite(user, d, events, today):
     }
 
 
+def en_cache(user, level=None):
+    """Indicateurs déjà calculés par evaluer et encore valables, sans rien calculer ni écrire en cache ; None sinon.
+    Pour un lecteur qui passe juste après une écriture (badges, communaute/signals.py) : remplir le cache à ce moment-là
+    garderait 10 min un état d'avant les écritures qui suivent dans la même action."""
+    hit = cache.get(_cle(user.id))
+    if hit and hit.get('day') == timezone.localdate().isoformat() and hit.get('level') == (level.id if level else None):
+        return hit['data']
+    return None
+
+
 def evaluer(user, level=None, d=None):
     """Indicateurs de l'élève, en cache 10 min (recalculés si le jour ou le niveau change, ou après forget)."""
+    hit = en_cache(user, level)
+    if hit is not None:
+        return hit
     today = timezone.localdate()
     lid = level.id if level else None
-    hit = cache.get(_cle(user.id))
-    if hit and hit.get('day') == today.isoformat() and hit.get('level') == lid:
-        return hit['data']
     from apps.users import objectif
     data = calculer(user, level, d or _collect(user, journal=True), today)
     data['objectif'] = objectif.choisir(user, data['chapters'], level, today)

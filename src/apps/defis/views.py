@@ -44,10 +44,15 @@ def _connecte(request):
     return bool(request.user and request.user.is_authenticated)
 
 
-def serie(user):
+def jours_trouves(user):
+    """Jours dont le défi a été trouvé le jour même (ceux qui comptent dans une série)."""
+    return set(TentativeDefi.objects.filter(user=user, statut=TentativeDefi.TROUVE, le_jour_meme=True)
+               .values_list('defi__date', flat=True))
+
+
+def serie(user, trouves=None):
     """Défis publiés d'affilée trouvés le jour même. Celui d'aujourd'hui, pas encore fait, ne casse pas la série."""
-    trouves = set(TentativeDefi.objects.filter(user=user, statut=TentativeDefi.TROUVE, le_jour_meme=True)
-                  .values_list('defi__date', flat=True))
+    trouves = jours_trouves(user) if trouves is None else trouves
     if not trouves:
         return 0
     n, jour = 0, aujourdhui()
@@ -57,6 +62,19 @@ def serie(user):
         elif d != jour:
             break
     return n
+
+
+def meilleure_serie(user, trouves=None):
+    """Plus longue série de défis publiés trouvés le jour même (badge « Série du défi », profil). Même règle que
+    `serie` : un jour sans défi publié ne casse rien, un défi publié manqué casse la série."""
+    trouves = jours_trouves(user) if trouves is None else trouves
+    if not trouves:
+        return 0
+    best = run = 0
+    for d in _publies().filter(date__gte=min(trouves)).order_by('date').values_list('date', flat=True):
+        run = run + 1 if d in trouves else 0
+        best = max(best, run)
+    return best
 
 
 def _stats(defi):
@@ -97,6 +115,20 @@ def _tentative(request, defi):
 def du_jour(request):
     defi = _publies().filter(date=aujourdhui()).first()
     return Response({'defi': _payload(defi, request) if defi else None})
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def etat(request):
+    """Pastille « Défi du jour » du menu (09/11/2026) : y a-t-il un défi aujourd'hui, et où en est le membre. Léger : ni
+    l'énoncé ni les indices. Un visiteur garde son état dans son navigateur (le site le relit lui-même)."""
+    defi = _publies().filter(date=aujourdhui()).only('id', 'date').first()
+    if not defi:
+        return Response({'date': None, 'statut': None, 'serie': None})
+    if not _connecte(request):
+        return Response({'date': defi.date.isoformat(), 'statut': None, 'serie': None})
+    statut = TentativeDefi.objects.filter(user=request.user, defi=defi).values_list('statut', flat=True).first()
+    return Response({'date': defi.date.isoformat(), 'statut': statut or TentativeDefi.EN_COURS, 'serie': serie(request.user)})
 
 
 @api_view(['GET'])

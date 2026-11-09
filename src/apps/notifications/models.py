@@ -15,6 +15,8 @@ class Notification(models.Model):
     - Espace Discussions (08/11/2026, apps/discussions/services.py), cible « discussion:<id> », `comment_id` = la
       réponse : « discussion » (nouvelle discussion où il peut aider), « reponse » (réponse dans une discussion qu'il
       suit), « mention » (il est cité avec @pseudo).
+    - Communauté (09/11/2026, apps/communaute/services.py) : « abonne » (nouvel abonné), « demande » (demande
+      d'abonnement à valider), « accepte » (sa demande a été acceptée), « badge » (palier de badge gagné).
     Tant qu'il ne l'a pas lue, les nouveaux commentaires du même contenu s'ajoutent à la même notification
     (`count`) au lieu d'en créer une par commentaire.
     """
@@ -27,11 +29,17 @@ class Notification(models.Model):
     KIND_DISCUSSION = 'discussion'
     KIND_REPONSE = 'reponse'
     KIND_MENTION = 'mention'
+    KIND_ABONNE = 'abonne'
+    KIND_DEMANDE = 'demande'
+    KIND_ACCEPTE = 'accepte'
+    KIND_BADGE = 'badge'
     KIND_CHOICES = [(KIND_COMMENT, 'Nouveau commentaire'), (KIND_REPLY, 'Réponse à son commentaire'),
                     (KIND_REPORT, 'Signalement traité'), (KIND_QUIZ, 'Nouveau quiz de chapitre'),
                     (KIND_COPIE, 'Copie corrigée'), (KIND_MESSAGE, 'Message de l’équipe'),
                     (KIND_DISCUSSION, 'Nouvelle discussion'), (KIND_REPONSE, 'Réponse dans une discussion suivie'),
-                    (KIND_MENTION, 'Mention dans une discussion')]
+                    (KIND_MENTION, 'Mention dans une discussion'), (KIND_ABONNE, 'Nouvel abonné'),
+                    (KIND_DEMANDE, 'Demande d’abonnement'), (KIND_ACCEPTE, 'Demande d’abonnement acceptée'),
+                    (KIND_BADGE, 'Badge gagné')]
 
     recipient = models.ForeignKey(User, on_delete=models.CASCADE, related_name='notifications')
     kind = models.CharField(max_length=10, choices=KIND_CHOICES)

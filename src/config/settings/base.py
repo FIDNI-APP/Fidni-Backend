@@ -60,6 +60,7 @@ INSTALLED_APPS = [
     'apps.copies.apps.CopiesConfig',
     'apps.defis.apps.DefisConfig',
     'apps.discussions.apps.DiscussionsConfig',
+    'apps.communaute.apps.CommunauteConfig',
 ]
 
 MIDDLEWARE = [
@@ -339,6 +340,7 @@ REST_FRAMEWORK = {
         "content_report": "20/hour",  # signalements d'erreurs sur les contenus (par utilisateur)
         "discussion": "15/hour",  # nouvelles discussions (par utilisateur)
         "discussion_reponse": "60/hour",  # réponses dans les discussions (par utilisateur)
+        "communaute": "200/hour",  # abonnements, demandes, blocages (par utilisateur)
         "client_error": "30/hour",  # erreurs d'affichage envoyées par le navigateur (par IP)
         "copies_upload": "600/hour",  # pages de copies envoyées (par professeur)
         "defi_reponse": "60/min",  # réponses, indices et solutions du défi du jour (par compte ou par IP)
