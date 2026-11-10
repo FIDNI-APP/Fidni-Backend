@@ -169,6 +169,11 @@ class UserSerializer(serializers.ModelSerializer):
         'subject_grades', 'onboarding_completed',
         # Élèves souvent mineurs : l'établissement ne se montre pas aux autres.
         'school', 'school_name', 'gender', 'birth_date', 'terms_up_to_date',
+        # Minimisation (09/11/2026) : par /api/users/, un tiers ne doit pas pouvoir récupérer le niveau de
+        # classe, les matières suivies, l'activité ni les statistiques d'apprentissage d'un membre. Le profil
+        # public (apps/communaute) garde sa propre vue, avec ses réglages de confidentialité.
+        'class_level', 'class_level_name', 'target_subjects', 'target_subject_names',
+        'last_activity_date', 'learning_stats', 'contribution_stats',
     )
 
     def to_representation(self, instance):
@@ -189,7 +194,7 @@ class UserSerializer(serializers.ModelSerializer):
             data['email_verified'] = bool(own_profile is None or own_profile.email_verified)
             # Fenêtres « Nouveautés » à lui montrer (users/nouveautes.py) : arrivent avec la connexion.
             data['nouveautes'] = a_voir(instance)
-        if is_self or (viewer and getattr(viewer, 'is_staff', False)):
+        if is_self or (viewer and (getattr(viewer, 'is_superuser', False) or getattr(viewer, 'is_staff', False))):
             return data
         profile = getattr(instance, 'profile', None)
         if not (profile and profile.display_email):
