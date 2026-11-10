@@ -22,6 +22,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 
 from apps.caracteristics.models import Chapter, ClassLevel
+from apps.caracteristics.programme import rang
 from apps.users.admin_dashboard import IsSuperuser
 
 from .annonces import annoncer, marquer_en_ligne
@@ -176,12 +177,16 @@ def chapitres(request):
                     .annotate(n=Count('id')))
     # contenus : le chapitre a-t-il un contenu en ligne à ce niveau (ceux qu'exporte quiz_constats) ?
     avec_contenu = set(_chapitres_en_ligne(niveau).values_list('id', flat=True))
-    return Response([{
+    # Ordre d'affichage = ordre du programme du niveau (et non alphabétique) : rang(niveau)[nom], nom en départage.
+    ordre = rang(niveau)
+    lignes = [{
         'id': c.id, 'name': c.name, 'domaine': c.subfield.name if c.subfield else '',
         'total': c.total, 'en_ligne': c.actives, 'brouillons': c.total - c.actives, 'a_relire': c.a_relire,
         'passages': passages.get(c.id, 0), 'contenus': c.id in avec_contenu,
         'autre': {'total': c.autre_total, 'a_relire': c.autre_a_relire},
-    } for c in qs])
+    } for c in qs]
+    lignes.sort(key=lambda d: (ordre[d['name']], d['name']))
+    return Response(lignes)
 
 
 @api_view(['GET', 'POST'])
