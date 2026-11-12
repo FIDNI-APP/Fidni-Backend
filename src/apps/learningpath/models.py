@@ -1,3 +1,4 @@
+from django.utils import timezone
 from django.db import models
 from django.contrib.auth.models import User
 from django.core.validators import MinValueValidator, MaxValueValidator
@@ -232,14 +233,27 @@ class UserChapterProgress(models.Model):
         app_label = 'learningpath'
         unique_together = ['user', 'path_chapter']
     
+    def refresh_completion(self):
+        """Recalcule la validation depuis les vidéos et le quiz du chapitre."""
+        videos = self.path_chapter.videos.all()
+        has_quiz = hasattr(self.path_chapter, 'quiz')
+        videos_done = not videos.exclude(
+            user_progress__user=self.user,
+            user_progress__is_completed=True,
+        ).exists()
+        complete = (videos.exists() or has_quiz) and videos_done and (not has_quiz or self.quiz_passed)
+        if self.is_completed != complete:
+            self.is_completed = complete
+            self.completed_at = timezone.now() if complete else None
+            self.save(update_fields=['is_completed', 'completed_at'])
+
     @property
     def progress_percentage(self):
-        total_videos = self.path_chapter.videos.filter(is_required=True).count()
+        total_videos = self.path_chapter.videos.count()
         if total_videos == 0:
-            return 100 if self.is_completed else 0
+            return 100 if self.is_completed or self.quiz_passed else 0
         
         completed_videos = self.video_progress.filter(
-            video__is_required=True, 
             is_completed=True
         ).count()
         

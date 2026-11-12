@@ -156,6 +156,9 @@ class ChapterQuizCreateSerializer(serializers.ModelSerializer):
 
 
 class ChapterQuizSerializer(serializers.ModelSerializer):
+    # Tous les quiz actuels sont requis et montrent leur correction après validation.
+    show_correct_answers = serializers.BooleanField(read_only=True, default=True)
+    is_required = serializers.BooleanField(read_only=True, default=True)
     questions = QuizQuestionSerializer(many=True, read_only=True)
     user_attempts = serializers.SerializerMethodField()
     estimated_duration = serializers.CharField(source='estimated_duration_display', read_only=True)
