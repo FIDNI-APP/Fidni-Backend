@@ -1,6 +1,9 @@
 # learningpath/serializers.py
 
 from rest_framework import serializers
+from django.core import signing
+from urllib.parse import urlsplit, urlunsplit
+import re
 from .models import (
     LearningPath, PathChapter, Video, VideoResource,
     ChapterQuiz, QuizQuestion,
@@ -57,6 +60,27 @@ class VideoSerializer(serializers.ModelSerializer):
             'duration_seconds': {'required': True},
         }
     
+    def to_internal_value(self, data):
+        # Le lien de lecture est signé à l'affichage, son jeton ne se stocke jamais.
+        data = data.copy()
+        request = self.context.get('request')
+        value = data.get('url')
+        if request and isinstance(value, str):
+            parsed = urlsplit(value)
+            if parsed.netloc == request.get_host() and re.fullmatch(r'/api/files/[0-9a-f-]+/download/', parsed.path):
+                data['url'] = urlunsplit((parsed.scheme, parsed.netloc, parsed.path, '', ''))
+        return super().to_internal_value(data)
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        request = self.context.get('request')
+        parsed = urlsplit(instance.url)
+        match = re.fullmatch(r'/api/files/([0-9a-f-]+)/download/', parsed.path)
+        if request and getattr(request.user, 'is_staff', False) and match and parsed.netloc == request.get_host():
+            token = signing.dumps({'file': match.group(1), 'user': request.user.pk}, salt='parcours-video')
+            data['url'] = instance.url + '?play=' + token
+        return data
+
     def get_user_progress(self, obj):
         request = self.context.get('request')
         if request and request.user.is_authenticated:
@@ -206,7 +230,9 @@ class PathChapterCreateSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = PathChapter
+        read_only_fields = ['id']
         fields = [
+            'id',
             'learning_path', 'chapter', 'title', 'description', 
             'order', 'videos', 'quiz'
         ]
@@ -355,7 +381,9 @@ class LearningPathCreateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = LearningPath
+        read_only_fields = ['id']
         fields = [
+            'id',
             'subject', 'class_level', 'title', 'description', 
             'estimated_hours', 'is_active'
         ]

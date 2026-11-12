@@ -4,7 +4,10 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.parsers import MultiPartParser, FormParser
 from django.contrib.contenttypes.models import ContentType
-from django.http import HttpResponseRedirect
+from django.http import HttpResponseRedirect, FileResponse, HttpResponse, Http404
+from django.core import signing
+from django.contrib.auth import get_user_model
+from django.conf import settings
 from django.shortcuts import get_object_or_404
 
 from .models import FileAttachment
@@ -36,6 +39,29 @@ class FileAttachmentViewSet(viewsets.ModelViewSet):
         GET /api/files/<uuid>/download/
         """
         attachment = get_object_or_404(FileAttachment.objects.all(), pk=pk)
+        if attachment.content_type_id and attachment.content_type.app_label == 'learningpath' and attachment.content_type.model == 'video':
+            allowed = bool(request.user and request.user.is_authenticated and request.user.is_staff)
+            if not allowed:
+                try:
+                    claim = signing.loads(request.query_params.get('play', ''), salt='parcours-video', max_age=6 * 3600)
+                    allowed = str(claim['file']) == str(attachment.pk) and get_user_model().objects.filter(
+                        pk=claim['user'], is_staff=True, is_active=True,
+                    ).exists()
+                except (signing.BadSignature, KeyError, TypeError):
+                    allowed = False
+            if not allowed:
+                raise Http404()
+            response = None
+            # nginx sert le fichier privé et les requêtes Range du lecteur vidéo.
+            if attachment.file.name.startswith('parcours-videos/'):
+                if not getattr(settings, 'AWS_STORAGE_ENABLED', False) and not settings.DEBUG:
+                    response = HttpResponse(content_type=attachment.mime_type)
+                    response['X-Accel-Redirect'] = '/protected-parcours/' + attachment.file.name.split('/')[-1]
+                elif not getattr(settings, 'AWS_STORAGE_ENABLED', False):
+                    response = FileResponse(attachment.file.open('rb'), content_type=attachment.mime_type)
+            if response is not None:
+                response['Cache-Control'] = 'private, no-store'
+                return response
         return HttpResponseRedirect(attachment.file.url)
 
     @action(detail=False, methods=['post'], parser_classes=[MultiPartParser, FormParser])

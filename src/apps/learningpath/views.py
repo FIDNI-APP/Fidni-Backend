@@ -21,6 +21,7 @@ from .serializers import (
     UserLearningPathProgressSerializer
 )
 
+from .video_upload import VideoUploadMixin
 
 from django.conf import settings as _settings
 from rest_framework.exceptions import NotFound as _NotFound
@@ -262,7 +263,7 @@ class PathChapterViewSet(ParcoursVisibilityMixin, viewsets.ModelViewSet):
             }, status=status.HTTP_400_BAD_REQUEST)
 
 
-class VideoViewSet(ParcoursVisibilityMixin, viewsets.ModelViewSet):
+class VideoViewSet(VideoUploadMixin, ParcoursVisibilityMixin, viewsets.ModelViewSet):
     """ViewSet for videos"""
     queryset = Video.objects.all()
     serializer_class = VideoSerializer
