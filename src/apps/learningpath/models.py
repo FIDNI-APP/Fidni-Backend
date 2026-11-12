@@ -1,3 +1,4 @@
+import uuid
 from django.utils import timezone
 from django.db import models
 from django.contrib.auth.models import User
@@ -325,3 +326,19 @@ class QuizAnswer(models.Model):
     class Meta:
         app_label = 'learningpath'
         unique_together = ['attempt', 'question']
+
+class ParcoursVideoUpload(models.Model):
+    """Envoi vidéo admin, reprenable et finalisable une seule fois."""
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    chapter = models.ForeignKey(PathChapter, on_delete=models.CASCADE)
+    video = models.ForeignKey(Video, null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
+    name = models.CharField(max_length=200)
+    mime_type = models.CharField(max_length=40)
+    size = models.PositiveBigIntegerField()
+    received = models.PositiveBigIntegerField(default=0)
+    metadata = models.JSONField(default=dict)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        app_label = 'learningpath'
