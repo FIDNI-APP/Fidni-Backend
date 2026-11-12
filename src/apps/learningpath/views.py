@@ -3,7 +3,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly, IsAdminUser
 from django.utils import timezone
-from django.db.models import Avg, Sum, Count
+from django.db.models import Avg, Sum, Count, F
 from django.db import transaction
 import random
 
@@ -203,12 +203,13 @@ class PathChapterViewSet(ParcoursVisibilityMixin, viewsets.ModelViewSet):
         })
     
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
+    @transaction.atomic
     def complete(self, request, pk=None):
         """Mark chapter as complete (auto-check requirements)"""
         chapter = self.get_object()
         
         try:
-            chapter_progress = UserChapterProgress.objects.get(
+            chapter_progress = UserChapterProgress.objects.select_for_update().get(
                 user=request.user,
                 path_chapter=chapter
             )
@@ -219,7 +220,7 @@ class PathChapterViewSet(ParcoursVisibilityMixin, viewsets.ModelViewSet):
             )
         
         # Check if all required videos are watched
-        required_videos = chapter.videos.filter(is_required=True)
+        required_videos = chapter.videos.all()
         videos_complete = not required_videos.exclude(
             user_progress__user=request.user,
             user_progress__is_completed=True
@@ -227,7 +228,7 @@ class PathChapterViewSet(ParcoursVisibilityMixin, viewsets.ModelViewSet):
         
         # Check if quiz is passed (if exists and required)
         quiz_passed = True
-        if hasattr(chapter, 'quiz') and chapter.quiz.is_required:
+        if hasattr(chapter, 'quiz'):
             quiz_attempt = QuizAttempt.objects.filter(
                 user=request.user,
                 quiz=chapter.quiz,
@@ -283,6 +284,7 @@ class VideoViewSet(ParcoursVisibilityMixin, viewsets.ModelViewSet):
         return queryset.select_related('path_chapter').prefetch_related('resources').order_by('order')
     
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
+    @transaction.atomic
     def update_progress(self, request, pk=None):
         """Update video watching progress"""
         video = self.get_object()
@@ -301,6 +303,8 @@ class VideoViewSet(ParcoursVisibilityMixin, viewsets.ModelViewSet):
                 path_progress=path_progress
             )
             
+            chapter_progress = UserChapterProgress.objects.select_for_update().get(pk=chapter_progress.pk)
+
             # Update video progress. Deux règles pour ne rien perdre :
             # - la progression ne recule jamais (enregistrer une note renvoie une position ancienne) ;
             # - les notes ne changent que si la requête en contient (avant, la sauvegarde
@@ -310,6 +314,7 @@ class VideoViewSet(ParcoursVisibilityMixin, viewsets.ModelViewSet):
                 video=video,
                 chapter_progress=chapter_progress,
             )
+            video_progress = UserVideoProgress.objects.select_for_update().get(pk=video_progress.pk)
             video_progress.watched_seconds = max(
                 video_progress.watched_seconds or 0, serializer.validated_data['watched_seconds']
             )
@@ -321,17 +326,19 @@ class VideoViewSet(ParcoursVisibilityMixin, viewsets.ModelViewSet):
             completion_threshold = int(video.duration_seconds * 0.9)
             is_manually_completed = serializer.validated_data.get('is_completed', False)
             
-            if (video_progress.watched_seconds >= completion_threshold or is_manually_completed) and not video_progress.is_completed:
+            if ((video.duration_seconds > 0 and video_progress.watched_seconds >= completion_threshold) or is_manually_completed) and not video_progress.is_completed:
                 video_progress.is_completed = True
                 video_progress.completed_at = timezone.now()
                 video_progress.save()
                 
                 # Update path progress time
                 time_to_add = min(video_progress.watched_seconds, video.duration_seconds)
-                path_progress.total_time_seconds += time_to_add
-                path_progress.last_activity = timezone.now()
-                path_progress.save()
+                UserLearningPathProgress.objects.filter(pk=path_progress.pk).update(
+                    total_time_seconds=F('total_time_seconds') + time_to_add,
+                    last_activity=timezone.now(),
+                )
             
+            chapter_progress.refresh_completion()
             return Response({
                 'progress_percentage': video_progress.progress_percentage,
                 'is_completed': video_progress.is_completed,
@@ -341,6 +348,7 @@ class VideoViewSet(ParcoursVisibilityMixin, viewsets.ModelViewSet):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
+    @transaction.atomic
     def toggle_completion(self, request, pk=None):
         """Toggle video completion status"""
         video = self.get_object()
@@ -357,6 +365,8 @@ class VideoViewSet(ParcoursVisibilityMixin, viewsets.ModelViewSet):
             path_progress=path_progress
         )
         
+        chapter_progress = UserChapterProgress.objects.select_for_update().get(pk=chapter_progress.pk)
+
         video_progress, _ = UserVideoProgress.objects.get_or_create(
             user=request.user,
             video=video,
@@ -373,6 +383,7 @@ class VideoViewSet(ParcoursVisibilityMixin, viewsets.ModelViewSet):
         
         video_progress.save()
         
+        chapter_progress.refresh_completion()
         return Response({
             'is_completed': video_progress.is_completed,
             'progress_percentage': video_progress.progress_percentage
@@ -462,6 +473,7 @@ class ChapterQuizViewSet(ParcoursVisibilityMixin, viewsets.ModelViewSet):
         })
     
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
+    @transaction.atomic
     def submit_attempt(self, request, pk=None):
         """Submit quiz answers"""
         quiz = self.get_object()
@@ -471,7 +483,7 @@ class ChapterQuizViewSet(ParcoursVisibilityMixin, viewsets.ModelViewSet):
             attempt_id = request.data.get('attempt_id')
             
             try:
-                attempt = QuizAttempt.objects.get(
+                attempt = QuizAttempt.objects.select_for_update().get(
                     id=attempt_id,
                     user=request.user,
                     quiz=quiz,
@@ -525,12 +537,11 @@ class ChapterQuizViewSet(ParcoursVisibilityMixin, viewsets.ModelViewSet):
                         'your_answer': selected_index if selected_index is not None else selected_indices
                     }
                     
-                    if quiz.show_correct_answers:
-                        if question.question_type in ['multiple_choice', 'true_false']:
-                            result_data['correct_answer'] = question.correct_answer_index
-                        else:
-                            result_data['correct_answer'] = question.correct_answer_indices
-                        result_data['explanation'] = question.explanation
+                    if question.question_type in ['multiple_choice', 'true_false']:
+                        result_data['correct_answer'] = question.correct_answer_index
+                    else:
+                        result_data['correct_answer'] = question.correct_answer_indices
+                    result_data['explanation'] = question.explanation
                     
                     results.append(result_data)
                 
@@ -547,7 +558,7 @@ class ChapterQuizViewSet(ParcoursVisibilityMixin, viewsets.ModelViewSet):
                 
                 # Update chapter progress
                 try:
-                    chapter_progress = UserChapterProgress.objects.get(
+                    chapter_progress = UserChapterProgress.objects.select_for_update().get(
                         user=request.user,
                         path_chapter=quiz.path_chapter
                     )
@@ -559,6 +570,7 @@ class ChapterQuizViewSet(ParcoursVisibilityMixin, viewsets.ModelViewSet):
                         chapter_progress.quiz_passed = True
                     
                     chapter_progress.save()
+                    chapter_progress.refresh_completion()
                     
                     # Update path progress
                     chapter_progress.path_progress.last_activity = timezone.now()
@@ -573,7 +585,7 @@ class ChapterQuizViewSet(ParcoursVisibilityMixin, viewsets.ModelViewSet):
                 'correct_answers': len([r for r in results if r['is_correct']]),
                 'total_questions': len(results),
                 'time_spent_seconds': attempt.time_spent_seconds,
-                'results': results if quiz.show_correct_answers else None,
+                'results': results,
                 'passing_score': quiz.passing_score
             })
         
