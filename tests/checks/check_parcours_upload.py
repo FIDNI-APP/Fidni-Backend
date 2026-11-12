@@ -48,7 +48,7 @@ created_chapter = client.post('/api/path-chapters/', {
 }, format='json')
 assert created_chapter.status_code == 201 and created_chapter.data.get('id'), created_chapter.data
 content = b'\x00\x00\x00\x18ftypisom' + b'0' * 28
-metadata = {'path_chapter': chapter.pk, 'title': 'Cours de limites', 'video_type': 'lesson', 'duration_seconds': 90, 'order': 0}
+metadata = {'path_chapter': chapter.pk, 'title': 'Cours de limites', 'duration_seconds': 90, 'order': 0}
 response = client.post('/api/videos/upload_init/', {
     'name': 'limites.mp4', 'mime_type': 'video/mp4', 'size': len(content), 'video': metadata,
 }, format='json')

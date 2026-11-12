@@ -82,7 +82,13 @@ class VideoUploadMixin:
         upload = ParcoursVideoUpload.objects.create(
             user=request.user, chapter=fields['path_chapter'],
             name=values['name'], mime_type=values['mime_type'], size=values['size'],
-            metadata={**{k: fields[k] for k in ('title', 'video_type', 'duration_seconds', 'order')}, 'target_id': target.pk if target else None},
+            metadata={
+                'title': fields['title'],
+                'video_type': fields.get('video_type', 'lesson'),
+                'duration_seconds': fields['duration_seconds'],
+                'order': fields.get('order', 0),
+                'target_id': target.pk if target else None,
+            },
         )
         return Response({'session': str(upload.id), 'received': 0, 'chunk_size': CHUNK_SIZE}, status=201)
 
