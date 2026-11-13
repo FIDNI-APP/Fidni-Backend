@@ -10,6 +10,7 @@ from apps.interactions.models import Complete, Vote
 from apps.notifications.services import sans_formule_coupee
 from apps.things.models import Content
 from apps.uploads.serializers import FileAttachmentSerializer
+from apps.users.noms import nom_affiche
 from apps.users.serializers import AuthorSerializer
 
 from .models import Discussion, Follow, Reply, plain_text
@@ -119,7 +120,8 @@ def cards(discussions, request):
             'followed': d.id in followed,
             # Ordre stable (la base ne garde pas l'ordre d'ajout) : exercices, examens, leçons, puis le n°.
             'tags': [content_tag(c, statuses) for c in sorted(d.contents.all(), key=lambda c: (TYPE_RANK.get(c.type, 9), c.id))],
-            'repliers': [{'username': users[u].username, 'avatar': AuthorSerializer(users[u], context={'request': request}).data['avatar']}
+            'repliers': [{k: v for k, v in AuthorSerializer(users[u], context={'request': request}).data.items()
+                          if k in ('username', 'display_name', 'avatar')}
                          for u in repliers.get(d.id, []) if u in users],
             'attachments': len(d.attachments.all()),
         })
@@ -139,7 +141,8 @@ def reply_data(r, request, utiles, mine):
         'body': r.body,
         'created_at': r.created_at,
         'edited_at': r.edited_at,
-        'reply_to': {'id': r.reply_to_id, 'username': r.reply_to.author.username} if r.reply_to_id else None,
+        'reply_to': {'id': r.reply_to_id, 'username': r.reply_to.author.username,
+                     'display_name': nom_affiche(r.reply_to.author, getattr(request, 'user', None))} if r.reply_to_id else None,
         'utile': utiles.get(r.id, 0),
         'user_utile': r.id in mine,
         'attachments': FileAttachmentSerializer(r.attachments.all(), many=True, context={'request': request}).data,

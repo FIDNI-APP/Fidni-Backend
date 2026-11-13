@@ -56,7 +56,8 @@ def _identite(u, reglages, request):
     rl = role(u)
     data = AuthorSerializer(u, context={'request': request}).data
     return {
-        'id': u.id, 'username': u.username, 'avatar': data.get('avatar'), 'role': rl,
+        'id': u.id, 'username': u.username, 'display_name': data.get('display_name'), 'avatar': data.get('avatar'),
+        'role': rl,
         'level': profile.class_level.name if rl == 'eleve' and profile and profile.class_level_id else None,
         'objectif': reglages.objectif or None, 'banniere': reglages.banniere or banniere_par_defaut(u),
         'verifie': bool(reglages.verifie and rl == 'prof'),
@@ -152,8 +153,8 @@ def profil(user, viewer, request):
     }
     if data['listes_visibles']:
         apercu = [a.abonne for a in abonnes.select_related('abonne__profile').order_by('-created_at')[:8]]
-        data['apercu_abonnes'] = [{'username': u.username, 'avatar': AuthorSerializer(u, context={'request': request})
-                                   .data.get('avatar')} for u in apercu]
+        data['apercu_abonnes'] = [{k: v for k, v in AuthorSerializer(u, context={'request': request}).data.items()
+                                   if k in ('username', 'display_name', 'avatar')} for u in apercu]
     if rl != 'eleve' and profile is not None:
         data['enseigne'] = {'matieres': [s.name for s in profile.teaching_subjects.all()],
                             'niveaux': [c.name for c in profile.teaching_class_levels.order_by('order')]}

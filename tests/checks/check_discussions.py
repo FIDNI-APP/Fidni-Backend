@@ -147,7 +147,7 @@ notify_new_reply(rep1)
 check('l\'auteur (qui suit) est prévenu : « reponse »', Notification.objects.filter(recipient=amina, kind='reponse', comment_id=rep1.id).exists())
 r = client(chaima).post(f'/api/discussions/{d1.id}/repondre/', {'body': 'Merci @amina', 'reply_to': rep1.id}, format='json')
 rep2 = Reply.objects.get(pk=r.data['id'])
-check('en réponse à : gardé', r.status_code == 201 and r.data['reply_to'] == {'id': rep1.id, 'username': 'badr'}, getattr(r, 'data', r))
+check('en réponse à : gardé', r.status_code == 201 and r.data['reply_to'] == {'id': rep1.id, 'username': 'badr', 'display_name': 'badr'}, getattr(r, 'data', r))
 Notification.objects.all().delete()
 notify_new_reply(rep2)
 got = {n.recipient.username: n.kind for n in Notification.objects.all()}

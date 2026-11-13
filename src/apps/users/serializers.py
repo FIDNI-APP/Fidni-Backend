@@ -127,10 +127,16 @@ class AuthorSerializer(serializers.ModelSerializer):
     avatar = serializers.SerializerMethodField()
     # Contribution d'un compte supprimé : le front l'affiche sans lien de profil.
     is_deleted = serializers.SerializerMethodField()
+    # « Prénom Nom » pour un membre connecté, le pseudo pour un visiteur (users/noms.py).
+    display_name = serializers.SerializerMethodField()
 
     class Meta:
         model = User
-        fields = ('id', 'username', 'avatar', 'is_deleted')
+        fields = ('id', 'username', 'display_name', 'avatar', 'is_deleted')
+
+    def get_display_name(self, obj):
+        from .noms import nom_affiche, viewer_de
+        return nom_affiche(obj, viewer_de(self.context))
 
     def get_is_deleted(self, obj):
         from .account_deletion import is_deleted_account
@@ -185,6 +191,9 @@ class UserSerializer(serializers.ModelSerializer):
         # anonyme, mais la vue sait que c'est le compte de celui qui vient de se connecter.
         if self.parent is None and self.context.get('is_owner') is True:
             is_self = True
+        from .noms import nom_affiche, nom_complet
+        # Titulaire : son propre nom même si la requête est encore anonyme (réponse de connexion).
+        data['display_name'] = (nom_complet(instance) or instance.username) if is_self else nom_affiche(instance, viewer)
         if is_self and self.parent is None:
             # Réglages du compte : « Définir un mot de passe », « Connecté avec Google », « Adresse à
             # confirmer ». Pas pour l'auteur imbriqué dans une liste (une requête de plus par ligne, inutile).

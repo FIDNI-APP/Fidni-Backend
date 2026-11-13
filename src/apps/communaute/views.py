@@ -23,6 +23,7 @@ from rest_framework.decorators import api_view, permission_classes, throttle_cla
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
+from apps.users.noms import recherche_nom
 from config.throttling import CommunauteThrottle
 
 from . import badges as B
@@ -193,8 +194,10 @@ def membres(request):
     if matiere and matiere.isdigit():
         qs = qs.filter(profile__teaching_subjects__id=int(matiere))
     if q:
-        qs = qs.filter(username__icontains=q).annotate(debut=Case(
-            When(username__istartswith=q, then=Value(0)), default=Value(1), output_field=IntegerField()))
+        # Pseudo, prénom ou nom (les membres connectés voient les noms, users/noms.py).
+        qs = qs.filter(recherche_nom(q)).annotate(debut=Case(
+            When(Q(username__istartswith=q) | Q(first_name__istartswith=q) | Q(last_name__istartswith=q), then=Value(0)),
+            default=Value(1), output_field=IntegerField()))
         qs = qs.order_by('debut', 'username')
     else:
         qs = qs.order_by(_actifs_dabord(), '-date_joined')

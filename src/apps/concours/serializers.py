@@ -16,10 +16,15 @@ from .models import (
 
 class _UserMiniSerializer(serializers.ModelSerializer):
     avatar = serializers.SerializerMethodField()
+    display_name = serializers.SerializerMethodField()
 
     class Meta:
         model = User
-        fields = ('id', 'username', 'avatar')
+        fields = ('id', 'username', 'display_name', 'avatar')
+
+    def get_display_name(self, obj):
+        from apps.users.noms import nom_affiche, viewer_de
+        return nom_affiche(obj, viewer_de(self.context))
 
     def get_avatar(self, obj):
         prof = getattr(obj, 'profile', None)

@@ -119,8 +119,8 @@ check('auteur : le pseudo est présent', auteur.get('username') == 'cible', aute
 FUITES = ('email', 'first_name', 'last_name', 'birth_date', 'location', 'school', 'school_name',
           'gender', 'class_level', 'is_superuser', 'is_staff', 'password')
 check('auteur : aucune donnée personnelle', not [k for k in FUITES if k in auteur], [k for k in FUITES if k in auteur])
-check('auteur : uniquement id/username/avatar/is_deleted',
-      set(auteur.keys()) <= {'id', 'username', 'avatar', 'is_deleted'}, list(auteur.keys()))
+check('auteur : uniquement id/username/display_name/avatar/is_deleted',
+      set(auteur.keys()) <= {'id', 'username', 'display_name', 'avatar', 'is_deleted'}, list(auteur.keys()))
 
 print('--- 5. Écritures : pas d’action sur la ressource d’un autre (IDOR)')
 check('autre membre ne peut PAS supprimer le contenu de cible (403)',

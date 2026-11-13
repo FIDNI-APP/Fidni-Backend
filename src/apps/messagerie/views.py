@@ -22,6 +22,7 @@ from rest_framework.throttling import UserRateThrottle
 
 from apps.discussions.presenters import author, content_tag
 from apps.things.models import Content
+from apps.users.noms import nom_affiche, recherche_nom
 
 from . import regles, services
 from .models import Conversation, Message, Participant, SignalementMessage
@@ -59,7 +60,7 @@ def conversation_dict(conv, viewer, request, non_lus=None, dernier=None):
     autres = [p.user for p in membres if p.user_id != viewer.id]
     # Sans nom : le sujet d'une salle de travail, sinon les pseudos des autres.
     titre = (conv.titre or (conv.contenu.title if conv.contenu_id and conv.contenu else '')
-             or ', '.join(u.username for u in autres[:4]) or 'Conversation')
+             or ', '.join(nom_affiche(u, viewer) for u in autres[:4]) or 'Conversation')
     return {
         'id': conv.id, 'type': conv.type, 'titre': titre, 'titre_libre': conv.titre,
         'membres': [{**author(p.user, request), 'lu_jusqu_a': p.lu_jusqu_a.isoformat() if p.lu_jusqu_a else None,
@@ -255,8 +256,8 @@ def contacts(request):
     qs = regles.mutuels(request.user).select_related('profile', 'profile__class_level')
     q = (request.query_params.get('q') or '').strip()[:60]
     if q:
-        qs = qs.filter(username__icontains=q)
-    return Response({'results': [author(u, request) for u in qs.order_by('username')[:50]]})
+        qs = qs.filter(recherche_nom(q))
+    return Response({'results': [author(u, request) for u in qs.order_by('first_name', 'last_name', 'username')[:50]]})
 
 
 @api_view(['GET'])
