@@ -185,7 +185,8 @@ class MessagerieConsumer(AsyncJsonWebsocketConsumer):
         donnees = contenu.get('donnees')
         if not (appel and vers and isinstance(donnees, dict)) or len(str(donnees)) > SIGNAL_MAX:
             return
-        # Seulement une description de session ou un candidat ICE : rien d'autre ne passe d'un navigateur à l'autre.
+        # Seulement une description de session, un candidat ICE ou l'état du micro et de la caméra : rien d'autre ne
+        # passe d'un navigateur à l'autre.
         propre = {}
         if isinstance(donnees.get('description'), dict):
             d = donnees['description']
@@ -195,6 +196,9 @@ class MessagerieConsumer(AsyncJsonWebsocketConsumer):
             c = donnees['candidate']
             propre['candidate'] = None if c is None else {
                 k: c.get(k) for k in ('candidate', 'sdpMid', 'sdpMLineIndex', 'usernameFragment')}
+        # Micro coupé, caméra, écran partagé : pour afficher la photo au lieu d'une image noire.
+        if isinstance(donnees.get('etat'), dict):
+            propre['etat'] = {k: bool(donnees['etat'].get(k)) for k in ('micro', 'camera', 'ecran')}
         if not propre:
             return
         moi, canal = await _cible(self.channel_name, appel, vers)
