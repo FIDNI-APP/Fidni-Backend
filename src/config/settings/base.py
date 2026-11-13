@@ -61,6 +61,7 @@ INSTALLED_APPS = [
     'apps.defis.apps.DefisConfig',
     'apps.discussions.apps.DiscussionsConfig',
     'apps.communaute.apps.CommunauteConfig',
+    'apps.messagerie.apps.MessagerieConfig',
 ]
 
 MIDDLEWARE = [
@@ -341,6 +342,7 @@ REST_FRAMEWORK = {
         "discussion": "15/hour",  # nouvelles discussions (par utilisateur)
         "discussion_reponse": "60/hour",  # réponses dans les discussions (par utilisateur)
         "communaute": "200/hour",  # abonnements, demandes, blocages (par utilisateur)
+        "messagerie": os.getenv("MESSAGERIE_RATE", "40/min"),  # messages privés envoyés (par utilisateur)
         "client_error": "30/hour",  # erreurs d'affichage envoyées par le navigateur (par IP)
         "copies_upload": "600/hour",  # pages de copies envoyées (par professeur)
         "defi_reponse": "60/min",  # réponses, indices et solutions du défi du jour (par compte ou par IP)
@@ -364,3 +366,19 @@ SIMPLE_JWT = {
     "ROTATE_REFRESH_TOKENS": True,
     "BLACKLIST_AFTER_ROTATION": True,
 }
+
+# ── Messagerie et appels (13/11/2026, apps/messagerie) ─────────────────────────────────────────────────────────────
+# Le WebSocket (/ws/) tourne sous uvicorn dans le même conteneur que gunicorn (entrypoint.sh) ; les deux se parlent
+# par Redis (conteneur « redis » du docker-compose). Sans REDIS_URL (tests, développement) : couche en mémoire, qui
+# ne relie que les connexions d'un même processus.
+REDIS_URL = os.getenv('REDIS_URL', '')
+if REDIS_URL:
+    CHANNEL_LAYERS = {'default': {'BACKEND': 'channels_redis.core.RedisChannelLayer',
+                                  'CONFIG': {'hosts': [REDIS_URL], 'capacity': 300, 'expiry': 30}}}
+else:
+    CHANNEL_LAYERS = {'default': {'BACKEND': 'channels.layers.InMemoryChannelLayer'}}
+# Appels : serveur STUN/TURN de Fidni (coturn, deploy/ovh). TURN_HOST = adresse IP publique ou nom DNS non proxifié ;
+# TURN_SECRET = static-auth-secret de coturn (dans /opt/fidni/secrets/backend.env, jamais dans le dépôt).
+TURN_HOST = os.getenv('TURN_HOST', '')
+TURN_SECRET = os.getenv('TURN_SECRET', '')
+TURN_TTL = 6 * 3600

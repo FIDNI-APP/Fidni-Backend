@@ -24,10 +24,14 @@ fi
 usermod -aG docker "$UTILISATEUR"   # docker sans sudo pour « $UTILISATEUR » (nouvelle session SSH)
 systemctl enable --now docker
 
-echo "→ Pare-feu : seul SSH est ouvert (le site passe par le tunnel Cloudflare, sortant)"
+echo "→ Pare-feu : SSH et le relais des appels (le site passe par le tunnel Cloudflare, sortant)"
 ufw default deny incoming
 ufw default allow outgoing
 ufw allow OpenSSH
+# Relais des appels (coturn, service « turn » du docker-compose, 13/11/2026) : seul service joignable en direct.
+ufw allow 3478/udp
+ufw allow 3478/tcp
+ufw allow 49160:49200/udp
 ufw --force enable
 
 echo "→ SSH : connexion par clé uniquement"
@@ -65,6 +69,7 @@ cat > /etc/cron.d/fidni <<'EOF'
 15 4 * * *  root  docker exec fidni-backend python manage.py purger_journaux >> /var/log/fidni-purges.log 2>&1
 0 5 * * 1   root  docker exec fidni-backend python manage.py purger_comptes_inactifs --appliquer >> /var/log/fidni-purges.log 2>&1
 30 4 * * *  root  docker exec fidni-backend python manage.py purger_copies >> /var/log/fidni-purges.log 2>&1
+45 4 * * *  root  docker exec fidni-backend python manage.py purger_messages >> /var/log/fidni-purges.log 2>&1
 */10 * * * * root  docker exec fidni-backend python manage.py copies_traiter --reprendre >> /var/log/fidni-copies.log 2>&1
 EOF
 

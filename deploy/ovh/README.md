@@ -146,6 +146,29 @@ Retirer l'accès : `ssh fidni-ovh sudo rm /home/deploiement/.ssh/authorized_keys
 Les imports de contenus (`importer.sh`, `verifier.sh`) marchent comme avant : après la bascule ils
 passent par SSH (`contenus/outils/serveur.conf`).
 
+## Messagerie et appels (13/11/2026)
+
+Les messages et la mise en relation des appels passent par le WebSocket `wss://api.fidni.fr/ws/` : uvicorn tourne dans le
+conteneur `fidni-backend` (entrypoint.sh) et parle à gunicorn par **Redis** (`fidni-redis`, démarré avec le backend,
+rien sur disque). Rien à faire : le déploiement automatique s'en occupe, le tunnel Cloudflare laisse passer les WebSocket.
+
+Le **relais des appels** (coturn, service `turn`, profil `appels`) se met en route une seule fois, à la main :
+
+1. Dans `/opt/fidni/secrets/backend.env`, ajouter (le secret ne va jamais dans le dépôt) :
+   ```
+   TURN_HOST=<adresse IP publique du serveur>
+   TURN_SECRET=<openssl rand -hex 32>
+   ```
+2. Ouvrir les ports du relais : `sudo ufw allow 3478/udp && sudo ufw allow 3478/tcp && sudo ufw allow 49160:49200/udp`
+   (et dans le pare-feu réseau d'OVH s'il y en a un d'activé sur l'instance).
+3. `cd /opt/fidni/backend/deploy/ovh && docker compose --profile appels up -d turn && docker compose up -d backend`
+   (le backend relit `backend.env` pour donner aux navigateurs des identifiants temporaires du relais).
+4. Vérifier : `curl -s -H "Authorization: Bearer <jeton>" https://api.fidni.fr/api/messagerie/ice/` liste `stun:` et `turn:`.
+
+Sans relais, les appels marchent quand le pair-à-pair passe (même wifi, la plupart des box) mais échouent souvent en 4G ou
+sur un wifi d'établissement. Purge : `purger_messages` chaque nuit (messages de plus de 12 mois), dans le cron de
+installer-serveur.sh — sur un serveur déjà installé, ajouter la ligne à `/etc/cron.d/fidni`.
+
 ## Manipuler le serveur à la main
 
 Se connecter : `ssh fidni-ovh` (depuis WSL). On arrive dans `/home/ubuntu` ; tout Fidni est dans
