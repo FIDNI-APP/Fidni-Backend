@@ -40,11 +40,13 @@ def _url(n):
     return f'{n.link}#commentaires'
 
 
-def serialize(n):
+def serialize(n, viewer=None):
+    from apps.users.noms import nom_affiche
     return {
         'id': n.id, 'kind': n.kind, 'title': n.title, 'url': _url(n), 'excerpt': n.excerpt, 'count': n.count,
         'message': n.message,
-        'actor': {'username': n.actor.username, 'avatar': _avatar(n.actor)} if n.actor else None,
+        'actor': {'username': n.actor.username, 'display_name': nom_affiche(n.actor, viewer),
+                  'avatar': _avatar(n.actor)} if n.actor else None,
         'updated_at': n.updated_at, 'read': n.read_at is not None,
     }
 
@@ -53,7 +55,7 @@ def serialize(n):
 @permission_classes([IsAuthenticated])
 def notification_list(request):
     rows = Notification.objects.filter(recipient=request.user).select_related('recipient', 'actor', 'actor__profile')[:LIMIT]
-    return Response({'unread': _unread(request.user), 'results': [serialize(n) for n in rows]})
+    return Response({'unread': _unread(request.user), 'results': [serialize(n, request.user) for n in rows]})
 
 
 @api_view(['GET'])
