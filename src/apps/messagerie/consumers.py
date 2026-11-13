@@ -15,6 +15,7 @@ Reçoit les événements de ses conversations (groupe « u<id> », temps_reel.en
 Les signaux (offres, réponses, candidats ICE) ne vont que d'une présence à une autre du MÊME appel en cours ; chaque
 présence est une connexion (un membre peut être sur deux appareils). À la déconnexion, ses présences sont retirées.
 """
+import logging
 import time
 from urllib.parse import parse_qs
 
@@ -26,6 +27,8 @@ from django.contrib.auth.models import User
 from . import regles, services
 from .models import Participant, PresenceAppel
 from .temps_reel import envoyer, groupe
+
+logger = logging.getLogger('django')
 
 SIGNAL_MAX = 64 * 1024     # une offre SDP fait quelques Ko
 DEBIT = 80                 # messages reçus par 10 s et par connexion (les candidats ICE arrivent par rafales)
@@ -67,12 +70,17 @@ def _question(user, conversation_id, question):
 
 
 @database_sync_to_async
-def _rejoindre(user, conversation_id, canal, video):
+def _rejoindre(user, conversation_id, canal, video, appareil):
     p = regles.participation(user, conversation_id)
     if p is None:
         raise services.Refus('Conversation introuvable.', 'introuvable', 404)
-    presence, appel, autres = services.rejoindre_appel(p.conversation, user, canal, video)
+    presence, appel, autres = services.rejoindre_appel(p.conversation, user, canal, video, appareil)
     return presence, appel, [(a.id, a.user_id, a.canal) for a in autres]
+
+
+@database_sync_to_async
+def _signe_de_vie(canal):
+    services.signe_de_vie(canal)
 
 
 @database_sync_to_async
@@ -142,9 +150,22 @@ class MessagerieConsumer(AsyncJsonWebsocketConsumer):
     async def receive_json(self, contenu, **kwargs):
         if not isinstance(contenu, dict) or self._trop():
             return
+        # Une erreur imprévue ne coupe jamais la connexion (sinon le navigateur se reconnecte, rejoint l'appel de
+        # nouveau, et la présence perdue reste) : elle est journalisée et le navigateur prévenu.
+        try:
+            await self._traiter(contenu)
+        except Exception:
+            logger.exception('Messagerie WS : erreur sur %s', contenu.get('type'))
+            try:
+                await self.send_json({'type': 'erreur', 'quoi': str(contenu.get('type'))[:40]})
+            except Exception:
+                pass
+
+    async def _traiter(self, contenu):
         t = contenu.get('type')
         conv = self._entier(contenu.get('conversation'))
         if t == 'ping':
+            await _signe_de_vie(self.channel_name)
             await self.send_json({'type': 'pong'})
         elif t == 'tape' and conv:
             autres = await _autres_participants(self.user, conv)
@@ -158,7 +179,7 @@ class MessagerieConsumer(AsyncJsonWebsocketConsumer):
                 await self.channel_layer.group_send(groupe(uid), {'type': 'evenement', 'donnees': {
                     'type': 'salle.question', 'conversation': conv, 'user': self.user.id, 'question': question}})
         elif t == 'appel.rejoindre' and conv:
-            await self._rejoindre(conv, bool(contenu.get('video')))
+            await self._rejoindre(conv, bool(contenu.get('video')), str(contenu.get('appareil') or ''))
         elif t == 'appel.signal':
             await self._signal(contenu)
         elif t == 'appel.quitter':
@@ -166,9 +187,9 @@ class MessagerieConsumer(AsyncJsonWebsocketConsumer):
         elif t == 'appel.refuser' and conv:
             await _refuser(self.user, conv)
 
-    async def _rejoindre(self, conv, video):
+    async def _rejoindre(self, conv, video, appareil):
         try:
-            presence, appel, autres = await _rejoindre(self.user, conv, self.channel_name, video)
+            presence, appel, autres = await _rejoindre(self.user, conv, self.channel_name, video, appareil)
         except services.Refus as e:
             await self.send_json({'type': 'appel.erreur', 'conversation': conv, 'detail': e.message, 'code': e.code})
             return
@@ -176,9 +197,12 @@ class MessagerieConsumer(AsyncJsonWebsocketConsumer):
         await self.send_json({'type': 'appel.rejoint', 'conversation': conv, 'appel': appel.id, 'video': appel.video,
                               'moi': presence.id, 'pairs': [{'id': i, 'user': u} for i, u, _ in autres]})
         for i, u, canal in autres:
-            await self.channel_layer.send(canal, {'type': 'evenement', 'donnees': {
-                'type': 'appel.arrivee', 'appel': appel.id, 'conversation': conv,
-                'pair': {'id': presence.id, 'user': self.user.id}}})
+            try:
+                await self.channel_layer.send(canal, {'type': 'evenement', 'donnees': {
+                    'type': 'appel.arrivee', 'appel': appel.id, 'conversation': conv,
+                    'pair': {'id': presence.id, 'user': self.user.id}}})
+            except Exception:   # canal plein ou disparu (connexion perdue) : les autres arrivées continuent
+                logger.warning('Messagerie WS : arrivée non transmise à %s', canal)
 
     async def _signal(self, contenu):
         appel, vers = self._entier(contenu.get('appel')), self._entier(contenu.get('vers'))
