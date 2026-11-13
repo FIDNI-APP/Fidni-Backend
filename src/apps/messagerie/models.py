@@ -111,6 +111,11 @@ class PresenceAppel(models.Model):
     appel = models.ForeignKey(Appel, on_delete=models.CASCADE, related_name='presences')
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='+')
     canal = models.CharField(max_length=200, db_index=True)
+    # Onglet du navigateur (identifiant tiré au hasard par la page) : une reconnexion du même onglet remplace sa
+    # présence au lieu d'en ajouter une (13/11/2026 : un participant apparaissait jusqu'à 5 fois).
+    appareil = models.CharField(max_length=40, blank=True, default='')
+    # Dernier signe de vie (ping du navigateur toutes les 20 s) : une présence muette depuis 75 s est retirée.
+    vu_le = models.DateTimeField(default=timezone.now)
     rejoint_le = models.DateTimeField(default=timezone.now)
     parti_le = models.DateTimeField(null=True, blank=True)
 

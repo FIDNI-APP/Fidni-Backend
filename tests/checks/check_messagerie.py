@@ -289,6 +289,26 @@ async def scenario():
 asyncio.run(scenario())
 check('Appel terminé en base', not Appel.objects.filter(fin__isnull=True).exists())
 
+print('--- Présences : reconnexion et connexion perdue (13/11/2026, un participant apparaissait 5 fois)')
+from apps.messagerie import services as S  # noqa: E402
+from apps.messagerie.models import PresenceAppel  # noqa: E402
+conv_d = Conversation.objects.get(pk=directe)
+p1, ap, _ = S.rejoindre_appel(conv_d, ali, 'canal-1', False, 'onglet-a')
+p2, ap2, _ = S.rejoindre_appel(conv_d, ali, 'canal-2', False, 'onglet-a')
+check('Reconnexion du même onglet : l’ancienne présence est remplacée',
+      ap2.id == ap.id and PresenceAppel.objects.get(pk=p1.pk).parti_le is not None
+      and [p['user'] for p in S.etat_appel(conv_d)['presences']] == [ali.id])
+p3, _, autres = S.rejoindre_appel(conv_d, badr, 'canal-3', False, 'onglet-b')
+check('Un autre membre rejoint : il voit Ali', [a.user_id for a in autres] == [ali.id])
+PresenceAppel.objects.filter(pk=p2.pk).update(vu_le=timezone.now() - timedelta(seconds=120))
+check('Présence muette depuis 2 min : plus affichée', [p['user'] for p in S.etat_appel(conv_d)['presences']] == [badr.id])
+S.signe_de_vie('canal-3')
+_, _, autres = S.rejoindre_appel(conv_d, ali, 'canal-4', False, 'onglet-c')
+check('Rejoindre retire la présence muette', [a.user_id for a in autres] == [badr.id]
+      and PresenceAppel.objects.get(pk=p2.pk).parti_le is not None)
+S.quitter_appel('canal-3'); S.quitter_appel('canal-4')
+check('Appel terminé quand tout le monde est parti', S.appel_en_cours(conv_d) is None)
+
 print('--- Purge et suppression de compte')
 vieux = Message.objects.create(conversation_id=directe, auteur=ali, texte='vieux',
                                created_at=timezone.now() - timedelta(days=400))

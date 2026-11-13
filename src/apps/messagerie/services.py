@@ -1,5 +1,5 @@
 """Actions de la messagerie, communes aux vues (REST) et au WebSocket (consumers.py). Synchrones."""
-from datetime import datetime, timezone as dt_timezone
+from datetime import datetime, timedelta, timezone as dt_timezone
 
 from django.contrib.auth.models import User
 from django.db import IntegrityError, transaction
@@ -187,15 +187,22 @@ def compte_non_lus(user):
 # (offres, réponses, candidats ICE) entre les présences d'un même appel, et le TURN (coturn) relaie les flux chiffrés
 # quand le pair-à-pair est impossible. Rien n'est enregistré.
 
+MUETTE = timedelta(seconds=75)   # présence sans ping depuis ce délai : connexion perdue sans déconnexion propre
+
+
 def appel_en_cours(conversation):
     return Appel.objects.filter(conversation=conversation, fin__isnull=True).first()
+
+
+def _vivantes(appel):
+    return appel.presences.filter(parti_le__isnull=True, vu_le__gte=timezone.now() - MUETTE)
 
 
 def etat_appel(conversation):
     appel = appel_en_cours(conversation)
     if appel is None:
         return None
-    presences = list(appel.presences.filter(parti_le__isnull=True).order_by('rejoint_le'))
+    presences = list(_vivantes(appel).order_by('rejoint_le'))
     return {'id': appel.id, 'conversation': conversation.id, 'video': appel.video, 'debut': appel.debut.isoformat(),
             'lance_par': appel.lance_par_id,
             'presences': [{'id': p.id, 'user': p.user_id} for p in presences]}
@@ -206,19 +213,31 @@ def _diffuser_appel(conversation):
                                         'appel': etat_appel(conversation)})
 
 
-def rejoindre_appel(conversation, user, canal, video=False):
-    """Entre dans l'appel de la conversation (le lance s'il n'y en a pas). → (présence, appel, présences des autres)."""
+def rejoindre_appel(conversation, user, canal, video=False, appareil=''):
+    """Entre dans l'appel de la conversation (le lance s'il n'y en a pas). → (présence, appel, présences des autres).
+
+    Une reconnexion du même onglet (`appareil`) remplace son ancienne présence, et les présences muettes (connexion
+    perdue sans déconnexion propre) sont retirées : un participant ne peut plus apparaître plusieurs fois."""
     if not regles.peut_parler(user, conversation):
         raise Refus(regles.raison_lecture_seule(user, conversation) or 'Appel impossible.', 'lecture-seule', 403)
+    appareil = str(appareil or '')[:40]
+    now = timezone.now()
     with transaction.atomic():
         Conversation.objects.select_for_update().filter(pk=conversation.pk).first()
         appel = appel_en_cours(conversation)
         if appel is None:
             appel = Appel.objects.create(conversation=conversation, lance_par=user, video=bool(video))
         actives = appel.presences.filter(parti_le__isnull=True)
+        actives.filter(vu_le__lt=now - MUETTE).update(parti_le=now)
+        if appareil:
+            actives.filter(user=user, appareil=appareil).exclude(canal=canal).update(parti_le=now)
         if actives.exclude(canal=canal).count() >= MEMBRES_MAX:
             raise Refus(f'{MEMBRES_MAX} personnes au plus dans un appel.', 'complet')
-        presence = actives.filter(canal=canal).first() or PresenceAppel.objects.create(appel=appel, user=user, canal=canal)
+        presence = actives.filter(canal=canal).first()
+        if presence is None:
+            presence = PresenceAppel.objects.create(appel=appel, user=user, canal=canal, appareil=appareil)
+        else:
+            PresenceAppel.objects.filter(pk=presence.pk).update(vu_le=now)
         autres = list(appel.presences.filter(parti_le__isnull=True).exclude(pk=presence.pk))
     _diffuser_appel(conversation)
     return presence, appel, autres
@@ -255,6 +274,11 @@ def _terminer_si_vide(appel):
                                donnees={'video': appel.video, 'duree': duree, 'personnes': len(rejoints),
                                         'manque': len(rejoints) <= 1})
     _publier(appel.conversation, m)
+
+
+def signe_de_vie(canal):
+    """Ping du navigateur (toutes les 20 s) : ses présences restent dans l'appel."""
+    PresenceAppel.objects.filter(canal=canal, parti_le__isnull=True).update(vu_le=timezone.now())
 
 
 def presence_dans_appel(presence_id, appel_id):
