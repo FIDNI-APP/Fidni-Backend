@@ -230,15 +230,16 @@ _ds.chapters.set([_der])
 importlib.import_module('apps.things.migrations.0019_chapitres_corriges').forwards(django_apps, None)
 check('migration 0019 : DS1 2020 publié remis dans « Limites et continuité »', list(_ds.chapters.all()) == [_lim],
       [c.name for c in _ds.chapters.all()])
-# Devoir : aussi le chapitre de chacun de ses exercices (Natsu, 17/10/2026 : DS n° 1 de TC aussi « Ensembles de nombres »).
+# Devoir = son DERNIER chapitre seulement (Natsu, 13/11/2026 : un élève qui ouvre « Dérivation » n'a pas vu ln ni exp ;
+# du 17/10 au 13/11, un devoir allait aussi dans le chapitre de chacun de ses exercices).
 _TVI, _COMP = 'Théorème des valeurs intermédiaires (TVI)', "Dérivée d'une fonction composée"
 _DEVOIR = {**EXO, 'cle': 'devoir-deux-exercices', 'type': 'examen', 'chapitres': ['Limites et continuité', 'Dérivation et étude des fonctions'],
            'blocs': [{'type': 'partie', 'titre': 'Exercice 1'}, {'type': 'question', 'html': '<p>a</p>', 'theoremes': [_TVI]},
                      {'type': 'partie', 'titre': 'Exercice 2'}, {'type': 'question', 'html': '<p>b</p>', 'theoremes': [_COMP]}]}
 _, w, res = importing.check_against_db(_DEVOIR)
-check('devoir : exercice de limites + exercice de dérivation → les deux chapitres',
-      {c.name for c in res['chapters']} == {'Limites et continuité', 'Dérivation et étude des fonctions'}
-      and not any('prérequis retirés' in x for x in w), ([c.name for c in res['chapters']], w))
+check('devoir : exercice de limites + exercice de dérivation → « Dérivation » seulement',
+      [c.name for c in res['chapters']] == ['Dérivation et étude des fonctions']
+      and any('prérequis retirés' in x for x in w), ([c.name for c in res['chapters']], w))
 _DEVOIR2 = {**_DEVOIR, 'blocs': [{'type': 'partie', 'titre': 'Exercice 1'},
                                  {'type': 'question', 'html': '<p>a</p>', 'theoremes': [_TVI, _COMP]}]}
 _, _, res = importing.check_against_db(_DEVOIR2)
@@ -250,9 +251,8 @@ _DEVOIR3 = {**_DEVOIR, 'chapitres': ['Limites et continuité', 'Dérivation et �
                       {'type': 'partie', 'titre': 'Exercice 2'},
                       {'type': 'question', 'html': '<p>b</p>', 'theoremes': ['Suite auxiliaire arithmétique ou géométrique']}]}
 _, _, res = importing.check_against_db(_DEVOIR3)
-check('devoir : théorème de deux chapitres compté au premier (étude de fonction pas rangée en Suites)',
-      {c.name for c in res['chapters']} == {'Dérivation et étude des fonctions', 'Suites numériques'},
-      [c.name for c in res['chapters']])
+check('devoir sur limites, dérivation et suites → « Suites numériques » seulement (dernier du programme)',
+      [c.name for c in res['chapters']] == ['Suites numériques'], [c.name for c in res['chapters']])
 _, _, res = importing.check_against_db({**_DEVOIR, 'type': 'exercice'})
 check('exercice : toujours le dernier chapitre seulement', [c.name for c in res['chapters']] == ['Dérivation et étude des fonctions'],
       [c.name for c in res['chapters']])
@@ -273,6 +273,27 @@ _m21.backwards(django_apps, None)
 _ds.refresh_from_db()
 check('migration 0021 inverse', list(_ds.chapters.all()) == [_der] and _ds.json_content.get('chapitres_retires') == [_lim.pk],
       _ds.json_content)
+# 0027 (13/11/2026) : un devoir publié dans plusieurs chapitres ne garde que le dernier du programme ; réversible.
+_ds.chapters.set([_lim, _der])
+_ds.json_content = {**_ds.json_content, 'chapitres_retires': []}
+_ds.save()
+_ex2 = _C.objects.create(type='exercise', title='Exercice à deux chapitres', author=_auteur, json_content={'version': '2.1', 'blocks': []})
+_ex2.class_levels.set(_ds.class_levels.all())
+_ex2.chapters.set([_lim, _der])
+_lecon2 = _C.objects.create(type='lesson', title='Leçon à deux chapitres', author=_auteur, json_content={'version': '2.1', 'blocks': []})
+_lecon2.class_levels.set(_ds.class_levels.all())
+_lecon2.chapters.set([_lim, _der])
+_m27 = importlib.import_module('apps.things.migrations.0027_devoirs_dernier_chapitre')
+_m27.forwards(django_apps, None)
+_ds.refresh_from_db()
+check('migration 0027 : devoir rangé seulement dans son dernier chapitre', list(_ds.chapters.all()) == [_der]
+      and _ds.json_content.get('chapitres_reduits_1311') == [_lim.pk], _ds.json_content)
+check('migration 0027 : exercice aussi, leçon intacte', list(_ex2.chapters.all()) == [_der]
+      and set(_lecon2.chapters.all()) == {_lim, _der})
+_m27.backwards(django_apps, None)
+_ds.refresh_from_db()
+check('migration 0027 inverse', set(_ds.chapters.all()) == {_lim, _der} and 'chapitres_reduits_1311' not in _ds.json_content)
+_ex2.delete(); _lecon2.delete()
 # Bandeau « à vérifier » retiré (17/10/2026) : 0022 efface la clé, updated_at intact.
 _C.objects.filter(pk=_lc.pk).update(json_content={**_lc.json_content, 'a_verifier': True})
 _avant = _C.objects.get(pk=_lc.pk).updated_at

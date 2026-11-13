@@ -738,9 +738,9 @@ CHAPITRES_FORCES = {
     'serie-continuite-reciproque-ex12': ['Limites et continuité'],
     'serie-continuite-reciproque-ex16': ['Limites et continuité'],
     'haddar-lc-ex16': ['Limites et continuité'],
-    # + Calcul vectoriel : un exercice entier de ces devoirs (17/10/2026, chapitre de chaque exercice).
-    'ds2-tcs-2022': ['Calcul vectoriel dans le plan', 'Ordre dans ℝ'],
-    'ds2-tcs-2023': ['Calcul vectoriel dans le plan', 'Ordre dans ℝ'],
+    # Devoir = son dernier chapitre seulement (13/11/2026) : plus « Calcul vectoriel » en plus.
+    'ds2-tcs-2022': ['Ordre dans ℝ'],
+    'ds2-tcs-2023': ['Ordre dans ℝ'],
     'ordre-tcs-ex15': ['Ordre dans ℝ'],
     'ordre-tcs-ex16': ['Ordre dans ℝ'],
     'ordre-tcs-ex17': ['Ordre dans ℝ'],
@@ -808,7 +808,8 @@ def chapitres_principaux(chapters, levels):
 
 
 def chapitres_par_exercice(chapters, levels, parties):
-    """Devoir (17/10/2026, Natsu : « les DS n° 1 contiennent aussi les ensembles de nombres ») : un devoir est fait
+    """PLUS UTILISÉ À L'IMPORT depuis le 13/11/2026 (un devoir = son dernier chapitre seulement) ; gardé pour l'audit.
+    Devoir (17/10/2026, Natsu : « les DS n° 1 contiennent aussi les ensembles de nombres ») : un devoir est fait
     d'exercices indépendants ; chacun compte pour le DERNIER des chapitres du devoir dont ses questions utilisent un
     théorème. `parties` = noms des théorèmes de chaque exercice. → chapitres à garder en plus du dernier du devoir.
     Un théorème rattaché à plusieurs chapitres compte pour le PREMIER, celui où il s'apprend (19/10/2026 : « Limite et
@@ -911,9 +912,11 @@ def check_against_db(fiche: dict) -> tuple[list[str], list[str], dict]:
             warnings.append(f'le théorème « {th.name} » n’est rattaché à aucun des chapitres indiqués')
 
     kind = TYPES.get(fiche.get('type'))
-    # Exercice, examen : rangé seulement dans le DERNIER chapitre du programme dont il a besoin (Natsu, 16/10/2026) ;
-    # les chapitres d'avant sont des prérequis (un DS de dérivabilité n'est pas un devoir de « Limites et continuité »).
-    # Un devoir garde en plus le dernier chapitre de CHACUN de ses exercices (17/10/2026, chapitres_par_exercice).
+    # Exercice ET devoir : rangé seulement dans le DERNIER chapitre du programme dont il a besoin (Natsu, 16/10/2026,
+    # confirmé pour les devoirs le 13/11/2026) ; les chapitres d'avant sont des prérequis. Un devoir sur la dérivation,
+    # le logarithme et l'exponentielle va dans « Fonctions exponentielles » seulement : l'élève qui ouvre
+    # « Dérivation » n'a pas encore vu ln ni exp. (Du 17/10 au 13/11, un devoir allait aussi dans le chapitre de
+    # chacun de ses exercices, chapitres_par_exercice : abandonné, migration things 0027.)
     forces = chapitres_forces(fiche.get('cle'), levels, subject) if kind in ('exercise', 'exam') else None
     if forces:
         if {c.pk for c in forces} != {c.pk for c in chapters}:
@@ -921,10 +924,6 @@ def check_against_db(fiche: dict) -> tuple[list[str], list[str], dict]:
         chapters = forces
     elif kind in ('exercise', 'exam') and len(chapters) > 1:
         gardes = chapitres_principaux(chapters, levels)
-        if kind == 'exam':  # un devoir va aussi dans le chapitre de chacun de ses exercices
-            gardes += [c for c in chapitres_par_exercice(chapters, levels, theoremes_par_partie(fiche))
-                       if c not in gardes]
-            gardes = [c for c in chapters if c in gardes]
         retires = [c.name for c in chapters if c not in gardes]
         if retires:
             warnings.append(f'chapitres : rangé dans « {" », « ".join(c.name for c in gardes)} » seulement '
