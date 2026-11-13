@@ -4,7 +4,7 @@
   présence dans la recherche de membres, professeur vérifié par l'équipe). Sans ligne en base, les valeurs par défaut
   dépendent du compte (services.reglages) : un élève mineur, ou dont l'âge est inconnu, valide ses abonnés.
 - Abonnement : X suit Y. « en_attente » tant que Y n'a pas accepté, quand Y valide ses abonnés. Suivre ne donne aucun
-  droit d'écrire à quelqu'un.
+  droit d'écrire à quelqu'un : il faut se suivre mutuellement (apps/messagerie).
 - Blocage : Y a bloqué X. X ne peut plus suivre Y ni le lui demander ; les abonnements entre eux sont retirés.
 - BadgeObtenu : un palier de badge atteint (badges.py). Il reste acquis même si le chiffre redescend.
 """

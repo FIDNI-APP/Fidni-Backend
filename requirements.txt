@@ -19,6 +19,9 @@ django-environ==0.14.0
 
 # ── Production server ───────────────────────────────────────────────────────
 gunicorn==23.0.0
+uvicorn[standard]==0.35.0   # WebSocket de la messagerie et des appels (config/asgi.py)
+channels==4.3.1            # WebSocket dans Django (apps/messagerie/consumers.py)
+channels-redis==4.3.0      # relie gunicorn et uvicorn par Redis
 whitenoise==6.12.0
 
 # ── AWS: S3 media + Secrets Manager ─────────────────────────────────────────

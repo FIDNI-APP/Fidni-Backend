@@ -32,6 +32,17 @@ python manage.py collectstatic --noinput
 # Start nginx
 nginx
 
+# WebSocket de la messagerie et des appels (13/11/2026) : uvicorn, un seul processus, relancé s'il s'arrête.
+# Il ne sert que /ws/ (nginx) ; gunicorn et lui se parlent par Redis (REDIS_URL).
+(
+  while true; do
+    uvicorn config.asgi:application --host 127.0.0.1 --port 8001 --proxy-headers --ws-ping-interval 20 \
+      --ws-ping-timeout 20 --no-access-log --log-level warning || true
+    echo "uvicorn arrêté, relance dans 2 s"
+    sleep 2
+  done
+) &
+
 # Start gunicorn (bind to localhost only, nginx will proxy)
 # Workers default to 3 (fine for a laptop / small VPS). Override with
 # GUNICORN_WORKERS in the environment; rule of thumb on a real server: 2*CPU+1.

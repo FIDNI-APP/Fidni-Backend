@@ -252,6 +252,8 @@ urlpatterns = [
     path('api/', include('apps.discussions.urls')),
     # Communauté : profils publics, abonnements, badges, membres (apps/communaute, 09/11/2026)
     path('api/', include('apps.communaute.urls')),
+    # Messages privés, appels et travail à plusieurs, entre abonnés mutuels (apps/messagerie, 13/11/2026)
+    path('api/', include('apps.messagerie.urls')),
 
     # Concours (ENSA / ENSAM / Médecine + tips + simulations)
     path('api/concours/', include('apps.concours.urls')),

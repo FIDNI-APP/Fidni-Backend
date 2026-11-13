@@ -3,7 +3,7 @@
 Protection des mineurs (décidé le 08/11/2026) :
 - un élève mineur, ou dont la date de naissance est inconnue, valide ses abonnés par défaut ;
 - les autres ne voient ni sa ville, ni ses listes d'abonnés tant qu'ils ne sont pas abonnés acceptés ;
-- s'abonner ne donne jamais le droit d'écrire à quelqu'un ; le nom complet et l'établissement restent privés pour
+- s'abonner seul ne donne pas le droit d'écrire : il faut être abonnés mutuels (apps/messagerie, 13/11/2026) ; le nom complet et l'établissement restent privés pour
   tous (users/serializers.py).
 """
 import logging
@@ -70,10 +70,13 @@ def relation(viewer, user):
         return {'moi': False, 'abonne': None, 'me_suit': False, 'bloque': False, 'connecte': False}
     if viewer.id == user.id:
         return {'moi': True, 'abonne': None, 'me_suit': False, 'bloque': False, 'connecte': True}
+    from apps.messagerie.regles import peut_ecrire
     liens = dict(Abonnement.objects.filter(abonne=viewer, suivi=user).values_list('suivi_id', 'statut'))
     me_suit = Abonnement.objects.filter(abonne=user, suivi=viewer, statut=Abonnement.ACCEPTE).exists()
+    # Messages, appels, travail à plusieurs : seulement entre abonnés mutuels (apps/messagerie/regles.py).
     return {'moi': False, 'abonne': liens.get(user.id), 'me_suit': me_suit,
-            'bloque': Blocage.objects.filter(auteur=viewer, bloque=user).exists(), 'connecte': True}
+            'bloque': Blocage.objects.filter(auteur=viewer, bloque=user).exists(), 'connecte': True,
+            'peut_ecrire': peut_ecrire(viewer, user)}
 
 
 def voit_listes(viewer, user, reglages):

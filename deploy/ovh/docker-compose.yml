@@ -7,8 +7,9 @@
 # Lancer :   cd /opt/fidni/backend/deploy/ovh && docker compose up -d --build
 # Journaux : docker compose logs -f backend
 #
-# Aucun port n'est ouvert sur Internet : le tunnel Cloudflare (conteneur « tunnel ») sort vers
-# Cloudflare et renvoie fidni.fr → 127.0.0.1:3001 et api.fidni.fr → 127.0.0.1:8080.
+# Le site n'ouvre aucun port sur Internet : le tunnel Cloudflare (conteneur « tunnel ») sort vers
+# Cloudflare et renvoie fidni.fr → 127.0.0.1:3001 et api.fidni.fr → 127.0.0.1:8080 (WebSocket /ws/ compris).
+# Seule exception : le relais des appels (« turn », profil « appels »), qui doit être joignable en direct.
 # Rien de secret ici (dépôt public) : les secrets sont dans /opt/fidni/secrets.
 
 name: fidni
@@ -48,6 +49,7 @@ services:
       DB_USER: fidni
       DB_SSLMODE: disable          # réseau interne Docker, pas de TLS nécessaire
       AWS_STORAGE_ENABLED: "false" # fichiers envoyés sur le disque du serveur (volume « media »)
+      REDIS_URL: redis://redis:6379/0   # messagerie : relie gunicorn et le WebSocket (uvicorn)
     volumes:
       - media:/app/media
     ports:
@@ -55,6 +57,46 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      redis:
+        condition: service_started
+    restart: unless-stopped
+
+  redis:
+    # Messagerie et appels (13/11/2026) : messages entre gunicorn et le WebSocket, rien de durable (pas de disque).
+    # Démarré avec le backend (dépendance) : le déploiement automatique (« up backend ») le lance aussi.
+    image: redis:7.4-alpine
+    container_name: fidni-redis
+    command: ["redis-server", "--save", "", "--appendonly", "no", "--maxmemory", "64mb", "--maxmemory-policy", "allkeys-lru"]
+    restart: unless-stopped
+    # Pas de « ports » : joignable seulement par le backend, sur le réseau interne.
+
+  turn:
+    # Relais des appels (coturn, STUN + TURN) quand le pair-à-pair est impossible (4G, wifi d'école). Il reçoit des
+    # connexions de partout : ports 3478 (UDP et TCP) et 49160-49200 (UDP) à ouvrir dans ufw (installer-serveur.sh).
+    # Profil « appels » : démarré à la main une fois TURN_SECRET et TURN_HOST mis dans /opt/fidni/secrets/backend.env
+    #   docker compose --profile appels up -d turn
+    # Les identifiants donnés aux navigateurs sont temporaires (apps/messagerie/views.ice, use-auth-secret).
+    # Jamais de relais vers le réseau privé du serveur (base, Redis…) : plages internes refusées.
+    profiles: ["appels"]
+    image: coturn/coturn:4.6.3
+    container_name: fidni-turn
+    network_mode: host
+    env_file: /opt/fidni/secrets/backend.env
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - >-
+        exec turnserver -n --log-file=stdout --no-cli --no-tls --no-dtls
+        --listening-port=3478 --min-port=49160 --max-port=49200
+        --fingerprint --use-auth-secret --static-auth-secret="$$TURN_SECRET" --realm=fidni.fr
+        --external-ip="$$TURN_HOST" --no-multicast-peers --stale-nonce=600
+        --user-quota=12 --total-quota=600 --max-bps=1500000
+        --denied-peer-ip=0.0.0.0-0.255.255.255 --denied-peer-ip=10.0.0.0-10.255.255.255
+        --denied-peer-ip=100.64.0.0-100.127.255.255 --denied-peer-ip=127.0.0.0-127.255.255.255
+        --denied-peer-ip=169.254.0.0-169.254.255.255 --denied-peer-ip=172.16.0.0-172.31.255.255
+        --denied-peer-ip=192.0.0.0-192.0.0.255 --denied-peer-ip=192.168.0.0-192.168.255.255
+        --denied-peer-ip=198.18.0.0-198.19.255.255 --denied-peer-ip=240.0.0.0-255.255.255.255
+        --denied-peer-ip=::1 --denied-peer-ip=fc00::-fdff:ffff:ffff:ffff:ffff:ffff:ffff:ffff
+        --denied-peer-ip=fe80::-febf:ffff:ffff:ffff:ffff:ffff:ffff:ffff
     restart: unless-stopped
 
   frontend:
