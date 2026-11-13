@@ -57,7 +57,9 @@ def _contenu(c, request):
 def conversation_dict(conv, viewer, request, non_lus=None, dernier=None):
     membres = [p for p in conv.participants.all() if p.parti_le is None]
     autres = [p.user for p in membres if p.user_id != viewer.id]
-    titre = conv.titre or ', '.join(u.username for u in autres[:4]) or 'Conversation'
+    # Sans nom : le sujet d'une salle de travail, sinon les pseudos des autres.
+    titre = (conv.titre or (conv.contenu.title if conv.contenu_id and conv.contenu else '')
+             or ', '.join(u.username for u in autres[:4]) or 'Conversation')
     return {
         'id': conv.id, 'type': conv.type, 'titre': titre, 'titre_libre': conv.titre,
         'membres': [{**author(p.user, request), 'lu_jusqu_a': p.lu_jusqu_a.isoformat() if p.lu_jusqu_a else None,
