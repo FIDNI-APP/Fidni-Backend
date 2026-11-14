@@ -109,7 +109,7 @@ check('à retravailler : en haut (top 3) avec la raison', 'Limites 5' in t[:3] a
 check('nouveau dans son chapitre : en haut (top 3)', 'Limites tout neuf' in t[:3], t[:4])
 check('chapitre en cours (Dérivation) avant les chapitres jamais ouverts',
       t.index('Dérivation 1') < min(t.index(e.title) for e in autres_ex), t)
-check('raison « Suite de ton travail »', (why['Dérivation 1'] or '').startswith('Suite de ton travail'), why)
+check('pas de raison « Suite de ton travail » (retirée le 14/11/2026)', why['Dérivation 1'] is None, why)
 check('autre niveau : derrière tout ce qui reste à faire de son niveau',
       t.index('Tronc commun') > max(t.index(e.title) for e in der_ex + autres_ex), t)
 
