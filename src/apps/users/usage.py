@@ -90,12 +90,14 @@ ACTIONS = {
     # Filtres des listes (exercices, examens, leçons) : un filtre ajouté, le tri, « Tout effacer ».
     'filtre-niveau', 'filtre-matiere', 'filtre-sous-domaine', 'filtre-chapitre', 'filtre-theoreme',
     'filtre-difficulte', 'filtre-statut', 'filtre-national', 'filtre-date', 'filtre-effacer', 'tri',
+    # Enseignants (14/11/2026) : filtre « Enseignant », clic sur son nom dans une carte ou sur la page d'un contenu.
+    'filtre-enseignant', 'enseignant-carte', 'enseignant-page',
 }
 
 
 # Valeur d'un filtre : « <liste>:<filtre>:<valeur> » (identifiant, difficulté, tri…), traduite au Pilotage.
 FILTER_RE = re.compile(
-    r'^(exercise|exam|lesson):(niveau|matiere|sous-domaine|chapitre|theoreme|difficulte|statut|national|date|tri)'
+    r'^(exercise|exam|lesson):(niveau|matiere|sous-domaine|chapitre|theoreme|enseignant|difficulte|statut|national|date|tri)'
     r':[A-Za-z0-9_-]{1,40}$'
     # Porte d'entrée de la fenêtre d'inscription (10/10/2026) : « auth:porte:vote », « auth:porte:bandeau »…
     r'|^auth:porte:[a-z0-9-]{1,30}$'
