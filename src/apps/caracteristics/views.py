@@ -251,6 +251,38 @@ class ChapterViewSet(viewsets.ReadOnlyModelViewSet):
 
 #----------------------------DIFFICULTY COUNTS-------------------------------
 
+def _filtres_liste(request, qs):
+    """Mêmes filtres de taxonomie que la liste (things/views.py) : compteurs de la barre de filtres."""
+    p = request.query_params
+    class_level_ids = p.getlist('class_levels[]')
+    for param, champ in (('class_levels[]', 'class_levels__id__in'), ('subjects[]', 'subject__id__in'),
+                         ('subfields[]', 'subfields__id__in'), ('chapters[]', 'chapters__id__in'),
+                         ('theorems[]', 'theorems__id__in')):
+        ids = p.getlist(param)
+        if ids:
+            qs = qs.filter(**{champ: ids})
+    # « Examens nationaux » / « Devoirs » : mêmes compteurs que la liste affichée (avant, les deux s'additionnaient).
+    is_national = (p.get('is_national_exam') or '').lower()
+    if is_national in ('true', 'false'):
+        qs = qs.filter(is_national_exam=is_national == 'true')
+    # Dossier d'une année du Bac national (« aucune » : sujets sans année), comme la liste.
+    year = p.get('national_year') or ''
+    if year == 'aucune':
+        qs = qs.filter(national_year__isnull=True)
+    elif year.isascii() and year.isdigit():
+        qs = qs.filter(national_year=int(year))
+    # Dossier « Sans chapitre » d'un niveau : comme la liste (things/views.py).
+    if p.get('sans_chapitre') == 'true':
+        qs = (qs.exclude(chapters__class_levels__id__in=class_level_ids) if class_level_ids
+              else qs.filter(chapters__isnull=True))
+    return qs
+
+
+def _ids_param(request, nom):
+    vals = request.query_params.getlist(f'{nom}[]') + request.query_params.getlist(nom)
+    return [int(x) for v in vals for x in str(v).split(',') if x.strip().isascii() and x.strip().isdigit()]
+
+
 @api_view(['GET'])
 @perm_classes([AllowAny])
 def difficulty_counts(request):
@@ -258,42 +290,34 @@ def difficulty_counts(request):
     from apps.things.models import Content
 
     content_type = request.query_params.get('content_type', 'exercise')
-    qs = Content.objects.filter(type=content_type)
-
-    class_level_ids = request.query_params.getlist('class_levels[]')
-    subject_ids = request.query_params.getlist('subjects[]')
-    subfield_ids = request.query_params.getlist('subfields[]')
-    chapter_ids = request.query_params.getlist('chapters[]')
-    theorem_ids = request.query_params.getlist('theorems[]')
-
-    if class_level_ids:
-        qs = qs.filter(class_levels__id__in=class_level_ids)
-    if subject_ids:
-        qs = qs.filter(subject__id__in=subject_ids)
-    if subfield_ids:
-        qs = qs.filter(subfields__id__in=subfield_ids)
-    if chapter_ids:
-        qs = qs.filter(chapters__id__in=chapter_ids)
-    if theorem_ids:
-        qs = qs.filter(theorems__id__in=theorem_ids)
-    # « Examens nationaux » / « Devoirs » : mêmes compteurs que la liste affichée (avant, les deux s'additionnaient).
-    is_national = (request.query_params.get('is_national_exam') or '').lower()
-    if is_national in ('true', 'false'):
-        qs = qs.filter(is_national_exam=is_national == 'true')
-    # Dossier d'une année du Bac national (« aucune » : sujets sans année), comme la liste.
-    year = request.query_params.get('national_year') or ''
-    if year == 'aucune':
-        qs = qs.filter(national_year__isnull=True)
-    elif year.isascii() and year.isdigit():
-        qs = qs.filter(national_year=int(year))
-    # Dossier « Sans chapitre » d'un niveau : comme la liste (things/views.py).
-    if request.query_params.get('sans_chapitre') == 'true':
-        qs = (qs.exclude(chapters__class_levels__id__in=class_level_ids) if class_level_ids
-              else qs.filter(chapters__isnull=True))
+    qs = _filtres_liste(request, Content.objects.filter(type=content_type))
+    enseignants = _ids_param(request, 'enseignants')
+    if enseignants:
+        qs = qs.filter(enseignants__id__in=enseignants)
 
     counts = qs.values('difficulty').annotate(count=Count('id', distinct=True))
     result = {item['difficulty']: item['count'] for item in counts if item['difficulty']}
     return Response(result)
+
+
+@api_view(['GET'])
+@perm_classes([AllowAny])
+def enseignant_counts(request):
+    """Filtre « Enseignant » des listes (14/11/2026) : [{id, nom, count}] des enseignants qui ont au moins un contenu
+    avec les filtres en cours (sans celui des enseignants), les plus fournis d'abord."""
+    from apps.things.models import Content, Enseignant
+
+    content_type = request.query_params.get('content_type', 'exercise')
+    qs = _filtres_liste(request, Content.objects.filter(type=content_type))
+    diffs = request.query_params.getlist('difficulties[]')
+    if diffs:
+        qs = qs.filter(difficulty__in=diffs)
+    counts = dict(qs.filter(enseignants__isnull=False).values('enseignants')
+                  .annotate(n=Count('id', distinct=True)).values_list('enseignants', 'n'))
+    rows = [{'id': e.id, 'nom': e.nom_affiche, 'count': counts[e.id]}
+            for e in Enseignant.objects.filter(id__in=counts)]
+    rows.sort(key=lambda r: (-r['count'], r['nom']))
+    return Response(rows)
 
 
 #----------------------------SCHOOLS-------------------------------

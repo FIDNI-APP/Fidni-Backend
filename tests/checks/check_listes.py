@@ -164,9 +164,9 @@ check('« Tout réussi » après une question jugée seule : elle garde « quest
       r.status_code == 200 and src == {'q1': 'question', 'q2.s1': 'tout', 'q2.s2': 'tout'}, src)
 c.post(f'/api/contents/{facile.id}/assess_many/', {'assessments': {'q1': None, 'q2.s1': None, 'q2.s2': None}}, format='json')
 rows = {x['id']: x for x in c.get('/api/contents/', {'type': 'exercise'}).data['results']}
-check('user_progress : 2 évaluées sur 3, 1 réussie', rows[dur.id]['user_progress'] == {'assessed': 2, 'success': 1, 'total': 3},
+check('user_progress : 2 évaluées sur 3, 1 réussie', rows[dur.id]['user_progress'] == {'assessed': 2, 'success': 1, 'partial': 0, 'review': 1, 'total': 3},
       rows[dur.id]['user_progress'])
-check('user_progress : rien d’évalué → 0 sur 3', rows[facile.id]['user_progress'] == {'assessed': 0, 'success': 0, 'total': 3})
+check('user_progress : rien d’évalué → 0 sur 3', rows[facile.id]['user_progress'] == {'assessed': 0, 'success': 0, 'partial': 0, 'review': 0, 'total': 3})
 # user_viewed : contenus déjà ouverts par l'élève (repère des cartes) ; les vues créées ici sont retirées ensuite.
 vues = [ViewHistory.objects.create(user=eleve, content_type=ct, object_id=dur.id, status='viewed'),
         ViewHistory.objects.create(user=autre, content_type=ct, object_id=facile.id, status='viewed')]
@@ -177,7 +177,7 @@ check('user_viewed : jamais ouvert → false', rows[sans.id]['user_viewed'] is F
 cartes = {x['id']: x for x in c.get('/api/contents/', {'type': 'exercise', 'view': 'card'}).data['results']}
 check('user_viewed : mode Cartes aussi', cartes[dur.id]['user_viewed'] is True)
 rows = {x['id']: x for x in c.get('/api/contents/', {'type': 'exercise', 'sort': 'recommended'}).data['results']}
-check('« Pour toi » : user_progress aussi', rows[moyen.id]['user_progress'] == {'assessed': 3, 'success': 2, 'total': 3},
+check('« Pour toi » : user_progress aussi', rows[moyen.id]['user_progress'] == {'assessed': 3, 'success': 2, 'partial': 0, 'review': 1, 'total': 3},
       rows[moyen.id]['user_progress'])
 check('« Pour toi » : user_viewed aussi', rows[dur.id]['user_viewed'] is True and rows[moyen.id]['user_viewed'] is False)
 for v in vues:

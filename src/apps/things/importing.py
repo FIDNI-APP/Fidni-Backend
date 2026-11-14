@@ -1050,6 +1050,9 @@ def import_fiche(fiche: dict, base_dir: str, *, api_base: str = 'https://api.fid
         content.chapters.set(res['chapters'])
         content.theorems.set(res['theorems'])
         content.subfields.set(res['subfields'])
+        # Enseignants du crédit (« M. Haddar, professeur de mathématiques ») : filtre et nom sur les cartes.
+        from .enseignants import attacher_depuis_credit
+        attacher_depuis_credit(content, fiche.get('credit'))
         if edition:
             _appliquer_edition(content, edition)
         for att in old_files:  # figures de la version précédente

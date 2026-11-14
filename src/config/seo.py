@@ -237,7 +237,9 @@ def content_page(request, section, pk):
         if chapter:
             crumb_links.append(f'<a href="{hub_url(section, level, chapter)}">{esc(chapter.name)}</a>')
     crumbs = ' › '.join(crumb_links)
-    credit = (content.json_content or {}).get('credit')
+    # Enseignants du contenu (things/enseignants.py) ; à défaut, l'ancienne mention de la fiche.
+    from apps.things.enseignants import texte as noms_enseignants
+    credit = noms_enseignants(content.enseignants.all()) or (content.json_content or {}).get('credit')
 
     # Contenus voisins : même rubrique, même niveau, même chapitre.
     related_html = ''
