@@ -11,6 +11,7 @@ from .models import (
     UserVideoProgress, QuizAttempt,
 )
 from apps.caracteristics.models import Subject, ClassLevel, Chapter
+from config.permissions import is_admin
 from apps.caracteristics.serializers import SubjectSerializer, ClassLevelSerializer, ChapterSerializer
 
 
@@ -76,7 +77,7 @@ class VideoSerializer(serializers.ModelSerializer):
         request = self.context.get('request')
         parsed = urlsplit(instance.url)
         match = re.fullmatch(r'/api/files/([0-9a-f-]+)/download/', parsed.path)
-        if request and getattr(request.user, 'is_staff', False) and match and parsed.netloc == request.get_host():
+        if request and is_admin(request.user) and match and parsed.netloc == request.get_host():
             token = signing.dumps({'file': match.group(1), 'user': request.user.pk}, salt='parcours-video')
             data['url'] = instance.url + '?play=' + token
         return data

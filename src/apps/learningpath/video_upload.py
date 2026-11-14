@@ -10,7 +10,7 @@ from django.utils import timezone
 from rest_framework import serializers, status
 from rest_framework.decorators import action
 from rest_framework.parsers import JSONParser, MultiPartParser, FormParser
-from rest_framework.permissions import IsAdminUser
+from config.permissions import IsAdminMember
 from rest_framework.response import Response
 from apps.uploads.models import FileAttachment
 from .models import ParcoursVideoUpload, Video
@@ -59,7 +59,7 @@ def get_upload(request, session):
 
 
 class VideoUploadMixin:
-    @action(detail=False, methods=['post'], permission_classes=[IsAdminUser], parser_classes=[JSONParser])
+    @action(detail=False, methods=['post'], permission_classes=[IsAdminMember], parser_classes=[JSONParser])
     def upload_init(self, request):
         serializer = UploadStart(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -92,7 +92,7 @@ class VideoUploadMixin:
         )
         return Response({'session': str(upload.id), 'received': 0, 'chunk_size': CHUNK_SIZE}, status=201)
 
-    @action(detail=False, methods=['post'], permission_classes=[IsAdminUser],
+    @action(detail=False, methods=['post'], permission_classes=[IsAdminMember],
             parser_classes=[MultiPartParser, FormParser])
     @transaction.atomic
     def upload_part(self, request):
@@ -125,7 +125,7 @@ class VideoUploadMixin:
         upload.save(update_fields=['received'])
         return Response({'received': upload.received})
 
-    @action(detail=False, methods=['post'], permission_classes=[IsAdminUser], parser_classes=[JSONParser])
+    @action(detail=False, methods=['post'], permission_classes=[IsAdminMember], parser_classes=[JSONParser])
     @transaction.atomic
     def upload_finish(self, request):
         serializer = UploadFinish(data=request.data)
