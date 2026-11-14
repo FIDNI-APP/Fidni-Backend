@@ -108,6 +108,25 @@ FILTER_RE = re.compile(
     r'|^nouveautes:[a-z0-9-]{1,40}:(vue|finie|cta|passee)$')
 
 
+# Appareil du visiteur (14/11/2026), lu dans le navigateur annoncé (User-Agent) : téléphone, tablette ou ordinateur.
+# Rien n'est gardé par personne : seulement des totaux par jour (UsageDaily « site » / « appareil-telephone »…).
+# Limite connue : un iPad récent s'annonce comme un Mac et compte donc comme un ordinateur.
+APPAREILS = ('telephone', 'tablette', 'ordinateur')
+_TABLETTE = re.compile(r'iPad|Tablet|Kindle|Silk/|PlayBook|SM-T\d|SM-X\d|Lenovo TB', re.I)
+_TELEPHONE = re.compile(r'Mobi|iPhone|iPod|Android|Windows Phone|Opera Mini|BlackBerry|webOS', re.I)
+_ANDROID = re.compile(r'Android', re.I)
+_MOBI = re.compile(r'Mobi', re.I)
+
+
+def appareil(ua):
+    # Une tablette Android n'annonce pas « Mobile » (convention de Chrome et Firefox).
+    if _TABLETTE.search(ua) or (_ANDROID.search(ua) and not _MOBI.search(ua)):
+        return 'tablette'
+    if _TELEPHONE.search(ua):
+        return 'telephone'
+    return 'ordinateur'
+
+
 class UsageAnonThrottle(AnonRateThrottle):
     rate = '240/hour'
 
@@ -195,4 +214,8 @@ def record(request):
         # Personnes distinctes sur tout le site ce jour-là (membres et visiteurs non connectés).
         new_on_site = cache.add(f'usage:site:{day.isoformat()}:{who}', 1, 26 * 3600)
         _bump(day, UsageDaily.KIND_SITE, 'visites', new_on_site, anon)
+        # Même chose par appareil : une personne passée du téléphone à l'ordinateur compte dans les deux.
+        dev = appareil(ua)
+        new_on_dev = cache.add(f'usage:appareil:{day.isoformat()}:{dev}:{who}', 1, 26 * 3600)
+        _bump(day, UsageDaily.KIND_SITE, f'appareil-{dev}', new_on_dev, anon)
     return Response({'counted': True})
