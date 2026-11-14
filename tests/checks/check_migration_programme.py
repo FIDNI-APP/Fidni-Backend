@@ -47,6 +47,13 @@ check('base neuve : 0003 sans effet', not ClassLevel.objects.exists() and not Ch
 
 # ── Base « production » : caracteristics en 0002, anciens seeders, données
 call_command('migrate', 'caracteristics', '0002', verbosity=0)
+# Revenir en 0002 retire aussi things 0028 et suivantes (elles dépendent de caracteristics 0004), dont la table des
+# numéros par chapitre (0030, 15/11/2026) : ses signaux sont coupés, ils ne font pas partie de ce qu'on vérifie ici.
+from django.db.models.signals import m2m_changed, post_save  # noqa: E402
+from apps.things.models import Content as _Content  # noqa: E402
+m2m_changed.disconnect(sender=_Content.chapters.through, dispatch_uid='things_numeros_chapitres')
+m2m_changed.disconnect(sender=_Content.class_levels.through, dispatch_uid='things_numeros_niveaux')
+post_save.disconnect(sender=_Content, dispatch_uid='things_numeros_examen')
 FIXTURES = os.path.join(BACKEND, 'tests', 'checks', 'fixtures')
 runpy.run_path(os.path.join(FIXTURES, 'seeder_2025.py'))
 runpy.run_path(os.path.join(FIXTURES, 'ancien_base_tables.py'))

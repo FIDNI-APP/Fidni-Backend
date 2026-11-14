@@ -132,6 +132,28 @@ class Content(CompleteableMixin, SaveableMixin, models.Model):
         return get_section_count(self._get_structure())
 
 
+class NumeroContenu(models.Model):
+    """Numéro d'un contenu dans un niveau et un chapitre (« Exercice 12 » des Limites de 2ème Bac SM), par type.
+    Calculé par things/numeros.py ; voir son en-tête."""
+    content = models.ForeignKey(Content, on_delete=models.CASCADE, related_name='numeros')
+    type = models.CharField(max_length=10)
+    class_level = models.ForeignKey(ClassLevel, on_delete=models.CASCADE, related_name='+')
+    chapter = models.ForeignKey(Chapter, on_delete=models.CASCADE, null=True, blank=True, related_name='+')
+    numero = models.PositiveIntegerField()
+
+    class Meta:
+        ordering = ['class_level_id', 'chapter_id']
+        constraints = [
+            models.UniqueConstraint(fields=['content', 'class_level', 'chapter'], name='numero_un_par_chapitre',
+                                    nulls_distinct=False),
+            models.UniqueConstraint(fields=['type', 'class_level', 'chapter', 'numero'],
+                                    name='numero_unique_dans_chapitre', nulls_distinct=False),
+        ]
+
+    def __str__(self):
+        return f'{self.type} n° {self.numero} ({self.class_level_id}, {self.chapter_id})'
+
+
 # =====================
 # SOLUTION
 # =====================

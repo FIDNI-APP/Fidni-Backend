@@ -209,8 +209,10 @@ class RevisionListViewSet(viewsets.ModelViewSet):
         already = set(revision_list.items.filter(content_type=ct, object_id__in=[c.pk for c in contents])
                       .values_list('object_id', flat=True))
         new = [c for c in contents if c.pk not in already]
+        start = RevisionListItem.next_position(revision_list)
         RevisionListItem.objects.bulk_create(
-            [RevisionListItem(revision_list=revision_list, content_type=ct, object_id=c.pk) for c in new],
+            [RevisionListItem(revision_list=revision_list, content_type=ct, object_id=c.pk, position=start + k)
+             for k, c in enumerate(new)],
             ignore_conflicts=True)
         self._label_from_contents(revision_list, contents)
         revision_list.save(update_fields=['updated_at'])
@@ -335,6 +337,29 @@ class RevisionListViewSet(viewsets.ModelViewSet):
                 {'error': 'Failed to add item to revision list'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+    @action(detail=True, methods=['post'])
+    def reorder(self, request, pk=None):
+        """
+        Nouvel ordre des exercices d'une série (15/11/2026) : `item_ids` = TOUS les éléments de la liste, dans
+        l'ordre voulu (identifiants d'éléments, pas de contenus). Refusé si un élément manque ou n'est pas à elle.
+        """
+        revision_list = self.get_object()
+        raw = request.data.get('item_ids')
+        if not isinstance(raw, list):
+            return Response({'error': 'item_ids : la liste des éléments, dans l’ordre.'}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            ids = [int(x) for x in raw]
+        except (TypeError, ValueError):
+            return Response({'error': 'item_ids : des identifiants entiers.'}, status=status.HTTP_400_BAD_REQUEST)
+        items = {i.id: i for i in revision_list.items.all()}
+        if len(ids) != len(set(ids)) or set(ids) != set(items):
+            return Response({'error': 'La liste a changé : recharge la page.'}, status=status.HTTP_409_CONFLICT)
+        for n, item_id in enumerate(ids, start=1):
+            items[item_id].position = n
+        RevisionListItem.objects.bulk_update(items.values(), ['position'])
+        revision_list.save(update_fields=['updated_at'])
+        return Response({'item_ids': ids})
 
     @action(detail=True, methods=['delete'])
     def remove_item(self, request, pk=None):

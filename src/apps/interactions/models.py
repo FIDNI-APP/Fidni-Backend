@@ -454,15 +454,28 @@ class RevisionListItem(models.Model):
 
     added_at = models.DateTimeField(auto_now_add=True)
     notes = models.TextField(blank=True, help_text="Optional notes about this item")
+    # Ordre choisi par l'élève (15/11/2026, « série d'exercices ») : 1, 2, 3… ; un ajout se met à la fin.
+    # Avant, la liste suivait -added_at : une fiche imprimée sortait à l'envers de l'ordre choisi dans le panneau.
+    position = models.PositiveIntegerField(default=0)
 
     class Meta:
         app_label = 'interactions'
-        ordering = ['-added_at']
+        ordering = ['position', 'added_at', 'id']
         unique_together = ['revision_list', 'content_type', 'object_id']
         indexes = [
             models.Index(fields=['revision_list', '-added_at']),
             models.Index(fields=['content_type', 'object_id']),
         ]
+
+    @staticmethod
+    def next_position(revision_list):
+        last = RevisionListItem.objects.filter(revision_list=revision_list).aggregate(m=models.Max('position'))['m']
+        return (last or 0) + 1
+
+    def save(self, *args, **kwargs):
+        if not self.pk and not self.position:
+            self.position = RevisionListItem.next_position(self.revision_list)
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.content_object} in {self.revision_list.name}"
