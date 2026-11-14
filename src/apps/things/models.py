@@ -10,6 +10,34 @@ logger = logging.getLogger('django')
 
 
 # =====================
+# ENSEIGNANT
+# =====================
+
+class Enseignant(models.Model):
+    """Professeur qui a donné un contenu (Natsu, 14/11/2026) : un NOM, distinct des comptes. Il peut ne pas être
+    inscrit ; `user` le relie à son compte Fidni quand il l'est. Posé par l'équipe (Pilotage › Enseignants) ou
+    à l'import d'une fiche (`credit`, things/enseignants.py). Affiché « M. Khalid Haddar »."""
+    CIVILITES = [('M.', 'M.'), ('Mme', 'Mme'), ('', '')]
+    civilite = models.CharField(max_length=4, choices=CIVILITES, blank=True, default='')
+    prenom = models.CharField(max_length=60, blank=True, default='')
+    nom = models.CharField(max_length=80)
+    school = models.ForeignKey('caracteristics.School', on_delete=models.SET_NULL, null=True, blank=True,
+                               related_name='enseignants')
+    user = models.OneToOneField(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='enseignant')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['nom', 'prenom']
+
+    @property
+    def nom_affiche(self):
+        return ' '.join(x for x in (self.civilite, self.prenom.strip(), self.nom.strip()) if x)
+
+    def __str__(self):
+        return self.nom_affiche
+
+
+# =====================
 # CONTENT
 # =====================
 
@@ -40,6 +68,8 @@ class Content(CompleteableMixin, SaveableMixin, models.Model):
     # Établissement d'origine (facultatif) : le lycée où ce devoir ou cet exercice a été donné.
     school = models.ForeignKey('caracteristics.School', on_delete=models.SET_NULL, null=True, blank=True,
                                related_name='contents')
+    # Enseignants qui ont donné ce contenu (« Proposé par … », filtre « Enseignant » des listes).
+    enseignants = models.ManyToManyField(Enseignant, related_name='contenus', blank=True)
     chapters = models.ManyToManyField(Chapter, related_name='content_items', blank=True)
     class_levels = models.ManyToManyField(ClassLevel, related_name='content_items')
     theorems = models.ManyToManyField(Theorem, related_name='content_items', blank=True)

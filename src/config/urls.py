@@ -1,4 +1,5 @@
 from django.contrib import admin
+from apps.things import enseignants_views as ens_views
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
@@ -38,7 +39,7 @@ from apps.ia import views as ia_views
 from apps.things.views import get_content_recommendations, parse_pdf_view
 from apps.caracteristics.views import (
     ClassLevelViewSet, SubjectViewSet, ChapterViewSet, SubfieldViewSet, TheoremViewSet,
-    difficulty_counts, school_search,
+    difficulty_counts, enseignant_counts, school_search,
 )
 from apps.authentication.views import (
     LogoutView, LoginView, GoogleLoginView, RegisterView,
@@ -190,6 +191,11 @@ urlpatterns = [
     # « Un membre n'arrive pas à se connecter » : comptes, blocage, journaux d'authentification.
     path('api/pilotage/connexion/', login_diagnostic.login_diagnostic, name='pilotage-connexion'),
     path('api/pilotage/bannis/', bans.bans_view, name='pilotage-bannis'),
+    path('api/pilotage/enseignants/', ens_views.enseignants_view, name='pilotage-enseignants'),
+    path('api/pilotage/enseignants/<int:pk>/', ens_views.enseignant_view, name='pilotage-enseignant'),
+    path('api/pilotage/enseignants/<int:pk>/fusionner/', ens_views.enseignant_fusionner_view, name='pilotage-enseignant-fusionner'),
+    path('api/pilotage/enseignants/<int:pk>/contenus/', ens_views.enseignant_contenus_view, name='pilotage-enseignant-contenus'),
+    path('api/pilotage/contenus/<int:pk>/enseignants/', ens_views.contenu_enseignants_view, name='pilotage-contenu-enseignants'),
     path('api/pilotage/bannis/<int:pk>/', bans.ban_delete_view, name='pilotage-banni'),
     # Signalements d'erreurs sur les contenus : envoi (élèves connectés), suivi (administrateurs).
     path('api/contents/<int:content_id>/report/', content_reports.report_content, name='content-report'),
@@ -229,6 +235,7 @@ urlpatterns = [
 
     # Filter counts
     path('api/difficulty-counts/', difficulty_counts, name='difficulty-counts'),
+    path('api/enseignants/', enseignant_counts, name='enseignant-counts'),
 
     # Recommendations
     path('api/contents/<int:content_id>/recommendations/', get_content_recommendations, name='content-recommendations'),

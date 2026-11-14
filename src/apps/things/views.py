@@ -122,20 +122,24 @@ def _card_structure(structure, max_blocks=6):
 
 
 def _user_progress(items, user):
-    """{id: {assessed, success, total} | None} : questions évaluées par l'élève, une requête pour la page."""
+    """{id: {assessed, success, partial, review, total} | None} : questions évaluées par l'élève, une requête pour la
+    page (« 4 réussies, 1 à revoir » sur les cartes ; review = à revoir ou ratée)."""
     if user is None:
         return {}
     from apps.users.my_stats import _questions
     finals = {c.id: {path for path, _, _ in _questions(c.json_content)} for c in items}
-    counts = {cid: [0, 0] for cid in finals}
+    counts = {cid: [0, 0, 0, 0] for cid in finals}
     rows = QuestionProgress.objects.filter(user=user, content_type=ContentType.objects.get_for_model(Content),
                                            object_id__in=list(finals)).values_list('object_id', 'question_path', 'status')
     for cid, path, st in rows:
         if st and path in finals.get(cid, ()):
             counts[cid][0] += 1
             counts[cid][1] += st == 'success'
-    return {cid: {'assessed': a, 'success': ok, 'total': len(finals[cid])} if finals[cid] else None
-            for cid, (a, ok) in counts.items()}
+            counts[cid][2] += st == 'partial'
+            counts[cid][3] += st in ('review', 'failed')
+    return {cid: {'assessed': a, 'success': ok, 'partial': part, 'review': rev, 'total': len(finals[cid])}
+            if finals[cid] else None
+            for cid, (a, ok, part, rev) in counts.items()}
 
 
 def _user_viewed(items, user):
@@ -404,6 +408,8 @@ class ContentViewSet(VoteMixin, viewsets.ModelViewSet):
         difficulties = self.request.query_params.getlist('difficulties[]')
         subfields = self.request.query_params.getlist('subfields[]')
         theorems = self.request.query_params.getlist('theorems[]')
+        # Filtre « Enseignant » (14/11/2026) : « enseignants[]=3 » répété ou « enseignants=3,5 ».
+        enseignants = _ids(params.getlist('enseignants[]') + params.getlist('enseignants'))
 
         show_viewed = self.request.query_params.get('showViewed', '').lower() == 'true'
         hide_viewed = self.request.query_params.get('hideViewed', '').lower() == 'true'
@@ -425,6 +431,8 @@ class ContentViewSet(VoteMixin, viewsets.ModelViewSet):
             filters &= Q(subfields__id__in=subfields)
         if theorems:
             filters &= Q(theorems__id__in=theorems)
+        if enseignants:
+            filters &= Q(enseignants__id__in=enseignants)
         if chapters:
             filters &= Q(chapters__id__in=chapters)
         if difficulties:

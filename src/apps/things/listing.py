@@ -17,7 +17,7 @@ def with_list_relations(queryset, user=None):
         'author', 'author__profile', 'solution', 'subject', 'school'
     ).prefetch_related(
         'chapters__class_levels', 'class_levels', 'comments', 'votes', 'theorems', 'subfields', 'completed',
-        'subject__class_levels',
+        'subject__class_levels', 'enseignants__user',
     )
     if user is not None and getattr(user, 'is_authenticated', False):
         # Enregistrement / statut de l'élève connecté : une requête pour toute la liste.

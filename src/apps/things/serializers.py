@@ -125,6 +125,16 @@ class CommentSerializer(serializers.ModelSerializer):
 # CONTENT — detail serializer
 # =====================
 
+def _enseignants_et_devoir(serializer, instance, data):
+    """Enseignants du contenu (things/enseignants.py, préchargés par listing.py) et type d'un devoir lu dans son
+    titre (« DS n° 2 », année scolaire ; things/devoir.py)."""
+    from apps.users.noms import viewer_de
+    from .devoir import type_devoir
+    from .enseignants import serialiser
+    data['enseignants'] = serialiser(instance.enseignants.all(), viewer_de(serializer.context))
+    data['devoir'] = type_devoir(instance.title, instance.is_national_exam) if instance.type == 'exam' else None
+
+
 class ContentSerializer(serializers.ModelSerializer):
     author = AuthorSerializer(read_only=True)
     chapters = ChapterSerializer(many=True, read_only=True)
@@ -174,6 +184,7 @@ class ContentSerializer(serializers.ModelSerializer):
         data['item_count'] = get_item_count(json_content)
         data['section_count'] = get_section_count(json_content)
         data['expected_minutes'] = expected_minutes(json_content)
+        _enseignants_et_devoir(self, instance, data)
         return data
 
     def get_comments(self, obj):
@@ -270,6 +281,7 @@ class ContentListSerializer(serializers.ModelSerializer):
         # Parties d'un examen : lues par la carte, dont la structure est tronquée en mode Cartes (view=card).
         data['section_count'] = get_section_count(json_content)
         data['expected_minutes'] = expected_minutes(json_content)
+        _enseignants_et_devoir(self, instance, data)
         return data
 
     def get_school(self, obj):
