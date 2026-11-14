@@ -45,6 +45,8 @@ VIEWS_SINCE = date(2026, 10, 5)
 USAGE_SINCE = date(2026, 10, 6)
 # Part des visiteurs non connectés (anon_count, anon_visitors) et valeurs des filtres : à partir de cette date.
 ANON_SINCE = date(2026, 10, 9)
+# Appareils (téléphone, tablette, ordinateur) : mesurés depuis le 14/11/2026 (users/usage.py appareil()).
+APPAREILS_SINCE = date(2026, 11, 14)
 TOP_CONTENTS = 8
 # Comptes de vérification automatique (captures, tests en production) : pas de vrais membres.
 TEST_ACCOUNTS = ['fidni_test_claude']
@@ -260,6 +262,7 @@ def overview(request):
         'pages': pages,
         'filter_values': _filter_values(first),
         'anonymes': _anonymous(first, prev_first, current, previous, signups_current),
+        'appareils': _appareils(prev_first, current, previous),
         'members_total': len(real_ids),
         'funnel': _funnel(start, real),
         'auth_doors': _auth_doors(first),
@@ -670,6 +673,32 @@ def _anonymous(first, prev_first, current, previous, signups_current):
         'current': cur, 'previous': prev, 'signups': signups_current,
         'series': [day(d) for d in current],
         'pages': pages, 'top_contents': top_contents, 'actions': actions,
+    }
+
+
+def _appareils(prev_first, current, previous):
+    """Personnes distinctes par jour et par appareil (additionnées sur la période), membres et visiteurs à part."""
+    from apps.users.usage import APPAREILS
+    rows = (UsageDaily.objects.filter(kind=UsageDaily.KIND_SITE, name__in=[f'appareil-{a}' for a in APPAREILS],
+                                      date__gte=max(prev_first, APPAREILS_SINCE))
+            .values('date', 'name', 'count', 'visitors', 'anon_visitors'))
+    by = defaultdict(dict)
+    for r in rows:
+        by[r['date']][r['name'][len('appareil-'):]] = r
+
+    def sums(ds):
+        out = {}
+        for a in APPAREILS:
+            rs = [by[d][a] for d in ds if a in by.get(d, {})]
+            visits = sum(r['visitors'] for r in rs)
+            anon = sum(r['anon_visitors'] for r in rs)
+            out[a] = {'visits': visits, 'members': visits - anon, 'anon': anon, 'pages': sum(r['count'] for r in rs)}
+        return out
+
+    return {
+        'since': APPAREILS_SINCE.isoformat(),
+        'current': sums(current),
+        'previous': sums(previous) if previous[0] >= APPAREILS_SINCE else None,
     }
 
 

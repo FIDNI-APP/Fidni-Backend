@@ -1,4 +1,4 @@
-"""Mesure d'usage (pages, actions, fonctionnalités du Pilotage) et auto-évaluation groupée (« Tout réussi »)."""
+﻿"""Mesure d'usage (pages, actions, fonctionnalités du Pilotage) et auto-évaluation groupée (« Tout réussi »)."""
 import os
 import sys
 import tempfile
@@ -184,6 +184,43 @@ check('anonymes : contenu le plus vu', an['top_contents'] and an['top_contents']
       and an['top_contents'][0]['views'] == 1, an['top_contents'])
 acts = {a['key']: a for a in an['actions']}
 check('anonymes : gestes (voir la solution)', acts.get('voir-solution', {}).get('count') == 1, an['actions'])
+
+# ── Appareils (14/11/2026) : téléphone, tablette, ordinateur, d'après le navigateur annoncé
+from datetime import timedelta  # noqa: E402
+from apps.users import admin_dashboard  # noqa: E402
+from apps.users.usage import appareil  # noqa: E402
+UAS = {
+    'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 Version/18.0 Mobile/15E148 Safari/604.1': 'telephone',
+    'Mozilla/5.0 (Linux; Android 14; SM-A546B) AppleWebKit/537.36 Chrome/130.0 Mobile Safari/537.36': 'telephone',
+    'Mozilla/5.0 (Linux; Android 13; SM-X200) AppleWebKit/537.36 Chrome/130.0 Safari/537.36': 'tablette',
+    'Mozilla/5.0 (iPad; CPU OS 17_0 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148': 'tablette',
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/130.0 Safari/537.36': 'ordinateur',
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 Version/18.0 Safari/605.1.15': 'ordinateur',
+    'Mozilla/5.0 (X11; Linux x86_64; rv:131.0) Gecko/20100101 Firefox/131.0': 'ordinateur',
+}
+for ua, attendu in UAS.items():
+    check(f'appareil : {attendu} ({ua[13:40]})', appareil(ua) == attendu, appareil(ua))
+admin_dashboard.APPAREILS_SINCE = timezone.localdate() - timedelta(days=60)  # mesure « déjà commencée » pour le test
+TEL = 'Mozilla/5.0 (Linux; Android 14; SM-A546B) AppleWebKit/537.36 Chrome/130.0 Mobile Safari/537.36'
+c_tel = APIClient(REMOTE_ADDR='10.0.0.20', HTTP_USER_AGENT=TEL, HTTP_ORIGIN='https://fidni.fr')
+c_tel.force_authenticate(User.objects.create_user('eleve_tel', 'tel@x.fr', 'Motdepasse-solide-42'))
+for page in ('/', '/exams', '/'):
+    c_tel.post('/api/usage/', {'kind': 'page', 'name': page}, format='json')
+APIClient(REMOTE_ADDR='10.0.0.21', HTTP_USER_AGENT=TEL, HTTP_ORIGIN='https://fidni.fr').post(
+    '/api/usage/', {'kind': 'page', 'name': '/'}, format='json')
+row = UsageDaily.objects.get(kind='site', name='appareil-telephone')
+check('appareil : 2 personnes sur téléphone dont 1 visiteur', (row.visitors, row.anon_visitors) == (2, 1),
+      (row.count, row.visitors, row.anon_visitors))
+ap = pc.get('/api/pilotage/?jours=7').data['appareils']
+check('Pilotage : appareils de la période', ap['current']['telephone']['visits'] == 2
+      and ap['current']['telephone']['members'] == 1 and ap['current']['telephone']['anon'] == 1
+      and ap['current']['ordinateur']['visits'] >= 1, ap)
+check('Pilotage : appareils, période précédente comparée', ap['previous'] is not None
+      and ap['previous']['telephone']['visits'] == 0, ap['previous'])
+admin_dashboard.APPAREILS_SINCE = timezone.localdate()
+ap = pc.get('/api/pilotage/?jours=7').data['appareils']
+UsageMember.objects.filter(user__username='eleve_tel').delete()  # journal du membre : vérifié plus bas, sans lui
+check('Pilotage : pas de comparaison avant le début de la mesure', ap['previous'] is None, ap)
 
 
 # ── Audit du 10/10/2026 : nouveaux gestes mesurés, porte d'entrée de l'inscription, origine d'une auto-évaluation
