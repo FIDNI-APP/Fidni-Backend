@@ -1,7 +1,7 @@
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly, IsAdminUser
+from rest_framework.permissions import IsAuthenticated, IsAuthenticatedOrReadOnly
 from django.utils import timezone
 from django.db.models import Avg, Sum, Count, F
 from django.db import transaction
@@ -25,16 +25,20 @@ from .video_upload import VideoUploadMixin
 
 from django.conf import settings as _settings
 from rest_framework.exceptions import NotFound as _NotFound
+from config.permissions import IsAdminMember, is_admin
 
 
 class ParcoursVisibilityMixin:
-    """Parcours n'est pas encore publié : pour tout autre que le staff, ces routes n'existent pas.
+    """Parcours n'est pas encore publié : pour tout autre que l'équipe, ces routes n'existent pas.
+    Équipe = superutilisateur OU staff (config.permissions.is_admin), comme le site (lib/features.ts canSeeParcours) :
+    jusqu'au 14/11/2026 seul le staff passait, et un superutilisateur sans « staff » voyait le menu mais ne pouvait ni
+    lister (404) ni créer (403) de parcours.
     Publication : PARCOURS_PUBLIC=True dans le .env (et PARCOURS_PUBLIC dans le front, lib/features.ts)."""
 
     def initial(self, request, *args, **kwargs):
         super().initial(request, *args, **kwargs)
         user = getattr(request, 'user', None)
-        if not getattr(_settings, 'PARCOURS_PUBLIC', False) and not (user and user.is_authenticated and user.is_staff):
+        if not getattr(_settings, 'PARCOURS_PUBLIC', False) and not is_admin(user):
             raise _NotFound()
 
 
@@ -50,7 +54,7 @@ class LearningPathViewSet(ParcoursVisibilityMixin, viewsets.ModelViewSet):
 
     def get_permissions(self):
         if self.action in ['create', 'update', 'partial_update', 'destroy']:
-            return [IsAdminUser()]
+            return [IsAdminMember()]
         return super().get_permissions()
     
     def get_queryset(self):
@@ -164,7 +168,7 @@ class PathChapterViewSet(ParcoursVisibilityMixin, viewsets.ModelViewSet):
     
     def get_permissions(self):
         if self.action in ['create', 'update', 'partial_update', 'destroy']:
-            return [IsAdminUser()]
+            return [IsAdminMember()]
         return super().get_permissions()
     
     def get_queryset(self):
@@ -271,7 +275,7 @@ class VideoViewSet(VideoUploadMixin, ParcoursVisibilityMixin, viewsets.ModelView
     
     def get_permissions(self):
         if self.action in ['create', 'update', 'partial_update', 'destroy']:
-            return [IsAdminUser()]
+            return [IsAdminMember()]
         return super().get_permissions()
     
     def get_queryset(self):
@@ -399,7 +403,7 @@ class ChapterQuizViewSet(ParcoursVisibilityMixin, viewsets.ModelViewSet):
     
     def get_permissions(self):
         if self.action in ['create', 'update', 'partial_update', 'destroy']:
-            return [IsAdminUser()]
+            return [IsAdminMember()]
         return super().get_permissions()
     
     def get_queryset(self):

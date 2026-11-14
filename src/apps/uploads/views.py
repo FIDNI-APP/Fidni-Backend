@@ -7,6 +7,8 @@ from django.contrib.contenttypes.models import ContentType
 from django.http import HttpResponseRedirect, FileResponse, HttpResponse, Http404
 from django.core import signing
 from django.contrib.auth import get_user_model
+from django.db.models import Q
+from config.permissions import is_admin
 from django.conf import settings
 from django.shortcuts import get_object_or_404
 
@@ -40,12 +42,12 @@ class FileAttachmentViewSet(viewsets.ModelViewSet):
         """
         attachment = get_object_or_404(FileAttachment.objects.all(), pk=pk)
         if attachment.content_type_id and attachment.content_type.app_label == 'learningpath' and attachment.content_type.model == 'video':
-            allowed = bool(request.user and request.user.is_authenticated and request.user.is_staff)
+            allowed = is_admin(request.user)
             if not allowed:
                 try:
                     claim = signing.loads(request.query_params.get('play', ''), salt='parcours-video', max_age=6 * 3600)
                     allowed = str(claim['file']) == str(attachment.pk) and get_user_model().objects.filter(
-                        pk=claim['user'], is_staff=True, is_active=True,
+                        Q(is_staff=True) | Q(is_superuser=True), pk=claim['user'], is_active=True,
                     ).exists()
                 except (signing.BadSignature, KeyError, TypeError):
                     allowed = False
