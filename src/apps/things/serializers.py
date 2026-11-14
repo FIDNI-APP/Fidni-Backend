@@ -125,6 +125,17 @@ class CommentSerializer(serializers.ModelSerializer):
 # CONTENT — detail serializer
 # =====================
 
+def _frequence_theoremes():
+    """{id du théorème: nombre de contenus qui le citent}, gardé 10 min (ordre des théorèmes sur les cartes)."""
+    from django.core.cache import cache
+    from django.db.models import Count
+    freq = cache.get('cartes:freq_theoremes')
+    if freq is None:
+        freq = dict(Theorem.objects.annotate(n=Count('content_items')).values_list('id', 'n'))
+        cache.set('cartes:freq_theoremes', freq, 600)
+    return freq
+
+
 def _enseignants_et_devoir(serializer, instance, data):
     """Enseignants du contenu (things/enseignants.py, préchargés par listing.py) et type d'un devoir lu dans son
     titre (« DS n° 2 », année scolaire ; things/devoir.py)."""
@@ -296,7 +307,11 @@ class ContentListSerializer(serializers.ModelSerializer):
                 for c in obj.chapters.all()]
 
     def get_theorems(self, obj):
-        return [{'id': t.id, 'name': t.name} for t in obj.theorems.all()]
+        # Les plus caractéristiques d'abord (les moins répandus sur le site) : la carte n'en montre que deux
+        # (14/11/2026 ; « Dérivée d'une somme » ne dit rien d'un exercice).
+        freq = _frequence_theoremes()
+        rows = sorted(obj.theorems.all(), key=lambda t: (freq.get(t.id, 0), t.name))
+        return [{'id': t.id, 'name': t.name} for t in rows]
 
     # Tout ce qui suit lit les données préchargées par ContentViewSet.get_queryset :
     # avant, chaque carte d'une liste déclenchait ~18 requêtes SQL (N+1).

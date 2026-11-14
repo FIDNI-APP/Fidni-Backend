@@ -173,7 +173,9 @@ def rank(queryset, user=None):
         elif reason == 'review':
             label = 'À retravailler'
         elif reason == 'chapter':
-            label = f'Suite de ton travail · {names[best]}' if best in names else None
+            # « Suite de ton travail · … » : retiré des cartes à la demande de Natsu (14/11/2026, « ne sert à rien ») ;
+            # le classement le garde.
+            label = None
         elif reason == 'popular':
             label = 'Apprécié des élèves'
         else:
