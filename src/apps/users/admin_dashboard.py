@@ -492,6 +492,8 @@ TRACKED_ACTIONS = [
     ('dossier-niveau', 'Dossier d’un niveau ouvert'),
     ('dossier-chapitre', 'Dossier d’un chapitre ouvert'),
     ('dossier-annee', 'Dossier d’une année du Bac ouvert'),
+    ('enseignant-carte', 'Nom d’un enseignant cliqué (carte)'),
+    ('enseignant-page', 'Nom d’un enseignant cliqué (page d’un contenu)'),
 ]
 # Filtres des listes (07/10/2026) : un filtre compté quand on l'ajoute.
 TRACKED_FILTERS = [
@@ -499,6 +501,7 @@ TRACKED_FILTERS = [
     ('filtre-chapitre', 'Chapitre'),
     ('filtre-difficulte', 'Difficulté'),
     ('filtre-theoreme', 'Théorème'),
+    ('filtre-enseignant', 'Enseignant'),
     ('filtre-sous-domaine', 'Sous-domaine'),
     ('filtre-matiere', 'Matière'),
     ('filtre-statut', 'Statut (à faire, réussis, à revoir, vus)'),
@@ -551,7 +554,8 @@ SORT_LABEL = {'recommended': 'Pour toi', 'most_upvoted': 'Plus aimés', 'newest'
               'easiest': 'Du plus facile au plus difficile'}
 # Filtre envoyé par le navigateur → clé de TRACKED_FILTERS (même ligne du Pilotage).
 FILTER_KEY = {'niveau': 'filtre-niveau', 'matiere': 'filtre-matiere', 'sous-domaine': 'filtre-sous-domaine',
-              'chapitre': 'filtre-chapitre', 'theoreme': 'filtre-theoreme', 'difficulte': 'filtre-difficulte',
+              'chapitre': 'filtre-chapitre', 'theoreme': 'filtre-theoreme', 'enseignant': 'filtre-enseignant',
+              'difficulte': 'filtre-difficulte',
               'statut': 'filtre-statut', 'national': 'filtre-national', 'date': 'filtre-date', 'tri': 'tri'}
 
 
@@ -576,6 +580,10 @@ def _filter_values(first):
     models_by_filter = {'niveau': ClassLevel, 'matiere': Subject, 'sous-domaine': Subfield, 'chapitre': Chapter,
                         'theoreme': Theorem}
     names = {}
+    if ids['enseignant']:
+        # Enseignants (14/11/2026) : nom affiché « M. Khalid Haddar » (propriété, pas une colonne).
+        from apps.things.models import Enseignant
+        names.update({('enseignant', str(e.id)): e.nom_affiche for e in Enseignant.objects.filter(id__in=ids['enseignant'])})
     for filt, model in models_by_filter.items():
         if not ids[filt]:
             continue

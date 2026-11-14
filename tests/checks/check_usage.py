@@ -147,7 +147,10 @@ check('vues du contenu : 2 dont 1 visiteur', (dv.count, dv.anon_count) == (2, 1)
 r = client(ip='10.0.0.8').post('/api/usage/', {'kind': 'action', 'name': 'voir-solution'}, format='json')
 
 # ── Valeurs des filtres
-for name in ('exercise:difficulte:hard', 'exercise:difficulte:easy', 'exam:niveau:%d' % level.id, 'lesson:tri:newest'):
+from apps.things.models import Enseignant  # noqa: E402
+haddar = Enseignant.objects.create(civilite='M.', prenom='Khalid', nom='Haddar')
+for name in ('exercise:difficulte:hard', 'exercise:difficulte:easy', 'exam:niveau:%d' % level.id, 'lesson:tri:newest',
+             'exam:enseignant:%d' % haddar.id):
     r = client(eleves[1]).post('/api/usage/', {'kind': 'filtre', 'name': name}, format='json')
     check(f'valeur de filtre comptée : {name}', r.data.get('counted') is True, r.data)
 client(ip='10.0.0.8').post('/api/usage/', {'kind': 'filtre', 'name': 'exercise:difficulte:hard'}, format='json')
@@ -163,6 +166,15 @@ check('filtres : « Difficile » 2 fois dont 1 visiteur, en tête', hard.get('la
 check('filtres : identifiant traduit en nom', vals.get(('exam', 'filtre-niveau', str(level.id)), {}).get('label') == level.name,
       r.data['filter_values'])
 check('filtres : tri traduit', vals.get(('lesson', 'tri', 'newest'), {}).get('label') == 'Plus récents', r.data['filter_values'])
+check('filtres : enseignant traduit en nom', vals.get(('exam', 'filtre-enseignant', str(haddar.id)), {}).get('label')
+      == 'M. Khalid Haddar', r.data['filter_values'])
+for action in ('filtre-enseignant', 'enseignant-carte', 'enseignant-page'):
+    r2 = client(eleves[1]).post('/api/usage/', {'kind': 'action', 'name': action}, format='json')
+    check(f'geste compté : {action}', r2.data.get('counted') is True, r2.data)
+feats = {f['key']: f for f in pc.get('/api/pilotage/?jours=7').data['features']}
+check('Pilotage : filtre « Enseignant » et clics sur un nom', feats.get('filtre-enseignant', {}).get('actions') == 1
+      and feats.get('enseignant-carte', {}).get('actions') == 1 and feats.get('enseignant-page', {}).get('actions') == 1,
+      {k: feats.get(k) for k in ('filtre-enseignant', 'enseignant-carte', 'enseignant-page')})
 an = r.data['anonymes']
 check('anonymes : visites, pages, contenus', an['current']['visits'] == 1 and an['current']['pages'] == 2
       and an['current']['contents'] == 1 and an['current']['contents_all'] == 2, an['current'])
