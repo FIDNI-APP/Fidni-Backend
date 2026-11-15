@@ -144,6 +144,9 @@ def _enseignants_et_devoir(serializer, instance, data):
     from .enseignants import serialiser
     data['enseignants'] = serialiser(instance.enseignants.all(), viewer_de(serializer.context))
     data['devoir'] = type_devoir(instance.title, instance.is_national_exam) if instance.type == 'exam' else None
+    # Numéro dans chaque niveau et chapitre du contenu (15/11/2026, things/numeros.py) : « Exercice 12 ».
+    from .numeros import serialiser as numeros
+    data['numeros'] = numeros(instance)
 
 
 class ContentSerializer(serializers.ModelSerializer):

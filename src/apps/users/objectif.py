@@ -79,7 +79,7 @@ def _objectif_chapitre(c, level):
             pourquoi.append(f'{pct} % sur {n} questions.')
         if surtout:
             pourquoi.append(surtout)
-        return {**base, 'type': 'consolider', 'titre': f'Consolide « {c["name"]} »',
+        return {**base, 'type': 'consolider', 'titre': f'Retravaille « {c["name"]} »',
                 'phrase': 'Le cours, puis des exercices ciblés.',
                 'pourquoi': pourquoi, 'action': {'kind': 'entrainer', 'difficulte': cible_diff[0]},
                 'secondaire': {'kind': 'cours'},
@@ -99,7 +99,7 @@ def _objectif_chapitre(c, level):
 
     if e == 'bonne_voie' and d['etat'] == 'a_verifier' and d['due']:
         reussis = [lvl for lvl in ('medium', 'easy', 'hard') if (c['reussite']['par_difficulte'].get(lvl) or {}).get('pct')]
-        return {**base, 'type': 'verifier', 'titre': f'Vérifie que « {c["name"]} » est acquis',
+        return {**base, 'type': 'verifier', 'titre': f'Vérifie « {c["name"]} »',
                 'phrase': f'{S.VERIFIER_EXERCICES} exercices nouveaux, sans aide.',
                 'pourquoi': [f'Réussi : {pct} % sur {n} questions.' if pct is not None else 'Des questions réussies.',
                              'Pas encore revérifié quelques jours plus tard.'],
@@ -136,7 +136,7 @@ def _objectif_chapitre(c, level):
 
     if e == 'non_evalue':
         quiz = c['quiz_ready']
-        return {**base, 'type': 'evaluer', 'titre': f'Évalue-toi sur « {c["name"]} »',
+        return {**base, 'type': 'evaluer', 'titre': f'Teste-toi sur « {c["name"]} »',
                 'phrase': ('Le quiz du chapitre.' if quiz else f'{S.EVALUER_EXERCICES} exercices, chaque question notée.'),
                 'pourquoi': [c['raison']],
                 'action': {'kind': 'quiz' if quiz else 'entrainer', 'difficulte': 'easy'},

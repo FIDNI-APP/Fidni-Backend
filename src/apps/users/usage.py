@@ -80,6 +80,8 @@ ACTIONS = {
     'nouveautes-cta',     # fenêtre « Nouveautés » : « Voir ma progression »
     'nouveautes-passee',  # fenêtre « Nouveautés » : fermée avant la dernière étape
     'mode-revision',      # liste de révision ouverte en mode révision
+    # 15/11/2026 : séries d'exercices, bouton « Progression » des listes, graphique de l'accueil
+    'serie-ordre', 'serie-existante', 'liste-progression', 'accueil-courbe',
     'barre-mobile',       # barre d'onglets en bas sur téléphone
     'visite-auto', 'visite-passee', 'visite-finie',  # visites guidées
     'signaler-ouvert',    # fenêtre « Signaler une erreur » ouverte (envoyée ou non)
