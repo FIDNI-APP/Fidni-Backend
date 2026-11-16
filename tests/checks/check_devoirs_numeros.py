@@ -49,9 +49,12 @@ check('rang : semestre écrit dans le titre', rang('Contrôle n° 2 du semestre 
 check('rang : devoir de contrôle, de synthèse numérotés',
       rang('Devoir de contrôle n° 1 — 1ère Bac SM (octobre 2026)') == (1, 1)
       and rang('Devoir de synthèse n° 1 — 2ème Bac SM (octobre 2025)') == (1, 1))
-check('rang : sans numéro, devoir maison → « Autres devoirs »',
+check('rang : sans numéro, bac blanc → pas de numéro',
       rang('Devoir surveillé — 2ème Bac PC/SVT (fonction réciproque)')[1] is None
-      and rang('Devoir maison n° 1 (octobre 2025)')[1] is None)
+      and rang('Bac blanc — 2ème Bac SM (mai 2025)')[1] is None)
+check('rang : devoir maison ou libre numéroté → même numéro que le DS',
+      rang('Devoir maison n° 1 (octobre 2025)') == (1, 1)
+      and rang('Devoir libre n° 1 — 2ème Bac SM (Lycée Riad Ezzahia) : limites') == (1, 1))
 check('rang : sans mois, période du chapitre', rang('Devoir surveillé n° 2 — M. X', ['Semestre 2 (semaines 1–3)']) == (2, 2)
       and rang('Devoir surveillé n° 2 — M. X') == (1, 2))
 check('période : premier semestre cité', semestre_de_periode('Semestre 1 (semaines 12–15) puis semestre 2') == 1)
@@ -87,7 +90,8 @@ a = make('Devoir surveillé n° 1 — 2ème Bac SM (octobre 2024)', lim)
 b = make('Devoir surveillé n° 2 — 2ème Bac SM (novembre 2024)', suites)
 c2 = make('Contrôle continu n° 2 — 2ème Bac SM (décembre 2025)', lim)
 autre = make('Devoir sur table — 2ème Bac SM (suites)', suites)  # sans numéro : comme le n° 2 sur les suites
-dm = make('Devoir maison — 2ème Bac SM (octobre 2024)', suites)  # devoir maison : « Autres devoirs »
+dm = make('Devoir maison n° 1 — 2ème Bac SM (octobre 2024)', lim)  # devoir maison n° 1 : avec le DS n° 1
+blanc = make('Bac blanc — 2ème Bac SM (janvier 2025)', lim)  # bac blanc : « Autres devoirs »
 s2a = make('Devoir surveillé n° 1 — 2ème Bac SM (février 2025)', lim)
 sans_mois = make('Devoir surveillé n° 2 — 2ème Bac SM, M. X', s2) if s2 else None
 make('Examen national 2024', lim, national=True)
@@ -98,14 +102,14 @@ d = r.json()
 dv = d.get('devoirs') or []
 check('niveau : devoirs rangés par semestre', [g['semestre'] for g in dv] == [1, 2], dv)
 s1 = dv[0]['folders'] if dv else []
-check('semestre 1 : n° 1, n° 2 (avec le devoir sans numéro sur les suites), puis le devoir maison',
+check('semestre 1 : n° 1 (avec le devoir maison n° 1), n° 2 (avec le devoir sans numéro sur les suites), puis le bac blanc',
       [(f['name'], f['count']) for f in s1]
-      == [('Devoir surveillé n° 1', 1), ('Devoir surveillé n° 2', 3), ('Autres devoirs', 1)], s1)
+      == [('Devoir surveillé n° 1', 2), ('Devoir surveillé n° 2', 3), ('Autres devoirs', 1)], s1)
 check('adresse du dossier', s1 and s1[1]['url'] == '/exams/niveau/2eme-bac-sm/devoir-2-semestre-1', s1)
 s2f = dv[1]['folders'] if len(dv) > 1 else []
 check('semestre 2 : février et devoir sans mois d\'un chapitre du semestre 2',
       [(f['numero'], f['count']) for f in s2f] == ([(1, 1), (2, 1)] if s2 else [(1, 1)]), s2f)
-check('Bac national exclu', sum(f['count'] for g in dv for f in g['folders']) == (7 if s2 else 6))
+check('Bac national exclu', sum(f['count'] for g in dv for f in g['folders']) == (8 if s2 else 7))
 check('exercices : pas de devoirs', cl.get('/api/hubs/', {'section': 'exercises', 'level': '2eme-bac-sm'}).json().get('devoirs') is None)
 
 r = cl.get('/api/hubs/', {'section': 'exams', 'level': '2eme-bac-sm', 'chapter': 'devoir-2-semestre-1'})
@@ -127,7 +131,7 @@ r = cl.get('/api/contents/', {'type': 'exam', 'class_levels': sm2.id, 'devoir': 
 check('liste : dossier + chapitre', [x['id'] for x in r.json()['results']] == [c2.id])
 r = cl.get('/api/contents/', {'type': 'exam', 'devoir': 'devoir-2-semestre-1'})
 check('liste : dossier sans niveau → rien', r.json()['count'] == 0)
-Content.objects.filter(id=dm.id).update(difficulty='hard')
+Content.objects.filter(id=blanc.id).update(difficulty='hard')
 r = cl.get('/api/difficulty-counts/', {'content_type': 'exam', 'class_levels[]': sm2.id, 'devoir': 'autres-devoirs-semestre-1'})
 check('compteurs de difficulté : ceux du dossier', r.json() == {'hard': 1}, r.json())
 
@@ -144,7 +148,7 @@ check('sitemap : dossiers de devoirs', '/exams/niveau/2eme-bac-sm/devoir-2-semes
 # ── Devoir sans numéro sur un chapitre sans devoir numéroté : le chapitre numéroté le plus proche du programme
 from apps.caracteristics.hubs import _rangs_devoirs  # noqa: E402
 ordre = {ch.name: (programme.chapitre(sm2.name, ch.name) or {}).get('ordre') or 0 for ch in chapitres}
-numerotes = {lim.name: [(1, 1), (1, 2), (2, 1)], suites.name: [(1, 2)]}
+numerotes = {lim.name: [(1, 1), (1, 1), (1, 2), (2, 1)], suites.name: [(1, 2)]}
 if s2:
     numerotes[s2.name] = [(2, 2)]
 autre_ch = next(ch for ch in chapitres if ch.name not in numerotes and ordre.get(ch.name))

@@ -279,7 +279,7 @@ def _rangs_devoirs(level):
     Devoir sans numéro (Natsu, 16/11/2026) : rangé avec les devoirs numérotés du niveau qui portent sur le même
     chapitre (le numéro le plus fréquent ; à égalité, le plus petit), sinon sur le chapitre le plus proche dans le
     programme ; s'il n'y en a aucun, « Autres devoirs ». Un semestre écrit dans son titre (ou son mois) est respecté.
-    Un devoir maison ou un bac blanc reste dans « Autres devoirs »."""
+    Un bac blanc reste dans « Autres devoirs »."""
     from apps.things.devoir import rang, semestre_du_titre, type_devoir
     prog = _programme(level)
     par_id = {}
@@ -298,7 +298,7 @@ def _rangs_devoirs(level):
                  for cid, (sem, num) in rangs.items() if num and par_id[cid]['chapitres']]
     for cid, (sem, num) in rangs.items():
         d = par_id[cid]
-        if num or not d['chapitres'] or (type_devoir(d['titre']) or {}).get('genre') in ('dm', 'blanc'):
+        if num or not d['chapitres'] or (type_devoir(d['titre']) or {}).get('genre') == 'blanc':
             continue
         ordre, chapitre, _ = d['chapitres'][0]
         sem_titre = semestre_du_titre(d['titre'])
@@ -477,7 +477,7 @@ def _texts_devoir(level, semestre, numero, count):
         title = f'Devoirs du semestre {semestre} {short} – corrigés | Fidni'
         h1 = f'Autres devoirs du semestre {semestre} – {lv}'
         intro = (f'Devoirs de mathématiques du semestre {semestre} au {lv} ({long}) hors devoirs surveillés '
-                 f'(devoirs maison, bacs blancs…), avec barème et corrigé détaillé.')
+                 f'(bacs blancs…), avec barème et corrigé détaillé.')
         description = (f'{_plural(count, "devoir corrigé", "devoirs corrigés")} du semestre {semestre} pour le {alias} : '
                        f'barème, durée et corrigé détaillé, programme marocain.')
     return {'title': title, 'h1': h1, 'intro': intro, 'description': description}
