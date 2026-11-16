@@ -272,6 +272,93 @@ def _folders(section, level, user=None, chapters=None):
     return out
 
 
+def _rangs_devoirs(level):
+    """{id du devoir: (semestre, numéro)} des devoirs de classe du niveau (things/devoir.py `rang`). Période du
+    programme : celle du dernier chapitre du devoir à ce niveau (un devoir n'en a normalement qu'un).
+
+    Devoir sans numéro (Natsu, 16/11/2026) : rangé avec les devoirs numérotés du niveau qui portent sur le même
+    chapitre (le numéro le plus fréquent ; à égalité, le plus petit), sinon sur le chapitre le plus proche dans le
+    programme ; s'il n'y en a aucun, « Autres devoirs ». Un semestre écrit dans son titre (ou son mois) est respecté.
+    Un devoir maison ou un bac blanc reste dans « Autres devoirs »."""
+    from apps.things.devoir import rang, semestre_du_titre, type_devoir
+    prog = _programme(level)
+    par_id = {}
+    for cid, titre, chapitre in _folder_contents('exam', level).order_by().values_list('id', 'title', 'chapters__name'):
+        d = par_id.setdefault(cid, {'titre': titre, 'chapitres': []})
+        entree = prog.get(chapitre) if chapitre else None
+        if entree:
+            d['chapitres'].append((entree['ordre'] or 0, chapitre, entree.get('periode') or ''))
+    rangs = {}
+    for cid, d in par_id.items():
+        d['chapitres'].sort(reverse=True)  # dernier chapitre du programme d'abord
+        rangs[cid] = rang(d['titre'], [p for _, _, p in d['chapitres']])
+
+    # Devoirs numérotés, par chapitre principal : [(ordre du chapitre, semestre, numéro)].
+    numerotes = [(par_id[cid]['chapitres'][0][0], par_id[cid]['chapitres'][0][1], sem, num)
+                 for cid, (sem, num) in rangs.items() if num and par_id[cid]['chapitres']]
+    for cid, (sem, num) in rangs.items():
+        d = par_id[cid]
+        if num or not d['chapitres'] or (type_devoir(d['titre']) or {}).get('genre') in ('dm', 'blanc'):
+            continue
+        ordre, chapitre, _ = d['chapitres'][0]
+        sem_titre = semestre_du_titre(d['titre'])
+        candidats = [x for x in numerotes if sem_titre is None or x[2] == sem_titre]
+        if not candidats:
+            continue
+        memes = [x for x in candidats if x[1] == chapitre]
+        if not memes:  # aucun devoir numéroté sur ce chapitre : le chapitre le plus proche dans le programme
+            ecart = min(abs(x[0] - ordre) for x in candidats)
+            proche = min(x[0] for x in candidats if abs(x[0] - ordre) == ecart)
+            memes = [x for x in candidats if x[0] == proche]
+        compte = {}
+        for x in memes:
+            compte[(x[2], x[3])] = compte.get((x[2], x[3]), 0) + 1
+        rangs[cid] = min(compte, key=lambda k: (-compte[k], k))
+    return rangs
+
+
+def ids_devoir(level, semestre, numero):
+    """Devoirs d'un dossier « Devoir surveillé n° 2 du semestre 1 » (numero None : « Autres devoirs »)."""
+    return [cid for cid, r in _rangs_devoirs(level).items() if r == (semestre, numero)]
+
+
+def filtre_devoir(qs, class_level_ids, slug_value):
+    """Liste et compteurs des filtres (paramètre `devoir=devoir-2-semestre-1`, avec un seul niveau) : seulement les
+    devoirs de ce dossier. Paramètre illisible ou sans niveau : aucun résultat plutôt que tout."""
+    from apps.things.devoir import lire_slug_devoir
+    lu = lire_slug_devoir(slug_value)
+    level = ClassLevel.objects.filter(id__in=class_level_ids[:1]).first() if class_level_ids else None
+    if lu is None or level is None:
+        return qs.none()
+    return qs.filter(id__in=ids_devoir(level, *lu))
+
+
+def _devoirs(level, user=None):
+    """Dossiers des devoirs d'un niveau rangés par semestre puis par numéro (Natsu, 16/11/2026) :
+    [{semestre, folders: [{slug, url, name, numero, count, mine?}]}], numéros croissants, « Autres devoirs » à la fin.
+    Seulement les semestres qui ont des devoirs."""
+    from apps.things.devoir import nom_devoir, slug_devoir
+    rangs = _rangs_devoirs(level)
+    done = _progress(user, list(rangs)) if user is not None and getattr(user, 'is_authenticated', False) else None
+    groupes = {}
+    for cid, (sem, num) in rangs.items():
+        groupes.setdefault(sem, {}).setdefault(num, []).append(cid)
+    out = []
+    for sem in sorted(groupes):
+        folders = []
+        for num in sorted(groupes[sem], key=lambda n: (n is None, n or 0)):
+            ids = groupes[sem][num]
+            s = slug_devoir(sem, num)
+            folder = {'slug': s, 'url': f'{hub_url("exams", level)}/{s}', 'name': nom_devoir(num), 'numero': num,
+                      'count': len(ids)}
+            if done is not None:
+                mine = [done[i] for i in ids if i in done]
+                folder['mine'] = {'done': len(mine), 'success': sum(st == 'success' for st in mine)}
+            folders.append(folder)
+        out.append({'semestre': sem, 'folders': folders})
+    return out
+
+
 def levels(section):
     """Dossiers de niveaux d'une rubrique : contenus et chapitres remplis de chacun."""
     kind = SECTION_TYPE.get(section)
@@ -321,6 +408,11 @@ def resolve(section, level_slug, chapter_slug=None, user=None):
             return {'redirect': f'/{section}/niveau/{nouveau}' + (f'/{chapter_slug}' if chapter_slug else '')}
         return None
     chapters = programme.chapitres_du_niveau(level, Chapter.objects.select_related('subfield'))
+    # Dossier « Devoir surveillé n° 2 du semestre 1 » (/exams/niveau/2eme-bac-sm/devoir-2-semestre-1).
+    from apps.things.devoir import lire_slug_devoir
+    devoir = lire_slug_devoir(chapter_slug) if section == 'exams' and chapter_slug else None
+    if devoir:
+        return _resolve_devoir(section, level, chapters, *devoir, user=user)
     chapter = None
     if chapter_slug:
         chapter = next((ch for ch in chapters if slug(ch.name) == chapter_slug), None)
@@ -352,6 +444,9 @@ def resolve(section, level_slug, chapter_slug=None, user=None):
         'unfiled': (_folder_contents(kind, level).exclude(chapters__class_levels=level).distinct().count()
                     if chapter is None else 0),
         'subject': _subject_name(),
+        # Devoirs : rangés par semestre et par numéro (premier choix sur la page du niveau), les chapitres en second.
+        'devoirs': _devoirs(level, user) if section == 'exams' and chapter is None else None,
+        'devoir': None,
         # Page d'un chapitre : ce que dit le programme officiel (contenus, capacités, théorèmes, hors programme).
         'programme': programme_public(level, chapter) if chapter else None,
         # Même niveau (et même chapitre) dans les autres rubriques : cours ↔ exercices ↔ examens.
@@ -363,6 +458,71 @@ def resolve(section, level_slug, chapter_slug=None, user=None):
         ],
     }
     return data
+
+
+def _texts_devoir(level, semestre, numero, count):
+    """Textes d'un dossier de devoirs, avec les mots que tapent les élèves (« devoir surveillé 2 semestre 1 2 bac sm »)."""
+    short, long = LEVEL_WORDS.get(level.name, (level.name, level.name))
+    lv = level.name
+    alias = f'{lv} ({short})' if short != lv else lv
+    if numero:
+        nom = f'Devoir surveillé n° {numero}'
+        title = f'{nom} semestre {semestre} {short} – corrigés | Fidni'
+        h1 = f'{nom} du semestre {semestre} – {lv}'
+        intro = (f'Des devoirs surveillés n° {numero} du semestre {semestre} donnés au {lv} ({long}), avec barème et '
+                 f'corrigé détaillé, pour t’entraîner avant le tien.')
+        description = (f'{_plural(count, "sujet corrigé", "sujets corrigés")} du devoir surveillé n° {numero} du '
+                       f'semestre {semestre} pour le {alias} : barème, durée et corrigé détaillé, programme marocain.')
+    else:
+        title = f'Devoirs du semestre {semestre} {short} – corrigés | Fidni'
+        h1 = f'Autres devoirs du semestre {semestre} – {lv}'
+        intro = (f'Devoirs de mathématiques du semestre {semestre} au {lv} ({long}) hors devoirs surveillés '
+                 f'(devoirs maison, bacs blancs…), avec barème et corrigé détaillé.')
+        description = (f'{_plural(count, "devoir corrigé", "devoirs corrigés")} du semestre {semestre} pour le {alias} : '
+                       f'barème, durée et corrigé détaillé, programme marocain.')
+    return {'title': title, 'h1': h1, 'intro': intro, 'description': description}
+
+
+def _resolve_devoir(section, level, chapters, semestre, numero, user=None):
+    """Dossier « Devoir surveillé n° 2 du semestre 1 » d'un niveau : comme une page de chapitre, sans chapitre ;
+    `devoir` dit lequel et donne les chapitres de ses devoirs (le filtre Chapitre de la liste)."""
+    from apps.things.devoir import nom_devoir, slug_devoir
+    from apps.things.models import Content
+    ids = ids_devoir(level, semestre, numero)
+    count = len(ids)
+    s = slug_devoir(semestre, numero)
+    par_chapitre = _counts(Content.objects.filter(id__in=ids))
+    return {
+        'section': section,
+        'type': 'exam',
+        'url': f'{hub_url(section, level)}/{s}',
+        'level': {'id': level.id, 'name': level.name, 'slug': slug(level.name), 'url': hub_url(section, level)},
+        'chapter': None,
+        'count': count,
+        'indexable': count > 0,
+        **_texts_devoir(level, semestre, numero, count),
+        'chapters': [
+            {'id': ch.id, 'name': ch.name, 'slug': slug(ch.name), 'count': n, 'url': hub_url(section, level, ch)}
+            for ch, n in _level_chapters('exam', level, chapters)
+        ],
+        'folders': None,
+        'unfiled': 0,
+        'subject': _subject_name(),
+        'devoirs': None,
+        'devoir': {
+            'slug': s, 'semestre': semestre, 'numero': numero, 'name': nom_devoir(numero),
+            # Chapitres de CES devoirs, dans l'ordre du programme (filtre Chapitre du dossier).
+            'chapters': [{'id': ch.id, 'name': ch.name, 'slug': slug(ch.name), 'count': par_chapitre[ch.id],
+                          'subfield': ch.subfield.name if ch.subfield else None}
+                         for ch in chapters if ch.id in par_chapitre],
+        },
+        'programme': None,
+        'related': [
+            {'section': other, 'label': SECTION_LABEL[other], 'count': n, 'url': hub_url(other, level)}
+            for other, okind in SECTION_TYPE.items() if other != section
+            for n in [_contents(okind, level).count()] if n > 0
+        ],
+    }
 
 
 def all_hubs():
@@ -379,6 +539,13 @@ def all_hubs():
             for ch, _ in _level_chapters(kind, level):
                 last_ch = qs.filter(chapters=ch).aggregate(m=Max('updated_at'))['m']
                 out.append((hub_url(section, level, ch), last_ch))
+            # Devoirs : aussi un dossier par semestre et par numéro.
+            if kind == 'exam':
+                for groupe in _devoirs(level):
+                    for f in groupe['folders']:
+                        lu = (groupe['semestre'], f['numero'])
+                        last_d = qs.filter(id__in=ids_devoir(level, *lu)).aggregate(m=Max('updated_at'))['m']
+                        out.append((f['url'], last_d))
     return out
 
 

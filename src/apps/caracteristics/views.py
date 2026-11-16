@@ -275,6 +275,11 @@ def _filtres_liste(request, qs):
     if p.get('sans_chapitre') == 'true':
         qs = (qs.exclude(chapters__class_levels__id__in=class_level_ids) if class_level_ids
               else qs.filter(chapters__isnull=True))
+    # Dossier « Devoir surveillé n° 2 du semestre 1 » : comme la liste.
+    if p.get('devoir'):
+        from apps.caracteristics.hubs import filtre_devoir
+        niveaux = [int(x) for x in class_level_ids if str(x).isascii() and str(x).isdigit()]
+        qs = filtre_devoir(qs, niveaux, p.get('devoir'))
     return qs
 
 

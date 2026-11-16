@@ -89,6 +89,8 @@ ACTIONS = {
     'connexion-google',   # bouton « Continuer avec Google » utilisé
     # Dossiers des listes (10/10/2026) : Maths › niveau › chapitre, Bac national par année.
     'dossier-niveau', 'dossier-chapitre', 'dossier-annee',
+    # Devoirs par semestre et par numéro (16/11/2026) : dossier ouvert, rangement choisi sur la page d'un niveau.
+    'dossier-devoir', 'devoirs-par-numero', 'devoirs-par-chapitre',
     # Filtres des listes (exercices, examens, leçons) : un filtre ajouté, le tri, « Tout effacer ».
     'filtre-niveau', 'filtre-matiere', 'filtre-sous-domaine', 'filtre-chapitre', 'filtre-theoreme',
     'filtre-difficulte', 'filtre-statut', 'filtre-national', 'filtre-date', 'filtre-effacer', 'tri',
