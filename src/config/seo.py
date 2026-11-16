@@ -442,21 +442,33 @@ def hub_page(request, section, level, chapter=None):
     qs = _folder_contents(SECTION_TYPE[section]).filter(class_levels__id=data['level']['id'])
     if data['chapter']:
         qs = qs.filter(chapters__id=data['chapter']['id'])
+    devoir = data.get('devoir')
+    if devoir:
+        from apps.caracteristics.hubs import filtre_devoir
+        qs = filtre_devoir(qs, [data['level']['id']], devoir['slug'])
+    # Dernier cran du fil d'Ariane : le chapitre, ou le dossier de devoirs (« Devoir surveillé n° 2 (semestre 1) »).
+    here = (data['chapter']['name'] if data['chapter']
+            else f"{devoir['name']} (semestre {devoir['semestre']})" if devoir else None)
     items = list(qs.distinct().order_by('-updated_at')[:300])
 
     parts = [f'<main style="{BODY_STYLE}">',
              f'<p style="font-size:13px;color:#6b6862"><a href="/{section}">{esc(SECTION_NAV[section])}</a> › '
              f'<a href="{data["level"]["url"]}">{esc(data["level"]["name"])}</a>'
-             + (f' › {esc(data["chapter"]["name"])}' if data['chapter'] else '') + '</p>',
+             + (f' › {esc(here)}' if here else '') + '</p>',
              f'<h1 style="font-size:28px">{esc(data["h1"])}</h1>', f'<p>{esc(data["intro"])}</p>']
     if items:
         parts.append('<ul>' + ''.join(f'<li><a href="/{section}/{c.id}">{esc(c.title)}</a></li>' for c in items) + '</ul>')
     if data.get('programme'):
         parts.append(_programme_html(data['programme'], data['chapter']['name'], data['level']['name']))
-    if data['chapters'] and not data['chapter']:
+    if data.get('devoirs'):
+        parts.append('<h2 style="font-size:21px;margin-top:28px">Par devoir</h2>' + ''.join(
+            f'<h3 style="font-size:17px;margin-top:18px">Semestre {g["semestre"]}</h3><ul>' + ''.join(
+                f'<li><a href="{f["url"]}">{esc(f["name"])}</a> ({f["count"]})</li>' for f in g['folders']) + '</ul>'
+            for g in data['devoirs']))
+    if data['chapters'] and not data['chapter'] and not devoir:
         parts.append('<h2 style="font-size:21px;margin-top:28px">Par chapitre</h2><ul>' + ''.join(
             f'<li><a href="{ch["url"]}">{esc(ch["name"])}</a> ({ch["count"]})</li>' for ch in data['chapters']) + '</ul>')
-    elif data['chapters']:
+    elif data['chapters'] and data['chapter']:
         others = [ch for ch in data['chapters'] if ch['id'] != data['chapter']['id']]
         if others:
             parts.append(f'<h2 style="font-size:21px;margin-top:28px">Autres chapitres – {esc(data["level"]["name"])}</h2><ul>'
@@ -468,8 +480,8 @@ def hub_page(request, section, level, chapter=None):
 
     trail = [('Accueil', f'{site}/'), (SECTION_NAV[section], f'{site}/{section}'),
              (data['level']['name'], site + data['level']['url'])]
-    if data['chapter']:
-        trail.append((data['chapter']['name'], url))
+    if here:
+        trail.append((here, url))
     json_ld = [
         {'@context': 'https://schema.org', '@type': 'CollectionPage', 'name': data['h1'], 'url': url,
          'description': data['description'], 'inLanguage': 'fr',

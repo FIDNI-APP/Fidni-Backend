@@ -472,6 +472,10 @@ class ContentViewSet(VoteMixin, viewsets.ModelViewSet):
                 filters &= status_filter
 
         queryset = queryset.filter(filters)
+        # Dossier « Devoir surveillé n° 2 du semestre 1 » d'un niveau (hubs.py `devoirs`, 16/11/2026).
+        if params.get('devoir'):
+            from apps.caracteristics.hubs import filtre_devoir
+            queryset = filtre_devoir(queryset, class_levels, params.get('devoir'))
 
         # « À faire » : tout sauf ce que l'élève a déjà réussi (Complete.object_id est un CharField).
         if self.request.query_params.get('todo', '').lower() == 'true' and _viewer(self.request):

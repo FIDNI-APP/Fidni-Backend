@@ -499,6 +499,9 @@ TRACKED_ACTIONS = [
     ('dossier-niveau', 'Dossier d’un niveau ouvert'),
     ('dossier-chapitre', 'Dossier d’un chapitre ouvert'),
     ('dossier-annee', 'Dossier d’une année du Bac ouvert'),
+    ('dossier-devoir', 'Dossier « Devoir surveillé n° … » ouvert'),
+    ('devoirs-par-numero', 'Devoirs rangés par numéro'),
+    ('devoirs-par-chapitre', 'Devoirs rangés par chapitre'),
     ('enseignant-carte', 'Nom d’un enseignant cliqué (carte)'),
     ('enseignant-page', 'Nom d’un enseignant cliqué (page d’un contenu)'),
 ]
