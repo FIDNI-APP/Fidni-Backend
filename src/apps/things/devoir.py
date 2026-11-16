@@ -54,8 +54,9 @@ def type_devoir(titre: str, national: bool = False):
 # rangés par semestre puis par numéro (hubs.py `devoirs`), les chapitres restant un second choix. Au Maroc, la
 # numérotation repart à 1 à chaque semestre (« devoir n° 1 du semestre 2 »).
 
-# Genres numérotés comme un devoir surveillé (un devoir maison ou un bac blanc va dans « Autres devoirs »).
-GENRES_NUMEROTES = {'ds', 'controle', 'synthese', 'table'}
+# Genres numérotés comme un devoir surveillé : un devoir maison (ou libre) n° 1 va avec le DS n° 1 (Natsu, 17/11/2026) ;
+# un bac blanc va dans « Autres devoirs ».
+GENRES_NUMEROTES = {'ds', 'controle', 'synthese', 'table', 'dm'}
 _SEMESTRE = [
     (1, re.compile(r'semestre\s*(?:n\s*[°ºo]\s*)?1\b|\b(?:1\s*(?:er|ère|e)?|premier)\s+semestre|\bs\s?1\b', re.I)),
     (2, re.compile(r'semestre\s*(?:n\s*[°ºo]\s*)?2\b|\b(?:2\s*(?:e|ème|nd)?|second|deuxi[eè]me)\s+semestre|\bs\s?2\b', re.I)),
@@ -88,8 +89,8 @@ def rang(titre: str, periodes=()):
     (`periodes`, dernier chapitre d'abord), sinon 1. Numéro : None pour un devoir non numéroté (« Autres devoirs »)."""
     td = type_devoir(titre) or {}
     numero = td.get('numero') if td.get('genre') in GENRES_NUMEROTES else None
-    # « CC2 », « DS 3 », « Devoir n° 1 » (sans « surveillé ») : numérotés aussi, sauf un devoir maison ou un bac blanc.
-    if numero is None and td.get('genre') not in ('dm', 'blanc'):
+    # « CC2 », « DS 3 », « Devoir n° 1 » (sans « surveillé ») : numérotés aussi, sauf un bac blanc.
+    if numero is None and td.get('genre') != 'blanc':
         m = _NUMERO_COURT.search(titre or '')
         numero = int(m.group(1) or m.group(2)) if m else None
     sem = semestre_du_titre(titre)
