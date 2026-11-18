@@ -17,6 +17,8 @@ discussions, concours) ni avec l'identifiant des adresses (/exercises/<id>), qui
 Tenu à jour par les signaux (things/signals.py) quand les niveaux ou les chapitres d'un contenu changent ; un ajout en
 masse qui contourne les signaux se rattrape avec `python manage.py numeroter_contenus`.
 """
+import re
+
 from django.db import IntegrityError, models, transaction
 
 
@@ -76,3 +78,31 @@ def serialiser(content):
     """[{niveau, chapitre, numero}] (préchargé par things/listing.py : `numeros`)."""
     return [{'niveau': n.class_level_id, 'chapitre': n.chapter_id, 'numero': n.numero}
             for n in content.numeros.all()]
+
+
+# Recherche par numéro (17/11/2026, Natsu : « je suis dans le chapitre de la dérivation, j'écris exercice 48, et
+# l'exercice 48 apparaît »). Requête déjà normalisée (search_text.normalize : minuscules, sans accents) :
+# « 48 », « #48 », « n° 48 », « no 48 », « numero 48 », « exercice 48 », « ex 48 », « devoir n° 3 », « DS 3 »…
+_NUMERO_CHERCHE = re.compile(
+    r'^(?:(?:exercices?|exos?|ex|devoirs?|ds|lecons?|cours|sujets?)\s*)?'
+    r'(?:n\s*[°o]\.?|num(?:ero)?\.?|#)?\s*(\d{1,4})$')
+
+
+def numero_cherche(requete):
+    """Numéro demandé par une recherche (« exercice 48 » → 48), sinon None."""
+    from .search_text import normalize
+    m = _NUMERO_CHERCHE.match(normalize(requete))
+    return int(m.group(1)) if m else None
+
+
+def contenus_numero(numero, type_contenu=None, niveaux=(), chapitres=()):
+    """Identifiants des contenus qui portent ce numéro, dans les niveaux et chapitres de la page (s'ils sont donnés)."""
+    from .models import NumeroContenu
+    qs = NumeroContenu.objects.filter(numero=numero)
+    if type_contenu:
+        qs = qs.filter(type=type_contenu)
+    if niveaux:
+        qs = qs.filter(class_level_id__in=niveaux)
+    if chapitres:
+        qs = qs.filter(chapter_id__in=chapitres)
+    return qs.values('content_id')
