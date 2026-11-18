@@ -112,6 +112,23 @@ FILTER_RE = re.compile(
     r'|^nouveautes:[a-z0-9-]{1,40}:(vue|finie|cta|passee)$')
 
 
+# Recherches tapées (18/11/2026, Natsu : « le top des recherches faites ») : champ « Numéro ou mot » d'une liste
+# (lieu « liste ») et page de recherche du site (« site ») ; « -vide » : sans résultat. Seuls les mots sont gardés,
+# normalisés (minuscules, sans accents, 60 caractères), en totaux par jour : jamais qui les a tapés.
+LIEUX_RECHERCHE = ('liste', 'liste-vide', 'site', 'site-vide')
+_HORS_RECHERCHE = re.compile(r"[^a-z0-9 #°'.,+=()/-]")
+
+
+def nom_recherche(name):
+    """« liste:Exercice  N° 48 » → « liste:exercice n° 48 » ; None si le lieu ou les mots ne vont pas."""
+    from apps.things.search_text import normalize
+    lieu, _, mots = str(name).partition(':')
+    if lieu not in LIEUX_RECHERCHE:
+        return None
+    mots = ' '.join(_HORS_RECHERCHE.sub(' ', normalize(mots)).split())[:60].strip()
+    return f'{lieu}:{mots}' if mots else None
+
+
 # Appareil du visiteur (14/11/2026), lu dans le navigateur annoncé (User-Agent) : téléphone, tablette ou ordinateur.
 # Rien n'est gardé par personne : seulement des totaux par jour (UsageDaily « site » / « appareil-telephone »…).
 # Limite connue : un iPad récent s'annonce comme un Mac et compte donc comme un ordinateur.
@@ -188,6 +205,10 @@ def record(request):
             return Response({'counted': False}, status=400)
     elif kind == UsageDaily.KIND_FILTER:
         if not FILTER_RE.fullmatch(name):
+            return Response({'counted': False}, status=400)
+    elif kind == UsageDaily.KIND_SEARCH:
+        name = nom_recherche(name)
+        if not name:
             return Response({'counted': False}, status=400)
     else:
         return Response({'counted': False}, status=400)
