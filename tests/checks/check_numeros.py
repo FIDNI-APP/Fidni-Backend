@@ -198,6 +198,29 @@ importlib.import_module('apps.interactions.migrations.0025_revisionlistitem_posi
 check('migration 0025 : positions par ordre d’ajout', list(RevisionListItem.objects.filter(revision_list_id=lid)
       .order_by('added_at', 'id').values_list('position', flat=True)) == [1, 2, 3, 4])
 
+# --- Filtre « Déjà vu » des listes (18/11/2026) : Vus / Pas encore vus, combiné avec le statut (ET, pas OU)
+from django.contrib.contenttypes.models import ContentType  # noqa: E402
+from apps.interactions.models import Complete  # noqa: E402
+from apps.users.models import ViewHistory  # noqa: E402
+vu = User.objects.create_user('eleve_vu')
+ct = ContentType.objects.get_for_model(Content)
+for c in (l1, l3):
+    ViewHistory.objects.create(user=vu, content_type=ct, object_id=c.pk)
+Complete.objects.create(user=vu, content_type=ct, object_id=str(s1.pk), status='review')
+client.force_authenticate(vu)
+
+
+def liste(**params):
+    r = client.get('/api/contents/', {'type': 'exercise', 'page_size': 50, 'class_levels[]': sm.id, **params})
+    return {c['id'] for c in (r.data['results'] if isinstance(r.data, dict) else r.data)}
+
+
+check('Vus : seulement les contenus ouverts', liste(showViewed='true') == {l1.pk, l3.pk}, liste(showViewed='true'))
+check('Pas encore vus : les autres', not ({l1.pk, l3.pk} & liste(hideViewed='true')) and s1.pk in liste(hideViewed='true'))
+check('À revoir ET Vus : rien (s1 à revoir mais jamais ouvert)', liste(showFailed='true', showViewed='true') == set(),
+      liste(showFailed='true', showViewed='true'))
+check('À revoir ET Pas encore vus : s1', liste(showFailed='true', hideViewed='true') == {s1.pk})
+
 print(f'{sum(results)}/{len(results)} vérifications OK')
 if not all(results):
     sys.exit(1)

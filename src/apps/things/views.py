@@ -469,14 +469,15 @@ class ContentViewSet(VoteMixin, viewsets.ModelViewSet):
             content_ct = ContentType.objects.get_for_model(Content)
             status_filter = Q()
             if show_viewed:
-                # object_id is a CharField — materialize as ints for the bigint id__in
+                # « Vus » (filtre « Déjà vu » des listes, 18/11/2026) : se combine avec le statut (« À revoir » et
+                # « Vus »), il ne s'y ajoute pas. object_id est un CharField : ids convertis pour le id__in.
                 viewed_ids = [
                     int(oid) for oid in ViewHistory.objects.filter(
                         user=self.request.user, content_type=content_ct
                     ).values_list('object_id', flat=True)
                     if str(oid).isdigit()
                 ]
-                status_filter |= Q(id__in=viewed_ids)
+                filters &= Q(id__in=viewed_ids)
             if show_completed:
                 status_filter |= Q(completed__user=self.request.user, completed__status='success')
             if show_failed:
