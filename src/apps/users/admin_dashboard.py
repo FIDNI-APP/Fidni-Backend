@@ -502,6 +502,7 @@ TRACKED_ACTIONS = [
     ('dossier-devoir', 'Dossier « Devoir surveillé n° … » ouvert'),
     ('devoirs-par-numero', 'Devoirs rangés par numéro'),
     ('devoirs-par-chapitre', 'Devoirs rangés par chapitre'),
+    ('recherche-liste', 'Recherche dans une liste (numéro ou mot)'),
     ('enseignant-carte', 'Nom d’un enseignant cliqué (carte)'),
     ('enseignant-page', 'Nom d’un enseignant cliqué (page d’un contenu)'),
 ]

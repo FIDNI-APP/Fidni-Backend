@@ -12,7 +12,7 @@ from django.contrib.contenttypes.models import ContentType
 from django.db import IntegrityError, transaction
 from django.db.models import Q, F
 
-from django.db.models import Case, IntegerField, When
+from django.db.models import Case, IntegerField, Value, When
 from django.db.models.functions import Length, Substr
 
 from .models import Content, ContentDailyView, Solution, Comment, ProposedSolution
@@ -21,6 +21,7 @@ from .search_text import normalize as normalize_search
 from .serializers import ContentSerializer, ContentListSerializer, ContentCreateSerializer, SolutionSerializer, CommentSerializer, ProposedSolutionSerializer
 from . import for_you
 from .listing import in_order, serialize_content_list, with_list_relations
+from .numeros import contenus_numero, numero_cherche
 from apps.interactions.models import Save, Complete, TimeSession, SolutionView, SolutionMatch, QuestionProgress, AICorrection
 from apps.interactions import journal
 from apps.interactions.serializers import AICorrectionSerializer
@@ -398,7 +399,19 @@ class ContentViewSet(VoteMixin, viewsets.ModelViewSet):
         # Recherche (things/search_text.py) : sans accents, ni balises, ni LaTeX (« derivee » trouve « Dérivée »).
         search_query = (self.request.query_params.get('search') or '').strip()[:100]
         if search_query:
-            queryset = _search(queryset, search_query)
+            # « 48 », « exercice 48 », « #48 » (17/11/2026) : le contenu qui porte ce numéro dans le niveau et le
+            # chapitre de la page (things/numeros.py). Aucun : recherche dans le texte (« 2024 » trouve les sujets).
+            numero = numero_cherche(search_query)
+            cible = None
+            if numero is not None:
+                p = self.request.query_params
+                cible = contenus_numero(numero, type_scope,
+                                        _ids(p.getlist('class_levels[]') + p.getlist('class_levels')),
+                                        _ids(p.getlist('chapters[]') + p.getlist('chapters')))
+            if cible is not None and cible.exists():
+                queryset = queryset.filter(pk__in=cible).annotate(_search_rank=Value(0, output_field=IntegerField()))
+            else:
+                queryset = _search(queryset, search_query)
 
         # Filters (niveaux : « class_levels[] » répété ou « class_levels=3,5 », celui de la recherche)
         params = self.request.query_params

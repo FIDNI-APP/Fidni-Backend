@@ -120,6 +120,33 @@ carte = next((c for c in cartes if c['id'] == p1.pk), None)
 check('liste : numeros sur la carte', carte and carte.get('numeros') == [{'niveau': pc.id, 'chapitre': limites.id, 'numero': 1}],
       carte and carte.get('numeros'))
 
+# --- Recherche par numéro (17/11/2026) : « exercice 3 » dans un chapitre → l'exercice n° 3 de ce chapitre
+from apps.things.numeros import numero_cherche  # noqa: E402
+check('requête : formes reconnues', [numero_cherche(q) for q in ('48', '#48', 'exercice 48', 'Exercice n° 48', 'ex48',
+                                                                   'numéro 12', 'n°7', 'DS 3', 'Devoir n° 2', 'leçon 5')]
+      == [48, 48, 48, 48, 48, 12, 7, 3, 2, 5])
+check('requête : un mot n’est pas un numéro', [numero_cherche(q) for q in ('dérivée', 'x 48', '48 limites', '')]
+      == [None, None, None, None])
+
+
+def ids(q, **extra):
+    params = {'type': 'exercise', 'page_size': 50, 'search': q, **extra}
+    r = client.get('/api/contents/', params)
+    data = r.data['results'] if isinstance(r.data, dict) else r.data
+    return {c['id'] for c in data}
+
+
+check('chapitre : « 3 » → l’exercice n° 3 seul', ids('3', **{'class_levels[]': sm.id, 'chapters[]': limites.id}) == {l3.pk},
+      ids('3', **{'class_levels[]': sm.id, 'chapters[]': limites.id}))
+check('chapitre : « exercice n° 1 » dans un autre chapitre', ids('exercice n° 1', **{'class_levels[]': sm.id, 'chapters[]': suites.id})
+      == {s1.pk})
+check('autre niveau, même chapitre : sa propre numérotation', ids('#1', **{'class_levels[]': pc.id, 'chapters[]': limites.id})
+      == {p1.pk})
+tous = ids('1', **{'class_levels[]': sm.id})
+check('niveau entier : les n° 1 de chaque chapitre', {l1.pk, s1.pk} <= tous and l3.pk not in tous, tous)
+check('numéro absent : recherche dans le texte (rien ici)', ids('99', **{'chapters[]': limites.id}) == set())
+check('recherche par mots inchangée', l3.pk in ids('Limites SM 3') and s1.pk in ids('suites'))
+
 # --- Migration 0030 : contenus déjà en ligne numérotés par date d'arrivée ; commande de rattrapage
 NumeroContenu.objects.all().delete()
 migration = importlib.import_module('apps.things.migrations.0030_numeros_contenus')
