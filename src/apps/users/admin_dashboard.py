@@ -261,6 +261,7 @@ def overview(request):
         'features': features,
         'pages': pages,
         'filter_values': _filter_values(first),
+        'recherches': _recherches(first),
         'anonymes': _anonymous(first, prev_first, current, previous, signups_current),
         'appareils': _appareils(prev_first, current, previous),
         'members_total': len(real_ids),
@@ -558,7 +559,7 @@ def _usage(first, prev_first, real_ids):
 
 
 DIFFICULTY_LABEL = {'easy': 'Facile', 'medium': 'Moyen', 'hard': 'Difficile'}
-STATUS_LABEL = {'showViewed': 'Déjà vus', 'hideViewed': 'Masquer les vus', 'showCompleted': 'Réussis',
+STATUS_LABEL = {'showViewed': 'Vus', 'hideViewed': 'Pas encore vus', 'showCompleted': 'Réussis',
                 'showFailed': 'À revoir', 'todo': 'À faire'}
 SORT_LABEL = {'recommended': 'Pour toi', 'most_upvoted': 'Plus aimés', 'newest': 'Plus récents',
               'oldest': 'Plus anciens', 'most_commented': 'Plus commentés',
@@ -624,6 +625,43 @@ def _filter_values(first):
                     'count': r['c'] or 0, 'visits': r['v'] or 0, 'anon': r['a'] or 0})
     out.sort(key=lambda x: -x['count'])
     return out
+
+
+TOP_RECHERCHES = 40
+
+
+def _recherches(first):
+    """Recherches tapées sur la période (18/11/2026, usage.nom_recherche) : les mots les plus cherchés, où (champ d'une
+    liste ou page de recherche), combien sans résultat, et la part des recherches par numéro (« 48 », « exercice 48 »,
+    things/numeros.numero_cherche)."""
+    from apps.things.numeros import numero_cherche
+    rows = (UsageDaily.objects.filter(kind=UsageDaily.KIND_SEARCH, date__gte=first).values('name')
+            .annotate(c=Sum('count'), v=Sum('visitors')))
+    termes = {}
+    for r in rows:
+        lieu, _, mots = r['name'].partition(':')
+        if not mots:
+            continue
+        t = termes.setdefault(mots, {'terme': mots, 'count': 0, 'visits': 0, 'liste': 0, 'site': 0, 'vides': 0,
+                                     'numero': numero_cherche(mots) is not None})
+        n = r['c'] or 0
+        t['count'] += n
+        t['visits'] += r['v'] or 0
+        t['site' if lieu.startswith('site') else 'liste'] += n
+        if lieu.endswith('-vide'):
+            t['vides'] += n
+    tous = sorted(termes.values(), key=lambda t: (-t['count'], t['terme']))
+    total = sum(t['count'] for t in tous)
+    return {
+        'total': total,
+        'liste': sum(t['liste'] for t in tous),
+        'site': sum(t['site'] for t in tous),
+        'numero': sum(t['count'] for t in tous if t['numero']),
+        'vides': sum(t['vides'] for t in tous),
+        'termes': len(tous),
+        'top': tous[:TOP_RECHERCHES],
+        'top_vides': [t for t in sorted(tous, key=lambda t: (-t['vides'], t['terme'])) if t['vides']][:15],
+    }
 
 
 def _anonymous(first, prev_first, current, previous, signups_current):

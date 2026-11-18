@@ -306,5 +306,34 @@ check('purge : lignes de plus de 6 mois supprimées, les récentes gardées',
       not UsageMember.objects.filter(date__lt=(_tz.now() - _td(days=180)).date()).exists()
       and UsageMember.objects.filter(user=eleves[0]).exists())
 
+# ── Top des recherches et filtre « Déjà vu » (18/11/2026)
+from apps.users.usage import nom_recherche  # noqa: E402
+check('recherche : mots normalisés', nom_recherche('liste:  Exercice  N° 48 ') == 'liste:exercice n° 48'
+      and nom_recherche('site-vide:Dérivée <b>') == 'site-vide:derivee b')
+check('recherche : lieu inconnu ou mots vides refusés', nom_recherche('ailleurs:48') is None and nom_recherche('liste:  <>') is None)
+cache.clear()
+for i, (qui, mots) in enumerate([(eleves[0], 'liste:exercice 48'), (eleves[1], 'liste:Exercice 48'),
+                                 (eleves[1], 'site:dérivée'), (eleves[0], 'liste-vide:intégrale')]):
+    r = client(qui).post('/api/usage/', {'kind': 'recherche', 'name': mots}, format='json')
+check('recherche : comptée', r.data.get('counted') is True, r.data)
+r = client(admin).post('/api/usage/', {'kind': 'recherche', 'name': 'liste:admin'}, format='json')
+check('recherche : compte de l’équipe pas compté', r.data.get('counted') is False)
+r = client(eleves[0]).post('/api/usage/', {'kind': 'recherche', 'name': 'nulle-part:x'}, format='json')
+check('recherche : lieu inconnu → 400', r.status_code == 400, r.status_code)
+check('recherche : jamais au nom du membre', not UsageMember.objects.filter(kind='recherche').exists())
+for v in ('showViewed', 'hideViewed', 'hideViewed'):
+    cache.clear()
+    client(eleves[1]).post('/api/usage/', {'kind': 'filtre', 'name': f'exercise:statut:{v}'}, format='json')
+d = pc.get('/api/pilotage/?jours=7').data
+rech = d.get('recherches') or {}
+top = {t['terme']: t for t in rech.get('top', [])}
+check('pilotage : top des recherches (même mots regroupés)', top.get('exercice 48', {}).get('count') == 2
+      and top['exercice 48']['numero'] is True and top.get('derivee', {}).get('site') == 1, top)
+check('pilotage : totaux (numéro, sans résultat)', rech.get('total') == 4 and rech.get('numero') == 2 and rech.get('vides') == 1
+      and [t['terme'] for t in rech.get('top_vides', [])] == ['integrale'], rech)
+statut = {v['value']: v for v in d['filter_values'] if v['filter'] == 'filtre-statut'}
+check('pilotage : « Vus » et « Pas encore vus » dans les valeurs du filtre',
+      statut.get('showViewed', {}).get('label') == 'Vus' and statut.get('hideViewed', {}).get('count') == 2, statut)
+
 print(f'\n{sum(results)}/{len(results)} vérifications réussies')
 sys.exit(0 if all(results) else 1)

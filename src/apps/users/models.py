@@ -473,6 +473,8 @@ class UsageDaily(models.Model):
     KIND_ACTION = 'action'
     KIND_FILTER = 'filtre'
     KIND_SITE = 'site'
+    # Recherche tapée (18/11/2026) : name = « <lieu>:<mots normalisés> », lieu = liste, liste-vide, site, site-vide.
+    KIND_SEARCH = 'recherche'
 
     date = models.DateField()
     kind = models.CharField(max_length=10)
