@@ -52,6 +52,7 @@ services:
       REDIS_URL: redis://redis:6379/0   # messagerie : relie gunicorn et le WebSocket (uvicorn)
     volumes:
       - media:/app/media
+      - donnees_filtres:/var/lib/fidni/jetables
     ports:
       - "127.0.0.1:8080:80"
     depends_on:
@@ -127,3 +128,4 @@ services:
 volumes:
   pgdata:
   media:
+  donnees_filtres:

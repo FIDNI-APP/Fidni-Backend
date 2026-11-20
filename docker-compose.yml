@@ -20,4 +20,8 @@ services:
       - "127.0.0.1:8080:80"   # localhost-only; the tunnel forwards here
     volumes:
       - ~/.aws:/root/.aws:ro   # boto3 credentials (Secrets Manager + S3)
+      - donnees_filtres:/var/lib/fidni/jetables
     restart: unless-stopped
+
+volumes:
+  donnees_filtres:
