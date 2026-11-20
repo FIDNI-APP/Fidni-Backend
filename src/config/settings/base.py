@@ -84,6 +84,9 @@ MIDDLEWARE = [
 CORS_ALLOW_HEADERS = [
     'accept', 'accept-encoding', 'authorization', 'content-type',
     'dnt', 'origin', 'user-agent', 'x-csrftoken', 'x-requested-with',
+    # Identifiant d'appareil (bannissement, users/bans.py, 20/11/2026). Le serveur doit l'autoriser AVANT que le
+    # front ne l'envoie : sinon le navigateur bloque toutes les requêtes (pré-vérification CORS).
+    'x-fidni-appareil',
 ]
 
 CORS_ALLOW_METHODS = ['DELETE', 'GET', 'OPTIONS', 'PATCH', 'POST', 'PUT']
@@ -231,6 +234,9 @@ DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'Fidni <no-reply@fidni.fr>'
 BREVO_API_KEY = os.getenv('BREVO_API_KEY', '')
 BREVO_TIMEOUT = int(os.getenv('BREVO_TIMEOUT', '10'))
 CHECK_MAIL_API_KEY = os.getenv('CHECK_MAIL_API_KEY', '').strip()
+# Délai de 24 h et premiers messages à valider (apps/discussions/moderation.py, 20/11/2026). « 0 » seulement dans les
+# vérifications qui publient des messages avec des comptes neufs (tests/checks).
+ANTI_TROLL = os.getenv('FIDNI_ANTI_TROLL', '1') != '0'
 # Public URL of the SPA — used to build links inside verification emails.
 FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:5173')
 

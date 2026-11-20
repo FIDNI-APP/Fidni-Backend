@@ -7,7 +7,7 @@ import sys
 BACKEND = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, BACKEND + '/src')
 sys.path.insert(0, BACKEND)
-os.environ.update({'DJANGO_SETTINGS_MODULE': 'config.settings', 'DJANGO_ENV': 'development', 'DB_ENGINE': 'sqlite',
+os.environ.update({'FIDNI_ANTI_TROLL': '0', 'DJANGO_SETTINGS_MODULE': 'config.settings', 'DJANGO_ENV': 'development', 'DB_ENGINE': 'sqlite',
                    'SQLITE_PATH': os.path.join(tempfile.gettempdir(), 'fidni-sol.sqlite3'), 'AWS_STORAGE_ENABLED': 'false'})
 if os.path.exists('/tmp/fidni-sol.sqlite3'):
     os.remove('/tmp/fidni-sol.sqlite3')

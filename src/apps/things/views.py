@@ -1483,6 +1483,14 @@ class ProposedSolutionViewSet(VoteMixin, viewsets.ModelViewSet):
         data.sort(key=lambda d: -(d['vote_count'] or 0))
         return Response(data)
 
+    def create(self, request, *args, **kwargs):
+        # Compte de moins de 24 h : pas encore de solution proposée (discussions/moderation.py, 20/11/2026).
+        from apps.discussions.moderation import refus_compte_recent
+        refus = refus_compte_recent(request.user) if request.user and request.user.is_authenticated else None
+        if refus:
+            return Response(refus, status=status.HTTP_403_FORBIDDEN)
+        return super().create(request, *args, **kwargs)
+
     def perform_create(self, serializer):
         file_ids = serializer.validated_data.pop('file_ids', [])
         solution = serializer.save(author=self.request.user)

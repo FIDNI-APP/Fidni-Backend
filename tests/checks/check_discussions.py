@@ -13,7 +13,7 @@ BACKEND = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file
 sys.path.insert(0, BACKEND + '/src')
 sys.path.insert(0, BACKEND)
 DB = os.path.join(tempfile.gettempdir(), 'fidni-discussions.sqlite3')
-os.environ.update({'DJANGO_SETTINGS_MODULE': 'config.settings', 'DJANGO_ENV': 'development', 'DB_ENGINE': 'sqlite',
+os.environ.update({'FIDNI_ANTI_TROLL': '0', 'DJANGO_SETTINGS_MODULE': 'config.settings', 'DJANGO_ENV': 'development', 'DB_ENGINE': 'sqlite',
                    'SQLITE_PATH': DB, 'AWS_STORAGE_ENABLED': 'false'})
 if os.path.exists(DB):
     os.remove(DB)

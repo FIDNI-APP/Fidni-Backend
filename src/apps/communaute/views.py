@@ -272,7 +272,7 @@ def fil(request):
     if not suivis:
         return Response({'results': [], 'suite': None, 'suivis': 0})
     items = []
-    for d in Discussion.objects.filter(author_id__in=suivis, created_at__lt=avant).select_related(
+    for d in Discussion.objects.filter(author_id__in=suivis, created_at__lt=avant, en_attente=False).select_related(
             'author__profile', 'author__profile__class_level').prefetch_related('contents').order_by('-created_at')[:FIL_PAGE]:
         items.append({'type': 'commentaire' if d.genre == COMMENTAIRE else 'discussion', 'date': d.created_at, 'membre': d.author,
                       'objet': {'id': d.id, 'titre': titre(d), 'url': link(d), 'salon': d.salon, 'reponses': d.reply_count}})

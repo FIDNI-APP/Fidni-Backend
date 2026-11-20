@@ -35,6 +35,7 @@ from apps.users.progression import apercu as progression_apercu, progression
 from apps.copies.urls import urlpatterns_api as copies_api_urls
 from apps.users import nouveautes, tableau
 from apps.things import reports as content_reports
+from apps.discussions import pilotage_views as discussions_pilotage
 from apps.ia import views as ia_views
 from apps.things.views import get_content_recommendations, parse_pdf_view
 from apps.caracteristics.views import (
@@ -201,6 +202,12 @@ urlpatterns = [
     path('api/contents/<int:content_id>/report/', content_reports.report_content, name='content-report'),
     path('api/pilotage/signalements/', content_reports.reports_list, name='pilotage-signalements'),
     path('api/pilotage/signalements/<int:pk>/', content_reports.report_update, name='pilotage-signalement'),
+    # Premiers messages des nouveaux comptes, à valider (apps/discussions/moderation.py, 20/11/2026).
+    path('api/pilotage/messages-a-valider/', discussions_pilotage.a_valider, name='pilotage-messages-a-valider'),
+    path('api/pilotage/messages-a-valider/<str:type_>/<int:pk>/accepter/', discussions_pilotage.accepter,
+         name='pilotage-message-accepter'),
+    path('api/pilotage/messages-a-valider/<str:type_>/<int:pk>/refuser/', discussions_pilotage.refuser,
+         name='pilotage-message-refuser'),
     # IA des administrateurs : import d'un document, correction d'un signalement (rien sans validation).
     path('api/pilotage/ia/', ia_views.jobs, name='pilotage-ia'),
     path('api/pilotage/brouillons/', ia_views.brouillons, name='pilotage-brouillons'),

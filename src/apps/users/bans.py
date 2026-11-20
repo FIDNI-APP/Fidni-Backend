@@ -8,11 +8,17 @@ On garde, dans `Bannissement` :
 Seule la CRÉATION d'un compte est bloquée (inscription, nouveau compte Google) : un membre déjà inscrit
 qui partage l'IP navigue et se connecte normalement. Une autre adresse e-mail reste toujours possible.
 
+Depuis le 20/11/2026, aussi son APPAREIL (Natsu : un troll recrée des comptes avec de vraies adresses Gmail et
+change d'IP) : le navigateur garde un identifiant au hasard (localStorage « fidni:appareil », en-tête
+`X-Fidni-Appareil`), retenu dans le profil (`appareils`) comme les IP ; banni 1 an. Contournable en navigation privée,
+mais arrête la plupart des recréations.
+
 Les IP d'un compte viennent du profil (`signup_ip`, `last_ip` et `recent_ips`, les IP distinctes des 30 derniers
 jours, remplies par `remember_ip` à l'inscription, à la connexion et au renouvellement de session) et des
 journaux (`APILog`) des 30 derniers jours.
 """
 import ipaddress
+import re
 from datetime import timedelta
 
 from django.db.models import Q
@@ -21,6 +27,9 @@ from django.utils import timezone
 from apps.users.models import Bannissement, GoogleAccount
 
 IP_BAN_DAYS = 30
+APPAREIL_BAN_DAYS = 365
+APPAREILS_MAX = 10
+_APPAREIL = re.compile(r'^[A-Za-z0-9-]{16,64}$')
 RECENT_IPS_MAX = 10
 GMAIL_DOMAINS = {'gmail.com', 'googlemail.com'}
 BANNED_MESSAGE = 'Impossible de créer un compte. Si c’est une erreur, écris à contact@fidni.fr.'
@@ -56,25 +65,39 @@ def client_ip(request):
     return get_client_ip(request)
 
 
+def appareil_de(request):
+    """Identifiant de l'appareil envoyé par le site (en-tête X-Fidni-Appareil), sinon None."""
+    value = (request.META.get('HTTP_X_FIDNI_APPAREIL') or '').strip() if request is not None else ''
+    return value if _APPAREIL.match(value) else None
+
+
 def remember_ip(user, request, *, signup=False):
     """Retient l'IP d'inscription ou de connexion du compte (pour pouvoir la bannir). Ne lève jamais."""
     try:
-        ip = client_ip(request)
-        if not ip or ip_key(ip) is None:
-            return
         from apps.users.models import UserProfile
-        profile = UserProfile.objects.filter(user=user).only('id', 'recent_ips').first()
+        profile = UserProfile.objects.filter(user=user).only('id', 'recent_ips', 'appareils').first()
         if profile is None:
             return
         now = timezone.now()
-        since = (now - timedelta(days=IP_BAN_DAYS)).isoformat()
-        recent = [e for e in (profile.recent_ips or []) if isinstance(e, dict) and e.get('ip') != ip
-                  and str(e.get('at', '')) >= since]
-        recent = ([{'ip': ip, 'at': now.isoformat()}] + recent)[:RECENT_IPS_MAX]
-        fields = {'last_ip': ip, 'last_ip_at': now, 'recent_ips': recent}
-        if signup:
-            fields['signup_ip'] = ip
-        UserProfile.objects.filter(pk=profile.pk).update(**fields)
+        fields = {}
+        # Appareil (20/11/2026) : gardé 1 an, comme son bannissement.
+        appareil = appareil_de(request)
+        if appareil:
+            since = (now - timedelta(days=APPAREIL_BAN_DAYS)).isoformat()
+            known = [e for e in (profile.appareils or []) if isinstance(e, dict) and e.get('id') != appareil
+                     and str(e.get('at', '')) >= since]
+            fields['appareils'] = ([{'id': appareil, 'at': now.isoformat()}] + known)[:APPAREILS_MAX]
+        ip = client_ip(request)
+        if ip and ip_key(ip) is not None:
+            since = (now - timedelta(days=IP_BAN_DAYS)).isoformat()
+            recent = [e for e in (profile.recent_ips or []) if isinstance(e, dict) and e.get('ip') != ip
+                      and str(e.get('at', '')) >= since]
+            recent = ([{'ip': ip, 'at': now.isoformat()}] + recent)[:RECENT_IPS_MAX]
+            fields.update({'last_ip': ip, 'last_ip_at': now, 'recent_ips': recent})
+            if signup:
+                fields['signup_ip'] = ip
+        if fields:
+            UserProfile.objects.filter(pk=profile.pk).update(**fields)
     except Exception:  # noqa: BLE001 — retenir l'IP ne doit jamais empêcher une connexion
         pass
 
@@ -83,9 +106,12 @@ def active_bans():
     return Bannissement.objects.filter(Q(expires_at__isnull=True) | Q(expires_at__gt=timezone.now()))
 
 
-def ban_reason(*, email=None, google_sub=None, ip=None):
-    """Type du bannissement qui bloque cette création de compte (« email », « google », « ip »), sinon None."""
+def ban_reason(*, email=None, google_sub=None, ip=None, appareil=None):
+    """Type du bannissement qui bloque cette création de compte (« email », « google », « ip », « appareil »),
+    sinon None."""
     tests = []
+    if appareil and _APPAREIL.match(appareil):
+        tests.append(Q(kind=Bannissement.KIND_APPAREIL, value=appareil))
     if email:
         tests.append(Q(kind=Bannissement.KIND_EMAIL, value=normalize_email(email)))
     if google_sub:
@@ -119,6 +145,11 @@ def add_ban(kind, value, *, username='', motif='', by=None):
         if not value:
             return None
         expires = None
+    elif kind == Bannissement.KIND_APPAREIL:
+        value = str(value or '').strip()
+        if not _APPAREIL.match(value):
+            return None
+        expires = timezone.now() + timedelta(days=APPAREIL_BAN_DAYS)
     else:
         return None
     ban, _ = Bannissement.objects.update_or_create(
@@ -143,7 +174,13 @@ def user_ips(user, days=IP_BAN_DAYS):
 
 def ban_user(user, *, by=None, motif=''):
     """Bannit un compte avant sa suppression : adresse, comptes Google, IP. Renvoie {type: [valeurs]}."""
-    done = {'email': [], 'google': [], 'ip': []}
+    done = {'email': [], 'google': [], 'ip': [], 'appareil': []}
+    profile = getattr(user, 'profile', None)
+    for e in (getattr(profile, 'appareils', None) or []):
+        if isinstance(e, dict) and e.get('id'):
+            ban = add_ban(Bannissement.KIND_APPAREIL, e['id'], username=user.username, motif=motif, by=by)
+            if ban and ban.value not in done['appareil']:
+                done['appareil'].append(ban.value)
     name = user.username
     if user.email:
         ban = add_ban(Bannissement.KIND_EMAIL, user.email, username=name, motif=motif, by=by)

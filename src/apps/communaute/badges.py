@@ -248,8 +248,8 @@ def classement_series(limite=5):
 def classement_utiles(depuis, limite=5, exclure=()):
     """Membres qui ont reçu le plus de « utile » depuis `depuis` → [(n, user)]."""
     from apps.discussions.models import Discussion, Reply
-    auteurs = set(Discussion.objects.values_list('author_id', flat=True).distinct()) | set(
-        Reply.objects.values_list('author_id', flat=True).distinct())
+    auteurs = set(Discussion.objects.filter(en_attente=False).values_list('author_id', flat=True).distinct()) | set(
+        Reply.objects.filter(en_attente=False).values_list('author_id', flat=True).distinct())
     totaux = utiles_recus(list(auteurs - set(exclure)), depuis=depuis)
     users = {u.id: u for u in User.objects.filter(id__in=totaux, is_active=True).select_related('profile')}
     rangs = sorted(((n, users[uid]) for uid, n in totaux.items() if uid in users), key=lambda x: (-x[0], x[1].username.lower()))

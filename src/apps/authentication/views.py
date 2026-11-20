@@ -31,7 +31,7 @@ from .tokens import read_verification_token
 from apps.users.identity import clean_person_name
 from apps.users.legal import accept_terms
 from apps.users.models import GoogleAccount
-from apps.users.bans import BANNED_MESSAGE, ban_reason, client_ip, remember_ip
+from apps.users.bans import BANNED_MESSAGE, appareil_de, ban_reason, client_ip, remember_ip
 from .pseudos import PSEUDO_REFUSE, pseudo_interdit
 from .jetables import MESSAGE as JETABLE_MESSAGE, adresse_jetable
 
@@ -243,7 +243,8 @@ class GoogleLoginView(views.APIView):
         if user is None or unconfirmed:
             # Création d'un compte (ou reprise d'une adresse jamais confirmée) : refusée à une personne bannie
             # par la modération (adresse, compte Google ou IP, users/bans.py), avant même les cases à cocher.
-            if ban_reason(email=info['email'], google_sub=info['sub'], ip=client_ip(request)):
+            if ban_reason(email=info['email'], google_sub=info['sub'], ip=client_ip(request),
+                          appareil=appareil_de(request)):
                 logger.info('Connexion Google : création refusée (bannissement) pour %s', info['email'])
                 return Response({'error': BANNED_MESSAGE, 'code': 'banned'}, status=status.HTTP_403_FORBIDDEN)
             # RGPD : mêmes cases que l'inscription (non pré-cochées), exigées ici aussi.
@@ -314,7 +315,7 @@ class RegisterView(views.APIView):
                             status=status.HTTP_400_BAD_REQUEST)
 
         # Personne bannie par la modération (adresse ou IP, users/bans.py) : refus sans dire pourquoi.
-        if ban_reason(email=email, ip=client_ip(request)):
+        if ban_reason(email=email, ip=client_ip(request), appareil=appareil_de(request)):
             logger.info('Inscription refusée (bannissement) pour %s', email)
             return Response({'error': BANNED_MESSAGE, 'code': 'banned'}, status=status.HTTP_400_BAD_REQUEST)
 

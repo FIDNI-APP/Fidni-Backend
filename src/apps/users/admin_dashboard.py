@@ -1064,8 +1064,15 @@ def live(request):
             'brouillons': ia_depot.travaux().filter(status__in=[IAJob.PRET, IAJob.ERREUR]).count(),
             # Questions de quiz rédigées par l'IA, invisibles des élèves tant qu'elles ne sont pas validées.
             'quiz_a_relire': SkillQuestion.objects.filter(a_relire=True).count(),
+            # Premiers messages des nouveaux comptes (discussions/moderation.py, 20/11/2026).
+            'messages_a_valider': _messages_a_valider(),
             # Défis du jour à venir rédigés par Claude, invisibles tant qu'ils ne sont pas validés.
             'defis_a_valider': defis_a_valider(),
         },
         'activity': recent_activity(real_ids, 20),
     })
+
+
+def _messages_a_valider():
+    from apps.discussions.pilotage_views import compte
+    return compte()

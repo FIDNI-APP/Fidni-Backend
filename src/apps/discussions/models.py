@@ -53,6 +53,8 @@ class Discussion(VotableMixin, models.Model):
     reply_count = models.PositiveIntegerField(default=0)
     # Recherche : titre + texte, sans accents ni balises, en minuscules (things/search_text.normalize).
     search_text = models.TextField(blank=True, default='')
+    # Premiers messages d'un compte : invisibles aux autres tant que l'équipe ne les a pas validés (moderation.py).
+    en_attente = models.BooleanField(default=False, db_index=True)
     # Commentaire repris lors du passage au forum (migration 0002) : une seule reprise par commentaire.
     legacy_comment_id = models.PositiveIntegerField(null=True, blank=True, unique=True)
 
@@ -86,6 +88,7 @@ class Reply(VotableMixin, models.Model):
     attachments = GenericRelation('uploads.FileAttachment')
     created_at = models.DateTimeField(default=timezone.now)
     edited_at = models.DateTimeField(null=True, blank=True)
+    en_attente = models.BooleanField(default=False, db_index=True)
     legacy_comment_id = models.PositiveIntegerField(null=True, blank=True, unique=True)
 
     class Meta:

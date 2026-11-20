@@ -157,6 +157,8 @@ class UserProfile(models.Model):
     last_ip_at = models.DateTimeField(null=True, blank=True)
     # IP distinctes des 30 derniers jours ([{ip, at}], 10 au plus) : une IP mobile change souvent.
     recent_ips = models.JSONField(default=list, blank=True)
+    # Appareils (identifiant au hasard du navigateur, [{id, at}], 10 au plus, 1 an ; users/bans.py, 20/11/2026).
+    appareils = models.JSONField(default=list, blank=True)
     # Fenêtres « Nouveautés » déjà montrées ({id: date ISO}), une fois par compte (users/nouveautes.py).
     nouveautes_vues = models.JSONField(default=dict, blank=True)
 
@@ -534,8 +536,9 @@ class Bannissement(models.Model):
     """Compte banni par la modération (users/bans.py) : son adresse e-mail (normalisée) et son compte Google,
     définitivement ; ses adresses IP pour 30 jours (IP mobiles partagées). Bloque seulement la CRÉATION d'un
     compte (inscription, nouveau compte Google) : un membre existant sur la même IP n'est pas gêné."""
-    KIND_EMAIL, KIND_GOOGLE, KIND_IP = 'email', 'google', 'ip'
-    KIND_CHOICES = [(KIND_EMAIL, 'Adresse e-mail'), (KIND_GOOGLE, 'Compte Google'), (KIND_IP, 'Adresse IP')]
+    KIND_EMAIL, KIND_GOOGLE, KIND_IP, KIND_APPAREIL = 'email', 'google', 'ip', 'appareil'
+    KIND_CHOICES = [(KIND_EMAIL, 'Adresse e-mail'), (KIND_GOOGLE, 'Compte Google'), (KIND_IP, 'Adresse IP'),
+                    (KIND_APPAREIL, 'Appareil')]
 
     kind = models.CharField(max_length=10, choices=KIND_CHOICES)
     value = models.CharField(max_length=255)
