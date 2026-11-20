@@ -313,12 +313,6 @@ class RegisterView(views.APIView):
             return Response({'error': 'Adresse e-mail invalide.', 'field': 'email'},
                             status=status.HTTP_400_BAD_REQUEST)
 
-        # Adresse jetable (yopmail, mailinator…) : refusée (20/11/2026, authentication/jetables.py).
-        if adresse_jetable(email):
-            logger.info('Inscription refusée (adresse jetable) : %s', email.rpartition('@')[2])
-            return Response({'error': JETABLE_MESSAGE, 'field': 'email', 'code': 'email_jetable'},
-                            status=status.HTTP_400_BAD_REQUEST)
-
         # Personne bannie par la modération (adresse ou IP, users/bans.py) : refus sans dire pourquoi.
         if ban_reason(email=email, ip=client_ip(request)):
             logger.info('Inscription refusée (bannissement) pour %s', email)
@@ -351,6 +345,10 @@ class RegisterView(views.APIView):
             return Response({'error': 'Si tu as moins de 15 ans, un parent doit donner son accord.',
                              'field': 'age_ok'}, status=status.HTTP_400_BAD_REQUEST)
 
+        if adresse_jetable(email, consulter_api=True):
+            logger.info('Inscription refusée (adresse jetable) : %s', email.rpartition('@')[2])
+            return Response({'error': JETABLE_MESSAGE, 'field': 'email', 'code': 'email_jetable'},
+                            status=status.HTTP_400_BAD_REQUEST)
         user = User.objects.create_user(
             username=username,
             email=email,

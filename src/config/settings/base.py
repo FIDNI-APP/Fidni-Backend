@@ -230,6 +230,7 @@ DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'Fidni <no-reply@fidni.fr>'
 # backend automatically when the key is present.
 BREVO_API_KEY = os.getenv('BREVO_API_KEY', '')
 BREVO_TIMEOUT = int(os.getenv('BREVO_TIMEOUT', '10'))
+CHECK_MAIL_API_KEY = os.getenv('CHECK_MAIL_API_KEY', '').strip()
 # Public URL of the SPA — used to build links inside verification emails.
 FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:5173')
 

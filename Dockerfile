@@ -13,6 +13,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 ENV JAVA_HOME=/usr/lib/jvm/default-java
+ENV FIDNI_JETABLES_FICHIER=/var/lib/fidni/jetables/adresses_jetables.txt
 ENV PATH="$JAVA_HOME/bin:$PATH"
 
 # Copy requirements first to leverage Docker cache

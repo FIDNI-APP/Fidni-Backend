@@ -32,6 +32,17 @@ python manage.py collectstatic --noinput
 # Start nginx
 nginx
 
+# Un seul rafraîchissement par conteneur, hors des requêtes d'inscription.
+(
+  while true; do
+    if python manage.py adresses_jetables --mettre-a-jour; then
+      sleep 86400
+    else
+      sleep 3600
+    fi
+  done
+) &
+
 # WebSocket de la messagerie et des appels (13/11/2026) : uvicorn, un seul processus, relancé s'il s'arrête.
 # Il ne sert que /ws/ (nginx) ; gunicorn et lui se parlent par Redis (REDIS_URL).
 (

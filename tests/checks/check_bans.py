@@ -1,9 +1,13 @@
 """Bannir un compte (users/bans.py) et pseudos insultants (authentication/pseudos.py), sur une base SQLite
 jetable : adresse, compte Google et IP d'un compte supprimé par la modération ne recréent plus de compte."""
+import io
 import os
 import sys
 import tempfile
 from datetime import timedelta
+from pathlib import Path
+from unittest.mock import patch
+from urllib.parse import parse_qs
 
 BACKEND = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, BACKEND + '/src')
@@ -17,6 +21,8 @@ if os.path.exists(DB):
 import django  # noqa: E402
 django.setup()
 from django.core.management import call_command  # noqa: E402
+from django.core.management.base import CommandError  # noqa: E402
+from django.test import override_settings  # noqa: E402
 call_command('migrate', verbosity=0)
 
 from django.conf import settings  # noqa: E402
@@ -177,6 +183,9 @@ from apps.authentication.jetables import adresse_jetable, domaines  # noqa: E402
 check('liste des domaines jetables chargée', len(domaines()) > 5000, len(domaines()))
 check('jetables reconnues (sous-domaine et majuscules compris)',
       all(adresse_jetable(e) for e in ('x@yopmail.com', 'a@Mailinator.com', 'b@10minutemail.com', 'c@abc.yopmail.com')))
+check('domaine jetable signalé sur Fidni et ses sous-domaines',
+      adresse_jetable('eleve@bonuscable.com') and adresse_jetable('eleve@classe.BONUSCABLE.com')
+      and not adresse_jetable('eleve@notbonuscable.com'))
 check('vraies adresses acceptées', not any(adresse_jetable(e) for e in (
     'a@gmail.com', 'b@hotmail.fr', 'c@outlook.com', 'd@yahoo.fr', 'e@menara.ma', 'f@taalim.ma', 'pas-une-adresse', '')))
 r = register('eleve_jetable', 'eleve.jetable@yopmail.com', ip='3.3.3.5')
@@ -190,6 +199,67 @@ r = client(user=eleve).patch('/api/auth/user/update/', {'email': 'nouvelle@maili
 eleve.refresh_from_db()
 check('changement d’adresse : jetable refusée', r.status_code == 400 and r.data.get('code') == 'email_jetable'
       and eleve.email != 'nouvelle@mailinator.com', (r.status_code, r.data))
+
+# Décisions Check-Mail dans les deux formulaires, cache partagé et continuité en cas de panne.
+with override_settings(CHECK_MAIL_API_KEY='cle-de-test'), patch('apps.authentication.jetables.HTTPSConnection') as https:
+    cache.clear()
+    connexion = https.return_value
+    reponse = connexion.getresponse.return_value
+    reponse.status = 200
+    reponse.read.return_value = b'{"domain":"jetable.example","is_disposable":true}'
+    r = register('test_domaine_api', 'inscription@jetable.example', ip='3.3.3.7')
+    req = connexion.request.call_args
+    check('Check-Mail confirme le refus à l’inscription', r.status_code == 400 and r.data.get('code') == 'email_jetable'
+          and not User.objects.filter(username='test_domaine_api').exists())
+    check('seul le domaine est envoyé en POST', req.args == ('POST', '/v2/')
+          and parse_qs(req.kwargs['body']) == {'domain': ['jetable.example']})
+    membre = APIClient()
+    membre.force_authenticate(eleve)
+    r = membre.patch('/api/auth/user/update/', {'email': 'nouvelle@jetable.example', 'current_password': PWD}, format='json')
+    check('le changement d’adresse réutilise le verdict', r.status_code == 400 and r.data.get('code') == 'email_jetable'
+          and connexion.request.call_count == 1)
+    reponse.read.return_value = b'{"domain":"universite.example","block":true,"is_disposable":false}'
+    check('un domaine universitaire non jetable est accepté et mémorisé', all(
+        not adresse_jetable(a, consulter_api=True) for a in ('un@universite.example', 'deux@universite.example'))
+        and connexion.request.call_count == 2)
+    check('liste locale et fournisseurs usuels traités sur le serveur', adresse_jetable('a@x.yopmail.com', consulter_api=True)
+          and not adresse_jetable('a@taalim.ma', consulter_api=True) and connexion.request.call_count == 2)
+    call_command('adresses_jetables', stdout=io.StringIO())
+    check('le rapport des membres ne consomme pas le quota', connexion.request.call_count == 2)
+    reponse.status = 429
+    check('quota atteint : la liste locale continue de fonctionner', not adresse_jetable('a@nouveau.example', consulter_api=True)
+          and not adresse_jetable('b@autre.example', consulter_api=True)
+          and adresse_jetable('a@bonuscable.com', consulter_api=True) and connexion.request.call_count == 3)
+    cache.clear()
+    reponse.status = 200
+    reponse.read.return_value = b'{"domain":"autre.example","is_disposable":true}'
+    check('une réponse portant sur un autre domaine est ignorée', not adresse_jetable('a@attendu.example', consulter_api=True))
+    reponse.read.side_effect = TimeoutError()
+    check('délai API dépassé : inscription légitime possible', not adresse_jetable('a@entreprise.example', consulter_api=True))
+    cache.clear()
+
+# Une actualisation réussie est visible dans un processus qui a déjà chargé la liste.
+with tempfile.TemporaryDirectory() as dossier, patch.dict(os.environ, {'FIDNI_JETABLES_FICHIER': dossier + '/liste.txt'}):
+    fichier = Path(dossier) / 'liste.txt'
+    check('premier démarrage : copie embarquée disponible', adresse_jetable('a@yopmail.com'))
+    fichier.write_text('ancien.example\n', encoding='utf-8')
+    check('copie persistée chargée', adresse_jetable('a@ancien.example'))
+    def flux(prefixe):
+        return io.BytesIO('\n'.join(f'{prefixe}{i}.example' for i in range(1100)).encode())
+    with patch('urllib.request.urlopen', side_effect=[flux('premier'), flux('quotidien')]):
+        call_command('adresses_jetables', mettre_a_jour=True, stdout=io.StringIO())
+    check('les ajouts et les retraits des sources sont pris en compte sans redémarrer',
+          adresse_jetable('a@premier12.example') and adresse_jetable('a@x.quotidien42.example')
+          and not adresse_jetable('a@ancien.example'))
+    avant = fichier.read_bytes()
+    with patch('urllib.request.urlopen', side_effect=[flux('premier'), io.BytesIO(b'<html>erreur</html>')]):
+        try:
+            call_command('adresses_jetables', mettre_a_jour=True)
+        except CommandError:
+            pass
+        else:
+            raise AssertionError('Une réponse HTML ne doit pas remplacer la liste.')
+    check('une source invalide conserve la dernière liste complète', fichier.read_bytes() == avant)
 
 print(f'{sum(results)}/{len(results)} vérifications réussies')
 sys.exit(0 if all(results) else 1)
