@@ -33,6 +33,7 @@ from apps.users.legal import accept_terms
 from apps.users.models import GoogleAccount
 from apps.users.bans import BANNED_MESSAGE, ban_reason, client_ip, remember_ip
 from .pseudos import PSEUDO_REFUSE, pseudo_interdit
+from .jetables import MESSAGE as JETABLE_MESSAGE, adresse_jetable
 
 
 import logging
@@ -310,6 +311,12 @@ class RegisterView(views.APIView):
             validate_email(email)
         except ValidationError:
             return Response({'error': 'Adresse e-mail invalide.', 'field': 'email'},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        # Adresse jetable (yopmail, mailinator…) : refusée (20/11/2026, authentication/jetables.py).
+        if adresse_jetable(email):
+            logger.info('Inscription refusée (adresse jetable) : %s', email.rpartition('@')[2])
+            return Response({'error': JETABLE_MESSAGE, 'field': 'email', 'code': 'email_jetable'},
                             status=status.HTTP_400_BAD_REQUEST)
 
         # Personne bannie par la modération (adresse ou IP, users/bans.py) : refus sans dire pourquoi.

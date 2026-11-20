@@ -172,5 +172,24 @@ r = gpost('g-insulte', ip='3.3.3.4')
 check('Google : adresse insultante → pseudo neutre', r.status_code == 200
       and User.objects.get(google_accounts__sub='sub-insulte').username.startswith('eleve'), (r.status_code, r.data))
 
+# ── Adresses e-mail jetables (20/11/2026)
+from apps.authentication.jetables import adresse_jetable, domaines  # noqa: E402
+check('liste des domaines jetables chargée', len(domaines()) > 5000, len(domaines()))
+check('jetables reconnues (sous-domaine et majuscules compris)',
+      all(adresse_jetable(e) for e in ('x@yopmail.com', 'a@Mailinator.com', 'b@10minutemail.com', 'c@abc.yopmail.com')))
+check('vraies adresses acceptées', not any(adresse_jetable(e) for e in (
+    'a@gmail.com', 'b@hotmail.fr', 'c@outlook.com', 'd@yahoo.fr', 'e@menara.ma', 'f@taalim.ma', 'pas-une-adresse', '')))
+r = register('eleve_jetable', 'eleve.jetable@yopmail.com', ip='3.3.3.5')
+check('inscription : adresse jetable refusée', r.status_code == 400 and r.data.get('code') == 'email_jetable'
+      and r.data.get('field') == 'email' and not User.objects.filter(username='eleve_jetable').exists(), r.data)
+r = register('eleve_vrai', 'eleve.vrai@gmail.com', ip='3.3.3.6')
+check('inscription : vraie adresse acceptée', r.status_code in (200, 201), (r.status_code, r.data))
+eleve.set_password(PWD)
+eleve.save()
+r = client(user=eleve).patch('/api/auth/user/update/', {'email': 'nouvelle@mailinator.com', 'current_password': PWD}, format='json')
+eleve.refresh_from_db()
+check('changement d’adresse : jetable refusée', r.status_code == 400 and r.data.get('code') == 'email_jetable'
+      and eleve.email != 'nouvelle@mailinator.com', (r.status_code, r.data))
+
 print(f'{sum(results)}/{len(results)} vérifications réussies')
 sys.exit(0 if all(results) else 1)

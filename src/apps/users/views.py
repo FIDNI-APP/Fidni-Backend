@@ -862,6 +862,10 @@ class UpdateUserInfoView(APIView):
                 validate_email(email)
             except DjangoValidationError:
                 return Response({'error': 'Adresse e-mail invalide'}, status=status.HTTP_400_BAD_REQUEST)
+            from apps.authentication.jetables import MESSAGE as JETABLE_MESSAGE, adresse_jetable
+            if adresse_jetable(email):
+                return Response({'error': JETABLE_MESSAGE, 'field': 'email', 'code': 'email_jetable'},
+                                status=status.HTTP_400_BAD_REQUEST)
             if User.objects.filter(email__iexact=email).exclude(id=user.id).exists():
                 return Response({'error': 'Cet email est déjà utilisé'}, status=status.HTTP_400_BAD_REQUEST)
             user.email = email
