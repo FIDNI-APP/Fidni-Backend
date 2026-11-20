@@ -53,7 +53,7 @@ def content_participants(content):
     sid = str(content.id)  # object_id des votes, favoris et résultats : CharField (CLAUDE.md)
     ids = {content.author_id}
     ids |= set(Comment.objects.filter(content_item=content).values_list('author_id', flat=True))
-    ids |= set(Discussion.objects.filter(genre=COMMENTAIRE, contents=content).values_list('author_id', flat=True))
+    ids |= set(Discussion.objects.filter(genre=COMMENTAIRE, contents=content, en_attente=False).values_list('author_id', flat=True))
     ids |= set(Vote.objects.filter(content_type=ct, object_id=sid).exclude(value=0).values_list('user_id', flat=True))
     ids |= set(Save.objects.filter(content_type=ct, object_id=sid).values_list('user_id', flat=True))
     ids |= set(Complete.objects.filter(content_type=ct, object_id=sid).values_list('user_id', flat=True))

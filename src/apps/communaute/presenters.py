@@ -104,8 +104,8 @@ def _activite(user):
     from apps.discussions.models import COMMENTAIRE, Discussion, Reply
     from apps.discussions.presenters import utile_counts
     from apps.discussions.services import link, reply_link, titre
-    disc = list(Discussion.objects.filter(author=user).prefetch_related('contents').order_by('-created_at')[:ACTIVITE])
-    reps = list(Reply.objects.filter(author=user).select_related('discussion').prefetch_related('discussion__contents')
+    disc = list(Discussion.objects.filter(author=user, en_attente=False).prefetch_related('contents').order_by('-created_at')[:ACTIVITE])
+    reps = list(Reply.objects.filter(author=user, en_attente=False).select_related('discussion').prefetch_related('discussion__contents')
                 .order_by('-created_at')[:ACTIVITE])
     u_disc, _ = utile_counts(Discussion, [d.id for d in disc], None)
     u_rep, _ = utile_counts(Reply, [r.id for r in reps], None)

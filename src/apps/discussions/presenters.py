@@ -91,19 +91,21 @@ def cards(discussions, request):
         followed = set(Follow.objects.filter(user=viewer, discussion_id__in=ids).values_list('discussion_id', flat=True))
     # Derniers membres qui ont répondu (trois au plus par discussion), sans requête par carte.
     repliers = defaultdict(list)
-    rows = Reply.objects.filter(discussion_id__in=ids).order_by('-created_at').values_list('discussion_id', 'author_id')
+    rows = Reply.objects.filter(discussion_id__in=ids, en_attente=False).order_by('-created_at').values_list('discussion_id', 'author_id')
     for did, uid in rows[:600]:
         if uid not in repliers[did] and len(repliers[did]) < REPLIERS:
             repliers[did].append(uid)
     users = {u.id: u for u in User.objects.filter(id__in={u for lst in repliers.values() for u in lst})
              .select_related('profile')}
     # Répondue = au moins une réponse d'un autre membre que l'auteur (même règle que le tri « sans réponse »).
-    answered = set(Reply.objects.filter(discussion_id__in=ids).exclude(author_id=F('discussion__author_id'))
+    answered = set(Reply.objects.filter(discussion_id__in=ids, en_attente=False).exclude(author_id=F('discussion__author_id'))
                    .values_list('discussion_id', flat=True).distinct())
     out = []
     for d in discussions:
         out.append({
             'id': d.id,
+            # Premier message d'un compte, pas encore validé par l'équipe : montré seulement à son auteur.
+            'en_attente': d.en_attente,
             'genre': d.genre,
             'url': link(d),
             'title': d.title,
@@ -137,6 +139,7 @@ def card_queryset(qs):
 def reply_data(r, request, utiles, mine):
     return {
         'id': r.id,
+        'en_attente': r.en_attente,
         'author': author(r.author, request),
         'body': r.body,
         'created_at': r.created_at,
@@ -157,7 +160,8 @@ def can_edit(request, obj):
 
 def detail(d, request):
     data = cards([d], request)[0]
-    replies = list(d.replies.select_related('author', 'author__profile', 'author__profile__class_level',
+    from .moderation import visibles
+    replies = list(visibles(d.replies.all(), getattr(request, 'user', None)).select_related('author', 'author__profile', 'author__profile__class_level',
                                             'reply_to__author').prefetch_related('attachments'))
     utiles, mine = utile_counts(Reply, [r.id for r in replies], getattr(request, 'user', None))
     data.update({

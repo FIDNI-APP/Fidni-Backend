@@ -36,6 +36,7 @@ from config.throttling import (ApiMembreThrottle, ApiVisiteurThrottle, ContenuVi
                                DiscussionThrottle)
 
 from . import presenters
+from .moderation import doit_valider, refus_compte_recent, visibles
 from .models import COMMENTAIRE, FORUM, GENRE_KEYS, SALON_KEYS, SALONS, Discussion, Follow, Reply, plain_text
 from .services import delete_files, later, notify_new_comment, notify_new_discussion, notify_new_reply
 
@@ -76,9 +77,10 @@ def _level_filter(request):
     return _default_level(request.user)
 
 
-def _scope(request):
-    """Discussions du niveau et du salon demandés (sans tri ni recherche)."""
-    qs = Discussion.objects.all()
+def _scope(request, miens=True):
+    """Discussions du niveau et du salon demandés (sans tri ni recherche). Messages en attente de validation : ceux du
+    membre lui-même seulement (`miens`), jamais dans les compteurs."""
+    qs = visibles(Discussion.objects.all(), _member(request) if miens else None)
     level = _level_filter(request)
     if level is not None:
         qs = qs.filter(Q(class_level_id=level) | Q(class_level__isnull=True))
@@ -86,7 +88,7 @@ def _scope(request):
 
 
 def _others_replies():
-    return Count('replies', filter=~Q(replies__author_id=F('author_id')), distinct=True)
+    return Count('replies', filter=~Q(replies__author_id=F('author_id')) & Q(replies__en_attente=False), distinct=True)
 
 
 def _unanswered(qs):
@@ -223,12 +225,15 @@ def _create_comment(request):
     if not ids or len(ids) != 1:
         return Response({'content_ids': 'Un commentaire est écrit sous un contenu.'}, status=400)
     level = Content.objects.get(pk=ids[0]).class_levels.order_by('order').first()
+    attente = doit_valider(request.user)
     with transaction.atomic():
-        d = Discussion.objects.create(author=request.user, genre=COMMENTAIRE, body=body, class_level=level)
+        d = Discussion.objects.create(author=request.user, genre=COMMENTAIRE, body=body, class_level=level,
+                                      en_attente=attente)
         d.contents.set(ids)
         Follow.objects.get_or_create(discussion=d, user=request.user)
         _attach(d, request.data.get('file_ids'), request.user)
-    later(notify_new_comment, d)
+    if not attente:  # en attente : prévenus à la validation (pilotage_views.py)
+        later(notify_new_comment, d)
     d = presenters.card_queryset(Discussion.objects.filter(pk=d.pk)).get()
     return Response(presenters.detail(d, request), status=201)
 
@@ -249,6 +254,9 @@ def _edit_comment(request, d):
 def _create(request):
     if not _member(request):
         return Response({'error': 'connexion requise'}, status=401)
+    refus = refus_compte_recent(request.user)
+    if refus:
+        return Response(refus, status=403)
     genre = request.data.get('genre') or FORUM
     if genre not in GENRE_KEYS:
         return Response({'genre': 'Genre inconnu.'}, status=400)
@@ -261,12 +269,14 @@ def _create(request):
         return Response(errors, status=400)
     level = values.pop('class_level_id', _default_level(request.user))
     content_ids = values.pop('content_ids')
+    attente = doit_valider(request.user)
     with transaction.atomic():
-        d = Discussion.objects.create(author=request.user, class_level_id=level, **values)
+        d = Discussion.objects.create(author=request.user, class_level_id=level, en_attente=attente, **values)
         d.contents.set(content_ids)
         Follow.objects.get_or_create(discussion=d, user=request.user)
         _attach(d, request.data.get('file_ids'), request.user)
-    later(notify_new_discussion, d)
+    if not attente:
+        later(notify_new_discussion, d)
     d = presenters.card_queryset(Discussion.objects.filter(pk=d.pk)).get()
     return Response(presenters.detail(d, request), status=201)
 
@@ -275,7 +285,7 @@ def _create(request):
 @permission_classes([AllowAny])
 @throttle_classes(LECTURE)
 def discussion(request, pk):
-    d = get_object_or_404(presenters.card_queryset(Discussion.objects.all()), pk=pk)
+    d = get_object_or_404(presenters.card_queryset(visibles(Discussion.objects.all(), _member(request))), pk=pk)
     if request.method == 'GET':
         return Response(presenters.detail(d, request))
     if not _owner_or_staff(request, d):
@@ -316,7 +326,10 @@ def _reply_body(request, vide='Écris ta réponse.'):
 @permission_classes([IsAuthenticated])
 @throttle_classes([ApiMembreThrottle, DiscussionReponseThrottle])
 def repondre(request, pk):
-    d = get_object_or_404(Discussion, pk=pk)
+    d = get_object_or_404(visibles(Discussion.objects.all(), request.user), pk=pk)
+    refus = refus_compte_recent(request.user)
+    if refus:
+        return Response(refus, status=403)
     body, error = _reply_body(request)
     if error:
         return Response(error, status=400)
@@ -325,12 +338,15 @@ def repondre(request, pk):
         reply_to = Reply.objects.filter(pk=_id(request.data.get('reply_to')) or -1, discussion=d).first()
         if reply_to is None:
             return Response({'reply_to': 'Réponse introuvable dans cette discussion.'}, status=400)
+    attente = doit_valider(request.user)
     with transaction.atomic():
-        r = Reply.objects.create(discussion=d, author=request.user, body=body, reply_to=reply_to)
+        r = Reply.objects.create(discussion=d, author=request.user, body=body, reply_to=reply_to, en_attente=attente)
         _attach(r, request.data.get('file_ids'), request.user)
-        Discussion.objects.filter(pk=d.pk).update(reply_count=F('reply_count') + 1, last_activity_at=r.created_at)
+        if not attente:  # en attente : compté et prévenu à la validation (pilotage_views.py)
+            Discussion.objects.filter(pk=d.pk).update(reply_count=F('reply_count') + 1, last_activity_at=r.created_at)
         Follow.objects.get_or_create(discussion=d, user=request.user)
-    later(notify_new_reply, r)
+    if not attente:
+        later(notify_new_reply, r)
     r = Reply.objects.select_related('author__profile__class_level', 'reply_to__author').get(pk=r.pk)
     return Response(presenters.reply_data(r, request, {}, set()), status=201)
 
@@ -345,9 +361,9 @@ def reponse(request, pk):
         did = r.discussion_id
         delete_files([(Reply, [r.id])])
         r.delete()
-        last = Reply.objects.filter(discussion_id=did).aggregate(m=Max('created_at'))['m']
+        last = Reply.objects.filter(discussion_id=did, en_attente=False).aggregate(m=Max('created_at'))['m']
         d = Discussion.objects.get(pk=did)
-        Discussion.objects.filter(pk=did).update(reply_count=Reply.objects.filter(discussion_id=did).count(),
+        Discussion.objects.filter(pk=did).update(reply_count=Reply.objects.filter(discussion_id=did, en_attente=False).count(),
                                                  last_activity_at=last or d.created_at)
         return Response(status=204)
     body, error = _reply_body(request)
@@ -380,14 +396,14 @@ def _toggle_utile(request, obj):
 @permission_classes([IsAuthenticated])
 @throttle_classes([ApiMembreThrottle])
 def utile(request, pk):
-    return _toggle_utile(request, get_object_or_404(Discussion, pk=pk))
+    return _toggle_utile(request, get_object_or_404(Discussion, pk=pk, en_attente=False))
 
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 @throttle_classes([ApiMembreThrottle])
 def reponse_utile(request, pk):
-    return _toggle_utile(request, get_object_or_404(Reply, pk=pk))
+    return _toggle_utile(request, get_object_or_404(Reply, pk=pk, en_attente=False))
 
 
 @api_view(['POST'])
@@ -407,7 +423,7 @@ def suivre(request, pk):
 def panneau(request):
     """Colonne de l'espace : salons (nombre de discussions), contenus les plus discutés et membres les plus utiles
     sur 30 jours, discussions sans réponse — au niveau demandé (?niveau=, défaut : celui de l'élève). Forum seulement."""
-    qs, level = _scope(request)
+    qs, level = _scope(request, miens=False)
     qs = qs.filter(genre=FORUM)
     counts = dict(qs.values('salon').annotate(n=Count('id')).values_list('salon', 'n'))
     since = timezone.now() - timedelta(days=30)
@@ -448,7 +464,7 @@ def panneau(request):
 def compteur(request):
     """Discussions du forum sans réponse à son niveau, hors les siennes (entrée « Discussions » du menu). Un commentaire
     n'attend pas forcément de réponse : il ne compte pas."""
-    qs, _ = _scope(request)
+    qs, _ = _scope(request, miens=False)
     return Response({'sans_reponse': _unanswered(qs.filter(genre=FORUM).exclude(author=request.user)).count()})
 
 
