@@ -37,6 +37,7 @@ from apps.users import nouveautes, tableau
 from apps.things import reports as content_reports
 from apps.discussions import pilotage_views as discussions_pilotage
 from apps.ia import views as ia_views
+from apps.ia import atelier
 from apps.things.views import get_content_recommendations, parse_pdf_view
 from apps.caracteristics.views import (
     ClassLevelViewSet, SubjectViewSet, ChapterViewSet, SubfieldViewSet, TheoremViewSet,
@@ -210,6 +211,9 @@ urlpatterns = [
          name='pilotage-message-refuser'),
     # IA des administrateurs : import d'un document, correction d'un signalement (rien sans validation).
     path('api/pilotage/ia/', ia_views.jobs, name='pilotage-ia'),
+    path('api/atelier/autoriser/', atelier.autoriser),
+    path('api/atelier/etat/', atelier.etat),
+    path('api/atelier/fiches/<str:action>/', atelier.fiche),
     path('api/pilotage/brouillons/', ia_views.brouillons, name='pilotage-brouillons'),
     path('api/pilotage/ia/import/', ia_views.nouvel_import, name='pilotage-ia-import'),
     path('api/pilotage/ia/<int:pk>/', ia_views.job_detail, name='pilotage-ia-detail'),
