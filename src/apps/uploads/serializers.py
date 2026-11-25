@@ -44,48 +44,64 @@ class FileUploadSerializer(serializers.Serializer):
         # Max file size: 10MB
         max_size = 10 * 1024 * 1024
         if file.size > max_size:
-            raise serializers.ValidationError(f"File size must be less than 10MB. Current size: {file.size / 1024 / 1024:.1f}MB")
+            raise serializers.ValidationError(
+                f'Fichier trop lourd ({file.size / 1024 / 1024:.1f} Mo) : 10 Mo au plus.')
 
-        # Allowed mime types
-        allowed_types = [
-            # Images
-            # (Pas de SVG : un SVG peut contenir du JavaScript.)
-            'image/jpeg', 'image/png', 'image/gif', 'image/webp',
-            # Documents
-            'application/pdf',
-            'application/msword',
-            'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-            'application/vnd.ms-excel',
-            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-            'text/plain',
-            # Archives
-            'application/zip',
-            'application/x-rar-compressed',
-        ]
-
-        if file.content_type not in allowed_types:
-            raise serializers.ValidationError(f"Type de fichier non autorisé : {file.content_type}")
-
-        # Le type annoncé vient du navigateur : l'extension doit concorder, et une « image »
-        # doit réellement en être une (sinon, un .html renommé serait servi tel quel).
+        mime = (file.content_type or '').lower()
         ext = file.name.rsplit('.', 1)[-1].lower() if '.' in file.name else ''
+
+        # Une image se reconnaît à son contenu (25/11/2026, une élève n'arrivait pas à envoyer sa photo au
+        # forum) : « photo.jfif », « image/jpg », un type vide ou une photo sans extension passent s'ils sont
+        # vraiment du JPEG, PNG, GIF ou WebP, et leur nom et leur type sont remis d'aplomb. Une extension qui
+        # n'est pas celle d'une image (« page.html ») reste refusée, même avec un contenu d'image.
+        if mime.startswith('image/') or ext in _EXT_IMAGES or (not ext and mime in ('', 'application/octet-stream')):
+            if ext and ext not in _EXT_IMAGES:
+                raise serializers.ValidationError('L’extension du fichier ne correspond pas à son type.')
+            if ext in ('heic', 'heif') or mime in ('image/heic', 'image/heif'):
+                raise serializers.ValidationError(
+                    'Photo au format HEIC (iPhone) : envoie plutôt une capture d’écran de la photo, ou choisis '
+                    '« Le plus compatible » dans Réglages › Appareil photo › Formats.')
+            if not _image_reelle(file):
+                raise serializers.ValidationError('Image illisible ou dans un format non accepté (JPEG, PNG, GIF ou WebP).')
+            return file
+
+        # Documents (pas de SVG : un SVG peut contenir du JavaScript). Le type annoncé vient du navigateur :
+        # l'extension doit concorder (sinon, un .html renommé serait servi tel quel).
         allowed_ext = {
-            'image/jpeg': {'jpg', 'jpeg'}, 'image/png': {'png'}, 'image/gif': {'gif'}, 'image/webp': {'webp'},
             'application/pdf': {'pdf'}, 'application/msword': {'doc'},
             'application/vnd.openxmlformats-officedocument.wordprocessingml.document': {'docx'},
             'application/vnd.ms-excel': {'xls'},
             'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': {'xlsx'},
             'text/plain': {'txt', 'md'}, 'application/zip': {'zip'}, 'application/x-rar-compressed': {'rar'},
         }
-        if ext not in allowed_ext.get(file.content_type, set()):
+        if mime not in allowed_ext:
+            raise serializers.ValidationError(f'Type de fichier non autorisé : {file.content_type}')
+        if ext not in allowed_ext[mime]:
             raise serializers.ValidationError('L’extension du fichier ne correspond pas à son type.')
-        if file.content_type.startswith('image/'):
-            try:
-                from PIL import Image
-                Image.open(file).verify()
-            except Exception:
-                raise serializers.ValidationError('Image illisible ou corrompue.')
-            finally:
-                file.seek(0)
-
         return file
+
+
+_EXT_IMAGES = {'jpg', 'jpeg', 'jpe', 'jfif', 'pjpeg', 'pjp', 'png', 'gif', 'webp', 'heic', 'heif'}
+_FORMATS_IMAGES = {'JPEG': ('image/jpeg', 'jpg'), 'PNG': ('image/png', 'png'),
+                   'GIF': ('image/gif', 'gif'), 'WEBP': ('image/webp', 'webp')}
+
+
+def _image_reelle(file):
+    """True si le fichier est réellement une image JPEG, PNG, GIF ou WebP ; son nom et son type sont alors
+    corrigés (« photo.jfif » → « photo.jpg », image/jpeg)."""
+    try:
+        from PIL import Image
+        with Image.open(file) as img:
+            fmt = img.format
+            img.verify()
+    except Exception:
+        return False
+    finally:
+        file.seek(0)
+    if fmt not in _FORMATS_IMAGES:
+        return False
+    mime, ext = _FORMATS_IMAGES[fmt]
+    base = file.name.rsplit('.', 1)[0] if '.' in file.name else file.name
+    file.name = f'{base or "image"}.{ext}'
+    file.content_type = mime
+    return True

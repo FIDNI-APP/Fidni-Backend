@@ -14,6 +14,7 @@ GET  /api/discussions/compteur/            discussions sans réponse à son nive
 GET  /api/discussions/contenus/?q=         contenus à taguer (recherche par titre, ou n° du contenu)
 Lecture ouverte à tous (limitée par IP pour les visiteurs) ; écrire demande un compte.
 """
+import uuid
 from collections import Counter
 from datetime import timedelta
 
@@ -106,10 +107,19 @@ def _owner_or_staff(request, obj):
     return bool(user and (obj.author_id == user.id or user.is_staff or user.is_superuser))
 
 
+def _file_id(value):
+    """Identifiant d'un fichier envoyé (UUID), None s'il est illisible. Avant le 25/11/2026, `_id` (nombres
+    seulement) servait ici : toutes les photos du forum et des commentaires étaient perdues sans erreur."""
+    try:
+        return str(uuid.UUID(str(value)))
+    except (ValueError, TypeError, AttributeError):
+        return None
+
+
 def _attach(obj, file_ids, user):
     from apps.things.views import attach_own_files
     if isinstance(file_ids, list):
-        attach_own_files(obj, [i for i in file_ids if _id(i)][:MAX_FILES], user)
+        attach_own_files(obj, [f for f in (_file_id(i) for i in file_ids) if f][:MAX_FILES], user)
 
 
 def _content_ids(raw):
