@@ -460,5 +460,29 @@ dr.refresh_from_db()
 check('migration 0003 : le commentaire écrit entre-temps est repris', dr.reply_count == 4 and Discussion.objects.count() == 3,
       (dr.reply_count, Discussion.objects.count()))
 
+# --- Photos (25/11/2026 : les identifiants des fichiers sont des UUID, et ils étaient tous jetés sans erreur).
+import io as _io  # noqa: E402
+from django.core.files.uploadedfile import SimpleUploadedFile  # noqa: E402
+from PIL import Image  # noqa: E402
+settings.MEDIA_ROOT = os.path.join(tempfile.gettempdir(), 'fidni-disc-media')
+ikram = User.objects.create_user('ikram_photo', 'ikram@example.com', 'x')
+
+
+def photo():
+    buf = _io.BytesIO()
+    Image.new('RGB', (20, 20), 'white').save(buf, 'PNG')
+    r = client(ikram).post('/api/files/upload/', {'file': SimpleUploadedFile('capture.png', buf.getvalue(), content_type='image/png')}, format='multipart')
+    return r.data['id']
+
+
+cache.clear()
+r = client(ikram).post('/api/discussions/', {'title': 'Ma figure ne marche pas', 'body': '<p></p>', 'salon': 'entraide', 'file_ids': [photo()]}, format='json')
+check('discussion avec seulement une photo : la photo est rattachée', r.status_code == 201 and len(r.data.get('files') or []) == 1, r.data)
+d_photo = r.data.get('id')
+r = client(ikram).post(f'/api/discussions/{d_photo}/repondre/', {'body': '<p>Voilà ma copie</p>', 'file_ids': [photo(), photo()]}, format='json')
+check('réponse avec deux photos : rattachées', r.status_code == 201 and len(r.data.get('attachments') or []) == 2, r.data)
+check('identifiant de fichier illisible : ignoré sans erreur',
+      client(ikram).post(f'/api/discussions/{d_photo}/repondre/', {'body': 'x', 'file_ids': ['../x', 12, None]}, format='json').status_code == 201)
+
 print(f'\n{sum(results)}/{len(results)} vérifications réussies')
 sys.exit(0 if all(results) else 1)

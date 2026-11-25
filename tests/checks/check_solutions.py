@@ -64,6 +64,20 @@ r = a.post('/api/files/upload/', {'file': SimpleUploadedFile('x.svg', b'<svg onl
 check('SVG refusé', r.status_code == 400, r.status_code)
 r = a.post('/api/files/upload/', {'file': SimpleUploadedFile('page.html', png().read(), content_type='image/png')}, format='multipart')
 check('extension incohérente refusée', r.status_code == 400, r.status_code)
+jpeg = io.BytesIO()
+Image.new('RGB', (40, 30), 'white').save(jpeg, 'JPEG')
+for nom, mime, quoi in [('photo.jfif', 'image/jpeg', '.jfif'), ('photo.jpg', 'image/jpg', 'type image/jpg'),
+                        ('photo.jpg', '', 'type vide'), ('IMG_0001', 'application/octet-stream', 'sans extension'),
+                        ('photo.png', 'image/png', 'JPEG nommé .png')]:
+    r = a.post('/api/files/upload/', {'file': SimpleUploadedFile(nom, jpeg.getvalue(), content_type=mime)}, format='multipart')
+    ok = r.status_code == 201 and r.data.get('mime_type') == 'image/jpeg' and r.data.get('file_name', '').endswith('.jpg')
+    check(f'photo acceptée et remise d’aplomb ({quoi})', ok, (r.status_code, r.data))
+r = a.post('/api/files/upload/', {'file': SimpleUploadedFile('IMG_0002.HEIC', b'\x00\x00\x00\x18ftypheic', content_type='image/heic')}, format='multipart')
+check('HEIC refusé avec une explication', r.status_code == 400 and 'HEIC' in str(r.data), r.data)
+r = a.post('/api/files/upload/', {'file': SimpleUploadedFile('page.html', jpeg.getvalue(), content_type='')}, format='multipart')
+check('page.html au contenu d’image : refusée', r.status_code == 400, r.status_code)
+r = a.post('/api/files/upload/', {'file': SimpleUploadedFile('cours.pdf', b'%PDF-1.4 x', content_type='application/pdf')}, format='multipart')
+check('PDF accepté', r.status_code == 201, r.data)
 comment_bob = Comment.objects.create(content_item=ex, author=bob, content='Question ?')
 r = a.post('/api/files/upload/', {'file': png(), 'content_type': 'comment', 'object_id': comment_bob.id}, format='multipart')
 check('impossible d’accrocher un fichier au commentaire d’un autre',
