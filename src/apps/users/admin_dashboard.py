@@ -433,6 +433,11 @@ def _features():
 TRACKED_ACTIONS = [
     ('voir-solution', 'Voir la solution d’une question'),
     ('voir-indication', 'Voir l’indication d’une question'),
+    ('vue-sujet-feuille', 'Vue « Feuille » d’un sujet choisie'),
+    ('vue-sujet-detaillee', 'Vue « Détaillée » d’un sujet choisie'),
+    ('plein-ecran', 'Sujet ou exercice en plein écran'),
+    ('lecon-interactive', 'Graphique d’une leçon ouvert ou manipulé'),
+    ('astuce-ouverte', 'Astuce dépliée (bêta)'),
     ('toutes-solutions', 'Voir toutes les solutions'),
     ('tout-reussi', '« Tout réussi »'),
     ('trouve-apres-solution', '« Tu avais trouvé ? » (sous une solution)'),

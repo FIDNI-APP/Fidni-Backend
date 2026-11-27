@@ -26,6 +26,8 @@ fi
 python manage.py migrate --noinput
 
 python ./tests/base_tables.py
+# Astuces (bêta, équipe seulement) : rédigées dans apps/astuces/data, rechargées à chaque démarrage
+python manage.py charger_astuces || echo "⚠ astuces non chargées (le site démarre quand même)"
 # Collect static files
 python manage.py collectstatic --noinput
 
