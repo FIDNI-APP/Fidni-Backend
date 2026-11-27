@@ -266,6 +266,8 @@ urlpatterns = [
     path('api/', include(copies_api_urls)),
     # Défi du jour (apps/defis)
     path('api/', include('apps.defis.urls')),
+    # Astuces par chapitre (apps/astuces, bêta : équipe seulement)
+    path('api/', include('apps.astuces.urls')),
     # Espace Discussions (apps/discussions, 08/11/2026)
     path('api/', include('apps.discussions.urls')),
     # Communauté : profils publics, abonnements, badges, membres (apps/communaute, 09/11/2026)

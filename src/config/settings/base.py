@@ -59,6 +59,7 @@ INSTALLED_APPS = [
     'apps.documents.apps.DocumentsConfig',
     'apps.copies.apps.CopiesConfig',
     'apps.defis.apps.DefisConfig',
+    'apps.astuces.apps.AstucesConfig',  # Astuces par chapitre (bêta, équipe seulement, 27/11/2026)
     'apps.discussions.apps.DiscussionsConfig',
     'apps.communaute.apps.CommunauteConfig',
     'apps.messagerie.apps.MessagerieConfig',

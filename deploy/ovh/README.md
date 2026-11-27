@@ -138,7 +138,8 @@ Retirer l'accès : `ssh fidni-ovh sudo rm /home/deploiement/.ssh/authorized_keys
 | Besoin | Commande (WSL, dans ce dossier) |
 |---|---|
 | Mettre en ligne sans GitHub (secours) | `bash deployer.sh` : envoie la copie de travail du PC, commits ou non ; le prochain push la remplacera |
-| Rapatrier les sauvegardes sur le PC | `bash deployer.sh sauvegardes` (à faire au moins chaque semaine) |
+| Rapatrier les sauvegardes sur le PC | automatique chaque jour depuis le 27/11/2026 : tâche Windows « FIDNI sauvegarde locale » (10 h, et 5 min après l'ouverture de session si le PC était éteint) qui lance `bash sauvegarde-locale.sh` → `C:\Users\Natsu\FIDNI-sauvegardes` (14 jours + 1 par mois pendant un an, taille et `pg_restore --list` contrôlés ; `ETAT.txt` et `journal.log`). À la main : `bash sauvegarde-locale.sh` ; état : `bash sauvegarde-locale.sh --etat` |
+| Version de test sur le PC (copie de la base) | `bash ../dev/copie-locale.sh charger` (recharge la dernière sauvegarde locale dans un PostgreSQL Docker sur le port 5433), puis `bash ../dev/copie-locale.sh backend` (API sur http://localhost:8010, e-mails et IA coupés) et, dans `frontend/` : `VITE_API_URL=http://localhost:8010/api npx vite --port 3000` |
 | Voir les journaux du backend | `ssh fidni-ovh docker logs -f --tail 100 fidni-backend` |
 | État des conteneurs | `ssh fidni-ovh docker ps` |
 | Restaurer une sauvegarde | sur le VPS : dossier avec `base.dump` (= `base-AAAA-MM-JJ.dump`) et `media/` (= `fichiers-AAAA-MM-JJ.tar.gz` décompressé), puis `sudo bash restaurer.sh <dossier>` et `sudo docker compose --profile enligne up -d tunnel` |

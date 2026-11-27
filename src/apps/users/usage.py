@@ -32,6 +32,10 @@ PAGE_RE = re.compile(r'^/[a-z0-9/:_?-]{0,78}$')
 ACTIONS = {
     'voir-solution',      # « Voir la solution » d'une question
     'voir-indication',    # « Indication » d'une question (la méthode, avant la solution)
+    'vue-sujet-feuille', 'vue-sujet-detaillee',  # vue d'un sujet choisie (27/11/2026)
+    'plein-ecran',        # sujet ou exercice ouvert en plein écran
+    'lecon-interactive',  # graphique d'une leçon ouvert ou manipulé
+    'astuce-ouverte',     # astuce dépliée (bêta, équipe)
     'toutes-solutions',   # « Voir les solutions » de tout l'exercice
     'tout-reussi',        # « Tout réussi »
     'trouve-apres-solution',  # « Tu avais trouvé ? » sous une solution ouverte : réponse donnée

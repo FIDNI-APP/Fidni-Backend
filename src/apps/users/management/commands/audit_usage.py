@@ -83,6 +83,7 @@ PAGE_PATTERNS = [
     ('/statistiques', 'Mes statistiques (ancienne page)'),
     ('/reviser', 'Réviser'),
     ('/enregistrements', 'Mes enregistrements'),
+    ('/astuces', 'Astuces (bêta)'),
     ('/documents', 'Mes documents'),
     ('/documents/:id', 'Éditeur de documents'),
     ('/notebooks', 'Cahiers'),
